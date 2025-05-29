@@ -85,7 +85,10 @@ function App() {
     // Map tools to their respective components or pages
     switch (tool) {
       case 'text-type-guide':
-        setCurrentPage('resources');
+        setCurrentPage('writing');
+        // Show text type guide modal
+        const textTypeGuideEvent = new CustomEvent('show-text-type-guide');
+        window.dispatchEvent(textTypeGuideEvent);
         break;
       case 'planning-tool':
         setCurrentPage('writing');
