@@ -39,7 +39,7 @@ export function EnhancedHeader({
               <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3Z"></path>
             </svg>
           </div>
-          <h1 className="text-xl font-bold text-gray-900">NSW Selective Essay Coach</h1>
+          <h1 className="text-xl font-bold text-gray-900">InstaChatAI</h1>
           <div className="ml-4 text-sm text-green-600 flex items-center">
             <span className="w-2 h-2 bg-green-600 rounded-full mr-1"></span>
             Connected to OpenAI
@@ -76,16 +76,11 @@ export function EnhancedHeader({
             <option value="minimal">Minimal Support</option>
           </select>
 
-          {/* Enhanced Buttons */}
-          <TextTypeGuide textType={textType} />
-          <button
-            onClick={() => setShowPlanningTool(!showPlanningTool)}
-            className="flex items-center px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-          >
-            {showPlanningTool ? 'Hide Planning Tool' : 'Planning Tool'}
-          </button>
-          <ModelResponsesLibrary textType={textType} />
-          <EnhancedTimer onStart={onTimerStart} />
+          {/* Simplified Essential Tools */}
+          <div className="flex space-x-2">
+            <TextTypeGuide textType={textType} />
+            <EnhancedTimer onStart={onTimerStart} />
+          </div>
         </div>
       </div>
 
