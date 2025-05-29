@@ -21,7 +21,7 @@ export function NavBar({ onNavigate, activePage }: NavBarProps) {
           <div className="flex items-center">
             <div className="flex-shrink-0 flex items-center">
               <i className="fas fa-pen-fancy text-indigo-600 mr-2 text-xl"></i>
-              <span className="text-xl font-bold text-gray-800">NSW Selective Essay Coach</span>
+              <span className="text-xl font-bold text-gray-800">InstaChatAI</span>
             </div>
             <div className="hidden sm:ml-6 sm:flex sm:items-center">
               <a 
