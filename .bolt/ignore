@@ -1,5 +1,15 @@
-_temp_lessons_backup/*
+# Ignore dist and temp folders
 dist/*
-components/react-type-templates/*
-components/EnhancedHeader/*
-components/EnhancedSEOFeedback/*
+_temp_lessons_backup/*
+
+# Ignore heavy component groups
+src/components/EnhancedHeader/*
+src/components/EnhancedSEOFeedback/*
+src/components/react-type-templates/*
+src/components/lessons/*
+src/components/WritingGuidesSection.tsx
+src/components/HelpCenter.tsx
+
+# Optional: ignore test files
+**/*.test.tsx
+**/*.spec.tsx
