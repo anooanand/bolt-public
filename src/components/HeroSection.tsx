@@ -1,5 +1,4 @@
 import React from 'react';
-import { ArrowRight, Sparkles, Zap, Shield } from 'lucide-react';
 
 interface HeroSectionProps {
   onStartWriting: () => void;
@@ -8,91 +7,150 @@ interface HeroSectionProps {
 
 export function HeroSection({ onStartWriting, onTryDemo }: HeroSectionProps) {
   return (
-    <div className="relative isolate">
-      {/* Background gradient */}
-      <div className="absolute inset-x-0 top-20 -z-10 transform-gpu overflow-hidden blur-3xl" aria-hidden="true">
-        <div className="relative left-[calc(50%-11rem)] aspect-[1155/678] w-[36.125rem] -translate-x-1/2 rotate-[30deg] bg-gradient-to-tr from-[#ff80b5] to-[#9089fc] opacity-30 sm:left-[calc(50%-30rem)] sm:w-[72.1875rem]"></div>
-      </div>
-
-      <div className="mx-auto max-w-7xl px-6 pb-24 pt-10 sm:pb-32 lg:flex lg:px-8 lg:py-40">
-        <div className="mx-auto max-w-2xl flex-shrink-0 lg:mx-0 lg:max-w-xl lg:pt-8">
-          <div className="mt-24 sm:mt-32 lg:mt-16">
-            <a href="#" className="inline-flex space-x-6">
-              <span className="rounded-full bg-indigo-500/10 px-3 py-1 text-sm font-semibold leading-6 text-indigo-600 ring-1 ring-inset ring-indigo-500/20">
-                Latest Update
-              </span>
-              <span className="inline-flex items-center space-x-2 text-sm font-medium leading-6 text-gray-600">
-                <span>Just shipped v1.0</span>
-                <ArrowRight className="h-4 w-4" />
-              </span>
-            </a>
-          </div>
-          <h1 className="mt-10 text-4xl font-bold tracking-tight text-gray-900 sm:text-6xl">
-            Master NSW Selective Writing with AI
+    <section className="py-16 bg-gradient-to-br from-indigo-50 via-white to-emerald-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="text-center mb-12">
+          <h1 className="text-5xl md:text-6xl font-bold mb-6">
+            <span className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
+              Boost Your Child's Selective Exam 
+            </span>
+            <span className="bg-gradient-to-r from-pink-600 via-orange-500 to-red-600 bg-clip-text text-transparent">
+              Score
+            </span>
           </h1>
-          <p className="mt-6 text-lg leading-8 text-gray-600">
-            Your personal AI writing coach that helps students excel in the NSW Selective exam. Get instant feedback, learn from examples, and practice with real exam-style prompts.
+          <h2 className="text-4xl font-bold text-gray-800 mb-6">
+            with AI-Powered Writing Practice
+          </h2>
+          <p className="text-xl text-gray-600 max-w-3xl mx-auto mb-8">
+            Master narrative, persuasive, and creative writing with personalized AI guidance. 
+            Join thousands of students preparing for NSW Selective exams.
           </p>
-          <div className="mt-10 flex items-center gap-x-6">
-            <button
+          <div className="flex flex-col sm:flex-row justify-center gap-4 mb-12">
+            <button 
+              className="btn-primary bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-lg py-3 px-8 font-medium"
               onClick={onStartWriting}
-              className="rounded-md bg-indigo-600 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
             >
-              Get started
+              View Pricing
             </button>
-            <button
+            <button 
+              className="bg-white text-indigo-600 border border-indigo-600 rounded-lg text-lg py-3 px-8 font-medium hover:bg-indigo-50 transition-colors"
               onClick={onTryDemo}
-              className="text-sm font-semibold leading-6 text-gray-900"
             >
-              Try demo <span aria-hidden="true">→</span>
+              See How It Works
             </button>
           </div>
+        </div>
 
-          <div className="mt-16 grid grid-cols-2 gap-8 border-t border-gray-200 pt-10">
-            <div>
-              <div className="flex items-center gap-x-2">
-                <Sparkles className="h-5 w-5 text-indigo-600" />
-                <h3 className="text-sm font-semibold leading-6 text-gray-900">AI-Powered Feedback</h3>
+        <div className="text-center mb-16">
+          <h2 className="text-3xl md:text-4xl font-bold mb-6 bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+            Writing Types for NSW Selective Exam
+          </h2>
+          <p className="text-xl text-gray-600 max-w-3xl mx-auto mb-8">
+            Choose from our comprehensive range of writing styles with AI-powered guidance
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Card 1: Storytelling & Creative Writing */}
+          <div className="bg-white rounded-xl shadow-md overflow-hidden border border-indigo-100 hover:shadow-lg transition-all">
+            <div className="p-6">
+              <div className="flex items-center mb-4">
+                <div className="bg-indigo-100 p-3 rounded-full mr-3">
+                  <i className="fas fa-feather-alt text-indigo-600 text-xl"></i>
+                </div>
+                <h3 className="text-xl font-bold text-gray-800">Storytelling & Creative Writing</h3>
               </div>
-              <p className="mt-2 text-sm leading-6 text-gray-600">
-                Get instant, personalized feedback on your writing with advanced AI analysis.
+              <p className="text-gray-600 mb-4">
+                Master the art of creative storytelling and narrative techniques
               </p>
+              
+              <div className="mb-4 border-t border-gray-100 pt-4">
+                <div className="mb-3">
+                  <h4 className="font-medium text-gray-800 mb-1">Narrative Writing</h4>
+                  <p className="text-sm text-gray-600">Write engaging stories with compelling plots and characters</p>
+                </div>
+                <div className="mb-3">
+                  <h4 className="font-medium text-gray-800 mb-1">Imaginative Writing</h4>
+                  <p className="text-sm text-gray-600">Create fantastical stories and unique worlds</p>
+                </div>
+              </div>
+              
+              <button 
+                onClick={onStartWriting}
+                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-4 rounded-lg font-medium"
+              >
+                Sign In to Start
+              </button>
             </div>
-            <div>
-              <div className="flex items-center gap-x-2">
-                <Zap className="h-5 w-5 text-indigo-600" />
-                <h3 className="text-sm font-semibold leading-6 text-gray-900">Real-time Coaching</h3>
+          </div>
+          
+          {/* Card 2: Argument & Debate Writing */}
+          <div className="bg-white rounded-xl shadow-md overflow-hidden border border-purple-100 hover:shadow-lg transition-all">
+            <div className="p-6">
+              <div className="flex items-center mb-4">
+                <div className="bg-purple-100 p-3 rounded-full mr-3">
+                  <i className="fas fa-comments text-purple-600 text-xl"></i>
+                </div>
+                <h3 className="text-xl font-bold text-gray-800">Argument & Debate Writing</h3>
               </div>
-              <p className="mt-2 text-sm leading-6 text-gray-600">
-                Learn and improve as you write with interactive suggestions and guidance.
+              <p className="text-gray-600 mb-4">
+                Learn to craft compelling arguments and balanced discussions
               </p>
+              
+              <div className="mb-4 border-t border-gray-100 pt-4">
+                <div className="mb-3">
+                  <h4 className="font-medium text-gray-800 mb-1">Persuasive Writing</h4>
+                  <p className="text-sm text-gray-600">Convince readers with strong arguments and evidence</p>
+                </div>
+                <div className="mb-3">
+                  <h4 className="font-medium text-gray-800 mb-1">Discursive Writing</h4>
+                  <p className="text-sm text-gray-600">Explore different viewpoints on complex topics</p>
+                </div>
+              </div>
+              
+              <button 
+                onClick={onStartWriting}
+                className="w-full bg-purple-600 hover:bg-purple-700 text-white py-2 px-4 rounded-lg font-medium"
+              >
+                Sign In to Start
+              </button>
             </div>
-            <div>
-              <div className="flex items-center gap-x-2">
-                <Shield className="h-5 w-5 text-indigo-600" />
-                <h3 className="text-sm font-semibold leading-6 text-gray-900">Exam-Aligned</h3>
+          </div>
+          
+          {/* Card 3: Essay Scorer */}
+          <div className="bg-white rounded-xl shadow-md overflow-hidden border border-green-100 hover:shadow-lg transition-all">
+            <div className="p-6">
+              <div className="flex items-center mb-4">
+                <div className="bg-green-100 p-3 rounded-full mr-3">
+                  <i className="fas fa-check-circle text-green-600 text-xl"></i>
+                </div>
+                <h3 className="text-xl font-bold text-gray-800">Essay Scorer</h3>
               </div>
-              <p className="mt-2 text-sm leading-6 text-gray-600">
-                Practice with prompts and criteria aligned to NSW Selective standards.
+              <p className="text-gray-600 mb-4">
+                Get detailed feedback and scores based on NSW marking criteria
               </p>
+              
+              <div className="mb-4 border-t border-gray-100 pt-4">
+                <div className="mb-3">
+                  <h4 className="font-medium text-gray-800 mb-1">Detailed Analysis</h4>
+                  <p className="text-sm text-gray-600">Comprehensive feedback on content, structure, and language</p>
+                </div>
+                <div className="mb-3">
+                  <h4 className="font-medium text-gray-800 mb-1">NSW Criteria</h4>
+                  <p className="text-sm text-gray-600">Aligned with Selective School marking standards</p>
+                </div>
+              </div>
+              
+              <button 
+                onClick={onStartWriting}
+                className="w-full bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg font-medium"
+              >
+                Sign In to Score Essays
+              </button>
             </div>
           </div>
         </div>
-        <div className="mx-auto mt-16 flex max-w-2xl sm:mt-24 lg:ml-10 lg:mr-0 lg:mt-0 lg:max-w-none lg:flex-none xl:ml-32">
-          <div className="max-w-3xl flex-none sm:max-w-5xl lg:max-w-none">
-            <img
-              src="https://images.pexels.com/photos/4050315/pexels-photo-4050315.jpeg"
-              alt="Student writing with AI assistance"
-              className="w-[76rem] rounded-md bg-white/5 shadow-2xl ring-1 ring-white/10"
-            />
-          </div>
-        </div>
       </div>
-
-      {/* Background gradient */}
-      <div className="absolute inset-x-0 top-[calc(100%-13rem)] -z-10 transform-gpu overflow-hidden blur-3xl sm:top-[calc(100%-30rem)]" aria-hidden="true">
-        <div className="relative left-[calc(50%+3rem)] aspect-[1155/678] w-[36.125rem] -translate-x-1/2 bg-gradient-to-tr from-[#ff80b5] to-[#9089fc] opacity-30 sm:left-[calc(50%+36rem)] sm:w-[72.1875rem]"></div>
-      </div>
-    </div>
+    </section>
   );
 }
