@@ -34,11 +34,19 @@ export function HeroSection({ onStartWriting, onTryDemo }: HeroSectionProps) {
                 Try Demo
               </button>
             </div>
-            <div className="mt-8 flex items-center text-sm text-gray-500">
-              <i className="fas fa-check-circle text-green-500 mr-2"></i>
-              <span>No registration required to get started</span>
-              <i className="fas fa-check-circle text-green-500 mx-2"></i>
-              <span>Connected to OpenAI</span>
+            <div className="mt-8 flex flex-wrap items-center gap-4 text-sm text-gray-500">
+              <div className="flex items-center">
+                <i className="fas fa-check-circle text-green-500 mr-2"></i>
+                <span>No registration required</span>
+              </div>
+              <div className="flex items-center">
+                <i className="fas fa-check-circle text-green-500 mr-2"></i>
+                <span>AI-powered feedback</span>
+              </div>
+              <div className="flex items-center">
+                <i className="fas fa-check-circle text-green-500 mr-2"></i>
+                <span>NSW aligned curriculum</span>
+              </div>
             </div>
           </div>
           <div className="relative">
@@ -62,7 +70,7 @@ export function HeroSection({ onStartWriting, onTryDemo }: HeroSectionProps) {
                   {essayContent || "Your essay will appear here as you type..."}
                 </p>
               </div>
-              <div className="flex justify-between">
+              <div className="flex justify-between items-center">
                 <div className="text-sm text-gray-500">
                   <i className="fas fa-chart-bar text-indigo-500 mr-1"></i>
                   Word count: <span className="font-medium">{essayContent ? essayContent.split(/\s+/).filter(Boolean).length : 0}</span>

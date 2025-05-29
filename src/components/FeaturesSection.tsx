@@ -16,62 +16,65 @@ export function FeaturesSection({ onTryFeature }: FeaturesSectionProps) {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           <div className="card bg-white p-8 rounded-xl shadow-lg border border-gray-100">
-            <div className="feature-icon">
-              <i className="fas fa-edit"></i>
+            <div className="flex items-center mb-4">
+              <div className="bg-blue-100 p-3 rounded-lg mr-4">
+                <i className="fas fa-edit text-blue-600"></i>
+              </div>
+              <h3 className="text-xl font-semibold">AI-Powered Feedback</h3>
             </div>
-            <h3 className="text-xl font-semibold mb-4">AI-Powered Feedback</h3>
             <p className="text-gray-600 mb-6">
               Receive instant, detailed feedback on your writing with specific suggestions to improve content, structure, and style.
             </p>
             <div className="flex justify-between items-center">
-              <a 
+              <button 
                 className="text-indigo-600 hover:text-indigo-800 font-medium inline-flex items-center" 
-                href="#"
-                onClick={(e) => { e.preventDefault(); onTryFeature('ai-feedback'); }}
+                onClick={() => onTryFeature('ai-feedback')}
               >
                 Try now
                 <i className="fas fa-arrow-right ml-2"></i>
-              </a>
+              </button>
               <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">Set A Aligned</span>
             </div>
           </div>
           <div className="card bg-white p-8 rounded-xl shadow-lg border border-gray-100">
-            <div className="feature-icon">
-              <i className="fas fa-book"></i>
+            <div className="flex items-center mb-4">
+              <div className="bg-violet-100 p-3 rounded-lg mr-4">
+                <i className="fas fa-book text-violet-600"></i>
+              </div>
+              <h3 className="text-xl font-semibold">Text Type Templates</h3>
             </div>
-            <h3 className="text-xl font-semibold mb-4">Text Type Templates</h3>
             <p className="text-gray-600 mb-6">
               Access templates for all NSW Selective text types with clear structures, examples, and guided prompts.
             </p>
             <div className="flex justify-between items-center">
-              <a 
+              <button 
                 className="text-indigo-600 hover:text-indigo-800 font-medium inline-flex items-center" 
-                href="#"
-                onClick={(e) => { e.preventDefault(); onTryFeature('templates'); }}
+                onClick={() => onTryFeature('templates')}
               >
                 Explore templates
                 <i className="fas fa-arrow-right ml-2"></i>
-              </a>
+              </button>
               <span className="bg-indigo-100 text-indigo-800 text-xs px-2 py-1 rounded-full">11 Types</span>
             </div>
           </div>
           <div className="card bg-white p-8 rounded-xl shadow-lg border border-gray-100">
-            <div className="feature-icon">
-              <i className="fas fa-stopwatch"></i>
+            <div className="flex items-center mb-4">
+              <div className="bg-amber-100 p-3 rounded-lg mr-4">
+                <i className="fas fa-stopwatch text-amber-600"></i>
+              </div>
+              <h3 className="text-xl font-semibold">Timed Practice Mode</h3>
             </div>
-            <h3 className="text-xl font-semibold mb-4">Timed Practice Mode</h3>
             <p className="text-gray-600 mb-6">
               Practice under real exam conditions with our 30-minute timer and realistic practice prompts based on past exams.
             </p>
             <div className="flex justify-between items-center">
-              <a 
+              <button 
                 className="text-indigo-600 hover:text-indigo-800 font-medium inline-flex items-center" 
-                href="#"
-                onClick={(e) => { e.preventDefault(); onTryFeature('practice'); }}
+                onClick={() => onTryFeature('practice')}
               >
                 Start practice
                 <i className="fas fa-arrow-right ml-2"></i>
-              </a>
+              </button>
               <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded-full">Exam Mode</span>
             </div>
           </div>
