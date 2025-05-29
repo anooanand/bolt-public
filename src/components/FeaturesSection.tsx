@@ -1,4 +1,5 @@
 import React from 'react';
+import { Sparkles, Brain, Target, Clock } from 'lucide-react';
 
 interface FeaturesSectionProps {
   onTryFeature: (feature: string) => void;
@@ -6,80 +7,73 @@ interface FeaturesSectionProps {
 
 export function FeaturesSection({ onTryFeature }: FeaturesSectionProps) {
   return (
-    <section className="py-16 bg-white">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-16">
-          <h2 className="text-3xl font-bold mb-4">Comprehensive Writing Tools</h2>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-            Everything you need to master essay writing for the NSW Selective School exams in one place.
+    <div className="py-24 sm:py-32">
+      <div className="mx-auto max-w-7xl px-6 lg:px-8">
+        <div className="mx-auto max-w-2xl text-center">
+          <h2 className="text-base font-semibold leading-7 text-indigo-600">Comprehensive Learning</h2>
+          <p className="mt-2 text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
+            Everything you need to excel in writing
+          </p>
+          <p className="mt-6 text-lg leading-8 text-gray-600">
+            Our AI-powered platform provides all the tools and guidance needed to master writing for the NSW Selective exam.
           </p>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          <div className="card bg-white p-8 rounded-xl shadow-lg border border-gray-100 transform transition-all duration-300 hover:scale-105">
-            <div className="flex items-center mb-4">
-              <div className="bg-blue-100 p-3 rounded-lg mr-4">
-                <i className="fas fa-edit text-blue-600"></i>
-              </div>
-              <h3 className="text-xl font-semibold">AI-Powered Feedback</h3>
+        <div className="mx-auto mt-16 max-w-2xl sm:mt-20 lg:mt-24 lg:max-w-none">
+          <dl className="grid max-w-xl grid-cols-1 gap-x-8 gap-y-16 lg:max-w-none lg:grid-cols-3">
+            <div className="flex flex-col">
+              <dt className="flex items-center gap-x-3 text-base font-semibold leading-7 text-gray-900">
+                <Sparkles className="h-5 w-5 flex-none text-indigo-600" />
+                AI Writing Coach
+              </dt>
+              <dd className="mt-4 flex flex-auto flex-col text-base leading-7 text-gray-600">
+                <p className="flex-auto">Get instant, personalized feedback on your writing with our advanced AI analysis. Learn from detailed suggestions and improve with every session.</p>
+                <p className="mt-6">
+                  <button
+                    onClick={() => onTryFeature('ai-feedback')}
+                    className="text-sm font-semibold leading-6 text-indigo-600"
+                  >
+                    Try AI feedback <span aria-hidden="true">→</span>
+                  </button>
+                </p>
+              </dd>
             </div>
-            <p className="text-gray-600 mb-6">
-              Receive instant, detailed feedback on your writing with specific suggestions to improve content, structure, and style.
-            </p>
-            <div className="flex justify-between items-center">
-              <button 
-                className="text-indigo-600 hover:text-indigo-800 font-medium inline-flex items-center group"
-                onClick={() => onTryFeature('ai-feedback')}
-              >
-                Try now
-                <i className="fas fa-arrow-right ml-2 transform transition-transform group-hover:translate-x-1"></i>
-              </button>
-              <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">Set A Aligned</span>
+            <div className="flex flex-col">
+              <dt className="flex items-center gap-x-3 text-base font-semibold leading-7 text-gray-900">
+                <Brain className="h-5 w-5 flex-none text-indigo-600" />
+                Interactive Learning
+              </dt>
+              <dd className="mt-4 flex flex-auto flex-col text-base leading-7 text-gray-600">
+                <p className="flex-auto">Practice with interactive exercises, real exam-style prompts, and comprehensive writing guides for each text type.</p>
+                <p className="mt-6">
+                  <button
+                    onClick={() => onTryFeature('interactive-learning')}
+                    className="text-sm font-semibold leading-6 text-indigo-600"
+                  >
+                    Start learning <span aria-hidden="true">→</span>
+                  </button>
+                </p>
+              </dd>
             </div>
-          </div>
-          <div className="card bg-white p-8 rounded-xl shadow-lg border border-gray-100 transform transition-all duration-300 hover:scale-105">
-            <div className="flex items-center mb-4">
-              <div className="bg-violet-100 p-3 rounded-lg mr-4">
-                <i className="fas fa-book text-violet-600"></i>
-              </div>
-              <h3 className="text-xl font-semibold">Text Type Templates</h3>
+            <div className="flex flex-col">
+              <dt className="flex items-center gap-x-3 text-base font-semibold leading-7 text-gray-900">
+                <Clock className="h-5 w-5 flex-none text-indigo-600" />
+                Exam Preparation
+              </dt>
+              <dd className="mt-4 flex flex-auto flex-col text-base leading-7 text-gray-600">
+                <p className="flex-auto">Simulate real exam conditions with timed writing sessions and get scored according to NSW Selective criteria.</p>
+                <p className="mt-6">
+                  <button
+                    onClick={() => onTryFeature('exam-prep')}
+                    className="text-sm font-semibold leading-6 text-indigo-600"
+                  >
+                    Try exam mode <span aria-hidden="true">→</span>
+                  </button>
+                </p>
+              </dd>
             </div>
-            <p className="text-gray-600 mb-6">
-              Access templates for all NSW Selective text types with clear structures, examples, and guided prompts.
-            </p>
-            <div className="flex justify-between items-center">
-              <button 
-                className="text-indigo-600 hover:text-indigo-800 font-medium inline-flex items-center group"
-                onClick={() => onTryFeature('templates')}
-              >
-                Explore templates
-                <i className="fas fa-arrow-right ml-2 transform transition-transform group-hover:translate-x-1"></i>
-              </button>
-              <span className="bg-indigo-100 text-indigo-800 text-xs px-2 py-1 rounded-full">11 Types</span>
-            </div>
-          </div>
-          <div className="card bg-white p-8 rounded-xl shadow-lg border border-gray-100 transform transition-all duration-300 hover:scale-105">
-            <div className="flex items-center mb-4">
-              <div className="bg-amber-100 p-3 rounded-lg mr-4">
-                <i className="fas fa-stopwatch text-amber-600"></i>
-              </div>
-              <h3 className="text-xl font-semibold">Timed Practice Mode</h3>
-            </div>
-            <p className="text-gray-600 mb-6">
-              Practice under real exam conditions with our 30-minute timer and realistic practice prompts based on past exams.
-            </p>
-            <div className="flex justify-between items-center">
-              <button 
-                className="text-indigo-600 hover:text-indigo-800 font-medium inline-flex items-center group"
-                onClick={() => onTryFeature('practice')}
-              >
-                Start practice
-                <i className="fas fa-arrow-right ml-2 transform transition-transform group-hover:translate-x-1"></i>
-              </button>
-              <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded-full">Exam Mode</span>
-            </div>
-          </div>
+          </dl>
         </div>
       </div>
-    </section>
+    </div>
   );
 }
