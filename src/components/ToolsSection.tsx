@@ -1,10 +1,13 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { TextTypeGuideModal } from './TextTypeGuideModal';
 
 interface ToolsSectionProps {
   onOpenTool: (tool: string) => void;
 }
 
 export function ToolsSection({ onOpenTool }: ToolsSectionProps) {
+  const [showGuideModal, setShowGuideModal] = useState(false);
+
   return (
     <section className="py-16 bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -27,7 +30,7 @@ export function ToolsSection({ onOpenTool }: ToolsSectionProps) {
                 Learn the specific structure and style requirements for each NSW Selective writing text type.
               </p>
               <button 
-                onClick={() => onOpenTool('text-type-guide')}
+                onClick={() => setShowGuideModal(true)}
                 className="text-blue-600 hover:text-blue-800 font-medium flex items-center group"
               >
                 Open Guide
@@ -99,6 +102,10 @@ export function ToolsSection({ onOpenTool }: ToolsSectionProps) {
             </div>
           </div>
         </div>
+
+        {showGuideModal && (
+          <TextTypeGuideModal onClose={() => setShowGuideModal(false)} />
+        )}
       </div>
     </section>
   );
