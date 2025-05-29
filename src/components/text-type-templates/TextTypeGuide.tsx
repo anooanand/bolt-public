@@ -231,5 +231,21 @@ export function TextTypeGuide({ textType }: TextTypeGuideProps) {
             },
             {
               name: 'Conclusion',
-              description: 'Summarize what you learned and how you might apply it in t
-(Content truncated due to size limit. Use line ranges to read in chunks)
+              description: 'Summarize what you learned and how you might apply it in the future.',
+              examples: ['This performance taught me more than just how to handle stage fright. It showed me that being genuine and pushing through fear can lead to unexpected connections and personal growth. Now, when I face challenging situations, I remember that moment on stage and know that authenticity and courage are more important than perfection.'],
+              tips: ['Reflect on the significance of what you learned', 'Consider how to apply these lessons', 'End with a meaningful insight']
+            }
+          ],
+          exampleOpeners: [
+            'Looking back on that summer afternoon, I never could have predicted how one small decision would change everything.',
+            'Sometimes the most important lessons come from our most uncomfortable moments.',
+            'It wasn\'t until weeks later that I fully understood what that experience had taught me.'
+          ]
+        };
+      default:
+        return null;
+    }
+  };
+
+  return null;
+}
