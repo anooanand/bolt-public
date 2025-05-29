@@ -15,7 +15,7 @@ export function FeaturesSection({ onTryFeature }: FeaturesSectionProps) {
           </p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          <div className="card bg-white p-8 rounded-xl shadow-lg border border-gray-100">
+          <div className="card bg-white p-8 rounded-xl shadow-lg border border-gray-100 transform transition-all duration-300 hover:scale-105">
             <div className="flex items-center mb-4">
               <div className="bg-blue-100 p-3 rounded-lg mr-4">
                 <i className="fas fa-edit text-blue-600"></i>
@@ -27,16 +27,16 @@ export function FeaturesSection({ onTryFeature }: FeaturesSectionProps) {
             </p>
             <div className="flex justify-between items-center">
               <button 
-                className="text-indigo-600 hover:text-indigo-800 font-medium inline-flex items-center" 
+                className="text-indigo-600 hover:text-indigo-800 font-medium inline-flex items-center group"
                 onClick={() => onTryFeature('ai-feedback')}
               >
                 Try now
-                <i className="fas fa-arrow-right ml-2"></i>
+                <i className="fas fa-arrow-right ml-2 transform transition-transform group-hover:translate-x-1"></i>
               </button>
               <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">Set A Aligned</span>
             </div>
           </div>
-          <div className="card bg-white p-8 rounded-xl shadow-lg border border-gray-100">
+          <div className="card bg-white p-8 rounded-xl shadow-lg border border-gray-100 transform transition-all duration-300 hover:scale-105">
             <div className="flex items-center mb-4">
               <div className="bg-violet-100 p-3 rounded-lg mr-4">
                 <i className="fas fa-book text-violet-600"></i>
@@ -48,16 +48,16 @@ export function FeaturesSection({ onTryFeature }: FeaturesSectionProps) {
             </p>
             <div className="flex justify-between items-center">
               <button 
-                className="text-indigo-600 hover:text-indigo-800 font-medium inline-flex items-center" 
+                className="text-indigo-600 hover:text-indigo-800 font-medium inline-flex items-center group"
                 onClick={() => onTryFeature('templates')}
               >
                 Explore templates
-                <i className="fas fa-arrow-right ml-2"></i>
+                <i className="fas fa-arrow-right ml-2 transform transition-transform group-hover:translate-x-1"></i>
               </button>
               <span className="bg-indigo-100 text-indigo-800 text-xs px-2 py-1 rounded-full">11 Types</span>
             </div>
           </div>
-          <div className="card bg-white p-8 rounded-xl shadow-lg border border-gray-100">
+          <div className="card bg-white p-8 rounded-xl shadow-lg border border-gray-100 transform transition-all duration-300 hover:scale-105">
             <div className="flex items-center mb-4">
               <div className="bg-amber-100 p-3 rounded-lg mr-4">
                 <i className="fas fa-stopwatch text-amber-600"></i>
@@ -69,11 +69,11 @@ export function FeaturesSection({ onTryFeature }: FeaturesSectionProps) {
             </p>
             <div className="flex justify-between items-center">
               <button 
-                className="text-indigo-600 hover:text-indigo-800 font-medium inline-flex items-center" 
+                className="text-indigo-600 hover:text-indigo-800 font-medium inline-flex items-center group"
                 onClick={() => onTryFeature('practice')}
               >
                 Start practice
-                <i className="fas fa-arrow-right ml-2"></i>
+                <i className="fas fa-arrow-right ml-2 transform transition-transform group-hover:translate-x-1"></i>
               </button>
               <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded-full">Exam Mode</span>
             </div>
