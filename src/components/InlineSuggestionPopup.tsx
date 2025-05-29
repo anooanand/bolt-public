@@ -1,4 +1,5 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
+import { BookOpen, X } from 'lucide-react';
 
 interface InlineSuggestionPopupProps {
   original: string;
@@ -11,7 +12,8 @@ interface InlineSuggestionPopupProps {
   onClose: () => void;
   start: number;
   end: number;
-  isLoading?: boolean;
+  isLoading: boolean;
+  isDarkMode?: boolean;
 }
 
 export function InlineSuggestionPopup({
@@ -25,76 +27,117 @@ export function InlineSuggestionPopup({
   onClose,
   start,
   end,
-  isLoading = false,
+  isLoading,
+  isDarkMode = false
 }: InlineSuggestionPopupProps) {
-  const popupRef = useRef<HTMLDivElement>(null);
-
+  const [selectedSuggestion, setSelectedSuggestion] = useState('');
+  
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (popupRef.current && !popupRef.current.contains(event.target as Node)) {
-        onClose();
-      }
+    // If there are multiple suggestions (comma-separated), default to the first one
+    if (suggestion.includes(',')) {
+      setSelectedSuggestion(suggestion.split(',')[0].trim());
+    } else {
+      setSelectedSuggestion(suggestion);
     }
+  }, [suggestion]);
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [onClose]);
+  const handleApply = () => {
+    onApply(selectedSuggestion, start, end);
+  };
 
-  // Split suggestions if they're in "or" format
-  const suggestions = suggestion.split(',').map(s => s.trim());
+  const handleSuggestionChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSelectedSuggestion(e.target.value);
+  };
+
+  const suggestions = suggestion.includes(',') 
+    ? suggestion.split(',').map(s => s.trim()) 
+    : [suggestion];
 
   return (
-    <div
-      ref={popupRef}
-      className="absolute z-20 bg-white rounded-lg shadow-lg border border-gray-200 p-3 max-w-[300px]"
-      style={{
+    <div 
+      className={`absolute z-10 w-72 rounded-lg shadow-lg ${isDarkMode ? 'bg-gray-800 text-gray-200' : 'bg-white text-gray-800'} overflow-hidden`}
+      style={{ 
+        left: `${position.x}px`, 
         top: `${position.y}px`,
-        left: `${position.x}px`,
+        maxWidth: '90vw'
       }}
     >
-      <div className="space-y-2">
-        <div className="text-sm">
-          <span className="text-gray-500">Original: </span>
-          <span className="font-medium">{original}</span>
+      <div className={`p-3 ${isDarkMode ? 'bg-gray-700' : 'bg-blue-50'} flex justify-between items-center`}>
+        <h3 className={`text-sm font-medium ${isDarkMode ? 'text-gray-200' : 'text-blue-800'}`}>Writing Suggestion</h3>
+        <button 
+          onClick={onClose}
+          className={`rounded-full p-1 ${isDarkMode ? 'hover:bg-gray-600' : 'hover:bg-blue-100'}`}
+        >
+          <X size={16} className={isDarkMode ? 'text-gray-300' : 'text-blue-600'} />
+        </button>
+      </div>
+      
+      <div className="p-3 space-y-3">
+        <div>
+          <p className={`text-xs mb-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Original:</p>
+          <p className={`text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>{original}</p>
         </div>
-        <div className="text-sm space-y-1">
-          <span className="text-gray-500">Suggestions: </span>
-          {suggestions.map((s, i) => (
-            <div key={i} className="ml-2">
-              <button
-                onClick={() => onApply(s, start, end)}
-                className="text-blue-600 hover:text-blue-800 hover:underline font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                disabled={isLoading}
-              >
-                {s}
-              </button>
-            </div>
-          ))}
+        
+        <div>
+          <p className={`text-xs mb-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Suggestion:</p>
+          {suggestions.length > 1 ? (
+            <select
+              value={selectedSuggestion}
+              onChange={handleSuggestionChange}
+              className={`w-full p-1.5 text-sm rounded border ${
+                isDarkMode 
+                  ? 'bg-gray-700 text-gray-200 border-gray-600' 
+                  : 'bg-white text-gray-800 border-gray-300'
+              }`}
+            >
+              {suggestions.map((s, i) => (
+                <option key={i} value={s}>{s}</option>
+              ))}
+            </select>
+          ) : (
+            <p className={`text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>{suggestion}</p>
+          )}
         </div>
-        <p className="text-xs text-gray-600 border-t border-b border-gray-100 py-2">
-          {explanation}
-        </p>
-        <div className="flex flex-wrap gap-1">
+        
+        <div>
+          <p className={`text-xs mb-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Explanation:</p>
+          <p className={`text-xs ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>{explanation}</p>
+        </div>
+        
+        <div className="flex space-x-2 pt-1">
+          <button
+            onClick={handleApply}
+            className={`flex-1 py-1.5 text-xs font-medium rounded ${
+              isDarkMode 
+                ? 'bg-blue-700 text-white hover:bg-blue-600' 
+                : 'bg-blue-600 text-white hover:bg-blue-700'
+            }`}
+          >
+            Apply
+          </button>
+          
           <button
             onClick={onParaphrase}
             disabled={isLoading}
-            className="text-xs px-2 py-1 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+            className={`flex-1 py-1.5 text-xs font-medium rounded ${
+              isDarkMode 
+                ? 'bg-gray-700 text-gray-200 hover:bg-gray-600 disabled:opacity-50' 
+                : 'bg-gray-200 text-gray-800 hover:bg-gray-300 disabled:opacity-50'
+            }`}
           >
-            {isLoading ? 'Loading...' : '🔄 Rephrase'}
+            {isLoading ? 'Loading...' : 'Rephrase'}
           </button>
+          
           <button
             onClick={onThesaurus}
             disabled={isLoading}
-            className="text-xs px-2 py-1 bg-purple-50 text-purple-700 hover:bg-purple-100 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+            className={`flex-1 py-1.5 text-xs font-medium rounded ${
+              isDarkMode 
+                ? 'bg-gray-700 text-gray-200 hover:bg-gray-600 disabled:opacity-50' 
+                : 'bg-gray-200 text-gray-800 hover:bg-gray-300 disabled:opacity-50'
+            }`}
           >
-            {isLoading ? 'Loading...' : '📚 Find Synonyms'}
-          </button>
-          <button
-            onClick={onClose}
-            disabled={isLoading}
-            className="text-xs px-2 py-1 bg-gray-50 text-gray-700 hover:bg-gray-100 rounded disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            ❌ Dismiss
+            {isLoading ? 'Loading...' : 'Synonyms'}
           </button>
         </div>
       </div>
