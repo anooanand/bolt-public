@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BookOpen, X } from 'lucide-react';
 
 interface TextTypeGuideProps {
@@ -7,6 +7,18 @@ interface TextTypeGuideProps {
 
 export function TextTypeGuide({ textType }: TextTypeGuideProps) {
   const [isOpen, setIsOpen] = React.useState(false);
+
+  useEffect(() => {
+    const handleShowTextTypeGuide = () => {
+      setIsOpen(true);
+    };
+
+    window.addEventListener('show-text-type-guide', handleShowTextTypeGuide);
+    
+    return () => {
+      window.removeEventListener('show-text-type-guide', handleShowTextTypeGuide);
+    };
+  }, []);
 
   const getTextTypeGuide = () => {
     switch (textType.toLowerCase()) {
@@ -219,201 +231,5 @@ export function TextTypeGuide({ textType }: TextTypeGuideProps) {
             },
             {
               name: 'Conclusion',
-              description: 'Summarize what you learned and how you might apply it in the future',
-              examples: ['That talent show performance changed how I approach challenges. Now, when I face something that scares me, I remind myself that the worst rarely happens, and that growth happens outside my comfort zone. I\'ve applied this lesson when giving class presentations, trying out for sports teams, and meeting new people.'],
-              tips: ['Summarize key insights', 'Explain how you\'ve applied or will apply what you learned', 'End with a thoughtful reflection']
-            }
-          ],
-          exampleOpeners: [
-            'The moment I realized I had made a serious mistake was also the moment I began to truly understand responsibility.',
-            'Looking back on my first day of middle school, I can now see how that experience shaped my approach to new situations.',
-            'Sometimes the smallest decisions can lead to unexpected lessons, as I discovered when I volunteered at the animal shelter last summer.'
-          ]
-        };
-      case 'descriptive':
-        return {
-          title: 'Descriptive Writing Guide',
-          description: 'Descriptive writing creates a vivid picture of a person, place, object, or experience using sensory details.',
-          keyFeatures: [
-            'Rich sensory details (sight, sound, smell, taste, touch)',
-            'Figurative language (similes, metaphors, personification)',
-            'Precise word choice and vivid vocabulary',
-            'Organized spatial or chronological structure',
-            'Mood or atmosphere creation',
-            'Focus on specific details rather than general statements'
-          ],
-          structure: [
-            {
-              name: 'Introduction',
-              description: 'Introduce the subject and create initial impression',
-              examples: ['The abandoned lighthouse stood sentinel on the jagged cliff edge, its weathered stone exterior bearing the scars of a century\'s worth of storms.'],
-              tips: ['Create a strong first impression', 'Establish the dominant mood or tone', 'Hint at why this subject is significant']
-            },
-            {
-              name: 'Main Body - Visual Details',
-              description: 'Describe what the subject looks like in vivid detail',
-              examples: ['Paint peeled from its once-pristine white surface like old skin, revealing patches of gray stone underneath. The afternoon sun cast long shadows across its cylindrical form, accentuating every crack and crevice that time had etched into its facade.'],
-              tips: ['Use specific colors, shapes, sizes, and textures', 'Move from general to specific details', 'Use comparisons to familiar objects']
-            },
-            {
-              name: 'Main Body - Other Senses',
-              description: 'Include details related to sounds, smells, textures, and possibly tastes',
-              examples: ['The salty breeze carried the rhythmic percussion of waves crashing against the rocks below. Seagulls wheeled overhead, their mournful cries punctuating the constant whisper of wind through the coastal grasses. The air tasted of salt and seaweed, with undertones of wild thyme that grew in sheltered pockets along the path.'],
-              tips: ['Appeal to multiple senses', 'Use specific rather than general terms', 'Consider unexpected sensory aspects']
-            },
-            {
-              name: 'Spatial Organization',
-              description: 'Organize details in a logical spatial pattern',
-              examples: ['Inside, a narrow spiral staircase twisted upward like the inside of a nautilus shell. Each iron step was worn in the center, testament to the countless keepers who had made this same journey. At the top, the lantern room awaited—a perfect glass-enclosed circle housing the massive Fresnel lens that had once guided ships safely to harbor.'],
-              tips: ['Move from top to bottom, left to right, inside to outside, etc.', 'Use transition words to indicate spatial relationships', 'Create a mental map for the reader']
-            },
-            {
-              name: 'Mood and Atmosphere',
-              description: 'Develop the emotional quality of the description',
-              examples: ['As the sun began its descent toward the horizon, the lighthouse cast an impossibly long shadow across the water, a dark finger pointing eastward. There was a dignity and presence to the structure that transcended its practical purpose, standing as a monument to humanity\'s age-old relationship with the sea.'],
-              tips: ['Use word choice to evoke specific emotions', 'Consider the overall impression you want to create', 'Use figurative language to enhance mood']
-            },
-            {
-              name: 'Conclusion',
-              description: 'Provide final impressions and significance',
-              examples: ['Though no longer serving its original purpose, the lighthouse remained steadfast, a silent witness to the ever-changing sea and sky, its presence a comforting constant in a world of perpetual motion.'],
-              tips: ['Connect to broader themes or significance', 'Leave the reader with a strong final image', 'Consider how the subject affects you or others']
-            }
-          ],
-          exampleOpeners: [
-            'The ancient oak dominated the park, its gnarled branches reaching toward the sky like arthritic fingers.',
-            'Grandmother\'s kitchen was a realm of contradictions—chaotic yet orderly, small yet infinite in its possibilities.',
-            'The abandoned fairground held an eerie beauty in the early morning mist, a ghost of joy suspended in time.'
-          ]
-        };
-      default:
-        return {
-          title: 'Select a Writing Type',
-          description: 'Please select a writing type to see specific guidance.',
-          keyFeatures: [],
-          structure: [],
-          exampleOpeners: []
-        };
-    }
-  };
-
-  const guide = getTextTypeGuide();
-
-  return (
-    <div className="relative">
-      <button
-        onClick={() => setIsOpen(true)}
-        className="flex items-center px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-      >
-        <BookOpen className="w-4 h-4 mr-2" />
-        Text Type Guide
-      </button>
-
-      {isOpen && (
-        <div className="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-          <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true"></div>
-            <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
-              <div className="absolute top-0 right-0 pt-4 pr-4">
-                <button
-                  type="button"
-                  className="bg-white rounded-md text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                  onClick={() => setIsOpen(false)}
-                >
-                  <span className="sr-only">Close</span>
-                  <X className="h-6 w-6" />
-                </button>
-              </div>
-              <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                <div className="sm:flex sm:items-start">
-                  <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
-                    <h3 className="text-lg leading-6 font-medium text-gray-900" id="modal-title">
-                      {guide.title}
-                    </h3>
-                    <div className="mt-2">
-                      <p className="text-sm text-gray-500">{guide.description}</p>
-                    </div>
-                  </div>
-                </div>
-
-                {guide.keyFeatures.length > 0 && (
-                  <div className="mt-6">
-                    <h4 className="text-md font-medium text-gray-900">Key Features</h4>
-                    <ul className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2">
-                      {guide.keyFeatures.map((feature, index) => (
-                        <li key={index} className="text-sm text-gray-600 flex items-start">
-                          <span className="text-indigo-500 mr-2">•</span>
-                          {feature}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                {guide.structure.length > 0 && (
-                  <div className="mt-6">
-                    <h4 className="text-md font-medium text-gray-900">Structure</h4>
-                    <div className="mt-2 space-y-6">
-                      {guide.structure.map((section, index) => (
-                        <div key={index} className="bg-gray-50 p-4 rounded-md">
-                          <h5 className="text-sm font-medium text-gray-900">{section.name}</h5>
-                          <p className="mt-1 text-sm text-gray-600">{section.description}</p>
-                          
-                          {section.examples && section.examples.length > 0 && (
-                            <div className="mt-2">
-                              <h6 className="text-xs font-medium text-gray-700">Example:</h6>
-                              <div className="mt-1 text-sm text-gray-800 italic bg-white p-2 rounded border border-gray-200">
-                                {section.examples[0]}
-                              </div>
-                            </div>
-                          )}
-                          
-                          {section.tips && section.tips.length > 0 && (
-                            <div className="mt-2">
-                              <h6 className="text-xs font-medium text-gray-700">Tips:</h6>
-                              <ul className="mt-1 text-xs text-gray-600">
-                                {section.tips.map((tip, tipIndex) => (
-                                  <li key={tipIndex} className="flex items-start">
-                                    <span className="text-green-500 mr-1">✓</span>
-                                    {tip}
-                                  </li>
-                                ))}
-                              </ul>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {guide.exampleOpeners.length > 0 && (
-                  <div className="mt-6">
-                    <h4 className="text-md font-medium text-gray-900">Example Opening Lines</h4>
-                    <div className="mt-2 bg-indigo-50 p-4 rounded-md">
-                      <ul className="space-y-2">
-                        {guide.exampleOpeners.map((opener, index) => (
-                          <li key={index} className="text-sm text-indigo-700 italic">"{opener}"</li>
-                        ))}
-                      </ul>
-                    </div>
-                  </div>
-                )}
-              </div>
-              <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                <button
-                  type="button"
-                  className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:ml-3 sm:w-auto sm:text-sm"
-                  onClick={() => setIsOpen(false)}
-                >
-                  Close
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
+              description: 'Summarize what you learned and how you might apply it in t
+(Content truncated due to size limit. Use line ranges to read in chunks)
