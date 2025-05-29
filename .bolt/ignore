@@ -1,4 +1,4 @@
-temp_lessons_backup/*
+_temp_lessons_backup/*
 dist/*
 components/react-type-templates/*
 components/EnhancedHeader/*
