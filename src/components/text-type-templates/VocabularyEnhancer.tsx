@@ -30,8 +30,16 @@ export function VocabularyEnhancer({ textType, content }: VocabularyEnhancerProp
   const loadVocabulary = async () => {
     if (isLoading) return;
     
+    // Reset states
     setIsLoading(true);
     setError(null);
+    
+    // Validate content length
+    if (!content || content.trim().length < 50) {
+      setError('Please write at least 50 characters before requesting vocabulary suggestions.');
+      setIsLoading(false);
+      return;
+    }
     
     try {
       const data = await getTextTypeVocabulary(textType, content.substring(0, 500));
