@@ -50,6 +50,21 @@ module.exports = {
       },
       boxShadow: {
         'glow': '0 0 20px -5px rgba(99, 102, 241, 0.3)',
+        'glass': '0 8px 32px rgba(31, 38, 135, 0.15)',
+      },
+      animation: {
+        'glow': 'glow 2s infinite',
+        'shine': 'shine 3s infinite',
+      },
+      keyframes: {
+        glow: {
+          '0%': { transform: 'rotate(0deg)' },
+          '100%': { transform: 'rotate(360deg)' },
+        },
+        shine: {
+          '0%': { transform: 'translateX(-100%) rotate(45deg)' },
+          '100%': { transform: 'translateX(100%) rotate(45deg)' },
+        },
       },
     },
   },
