@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sparkles, BookOpen, Clock, Brain, MessageSquare, Target } from 'lucide-react';
+import { Sparkles, BookOpen, Clock, Brain, MessageSquare, Target, ArrowRight } from 'lucide-react';
 
 interface FeaturesSectionProps {
   onTryFeature: (feature: string) => void;
