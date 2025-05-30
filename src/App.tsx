@@ -284,10 +284,10 @@ function App() {
         <NavBar onNavigate={handleNavigation} activePage={currentPage} />
         <HeroSection onStartWriting={handleStartWriting} onTryDemo={handleTryDemo} />
         <WritingModesSection onSelectMode={handleSelectMode} />
+        <WritingTypesSection onSelectType={handleSelectType} />
         <EssayScorer onStartScoring={handleSubmitEssay} />
         <NSWSelectiveExamSimulator onStartPractice={() => setShowExamMode(true)} />
         <FeaturesSection onTryFeature={handleTryFeature} />
-        <WritingTypesSection onSelectType={handleSelectType} />
         <HowItWorks />
         <PracticeTips />
         <NSWSelectiveWritingTypes onSelectType={handleSelectType} />
