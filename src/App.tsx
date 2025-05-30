@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { NavBar } from './components/NavBar';
 import { HeroSection } from './components/HeroSection';
-import { FeaturesSection } from './components/FeaturesSection';
 import { WritingModesSection } from './components/WritingModesSection';
-import { ToolsSection } from './components/ToolsSection';
+import { FeaturesSection } from './components/FeaturesSection';
 import { WritingTypesSection } from './components/WritingTypesSection';
+import { NSWSelectiveExamSimulator } from './components/NSWSelectiveExamSimulator';
+import { EssayScorer } from './components/EssayScorer';
+import { PracticeTips } from './components/PracticeTips';
+import { NSWSelectiveWritingTypes } from './components/NSWSelectiveWritingTypes';
 import { SplitScreen } from './components/SplitScreen';
 import { WritingArea } from './components/WritingArea';
 import { CoachPanel } from './components/CoachPanel';
@@ -18,17 +21,9 @@ import { EnhancedHeader } from './components/EnhancedHeader';
 import { SpecializedCoaching } from './components/text-type-templates/SpecializedCoaching';
 import { AboutPage } from './components/AboutPage';
 import { FAQPage } from './components/FAQPage';
-import { NSWSelectiveExamSimulator } from './components/NSWSelectiveExamSimulator';
-import { EssayScorer } from './components/EssayScorer';
-import { NSWSelectiveWritingTypes } from './components/NSWSelectiveWritingTypes';
-import { PracticeTips } from './components/PracticeTips';
 import { ThemeProvider } from './lib/ThemeContext';
 
-// Add CSS for the redesign styles
-import './redesign.css';
-
 function App() {
-  // State for the main application
   const [content, setContent] = useState('');
   const [textType, setTextType] = useState('');
   const [assistanceLevel, setAssistanceLevel] = useState('detailed');
@@ -39,24 +34,20 @@ function App() {
   const [showExamMode, setShowExamMode] = useState(false);
   const [showHelpCenter, setShowHelpCenter] = useState(false);
 
-  // Handle navigation from navbar
   const handleNavigation = (page: string) => {
     setCurrentPage(page as any);
   };
 
-  // Handle starting writing from hero section
   const handleStartWriting = () => {
     setCurrentPage('writing');
   };
 
-  // Handle trying demo from hero section
   const handleTryDemo = () => {
     setCurrentPage('writing');
     setTextType('narrative');
     setContent('The old clock on the wall had stopped ticking exactly at midnight. ');
   };
 
-  // Handle feature selection
   const handleTryFeature = (feature: string) => {
     switch (feature) {
       case 'ai-feedback':
@@ -72,7 +63,6 @@ function App() {
     }
   };
 
-  // Handle writing mode selection
   const handleSelectMode = (mode: string) => {
     switch (mode) {
       case 'writing':
@@ -87,19 +77,15 @@ function App() {
     }
   };
 
-  // Handle tool opening
   const handleOpenTool = (tool: string) => {
-    // Map tools to their respective components or pages
     switch (tool) {
       case 'text-type-guide':
         setCurrentPage('writing');
-        // Show text type guide modal
         const textTypeGuideEvent = new CustomEvent('show-text-type-guide');
         window.dispatchEvent(textTypeGuideEvent);
         break;
       case 'planning-tool':
         setCurrentPage('writing');
-        // Show planning tool would be triggered here
         break;
       case 'model-responses':
         setCurrentPage('resources');
@@ -110,7 +96,6 @@ function App() {
     }
   };
 
-  // Handle writing type selection
   const handleSelectType = (type: string) => {
     setTextType(type);
     setCurrentPage('writing');
@@ -154,7 +139,6 @@ function App() {
     setCurrentPage('feedback');
   };
 
-  // Render exam simulation mode
   if (showExamMode) {
     return (
       <ThemeProvider>
@@ -163,7 +147,6 @@ function App() {
     );
   }
 
-  // Render about page
   if (currentPage === 'about') {
     return (
       <ThemeProvider>
@@ -175,7 +158,6 @@ function App() {
     );
   }
 
-  // Render FAQ page
   if (currentPage === 'faq') {
     return (
       <ThemeProvider>
@@ -187,7 +169,6 @@ function App() {
     );
   }
 
-  // Render feedback page
   if (currentPage === 'feedback') {
     return (
       <ThemeProvider>
@@ -203,7 +184,6 @@ function App() {
     );
   }
 
-  // Render learning page
   if (currentPage === 'learning') {
     return (
       <ThemeProvider>
@@ -225,7 +205,6 @@ function App() {
     );
   }
 
-  // Render writing page
   if (currentPage === 'writing') {
     return (
       <ThemeProvider>
@@ -317,20 +296,18 @@ function App() {
     );
   }
 
-  // Render home page (default)
   return (
     <ThemeProvider>
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
         <NavBar onNavigate={handleNavigation} activePage={currentPage} />
         <HeroSection onStartWriting={handleStartWriting} onTryDemo={handleTryDemo} />
+        <WritingModesSection onSelectMode={handleSelectMode} />
         <FeaturesSection onTryFeature={handleTryFeature} />
         <WritingTypesSection onSelectType={handleSelectType} />
         <NSWSelectiveExamSimulator onStartPractice={() => setShowExamMode(true)} />
         <EssayScorer onStartScoring={handleSubmitEssay} />
         <PracticeTips />
         <NSWSelectiveWritingTypes onSelectType={handleSelectType} />
-        <WritingModesSection onSelectMode={handleSelectMode} />
-        <ToolsSection onOpenTool={handleOpenTool} />
         
         {showHelpCenter && (
           <HelpCenter 
@@ -339,7 +316,6 @@ function App() {
           />
         )}
         
-        {/* Floating action button for help */}
         <div 
           className="floating-action-btn"
           onClick={() => setShowHelpCenter(true)}
