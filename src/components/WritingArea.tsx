@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { generatePrompt, getSynonyms, rephraseSentence, evaluateEssay } from '../lib/openai';
-import { AlertCircle, Send, Maximize2, Minimize2, Volume2, Moon, Sun, BarChart2 } from 'lucide-react';
+import { AlertCircle, Send, Maximize2, Minimize2, Volume2, BarChart2 } from 'lucide-react';
 import { InlineSuggestionPopup } from './InlineSuggestionPopup';
 import { AutoSave } from './AutoSave';
 import './responsive.css';
@@ -20,7 +20,6 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
   const [customPrompt, setCustomPrompt] = useState('');
   const [showPromptButtons, setShowPromptButtons] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState(false);
   const [fontSize, setFontSize] = useState(16);
   const [wordCountGoal, setWordCountGoal] = useState(250);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -66,11 +65,6 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
     }, 100);
   };
 
-  // Toggle dark mode
-  const toggleDarkMode = () => {
-    setIsDarkMode(!isDarkMode);
-  };
-
   // Handle font size changes
   const changeFontSize = (delta: number) => {
     setFontSize(prevSize => {
@@ -86,13 +80,11 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
   return (
     <div 
       ref={containerRef} 
-      className={`${isFullscreen ? 'fixed inset-0 z-50' : 'h-full'} flex flex-col rounded-lg shadow-sm writing-area-container transition-all duration-300 ${
-        isDarkMode ? 'bg-gray-900 text-gray-100' : 'bg-white text-gray-900'
-      }`}
+      className={`${isFullscreen ? 'fixed inset-0 z-50' : 'h-full'} flex flex-col bg-white rounded-lg shadow-sm writing-area-container`}
     >
-      <div className={`p-4 border-b space-y-4 ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+      <div className="p-4 border-b border-gray-200">
         <div className="flex flex-wrap justify-between items-center gap-2">
-          <h2 className={`text-lg font-medium capitalize ${isDarkMode ? 'text-gray-100' : 'text-gray-900'}`}>
+          <h2 className="text-lg font-medium capitalize text-gray-900">
             {textType ? `${textType} Writing` : 'Select Writing Type'}
           </h2>
           
@@ -100,15 +92,15 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
             <div className="flex items-center mr-2">
               <button 
                 onClick={() => changeFontSize(-1)}
-                className={`p-1 rounded-md ${isDarkMode ? 'text-gray-300 hover:bg-gray-800' : 'text-gray-600 hover:bg-gray-100'}`}
+                className="p-1 rounded-md text-gray-600 hover:bg-gray-100"
                 title="Decrease font size"
               >
                 A-
               </button>
-              <span className={`mx-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>{fontSize}px</span>
+              <span className="mx-1 text-gray-600">{fontSize}px</span>
               <button 
                 onClick={() => changeFontSize(1)}
-                className={`p-1 rounded-md ${isDarkMode ? 'text-gray-300 hover:bg-gray-800' : 'text-gray-600 hover:bg-gray-100'}`}
+                className="p-1 rounded-md text-gray-600 hover:bg-gray-100"
                 title="Increase font size"
               >
                 A+
@@ -116,16 +108,8 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
             </div>
             
             <button
-              onClick={toggleDarkMode}
-              className={`p-2 rounded-md ${isDarkMode ? 'text-gray-300 hover:bg-gray-800' : 'text-gray-600 hover:bg-gray-100'}`}
-              title={isDarkMode ? "Light mode" : "Dark mode"}
-            >
-              {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
-            </button>
-            
-            <button
               onClick={toggleFullscreen}
-              className={`p-2 rounded-md ${isDarkMode ? 'text-gray-300 hover:bg-gray-800' : 'text-gray-600 hover:bg-gray-100'}`}
+              className="p-2 rounded-md text-gray-600 hover:bg-gray-100"
               title={isFullscreen ? "Exit fullscreen" : "Fullscreen mode"}
             >
               {isFullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
@@ -142,22 +126,14 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
           <div className="flex flex-wrap space-x-2 gap-2">
             <button
               onClick={() => setShowCustomPrompt(true)}
-              className={`px-4 py-2 rounded-md text-sm font-medium ${
-                isDarkMode 
-                  ? 'bg-blue-600 text-white hover:bg-blue-700' 
-                  : 'bg-blue-600 text-white hover:bg-blue-700'
-              }`}
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium"
             >
               I have my own prompt
             </button>
             <button
               onClick={handleGeneratePrompt}
               disabled={isGenerating}
-              className={`px-4 py-2 rounded-md text-sm font-medium ${
-                isDarkMode 
-                  ? 'bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50' 
-                  : 'bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50'
-              } disabled:cursor-not-allowed`}
+              className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50 text-sm font-medium disabled:cursor-not-allowed"
             >
               Generate New Prompt
             </button>
@@ -170,31 +146,21 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
               value={customPrompt}
               onChange={(e) => setCustomPrompt(e.target.value)}
               placeholder="Enter your own writing prompt..."
-              className={`w-full p-2 rounded-md text-sm ${
-                isDarkMode 
-                  ? 'bg-gray-800 text-gray-100 border-gray-700' 
-                  : 'bg-white text-gray-900 border-gray-300'
-              }`}
+              className="w-full p-2 rounded-md text-sm bg-white text-gray-900 border-gray-300"
               rows={3}
             />
             <div className="flex justify-end space-x-2">
               <button
                 type="button"
                 onClick={() => setShowCustomPrompt(false)}
-                className={`px-3 py-1.5 text-sm ${
-                  isDarkMode ? 'text-gray-300 hover:text-gray-100' : 'text-gray-600 hover:text-gray-800'
-                }`}
+                className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={!customPrompt.trim()}
-                className={`px-3 py-1.5 rounded-md text-sm font-medium ${
-                  isDarkMode 
-                    ? 'bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50' 
-                    : 'bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50'
-                } disabled:cursor-not-allowed`}
+                className="px-3 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 text-sm font-medium"
               >
                 Set Prompt
               </button>
@@ -203,9 +169,9 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
         )}
 
         {prompt && !showCustomPrompt && textType && (
-          <div className={`p-4 rounded-md ${isDarkMode ? 'bg-gray-800' : 'bg-blue-50'}`}>
-            <h3 className={`font-medium mb-2 ${isDarkMode ? 'text-gray-100' : 'text-blue-900'}`}>Writing Prompt:</h3>
-            <p className={isDarkMode ? 'text-gray-300' : 'text-blue-800'}>{prompt}</p>
+          <div className="p-4 bg-blue-50 rounded-md">
+            <h3 className="font-medium mb-2 text-blue-900">Writing Prompt:</h3>
+            <p className="text-blue-800">{prompt}</p>
           </div>
         )}
       </div>
@@ -216,11 +182,7 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
           value={content}
           onChange={handleContentChange}
           disabled={!canWrite}
-          className={`w-full h-full p-4 resize-none focus:outline-none border rounded-md ${
-            isDarkMode 
-              ? 'bg-gray-800 text-gray-100 border-gray-700 disabled:bg-gray-900 disabled:text-gray-600' 
-              : 'bg-white text-gray-900 border-gray-300 disabled:bg-gray-50 disabled:text-gray-400'
-          } disabled:cursor-not-allowed`}
+          className="w-full h-full p-4 resize-none focus:outline-none border rounded-md bg-white text-gray-900 border-gray-300 disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed"
           placeholder={!textType 
             ? "Select a writing type to begin..." 
             : "Begin writing here..."}
@@ -228,9 +190,9 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
         />
       </div>
 
-      <div className={`p-4 border-t ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-gray-50 border-gray-200'}`}>
+      <div className="p-4 bg-gray-50 border-t border-gray-200">
         <div className="flex justify-between items-center">
-          <div className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`}>
+          <div className="text-sm text-gray-500">
             Word count: {wordCount} / {wordCountGoal}
           </div>
           <div className="flex items-center space-x-4">
@@ -238,9 +200,7 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
             {content.trim().length > 50 && (
               <button
                 onClick={handleSubmitEssay}
-                className={`flex items-center px-4 py-2 rounded-md text-white text-sm font-medium ${
-                  isDarkMode ? 'bg-green-600 hover:bg-green-700' : 'bg-green-600 hover:bg-green-700'
-                }`}
+                className="flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm font-medium"
               >
                 <Send size={16} className="mr-2" />
                 Submit Essay
@@ -249,7 +209,7 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
           </div>
         </div>
         
-        <div className="mt-2 w-full bg-gray-700 rounded-full h-2">
+        <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
           <div 
             className="bg-blue-600 h-2 rounded-full transition-all duration-500"
             style={{ width: `${wordCountProgress}%` }}
