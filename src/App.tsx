@@ -8,6 +8,7 @@ import { NSWSelectiveExamSimulator } from './components/NSWSelectiveExamSimulato
 import { EssayScorer } from './components/EssayScorer';
 import { PracticeTips } from './components/PracticeTips';
 import { NSWSelectiveWritingTypes } from './components/NSWSelectiveWritingTypes';
+import { HowItWorks } from './components/HowItWorks';
 import { SplitScreen } from './components/SplitScreen';
 import { WritingArea } from './components/WritingArea';
 import { CoachPanel } from './components/CoachPanel';
@@ -73,25 +74,6 @@ function App() {
         break;
       case 'exam':
         setShowExamMode(true);
-        break;
-    }
-  };
-
-  const handleOpenTool = (tool: string) => {
-    switch (tool) {
-      case 'text-type-guide':
-        setCurrentPage('writing');
-        const textTypeGuideEvent = new CustomEvent('show-text-type-guide');
-        window.dispatchEvent(textTypeGuideEvent);
-        break;
-      case 'planning-tool':
-        setCurrentPage('writing');
-        break;
-      case 'model-responses':
-        setCurrentPage('resources');
-        break;
-      case 'vocabulary-helper':
-        setCurrentPage('resources');
         break;
     }
   };
@@ -304,6 +286,7 @@ function App() {
         <WritingModesSection onSelectMode={handleSelectMode} />
         <FeaturesSection onTryFeature={handleTryFeature} />
         <WritingTypesSection onSelectType={handleSelectType} />
+        <HowItWorks />
         <NSWSelectiveExamSimulator onStartPractice={() => setShowExamMode(true)} />
         <EssayScorer onStartScoring={handleSubmitEssay} />
         <PracticeTips />
