@@ -19,6 +19,7 @@ module.exports = {
           700: '#4338ca',
           800: '#3730a3',
           900: '#312e81',
+          950: '#1e1b4b',
         },
         secondary: {
           50: '#f5f3ff',
@@ -31,6 +32,7 @@ module.exports = {
           700: '#6d28d9',
           800: '#5b21b6',
           900: '#4c1d95',
+          950: '#2e1065',
         },
         accent: {
           50: '#fdf2f8',
@@ -43,6 +45,7 @@ module.exports = {
           700: '#be185d',
           800: '#9d174d',
           900: '#831843',
+          950: '#500724',
         }
       },
       fontFamily: {
@@ -52,19 +55,9 @@ module.exports = {
         'glow': '0 0 20px -5px rgba(99, 102, 241, 0.3)',
         'glass': '0 8px 32px rgba(31, 38, 135, 0.15)',
       },
-      animation: {
-        'glow': 'glow 2s infinite',
-        'shine': 'shine 3s infinite',
-      },
-      keyframes: {
-        glow: {
-          '0%': { transform: 'rotate(0deg)' },
-          '100%': { transform: 'rotate(360deg)' },
-        },
-        shine: {
-          '0%': { transform: 'translateX(-100%) rotate(45deg)' },
-          '100%': { transform: 'translateX(100%) rotate(45deg)' },
-        },
+      backgroundImage: {
+        'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
+        'gradient-conic': 'conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))',
       },
     },
   },
