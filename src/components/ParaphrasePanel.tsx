@@ -35,12 +35,12 @@ export function ParaphrasePanel({ selectedText, onApplyParaphrase }: ParaphraseP
   };
 
   return (
-    <div className="h-full bg-white rounded-lg shadow-sm flex flex-col">
-      <div className="p-4 border-b">
+    <div className="h-full bg-white dark:bg-gray-900 rounded-lg shadow-sm flex flex-col">
+      <div className="p-4 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <Wand2 className="h-5 w-5 text-purple-600" />
-            <h2 className="text-lg font-medium text-gray-900">Paraphrase Assistant</h2>
+            <Wand2 className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+            <h2 className="text-lg font-medium text-gray-900 dark:text-white">Paraphrase Assistant</h2>
           </div>
           <button
             onClick={generateAlternatives}
@@ -64,38 +64,38 @@ export function ParaphrasePanel({ selectedText, onApplyParaphrase }: ParaphraseP
 
       <div className="flex-1 overflow-y-auto p-4">
         {!selectedText ? (
-          <div className="text-center text-gray-500 mt-8">
+          <div className="text-center text-gray-500 dark:text-gray-400 mt-8">
             <p>Select some text in your writing</p>
             <p className="text-sm mt-2">to see paraphrasing suggestions.</p>
           </div>
         ) : suggestions.length === 0 ? (
-          <div className="text-center text-gray-500 mt-8">
+          <div className="text-center text-gray-500 dark:text-gray-400 mt-8">
             <p>Click "Generate Alternatives"</p>
             <p className="text-sm mt-2">to get paraphrasing suggestions.</p>
           </div>
         ) : (
           <div className="space-y-6">
             {suggestions.map((suggestion, index) => (
-              <div key={index} className="bg-purple-50 rounded-lg p-4">
-                <div className="text-sm text-purple-800 font-medium mb-2">
+              <div key={index} className="bg-purple-50 dark:bg-purple-900/30 rounded-lg p-4">
+                <div className="text-sm text-purple-800 dark:text-purple-200 font-medium mb-2">
                   Original:
                 </div>
-                <div className="text-gray-700 mb-4 text-sm">
+                <div className="text-gray-700 dark:text-gray-300 mb-4 text-sm">
                   {suggestion.original}
                 </div>
-                <div className="text-sm text-purple-800 font-medium mb-2">
+                <div className="text-sm text-purple-800 dark:text-purple-200 font-medium mb-2">
                   Alternatives:
                 </div>
                 <div className="space-y-2">
                   {suggestion.alternatives.map((alt, altIndex) => (
                     <div
                       key={altIndex}
-                      className="flex items-center justify-between bg-white rounded-md p-2"
+                      className="flex items-center justify-between bg-white dark:bg-gray-800 rounded-md p-2"
                     >
-                      <div className="text-sm text-gray-700">{alt}</div>
+                      <div className="text-sm text-gray-700 dark:text-gray-300">{alt}</div>
                       <button
                         onClick={() => onApplyParaphrase(alt, suggestion.start, suggestion.end)}
-                        className="text-xs px-2 py-1 text-purple-600 hover:text-purple-800 font-medium"
+                        className="text-xs px-2 py-1 text-purple-600 dark:text-purple-400 hover:text-purple-800 dark:hover:text-purple-300 font-medium"
                       >
                         Apply
                       </button>
