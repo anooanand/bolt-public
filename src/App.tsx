@@ -16,6 +16,13 @@ import { HelpCenter } from './components/HelpCenter';
 import { EssayFeedbackPage } from './components/EssayFeedbackPage';
 import { EnhancedHeader } from './components/EnhancedHeader';
 import { SpecializedCoaching } from './components/text-type-templates/SpecializedCoaching';
+import { AboutPage } from './components/AboutPage';
+import { FAQPage } from './components/FAQPage';
+import { NSWSelectiveExamSimulator } from './components/NSWSelectiveExamSimulator';
+import { EssayScorer } from './components/EssayScorer';
+import { NSWSelectiveWritingTypes } from './components/NSWSelectiveWritingTypes';
+import { PracticeTips } from './components/PracticeTips';
+import { ThemeProvider } from './lib/ThemeContext';
 
 // Add CSS for the redesign styles
 import './redesign.css';
@@ -28,7 +35,7 @@ function App() {
   const [timerStarted, setTimerStarted] = useState(false);
   const [selectedText, setSelectedText] = useState('');
   const [activePanel, setActivePanel] = useState<'coach' | 'paraphrase'>('coach');
-  const [currentPage, setCurrentPage] = useState<'home' | 'writing' | 'learning' | 'feedback' | 'resources' | 'practice' | 'about'>('home');
+  const [currentPage, setCurrentPage] = useState<'home' | 'writing' | 'learning' | 'feedback' | 'resources' | 'practice' | 'about' | 'faq' | 'pricing' | 'signup' | 'signin'>('home');
   const [showExamMode, setShowExamMode] = useState(false);
   const [showHelpCenter, setShowHelpCenter] = useState(false);
 
@@ -149,13 +156,41 @@ function App() {
 
   // Render exam simulation mode
   if (showExamMode) {
-    return <ExamSimulationMode onExit={() => setShowExamMode(false)} />;
+    return (
+      <ThemeProvider>
+        <ExamSimulationMode onExit={() => setShowExamMode(false)} />
+      </ThemeProvider>
+    );
+  }
+
+  // Render about page
+  if (currentPage === 'about') {
+    return (
+      <ThemeProvider>
+        <NavBar onNavigate={handleNavigation} activePage={currentPage} />
+        <div className="pt-16">
+          <AboutPage />
+        </div>
+      </ThemeProvider>
+    );
+  }
+
+  // Render FAQ page
+  if (currentPage === 'faq') {
+    return (
+      <ThemeProvider>
+        <NavBar onNavigate={handleNavigation} activePage={currentPage} />
+        <div className="pt-16">
+          <FAQPage />
+        </div>
+      </ThemeProvider>
+    );
   }
 
   // Render feedback page
   if (currentPage === 'feedback') {
     return (
-      <>
+      <ThemeProvider>
         <NavBar onNavigate={handleNavigation} activePage={currentPage} />
         <div className="pt-16">
           <EssayFeedbackPage
@@ -164,14 +199,14 @@ function App() {
             onBack={() => setCurrentPage('writing')}
           />
         </div>
-      </>
+      </ThemeProvider>
     );
   }
 
   // Render learning page
   if (currentPage === 'learning') {
     return (
-      <>
+      <ThemeProvider>
         <NavBar onNavigate={handleNavigation} activePage={currentPage} />
         <div className="pt-16">
           <SupportiveFeatures
@@ -186,14 +221,14 @@ function App() {
             />
           </SupportiveFeatures>
         </div>
-      </>
+      </ThemeProvider>
     );
   }
 
   // Render writing page
   if (currentPage === 'writing') {
     return (
-      <>
+      <ThemeProvider>
         <NavBar onNavigate={handleNavigation} activePage={currentPage} />
         <div className="pt-16">
           <SupportiveFeatures
@@ -201,7 +236,7 @@ function App() {
             textType={textType}
             onRestoreContent={handleRestoreContent}
           >
-            <div className="min-h-screen bg-gray-50 p-4">
+            <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4">
               <div className="max-w-7xl mx-auto">
                 <header className="mb-4">
                   <EnhancedHeader
@@ -233,8 +268,8 @@ function App() {
                         <button
                           className={`flex-1 py-2 text-center text-sm font-medium ${
                             activePanel === 'coach'
-                              ? 'bg-indigo-50 text-indigo-600 border-b-2 border-indigo-500'
-                              : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                              ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border-b-2 border-indigo-500'
+                              : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800'
                           }`}
                           onClick={() => setActivePanel('coach')}
                           data-panel="coach"
@@ -244,8 +279,8 @@ function App() {
                         <button
                           className={`flex-1 py-2 text-center text-sm font-medium ${
                             activePanel === 'paraphrase'
-                              ? 'bg-indigo-50 text-indigo-600 border-b-2 border-indigo-500'
-                              : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                              ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border-b-2 border-indigo-500'
+                              : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800'
                           }`}
                           onClick={() => setActivePanel('paraphrase')}
                           data-panel="paraphrase"
@@ -278,35 +313,41 @@ function App() {
             </div>
           </SupportiveFeatures>
         </div>
-      </>
+      </ThemeProvider>
     );
   }
 
   // Render home page (default)
   return (
-    <div className="min-h-screen bg-gray-50">
-      <NavBar onNavigate={handleNavigation} activePage={currentPage} />
-      <HeroSection onStartWriting={handleStartWriting} onTryDemo={handleTryDemo} />
-      <FeaturesSection onTryFeature={handleTryFeature} />
-      <WritingModesSection onSelectMode={handleSelectMode} />
-      <ToolsSection onOpenTool={handleOpenTool} />
-      <WritingTypesSection onSelectType={handleSelectType} />
-      
-      {showHelpCenter && (
-        <HelpCenter 
-          isOpen={showHelpCenter} 
-          onClose={() => setShowHelpCenter(false)} 
-        />
-      )}
-      
-      {/* Floating action button for help */}
-      <div 
-        className="floating-action-btn"
-        onClick={() => setShowHelpCenter(true)}
-      >
-        <i className="fas fa-question"></i>
+    <ThemeProvider>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+        <NavBar onNavigate={handleNavigation} activePage={currentPage} />
+        <HeroSection onStartWriting={handleStartWriting} onTryDemo={handleTryDemo} />
+        <FeaturesSection onTryFeature={handleTryFeature} />
+        <WritingTypesSection onSelectType={handleSelectType} />
+        <NSWSelectiveExamSimulator onStartPractice={() => setShowExamMode(true)} />
+        <EssayScorer onStartScoring={handleSubmitEssay} />
+        <PracticeTips />
+        <NSWSelectiveWritingTypes onSelectType={handleSelectType} />
+        <WritingModesSection onSelectMode={handleSelectMode} />
+        <ToolsSection onOpenTool={handleOpenTool} />
+        
+        {showHelpCenter && (
+          <HelpCenter 
+            isOpen={showHelpCenter} 
+            onClose={() => setShowHelpCenter(false)} 
+          />
+        )}
+        
+        {/* Floating action button for help */}
+        <div 
+          className="floating-action-btn"
+          onClick={() => setShowHelpCenter(true)}
+        >
+          <i className="fas fa-question"></i>
+        </div>
       </div>
-    </div>
+    </ThemeProvider>
   );
 }
 
