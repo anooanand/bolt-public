@@ -10,7 +10,7 @@ module.exports = {
       colors: {
         primary: {
           50: '#eef2ff',
-          100: '#e0e7ff',
+          100: '#e0e7ff', 
           200: '#c7d2fe',
           300: '#a5b4fc',
           400: '#818cf8',
@@ -68,5 +68,8 @@ module.exports = {
       },
     },
   },
-  plugins: [],
+  plugins: [
+    require('@tailwindcss/forms'),
+    require('@tailwindcss/typography'),
+  ],
 }
