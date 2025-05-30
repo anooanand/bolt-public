@@ -4,11 +4,6 @@ import { HeroSection } from './components/HeroSection';
 import { WritingModesSection } from './components/WritingModesSection';
 import { FeaturesSection } from './components/FeaturesSection';
 import { WritingTypesSection } from './components/WritingTypesSection';
-import { NSWSelectiveExamSimulator } from './components/NSWSelectiveExamSimulator';
-import { EssayScorer } from './components/EssayScorer';
-import { PracticeTips } from './components/PracticeTips';
-import { NSWSelectiveWritingTypes } from './components/NSWSelectiveWritingTypes';
-import { HowItWorks } from './components/HowItWorks';
 import { SplitScreen } from './components/SplitScreen';
 import { WritingArea } from './components/WritingArea';
 import { CoachPanel } from './components/CoachPanel';
@@ -22,6 +17,11 @@ import { EnhancedHeader } from './components/EnhancedHeader';
 import { SpecializedCoaching } from './components/text-type-templates/SpecializedCoaching';
 import { AboutPage } from './components/AboutPage';
 import { FAQPage } from './components/FAQPage';
+import { NSWSelectiveExamSimulator } from './components/NSWSelectiveExamSimulator';
+import { EssayScorer } from './components/EssayScorer';
+import { NSWSelectiveWritingTypes } from './components/NSWSelectiveWritingTypes';
+import { PracticeTips } from './components/PracticeTips';
+import { HowItWorks } from './components/HowItWorks';
 import { ThemeProvider } from './lib/ThemeContext';
 
 function App() {
@@ -283,9 +283,9 @@ function App() {
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
         <NavBar onNavigate={handleNavigation} activePage={currentPage} />
         <HeroSection onStartWriting={handleStartWriting} onTryDemo={handleTryDemo} />
-        <NSWSelectiveExamSimulator onStartPractice={() => setShowExamMode(true)} />
-        <EssayScorer onStartScoring={handleSubmitEssay} />
         <WritingModesSection onSelectMode={handleSelectMode} />
+        <EssayScorer onStartScoring={handleSubmitEssay} />
+        <NSWSelectiveExamSimulator onStartPractice={() => setShowExamMode(true)} />
         <FeaturesSection onTryFeature={handleTryFeature} />
         <WritingTypesSection onSelectType={handleSelectType} />
         <HowItWorks />
