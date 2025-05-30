@@ -1,3 +1,50 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+:root {
+  --primary-gradient: linear-gradient(135deg, #0072ff 0%, #00c6ff 100%);
+  --secondary-gradient: linear-gradient(135deg, #7c2dff 0%, #ff1447 100%);
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.gradient-text {
+  @apply bg-clip-text text-transparent bg-gradient-to-r from-primary-600 to-secondary-600;
+}
+
+.gradient-bg {
+  @apply bg-gradient-to-r from-primary-600 to-secondary-600;
+}
+
+.hover-lift {
+  @apply transition-transform duration-300 hover:-translate-y-1;
+}
+
+.card-shadow {
+  @apply shadow-lg hover:shadow-xl transition-shadow duration-300;
+}
+
+.glass-effect {
+  @apply backdrop-blur-lg bg-white/80 dark:bg-gray-900/80;
+}
+
+.button-glow {
+  @apply relative overflow-hidden;
+}
+
+.button-glow::after {
+  content: '';
+  @apply absolute inset-0 opacity-0 transition-opacity duration-300;
+  background: radial-gradient(circle at center, rgba(255,255,255,0.2) 0%, transparent 70%);
+}
+
+.button-glow:hover::after {
+  @apply opacity-100;
+}
