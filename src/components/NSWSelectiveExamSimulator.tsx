@@ -7,23 +7,22 @@ interface NSWSelectiveExamSimulatorProps {
 
 export const NSWSelectiveExamSimulator: React.FC<NSWSelectiveExamSimulatorProps> = ({ onStartPractice }) => {
   return (
-    <section className="py-24 relative overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-b from-indigo-50/50 to-white dark:from-gray-800/50 dark:to-gray-900"></div>
+    <section className="py-24 relative overflow-hidden simulator-section">
       <div className="absolute inset-0 bg-grid opacity-30"></div>
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
         <div className="text-center mb-16">
           <div className="inline-flex items-center glass-card rounded-full px-6 py-2 mb-6 shadow-lg hover-lift">
-            <Target className="w-5 h-5 text-indigo-500 mr-2" />
-            <span className="text-sm font-medium gradient-text">
+            <Target className="w-5 h-5 text-white mr-2" />
+            <span className="text-sm font-medium text-white">
               Exam Preparation
             </span>
           </div>
           
-          <h2 className="text-4xl font-bold mb-4 text-gray-900 dark:text-white">
+          <h2 className="text-4xl font-bold mb-4 text-white">
             NSW Selective Exam Simulator
           </h2>
-          <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
+          <p className="text-xl text-white/90 max-w-3xl mx-auto">
             Practice under real exam conditions with our advanced simulation tool
           </p>
         </div>
