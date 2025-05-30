@@ -283,12 +283,12 @@ function App() {
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
         <NavBar onNavigate={handleNavigation} activePage={currentPage} />
         <HeroSection onStartWriting={handleStartWriting} onTryDemo={handleTryDemo} />
+        <NSWSelectiveExamSimulator onStartPractice={() => setShowExamMode(true)} />
+        <EssayScorer onStartScoring={handleSubmitEssay} />
         <WritingModesSection onSelectMode={handleSelectMode} />
         <FeaturesSection onTryFeature={handleTryFeature} />
         <WritingTypesSection onSelectType={handleSelectType} />
         <HowItWorks />
-        <NSWSelectiveExamSimulator onStartPractice={() => setShowExamMode(true)} />
-        <EssayScorer onStartScoring={handleSubmitEssay} />
         <PracticeTips />
         <NSWSelectiveWritingTypes onSelectType={handleSelectType} />
         
