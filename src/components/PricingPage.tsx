@@ -1,18 +1,7 @@
 import React from 'react';
-import { loadStripe } from '@stripe/stripe-js';
-import { Check, Loader } from 'lucide-react';
+import { Check } from 'lucide-react';
 
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
-
-interface PricingTier {
-  name: string;
-  price: string;
-  description: string;
-  features: string[];
-  priceId: string;
-}
-
-const pricingTiers: PricingTier[] = [
+const pricingTiers = [
   {
     name: 'Basic',
     price: '$9.99',
@@ -22,8 +11,7 @@ const pricingTiers: PricingTier[] = [
       'Limited AI feedback',
       'Basic text type templates',
       'Email support'
-    ],
-    priceId: 'price_basic'
+    ]
   },
   {
     name: 'Pro',
@@ -36,8 +24,7 @@ const pricingTiers: PricingTier[] = [
       'Practice exam simulations',
       'Priority support',
       'Progress tracking'
-    ],
-    priceId: 'price_pro'
+    ]
   },
   {
     name: 'Premium',
@@ -50,50 +37,13 @@ const pricingTiers: PricingTier[] = [
       'Mock exam reviews',
       'Parent progress reports',
       'Guaranteed score improvement'
-    ],
-    priceId: 'price_premium'
+    ]
   }
 ];
 
 export function PricingPage() {
-  const [selectedTier, setSelectedTier] = React.useState<string | null>(null);
-  const [isLoading, setIsLoading] = React.useState(false);
-
-  const handleSubscribe = async (priceId: string) => {
-    setSelectedTier(priceId);
-    setIsLoading(true);
-
-    try {
-      const stripe = await stripePromise;
-      if (!stripe) throw new Error('Stripe failed to load');
-
-      // In a real implementation, you would make an API call to your backend
-      // to create a Stripe Checkout Session and redirect to it
-      const response = await fetch('/api/create-checkout-session', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          priceId,
-        }),
-      });
-
-      const session = await response.json();
-      const result = await stripe.redirectToCheckout({
-        sessionId: session.id,
-      });
-
-      if (result.error) {
-        throw new Error(result.error.message);
-      }
-    } catch (error) {
-      console.error('Error:', error);
-      alert('Something went wrong. Please try again later.');
-    } finally {
-      setIsLoading(false);
-      setSelectedTier(null);
-    }
+  const handleSubscribe = () => {
+    window.location.href = 'https://buy.stripe.com/test_14kaG7gNX1773v28wB';
   };
 
   return (
@@ -111,7 +61,7 @@ export function PricingPage() {
         <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-8">
           {pricingTiers.map((tier) => (
             <div
-              key={tier.priceId}
+              key={tier.name}
               className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden transform transition-all duration-300 hover:-translate-y-2"
             >
               <div className="p-8">
@@ -129,18 +79,10 @@ export function PricingPage() {
                 </ul>
 
                 <button
-                  onClick={() => handleSubscribe(tier.priceId)}
-                  disabled={isLoading && selectedTier === tier.priceId}
-                  className="w-full py-3 px-6 text-center text-white bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 rounded-lg font-medium transition-all duration-300 transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed"
+                  onClick={handleSubscribe}
+                  className="w-full py-3 px-6 text-center text-white bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 rounded-lg font-medium transition-all duration-300 transform hover:scale-[1.02]"
                 >
-                  {isLoading && selectedTier === tier.priceId ? (
-                    <span className="flex items-center justify-center">
-                      <Loader className="animate-spin -ml-1 mr-2 h-5 w-5" />
-                      Processing...
-                    </span>
-                  ) : (
-                    'Subscribe Now'
-                  )}
+                  Subscribe Now
                 </button>
               </div>
             </div>
