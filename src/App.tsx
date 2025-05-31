@@ -16,6 +16,7 @@ import { EnhancedHeader } from './components/EnhancedHeader';
 import { SpecializedCoaching } from './components/text-type-templates/SpecializedCoaching';
 import { AboutPage } from './components/AboutPage';
 import { FAQPage } from './components/FAQPage';
+import { PricingPage } from './components/PricingPage';
 import { NSWSelectiveExamSimulator } from './components/NSWSelectiveExamSimulator';
 import { EssayScorer } from './components/EssayScorer';
 import { NSWSelectiveWritingTypes } from './components/NSWSelectiveWritingTypes';
@@ -100,44 +101,6 @@ function App() {
     setCurrentPage('writing');
   };
 
-  useEffect(() => {
-    const handleSelectionChange = () => {
-      const selection = window.getSelection();
-      if (selection && selection.toString().trim().length > 0) {
-        setSelectedText(selection.toString());
-        setActivePanel('paraphrase');
-      }
-    };
-
-    document.addEventListener('selectionchange', handleSelectionChange);
-    return () => {
-      document.removeEventListener('selectionchange', handleSelectionChange);
-    };
-  }, []);
-
-  const appState = {
-    content,
-    textType,
-    assistanceLevel,
-    timerStarted
-  };
-
-  const updateAppState = (updates: Partial<typeof appState>) => {
-    if ('content' in updates) setContent(updates.content || '');
-    if ('textType' in updates) setTextType(updates.textType || '');
-    if ('assistanceLevel' in updates) setAssistanceLevel(updates.assistanceLevel || 'detailed');
-    if ('timerStarted' in updates) setTimerStarted(!!updates.timerStarted);
-  };
-
-  const handleRestoreContent = (savedContent: string, savedTextType: string) => {
-    setContent(savedContent);
-    setTextType(savedTextType);
-  };
-
-  const handleSubmitEssay = () => {
-    setCurrentPage('feedback');
-  };
-
   const handleAuthSuccess = () => {
     // Refresh user data after successful auth
     getCurrentUser().then(setUser).catch(console.error);
@@ -193,6 +156,27 @@ function App() {
     );
   }
 
+  if (currentPage === 'pricing') {
+    return (
+      <ThemeProvider>
+        <NavBar 
+          onNavigate={handleNavigation} 
+          activePage={currentPage}
+          user={user}
+          onSignInClick={() => setShowAuthModal(true)}
+        />
+        <div className="pt-16">
+          <PricingPage />
+        </div>
+        <AuthModal 
+          isOpen={showAuthModal}
+          onClose={() => setShowAuthModal(false)}
+          onSuccess={handleAuthSuccess}
+        />
+      </ThemeProvider>
+    );
+  }
+
   if (currentPage === 'feedback') {
     return (
       <ThemeProvider>
@@ -231,11 +215,25 @@ function App() {
           <SupportiveFeatures
             content={content}
             textType={textType}
-            onRestoreContent={handleRestoreContent}
+            onRestoreContent={(content, textType) => {
+              setContent(content);
+              setTextType(textType);
+              setCurrentPage('writing');
+            }}
           >
             <LearningPage 
-              state={appState}
-              onStateChange={updateAppState}
+              state={{
+                content,
+                textType,
+                assistanceLevel,
+                timerStarted
+              }}
+              onStateChange={(updates) => {
+                if ('content' in updates) setContent(updates.content || '');
+                if ('textType' in updates) setTextType(updates.textType || '');
+                if ('assistanceLevel' in updates) setAssistanceLevel(updates.assistanceLevel || 'detailed');
+                if ('timerStarted' in updates) setTimerStarted(!!updates.timerStarted);
+              }}
               onNavigateToWriting={() => setCurrentPage('writing')}
             />
           </SupportiveFeatures>
@@ -262,7 +260,10 @@ function App() {
           <SupportiveFeatures
             content={content}
             textType={textType}
-            onRestoreContent={handleRestoreContent}
+            onRestoreContent={(content, textType) => {
+              setContent(content);
+              setTextType(textType);
+            }}
           >
             <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4">
               <div className="max-w-7xl mx-auto">
@@ -287,7 +288,7 @@ function App() {
                       onChange={setContent}
                       textType={textType}
                       onTimerStart={setTimerStarted}
-                      onSubmit={handleSubmitEssay}
+                      onSubmit={() => setCurrentPage('feedback')}
                     />
                   }
                   right={
@@ -362,7 +363,7 @@ function App() {
         <HeroSection onStartWriting={handleStartWriting} onTryDemo={handleTryDemo} />
         <WritingModesSection onSelectMode={handleSelectMode} />
         <WritingTypesSection onSelectType={handleSelectType} />
-        <EssayScorer onStartScoring={handleSubmitEssay} />
+        <EssayScorer onStartScoring={() => setCurrentPage('feedback')} />
         <NSWSelectiveExamSimulator onStartPractice={() => setShowExamMode(true)} />
         <FeaturesSection onTryFeature={handleTryFeature} />
         <HowItWorks />
