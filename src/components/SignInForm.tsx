@@ -34,29 +34,8 @@ export function SignInForm({ onSuccess, onSignUpClick }: SignInFormProps) {
       if (err instanceof z.ZodError) {
         setError(err.errors[0].message);
       } else if (err instanceof Error) {
-        try {
-          // First try to parse the entire error message as JSON
-          const errorData = JSON.parse(err.message);
-          if (errorData.body) {
-            // If the error has a body property, parse that as JSON too
-            const errorBody = typeof errorData.body === 'string' 
-              ? JSON.parse(errorData.body) 
-              : errorData.body;
-            
-            if (errorBody.code === 'email_not_confirmed') {
-              setError(
-                'Please verify your email address. Check your inbox for a confirmation link or sign up again to receive a new verification email.'
-              );
-            } else {
-              setError(errorBody.message || 'An error occurred during sign in');
-            }
-          } else {
-            setError(errorData.message || 'An error occurred during sign in');
-          }
-        } catch {
-          // If JSON parsing fails, use the raw error message
-          setError(err.message);
-        }
+        // Simplified error handling - no email confirmation errors
+        setError('Invalid email or password. Please try again.');
       } else {
         setError('An unexpected error occurred');
       }
