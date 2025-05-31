@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Check } from 'lucide-react';
+import { AuthModal } from './AuthModal';
 
 const pricingTiers = [
   {
@@ -42,7 +43,26 @@ const pricingTiers = [
 ];
 
 export function PricingPage() {
-  const handleSubscribe = () => {
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [selectedTier, setSelectedTier] = useState<string | null>(null);
+
+  const handleSubscribe = (tierName: string) => {
+    setSelectedTier(tierName);
+    // Check if user is logged in by looking for auth token
+    const hasAuthToken = !!localStorage.getItem('sb-auth-token');
+    
+    if (!hasAuthToken) {
+      setShowAuthModal(true);
+      return;
+    }
+    
+    // User is logged in, proceed to Stripe checkout
+    window.location.href = 'https://buy.stripe.com/test_14kaG7gNX1773v28wB';
+  };
+
+  const handleAuthSuccess = () => {
+    setShowAuthModal(false);
+    // After successful auth, redirect to Stripe checkout
     window.location.href = 'https://buy.stripe.com/test_14kaG7gNX1773v28wB';
   };
 
@@ -79,7 +99,7 @@ export function PricingPage() {
                 </ul>
 
                 <button
-                  onClick={handleSubscribe}
+                  onClick={() => handleSubscribe(tier.name)}
                   className="w-full py-3 px-6 text-center text-white bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 rounded-lg font-medium transition-all duration-300 transform hover:scale-[1.02]"
                 >
                   Subscribe Now
@@ -95,6 +115,12 @@ export function PricingPage() {
           </p>
         </div>
       </div>
+
+      <AuthModal 
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        onSuccess={handleAuthSuccess}
+      />
     </div>
   );
 }
