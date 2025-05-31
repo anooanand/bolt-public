@@ -9,14 +9,15 @@ const pricingTiers = [
     description: 'Perfect for students just starting their preparation',
     features: [
       'Access to basic writing tools',
-      'Limited AI feedback',
+      'Limited AI feedback', 
       'Basic text type templates',
       'Email support'
-    ]
+    ],
+    stripeUrl: import.meta.env.VITE_STRIPE_BASIC_URL
   },
   {
     name: 'Pro',
-    price: '$19.99',
+    price: '$19.99', 
     description: 'Ideal for students serious about exam preparation',
     features: [
       'Unlimited AI feedback',
@@ -25,7 +26,8 @@ const pricingTiers = [
       'Practice exam simulations',
       'Priority support',
       'Progress tracking'
-    ]
+    ],
+    stripeUrl: import.meta.env.VITE_STRIPE_PRO_URL
   },
   {
     name: 'Premium',
@@ -38,7 +40,8 @@ const pricingTiers = [
       'Mock exam reviews',
       'Parent progress reports',
       'Guaranteed score improvement'
-    ]
+    ],
+    stripeUrl: import.meta.env.VITE_STRIPE_PREMIUM_URL
   }
 ];
 
@@ -46,8 +49,9 @@ export function PricingPage() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [selectedTier, setSelectedTier] = useState<string | null>(null);
 
-  const handleSubscribe = (tierName: string) => {
-    setSelectedTier(tierName);
+  const handleSubscribe = (tier: typeof pricingTiers[0]) => {
+    setSelectedTier(tier.name);
+    
     // Check if user is logged in by looking for auth token
     const hasAuthToken = !!localStorage.getItem('sb-auth-token');
     
@@ -57,13 +61,21 @@ export function PricingPage() {
     }
     
     // User is logged in, proceed to Stripe checkout
-    window.location.href = 'https://buy.stripe.com/test_14kaG7gNX1773v28wB';
+    if (tier.stripeUrl) {
+      window.location.href = tier.stripeUrl;
+    } else {
+      console.error('Stripe URL not configured for tier:', tier.name);
+      alert('Sorry, this subscription is currently unavailable. Please try again later.');
+    }
   };
 
   const handleAuthSuccess = () => {
     setShowAuthModal(false);
-    // After successful auth, redirect to Stripe checkout
-    window.location.href = 'https://buy.stripe.com/test_14kaG7gNX1773v28wB';
+    // After successful auth, redirect to Stripe checkout for selected tier
+    const selectedTierData = pricingTiers.find(tier => tier.name === selectedTier);
+    if (selectedTierData?.stripeUrl) {
+      window.location.href = selectedTierData.stripeUrl;
+    }
   };
 
   return (
@@ -99,7 +111,7 @@ export function PricingPage() {
                 </ul>
 
                 <button
-                  onClick={() => handleSubscribe(tier.name)}
+                  onClick={() => handleSubscribe(tier)}
                   className="w-full py-3 px-6 text-center text-white bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 rounded-lg font-medium transition-all duration-300 transform hover:scale-[1.02]"
                 >
                   Subscribe Now
