@@ -34,7 +34,18 @@ export function SignInForm({ onSuccess, onSignUpClick }: SignInFormProps) {
       if (err instanceof z.ZodError) {
         setError(err.errors[0].message);
       } else if (err instanceof Error) {
-        setError(err.message);
+        // Check if the error is from Supabase and contains the response body
+        const errorBody = err.message.includes('{') 
+          ? JSON.parse(err.message.substring(err.message.indexOf('{')))
+          : null;
+        
+        if (errorBody?.code === 'email_not_confirmed') {
+          setError(
+            'Please verify your email address. Check your inbox for a confirmation link or sign up again to receive a new verification email.'
+          );
+        } else {
+          setError(err.message);
+        }
       } else {
         setError('An unexpected error occurred');
       }
