@@ -20,7 +20,7 @@ const STRIPE_URLS = {
 };
 
 interface MultiStepSignUpProps {
-  onSuccess: ( ) => void;
+  onSuccess: () => void;
   onSignInClick: () => void;
 }
 
@@ -104,7 +104,16 @@ export function MultiStepSignUp({ onSuccess, onSignInClick }: MultiStepSignUpPro
       if (err instanceof z.ZodError) {
         setError(err.errors[0].message);
       } else if (err instanceof Error) {
-        setError(err.message);
+        // Simplified error handling - no email confirmation errors
+        if (err.message.includes('email') && err.message.includes('confirm')) {
+          // If it's an email confirmation error, just move to the next step
+          setCurrentStep(2);
+        } else if (err.message.includes('already registered')) {
+          // If user already exists, just move to the next step
+          setCurrentStep(2);
+        } else {
+          setError(err.message);
+        }
       } else {
         setError('An unexpected error occurred');
       }
@@ -122,8 +131,16 @@ export function MultiStepSignUp({ onSuccess, onSignInClick }: MultiStepSignUpPro
     if (selectedPlan) {
       // Store selected plan in localStorage for retrieval after payment
       localStorage.setItem('selectedPlanId', selectedPlan.id);
-      // Redirect to Stripe payment URL
-      window.location.href = selectedPlan.stripeUrl;
+      localStorage.setItem('userEmail', email); // Store email for payment confirmation
+      
+      // Add success redirect parameter to the URL
+      const successUrl = `${window.location.origin}?payment_success=true&plan=${selectedPlan.id}`;
+      
+      // Add email parameter to Stripe URL
+      const stripeUrlWithEmail = `${selectedPlan.stripeUrl}&prefilled_email=${encodeURIComponent(email)}`;
+      
+      // Redirect to Stripe payment URL with success redirect and email
+      window.location.href = `${stripeUrlWithEmail}&redirect_to=${encodeURIComponent(successUrl)}`;
     }
   };
 
@@ -287,6 +304,10 @@ export function MultiStepSignUp({ onSuccess, onSignInClick }: MultiStepSignUpPro
                 <div className="flex justify-between">
                   <span className="text-gray-600 dark:text-gray-300">Price:</span>
                   <span className="font-medium text-gray-900 dark:text-white">{selectedPlan?.price}/month</span>
+                </div>
+                <div className="flex justify-between mt-2">
+                  <span className="text-gray-600 dark:text-gray-300">Email:</span>
+                  <span className="font-medium text-gray-900 dark:text-white">{email}</span>
                 </div>
               </div>
             </div>
