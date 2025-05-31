@@ -1,8 +1,17 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { NavBar } from './components/NavBar';
+import { HeroSection } from './components/HeroSection';
+import { WritingModesSection } from './components/WritingModesSection';
+import { WritingTypesSection } from './components/WritingTypesSection';
+import { PricingPage } from './components/PricingPage';
+import { AuthModal } from './components/AuthModal';
 import { getCurrentUser, handleEmailConfirmation } from './lib/supabase';
+import { User } from '@supabase/supabase-js';
 
 function App() {
-  const [user, setUser] = useState(null);
+  const [currentPage, setCurrentPage] = useState<'home' | 'pricing'>('home');
+  const [user, setUser] = useState<User | null>(null);
+  const [showAuthModal, setShowAuthModal] = useState(false);
 
   useEffect(() => {
     // Check for current user on mount
@@ -28,9 +37,57 @@ function App() {
     }
   }, []);
 
+  const handleNavigation = (page: string) => {
+    if (page === 'pricing') {
+      setCurrentPage('pricing');
+    } else {
+      setCurrentPage('home');
+    }
+  };
+
+  const handleAuthSuccess = () => {
+    getCurrentUser().then(setUser).catch(console.error);
+  };
+
   return (
-    <div className="min-h-screen bg-gray-100">
-      {/* Your app content here */}
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <NavBar 
+        onNavigate={handleNavigation} 
+        activePage={currentPage}
+        user={user}
+        onSignInClick={() => setShowAuthModal(true)}
+      />
+
+      {currentPage === 'home' ? (
+        <>
+          <HeroSection 
+            onStartWriting={() => user ? handleNavigation('writing') : setShowAuthModal(true)}
+            onTryDemo={() => handleNavigation('demo')}
+          />
+          <WritingModesSection onSelectMode={(mode) => {
+            if (!user) {
+              setShowAuthModal(true);
+              return;
+            }
+            // Handle mode selection
+          }} />
+          <WritingTypesSection onSelectType={(type) => {
+            if (!user) {
+              setShowAuthModal(true);
+              return;
+            }
+            // Handle type selection
+          }} />
+        </>
+      ) : currentPage === 'pricing' ? (
+        <PricingPage />
+      ) : null}
+
+      <AuthModal 
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        onSuccess={handleAuthSuccess}
+      />
     </div>
   );
 }
