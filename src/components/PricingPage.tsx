@@ -2,6 +2,13 @@ import React, { useState } from 'react';
 import { Check } from 'lucide-react';
 import { AuthModal } from './AuthModal';
 
+// Get Stripe URLs from environment with fallbacks
+const STRIPE_URLS = {
+  basic: import.meta.env.VITE_STRIPE_BASIC_URL || '',
+  pro: import.meta.env.VITE_STRIPE_PRO_URL || '',
+  premium: import.meta.env.VITE_STRIPE_PREMIUM_URL || ''
+};
+
 const pricingTiers = [
   {
     name: 'Basic',
@@ -13,7 +20,7 @@ const pricingTiers = [
       'Basic text type templates',
       'Email support'
     ],
-    stripeUrl: import.meta.env.VITE_STRIPE_BASIC_URL
+    stripeUrl: STRIPE_URLS.basic
   },
   {
     name: 'Pro',
@@ -27,7 +34,7 @@ const pricingTiers = [
       'Priority support',
       'Progress tracking'
     ],
-    stripeUrl: import.meta.env.VITE_STRIPE_PRO_URL
+    stripeUrl: STRIPE_URLS.pro
   },
   {
     name: 'Premium',
@@ -41,15 +48,17 @@ const pricingTiers = [
       'Parent progress reports',
       'Guaranteed score improvement'
     ],
-    stripeUrl: import.meta.env.VITE_STRIPE_PREMIUM_URL
+    stripeUrl: STRIPE_URLS.premium
   }
 ];
 
 export function PricingPage() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [selectedTier, setSelectedTier] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubscribe = (tier: typeof pricingTiers[0]) => {
+    setError(null);
     setSelectedTier(tier.name);
     
     // Check if user is logged in by looking for auth token
@@ -62,10 +71,17 @@ export function PricingPage() {
     
     // User is logged in, proceed to Stripe checkout
     if (tier.stripeUrl) {
-      window.location.href = tier.stripeUrl;
+      try {
+        // Validate URL before redirecting
+        new URL(tier.stripeUrl);
+        window.location.href = tier.stripeUrl;
+      } catch (err) {
+        console.error('Invalid Stripe URL:', err);
+        setError('This subscription is currently unavailable. Please try again later.');
+      }
     } else {
       console.error('Stripe URL not configured for tier:', tier.name);
-      alert('Sorry, this subscription is currently unavailable. Please try again later.');
+      setError('This subscription is currently unavailable. Please try again later.');
     }
   };
 
@@ -74,7 +90,13 @@ export function PricingPage() {
     // After successful auth, redirect to Stripe checkout for selected tier
     const selectedTierData = pricingTiers.find(tier => tier.name === selectedTier);
     if (selectedTierData?.stripeUrl) {
-      window.location.href = selectedTierData.stripeUrl;
+      try {
+        new URL(selectedTierData.stripeUrl);
+        window.location.href = selectedTierData.stripeUrl;
+      } catch (err) {
+        console.error('Invalid Stripe URL:', err);
+        setError('This subscription is currently unavailable. Please try again later.');
+      }
     }
   };
 
@@ -89,6 +111,14 @@ export function PricingPage() {
             Select the perfect plan to help you excel in your NSW Selective School exam preparation
           </p>
         </div>
+
+        {error && (
+          <div className="mt-6 max-w-2xl mx-auto">
+            <div className="bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 p-4 rounded-md text-sm">
+              {error}
+            </div>
+          </div>
+        )}
 
         <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-8">
           {pricingTiers.map((tier) => (
