@@ -1,5 +1,5 @@
 import React from 'react';
-import { TextToSpeech } from "../../../../../src/components/TextToSpeech";
+import { TextToSpeech } from "../../../../src/components/TextToSpeech";
 
 
 export function OverviewTab() {
