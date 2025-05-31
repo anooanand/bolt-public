@@ -51,6 +51,12 @@ export async function getCurrentUser() {
   const { data: { user }, error } = await supabase.auth.getUser();
   
   if (error) {
+    // Check if error is related to missing/expired auth session
+    if (error.message === 'Auth session missing!' || 
+        error.message.includes('JWT') || 
+        error.message.includes('session')) {
+      return null;
+    }
     throw error;
   }
   
