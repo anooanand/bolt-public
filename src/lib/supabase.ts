@@ -19,25 +19,60 @@ export type AuthError = {
   message: string;
 };
 
-// Updated to bypass email confirmation
+// Updated to completely bypass email confirmation
 export async function signUp(email: string, password: string) {
+  // First check if user already exists
+  const { data: existingUser, error: checkError } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
+  
+  // If user exists and can sign in, return the user
+  if (existingUser?.user) {
+    return existingUser;
+  }
+  
+  // Otherwise create a new user
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
-      // Remove email redirect to bypass confirmation
+      emailRedirectTo: undefined, // Remove email redirect completely
       data: {
-        email_confirmed: true // Add custom metadata to indicate email is confirmed
+        email_confirmed: true, // Mark email as confirmed
+        payment_confirmed: false, // Initialize payment status
+        signup_completed: false // Will be set to true after payment
       }
     }
   });
   
   if (error) {
+    // If error is about email confirmation, ignore it
+    if (error.message.includes('email') && error.message.includes('confirm')) {
+      // Try to sign in directly
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      
+      if (signInError) {
+        throw new Error('Failed to create account. Please try again.');
+      }
+      
+      return signInData;
+    }
     throw error;
   }
   
   // Automatically sign in the user after signup
-  await signIn(email, password);
+  const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
+  
+  if (signInError) {
+    throw new Error('Account created but failed to sign in. Please try signing in manually.');
+  }
   
   return data;
 }
@@ -49,6 +84,27 @@ export async function signIn(email: string, password: string) {
   });
   
   if (error) {
+    // If error is about email confirmation, ignore it and try to sign in anyway
+    if (error.message.includes('email') && error.message.includes('confirm')) {
+      // Update user metadata to mark email as confirmed
+      await supabase.auth.updateUser({
+        data: {
+          email_confirmed: true
+        }
+      });
+      
+      // Try signing in again
+      const { data: retryData, error: retryError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      
+      if (retryError) {
+        throw new Error('Invalid email or password. Please try again.');
+      }
+      
+      return retryData;
+    }
     throw error;
   }
   
@@ -79,7 +135,7 @@ export async function getCurrentUser() {
   return user;
 }
 
-// New function to confirm payment and complete signup
+// Enhanced function to confirm payment and complete signup
 export async function confirmPayment(planType: string) {
   const { data: { user }, error: userError } = await supabase.auth.getUser();
   
@@ -91,16 +147,36 @@ export async function confirmPayment(planType: string) {
     throw new Error('User not authenticated');
   }
   
+  // Update user metadata to mark payment as confirmed and signup as completed
   const { data, error } = await supabase.auth.updateUser({
     data: {
+      email_confirmed: true, // Ensure email is marked as confirmed
       payment_confirmed: true,
       plan_type: planType,
-      signup_completed: true
+      signup_completed: true,
+      payment_date: new Date().toISOString()
     }
   });
   
   if (error) {
     throw error;
+  }
+  
+  // Create or update payment record in Supabase database if needed
+  try {
+    await supabase
+      .from('user_payments')
+      .upsert([
+        {
+          user_id: user.id,
+          plan_type: planType,
+          payment_date: new Date().toISOString(),
+          status: 'confirmed'
+        }
+      ]);
+  } catch (dbError) {
+    console.error('Failed to update payment record in database:', dbError);
+    // Continue anyway since user metadata is updated
   }
   
   return data;
@@ -126,4 +202,15 @@ export async function getUserPlanType() {
   }
   
   return user.user_metadata?.plan_type;
+}
+
+// Check if signup is completed (both email confirmed and payment confirmed)
+export async function isSignupCompleted() {
+  const { data: { user }, error } = await supabase.auth.getUser();
+  
+  if (error || !user) {
+    return false;
+  }
+  
+  return user.user_metadata?.signup_completed === true;
 }
