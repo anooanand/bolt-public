@@ -1,13 +1,26 @@
 import React, { useContext } from 'react';
 import { ThemeContext } from '../lib/ThemeContext';
+import { signOut } from '../lib/supabase';
+import { User } from '@supabase/supabase-js';
 
 interface NavBarProps {
   onNavigate: (page: string) => void;
   activePage: string;
+  user: User | null;
+  onSignInClick: () => void;
 }
 
-export const NavBar: React.FC<NavBarProps> = ({ onNavigate, activePage }) => {
+export const NavBar: React.FC<NavBarProps> = ({ onNavigate, activePage, user, onSignInClick }) => {
   const { theme, toggleTheme } = useContext(ThemeContext);
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      window.location.reload(); // Refresh the page to reset the app state
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+  };
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-white dark:bg-gray-900 shadow-md">
@@ -80,21 +93,21 @@ export const NavBar: React.FC<NavBarProps> = ({ onNavigate, activePage }) => {
               Pricing
             </a>
             
-            <a 
-              href="#" 
-              onClick={(e) => { e.preventDefault(); onNavigate('signup'); }}
-              className="ml-2 px-4 py-2 rounded-md text-sm font-medium text-white bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-            >
-              Sign up
-            </a>
-            
-            <a 
-              href="#" 
-              onClick={(e) => { e.preventDefault(); onNavigate('signin'); }}
-              className="px-4 py-2 rounded-md text-sm font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 dark:text-indigo-400 dark:bg-gray-800 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-            >
-              Sign in
-            </a>
+            {user ? (
+              <button 
+                onClick={handleSignOut}
+                className="px-4 py-2 rounded-md text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+              >
+                Sign Out
+              </button>
+            ) : (
+              <button 
+                onClick={onSignInClick}
+                className="px-4 py-2 rounded-md text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              >
+                Sign In
+              </button>
+            )}
           </div>
         </div>
       </div>

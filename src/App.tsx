@@ -23,6 +23,8 @@ import { PracticeTips } from './components/PracticeTips';
 import { WritingModesSection } from './components/WritingModesSection';
 import { HowItWorks } from './components/HowItWorks';
 import { ThemeProvider } from './lib/ThemeContext';
+import { AuthModal } from './components/AuthModal';
+import { getCurrentUser } from './lib/supabase';
 
 function App() {
   const [content, setContent] = useState('');
@@ -34,6 +36,21 @@ function App() {
   const [currentPage, setCurrentPage] = useState<'home' | 'writing' | 'learning' | 'feedback' | 'resources' | 'practice' | 'about' | 'faq' | 'pricing' | 'signup' | 'signin'>('home');
   const [showExamMode, setShowExamMode] = useState(false);
   const [showHelpCenter, setShowHelpCenter] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    // Check for current user on mount
+    const checkUser = async () => {
+      try {
+        const currentUser = await getCurrentUser();
+        setUser(currentUser);
+      } catch (error) {
+        console.error('Error checking user:', error);
+      }
+    };
+    checkUser();
+  }, []);
 
   const handleNavigation = (page: string) => {
     setCurrentPage(page as any);
@@ -121,6 +138,11 @@ function App() {
     setCurrentPage('feedback');
   };
 
+  const handleAuthSuccess = () => {
+    // Refresh user data after successful auth
+    getCurrentUser().then(setUser).catch(console.error);
+  };
+
   if (showExamMode) {
     return (
       <ThemeProvider>
@@ -132,10 +154,20 @@ function App() {
   if (currentPage === 'about') {
     return (
       <ThemeProvider>
-        <NavBar onNavigate={handleNavigation} activePage={currentPage} />
+        <NavBar 
+          onNavigate={handleNavigation} 
+          activePage={currentPage}
+          user={user}
+          onSignInClick={() => setShowAuthModal(true)}
+        />
         <div className="pt-16">
           <AboutPage />
         </div>
+        <AuthModal 
+          isOpen={showAuthModal}
+          onClose={() => setShowAuthModal(false)}
+          onSuccess={handleAuthSuccess}
+        />
       </ThemeProvider>
     );
   }
@@ -143,10 +175,20 @@ function App() {
   if (currentPage === 'faq') {
     return (
       <ThemeProvider>
-        <NavBar onNavigate={handleNavigation} activePage={currentPage} />
+        <NavBar 
+          onNavigate={handleNavigation} 
+          activePage={currentPage}
+          user={user}
+          onSignInClick={() => setShowAuthModal(true)}
+        />
         <div className="pt-16">
           <FAQPage />
         </div>
+        <AuthModal 
+          isOpen={showAuthModal}
+          onClose={() => setShowAuthModal(false)}
+          onSuccess={handleAuthSuccess}
+        />
       </ThemeProvider>
     );
   }
@@ -154,7 +196,12 @@ function App() {
   if (currentPage === 'feedback') {
     return (
       <ThemeProvider>
-        <NavBar onNavigate={handleNavigation} activePage={currentPage} />
+        <NavBar 
+          onNavigate={handleNavigation} 
+          activePage={currentPage}
+          user={user}
+          onSignInClick={() => setShowAuthModal(true)}
+        />
         <div className="pt-16">
           <EssayFeedbackPage
             content={content}
@@ -162,6 +209,11 @@ function App() {
             onBack={() => setCurrentPage('writing')}
           />
         </div>
+        <AuthModal 
+          isOpen={showAuthModal}
+          onClose={() => setShowAuthModal(false)}
+          onSuccess={handleAuthSuccess}
+        />
       </ThemeProvider>
     );
   }
@@ -169,7 +221,12 @@ function App() {
   if (currentPage === 'learning') {
     return (
       <ThemeProvider>
-        <NavBar onNavigate={handleNavigation} activePage={currentPage} />
+        <NavBar 
+          onNavigate={handleNavigation} 
+          activePage={currentPage}
+          user={user}
+          onSignInClick={() => setShowAuthModal(true)}
+        />
         <div className="pt-16">
           <SupportiveFeatures
             content={content}
@@ -183,6 +240,11 @@ function App() {
             />
           </SupportiveFeatures>
         </div>
+        <AuthModal 
+          isOpen={showAuthModal}
+          onClose={() => setShowAuthModal(false)}
+          onSuccess={handleAuthSuccess}
+        />
       </ThemeProvider>
     );
   }
@@ -190,7 +252,12 @@ function App() {
   if (currentPage === 'writing') {
     return (
       <ThemeProvider>
-        <NavBar onNavigate={handleNavigation} activePage={currentPage} />
+        <NavBar 
+          onNavigate={handleNavigation} 
+          activePage={currentPage}
+          user={user}
+          onSignInClick={() => setShowAuthModal(true)}
+        />
         <div className="pt-16">
           <SupportiveFeatures
             content={content}
@@ -274,6 +341,11 @@ function App() {
             </div>
           </SupportiveFeatures>
         </div>
+        <AuthModal 
+          isOpen={showAuthModal}
+          onClose={() => setShowAuthModal(false)}
+          onSuccess={handleAuthSuccess}
+        />
       </ThemeProvider>
     );
   }
@@ -281,7 +353,12 @@ function App() {
   return (
     <ThemeProvider>
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-        <NavBar onNavigate={handleNavigation} activePage={currentPage} />
+        <NavBar 
+          onNavigate={handleNavigation} 
+          activePage={currentPage}
+          user={user}
+          onSignInClick={() => setShowAuthModal(true)}
+        />
         <HeroSection onStartWriting={handleStartWriting} onTryDemo={handleTryDemo} />
         <WritingModesSection onSelectMode={handleSelectMode} />
         <WritingTypesSection onSelectType={handleSelectType} />
@@ -305,6 +382,12 @@ function App() {
         >
           <i className="fas fa-question"></i>
         </div>
+
+        <AuthModal 
+          isOpen={showAuthModal}
+          onClose={() => setShowAuthModal(false)}
+          onSuccess={handleAuthSuccess}
+        />
       </div>
     </ThemeProvider>
   );
