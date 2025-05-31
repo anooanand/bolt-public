@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { TextToSpeech } from '../../TextToSpeech';
+import { TextToSpeech } from '../../../src/components/TextToSpeech';
 
 export function ActivitiesTab({ completedActivities, toggleActivityCompletion }) {
   const [activity1Answers, setActivity1Answers] = useState({
