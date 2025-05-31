@@ -1,18 +1,19 @@
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
 import { SignInForm } from './SignInForm';
-import { SignUpForm } from './SignUpForm';
+import { MultiStepSignUp } from './MultiStepSignUp';
 
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  initialMode?: 'signin' | 'signup';
 }
 
 type AuthMode = 'signin' | 'signup';
 
-export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
-  const [mode, setMode] = useState<AuthMode>('signin');
+export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'signin' }: AuthModalProps) {
+  const [mode, setMode] = useState<AuthMode>(initialMode);
 
   if (!isOpen) return null;
 
@@ -48,7 +49,7 @@ export function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps) {
                 onSignUpClick={() => setMode('signup')}
               />
             ) : (
-              <SignUpForm
+              <MultiStepSignUp
                 onSuccess={() => {
                   onSuccess();
                   onClose();
