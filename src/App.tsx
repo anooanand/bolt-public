@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { NavBar } from './components/NavBar';
 import { HeroSection } from './components/HeroSection';
-import { WritingModesSection } from './components/WritingModesSection';
 import { FeaturesSection } from './components/FeaturesSection';
 import { WritingTypesSection } from './components/WritingTypesSection';
 import { SplitScreen } from './components/SplitScreen';
@@ -21,6 +20,7 @@ import { NSWSelectiveExamSimulator } from './components/NSWSelectiveExamSimulato
 import { EssayScorer } from './components/EssayScorer';
 import { NSWSelectiveWritingTypes } from './components/NSWSelectiveWritingTypes';
 import { PracticeTips } from './components/PracticeTips';
+import { WritingModesSection } from './components/WritingModesSection';
 import { HowItWorks } from './components/HowItWorks';
 import { ThemeProvider } from './lib/ThemeContext';
 
@@ -225,7 +225,7 @@ function App() {
                   }
                   right={
                     <div className="h-full flex flex-col">
-                      <div className="flex border-b">
+                      <div className="flex border-b border-gray-200 dark:border-gray-700">
                         <button
                           className={`flex-1 py-2 text-center text-sm font-medium ${
                             activePanel === 'coach'
