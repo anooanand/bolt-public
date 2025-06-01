@@ -32,18 +32,7 @@ export async function signUp(email: string, password: string) {
   try {
     console.log("Starting signup process for:", email);
     
-    // First check if user exists by trying to sign in
-    const { data: existingUser, error: signInError } = await supabase.auth.signInWithPassword({
-      email,
-      password
-    });
-
-    if (existingUser?.user) {
-      console.log("User already exists and signed in successfully");
-      return existingUser;
-    }
-
-    // If user doesn't exist, create new account
+    // Direct signup without checking if user exists first
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -58,9 +47,25 @@ export async function signUp(email: string, password: string) {
     });
 
     if (error) {
-      console.error("Signup error:", error);
-      throw error;
+      // Enhanced error logging
+      console.error("Signup error details:", {
+        message: error.message,
+        status: error.status,
+        name: error.name,
+        details: error.details || 'No additional details'
+      });
+      
+      // Provide more user-friendly error messages based on error type
+      if (error.message.includes('email')) {
+        throw new Error('This email address cannot be used. Please try another one.');
+      } else if (error.message.includes('password')) {
+        throw new Error('Password does not meet requirements. Please use a stronger password.');
+      } else {
+        throw error;
+      }
     }
+
+    console.log("User created successfully:", data);
 
     // Add delay before attempting sign in
     await new Promise(resolve => setTimeout(resolve, 1000));
