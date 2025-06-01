@@ -18,44 +18,40 @@ import { AuthModal } from './components/AuthModal';
 import { SignupPage } from './components/SignupPage';
 import { WritingArea } from './components/WritingArea';
 
-// Payment success component
 const PaymentSuccess = () => {
   const [countdown, setCountdown] = useState(5);
   const [processingPayment, setProcessingPayment] = useState(true);
-  
+
   useEffect(() => {
-    // Get plan from URL parameters
     const urlParams = new URLSearchParams(window.location.search);
     const planType = urlParams.get('plan') || 'base';
-    
-    // Update user metadata to confirm payment
+
     const updatePayment = async () => {
       try {
         await confirmPayment(planType);
         setProcessingPayment(false);
-        
-        // Start countdown after payment is confirmed
+
         const timer = setInterval(() => {
           setCountdown((prev) => {
             if (prev <= 1) {
               clearInterval(timer);
-              window.location.href = '/'; // Redirect to home after countdown
+              window.location.href = '/';
               return 0;
             }
             return prev - 1;
           });
         }, 1000);
-        
+
         return () => clearInterval(timer);
       } catch (error) {
         console.error('Failed to confirm payment:', error);
         setProcessingPayment(false);
       }
     };
-    
+
     updatePayment();
   }, []);
-  
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-white to-gray-50 dark:from-gray-900 dark:to-gray-800">
       <div className="max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg p-8 text-center">
@@ -99,32 +95,33 @@ function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [paymentCompleted, setPaymentCompleted] = useState(false);
 
-  // Check for payment success URL parameter
   const urlParams = new URLSearchParams(window.location.search);
   const paymentSuccess = urlParams.get('payment_success') === 'true';
 
   useEffect(() => {
-    // Check if user prefers dark mode
+    // Theme preference
     if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
       setTheme('dark');
     }
-    
-    // Check for saved theme preference
     const savedTheme = localStorage.getItem('theme');
     if (savedTheme === 'dark' || savedTheme === 'light') {
       setTheme(savedTheme);
     }
-    
-    // Apply theme to document
     document.documentElement.classList.toggle('dark', theme === 'dark');
-    
-    // Check authentication status
+
+    // Authentication check
     const checkAuth = async () => {
       try {
         const currentUser = await getCurrentUser();
         setUser(currentUser);
-        
-        // Check if payment is completed
+
+        // ✅ Check and redirect after signup if flag exists
+        const redirectTarget = localStorage.getItem('redirect_after_signup');
+        if (currentUser && redirectTarget) {
+          localStorage.removeItem('redirect_after_signup');
+          setActivePage(redirectTarget);
+        }
+
         if (currentUser) {
           const completed = await hasCompletedPayment();
           setPaymentCompleted(completed);
@@ -135,7 +132,7 @@ function App() {
         setIsLoading(false);
       }
     };
-    
+
     checkAuth();
   }, [theme]);
 
@@ -162,34 +159,26 @@ function App() {
   };
 
   const handleAuthSuccess = async () => {
-    // Refresh user data after successful authentication
     const currentUser = await getCurrentUser();
     setUser(currentUser);
-    
-    // Check if payment is completed
+
     if (currentUser) {
       const completed = await hasCompletedPayment();
       setPaymentCompleted(completed);
-      
-      // If payment is completed, redirect to dashboard
       if (completed) {
         handleNavigate('dashboard');
       }
     }
   };
 
-  // Handle "Start Writing" button click
   const handleStartWriting = () => {
     if (user) {
-      // If user is logged in, go to dashboard
       handleNavigate('dashboard');
     } else {
-      // If user is not logged in, open signup modal
       handleSignUpClick();
     }
   };
 
-  // Render loading state
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-900">
@@ -198,7 +187,6 @@ function App() {
     );
   }
 
-  // Render payment success page if URL parameter is present
   if (paymentSuccess) {
     return <PaymentSuccess />;
   }
@@ -213,8 +201,8 @@ function App() {
           onSignInClick={handleSignInClick}
           onSignUpClick={handleSignUpClick}
         />
-        
-        <div className="pt-16"> {/* Add padding to account for fixed navbar */}
+
+        <div className="pt-16">
           {activePage === 'home' && (
             <>
               <HeroSection onGetStarted={handleSignUpClick} onStartWriting={handleStartWriting} />
@@ -225,16 +213,16 @@ function App() {
               <HowItWorks />
             </>
           )}
-          
+
           {activePage === 'about' && <AboutPage />}
           {activePage === 'faq' && <FAQPage />}
           {activePage === 'pricing' && <PricingPage />}
           {activePage === 'signup' && <SignupPage onSignUp={handleSignUpClick} />}
-          
+
           {activePage === 'dashboard' && user && paymentCompleted && (
             <WritingArea user={user} />
           )}
-          
+
           {activePage === 'dashboard' && user && !paymentCompleted && (
             <div className="min-h-screen flex items-center justify-center">
               <div className="text-center max-w-md p-8 bg-white dark:bg-gray-800 rounded-lg shadow-md">
@@ -251,7 +239,7 @@ function App() {
               </div>
             </div>
           )}
-          
+
           {activePage === 'dashboard' && !user && (
             <div className="min-h-screen flex items-center justify-center">
               <div className="text-center">
@@ -266,13 +254,13 @@ function App() {
             </div>
           )}
         </div>
-        
+
         <AuthModal 
           isOpen={showAuthModal}
           onClose={() => setShowAuthModal(false)}
           onSuccess={handleAuthSuccess}
           initialMode={authMode}
-          key={authMode} // Add key to force re-render when mode changes
+          key={authMode}
         />
       </div>
     </ThemeContext.Provider>
