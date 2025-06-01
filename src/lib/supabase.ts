@@ -21,8 +21,6 @@ export type AuthError = {
 
 export async function signUp(email: string, password: string) {
   try {
-    console.log("Starting signup process for:", email);
-    
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -35,85 +33,56 @@ export async function signUp(email: string, password: string) {
         }
       }
     });
-    
+
     if (error) {
-      console.error("Signup error:", error.message);
-      
-      // Handle specific error cases
       if (error.message.includes('already registered')) {
-        throw new Error('This email is already registered. Please try signing in instead.');
+        // Try to sign in if the user already exists
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+          email,
+          password
+        });
+
+        if (signInError) {
+          throw new Error('Invalid email or password');
+        }
+
+        return signInData;
       }
-      
       throw error;
     }
-    
-    console.log("User created successfully");
+
     return data;
   } catch (err) {
-    console.error("Signup process error:", err);
     if (err instanceof Error) {
       throw err;
-    } else {
-      throw new Error('An unexpected error occurred during signup');
     }
+    throw new Error('An unexpected error occurred during signup');
   }
 }
 
 export async function signIn(email: string, password: string) {
   try {
-    console.log("Attempting to sign in:", email);
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
-    
+
     if (error) {
-      // If error is about email confirmation, try to fix it
-      if (error.message.includes('email') && error.message.includes('confirm')) {
-        console.log("Attempting to fix email confirmation issue");
-        
-        // Update user metadata to mark email as confirmed
-        await supabase.auth.updateUser({
-          data: {
-            email_confirmed: true
-          }
-        });
-        
-        // Try signing in again
-        const { data: retryData, error: retryError } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-        
-        if (retryError) {
-          console.error("Retry sign-in error:", retryError.message);
-          throw new Error('Invalid email or password. Please try again.');
-        }
-        
-        return retryData;
-      }
-      
-      console.error("Sign-in error:", error.message);
-      throw error;
+      throw new Error('Invalid email or password');
     }
-    
-    console.log("Sign in successful");
+
     return data;
   } catch (err) {
-    console.error("Sign-in process error:", err);
-    throw err;
+    if (err instanceof Error) {
+      throw err;
+    }
+    throw new Error('An unexpected error occurred during sign in');
   }
 }
 
 export async function signOut() {
   const { error } = await supabase.auth.signOut();
-  
-  if (error) {
-    console.error("Sign-out error:", error.message);
-    throw error;
-  }
-  
-  console.log("Sign out successful");
+  if (error) throw error;
 }
 
 export async function getCurrentUser() {
@@ -121,20 +90,18 @@ export async function getCurrentUser() {
     const { data: { user }, error } = await supabase.auth.getUser();
     
     if (error) {
-      // Check if error is related to missing/expired auth session
       if (error.message === 'Auth session missing!' || 
           error.message.includes('JWT') || 
           error.message.includes('session')) {
         return null;
       }
-      console.error("Get current user error:", error.message);
       throw error;
     }
     
     return user;
   } catch (err) {
-    console.error("Get current user process error:", err);
-    return null; // Return null instead of throwing to prevent app crashes
+    console.error('Error getting current user:', err);
+    return null;
   }
 }
 
@@ -142,16 +109,9 @@ export async function confirmPayment(planType: string) {
   try {
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     
-    if (userError) {
-      console.error("Get user for payment confirmation error:", userError.message);
-      throw userError;
-    }
-    
-    if (!user) {
-      throw new Error('User not authenticated');
-    }
-    
-    // Update user metadata to mark payment as confirmed and signup as completed
+    if (userError) throw userError;
+    if (!user) throw new Error('User not authenticated');
+
     const { data, error } = await supabase.auth.updateUser({
       data: {
         email_confirmed: true,
@@ -162,32 +122,24 @@ export async function confirmPayment(planType: string) {
       }
     });
     
-    if (error) {
-      console.error("Update user for payment confirmation error:", error.message);
-      throw error;
-    }
-    
-    // Create or update payment record in Supabase database if needed
+    if (error) throw error;
+
     try {
       await supabase
         .from('user_payments')
-        .upsert([
-          {
-            user_id: user.id,
-            plan_type: planType,
-            payment_date: new Date().toISOString(),
-            status: 'confirmed'
-          }
-        ]);
+        .upsert([{
+          user_id: user.id,
+          plan_type: planType,
+          payment_date: new Date().toISOString(),
+          status: 'confirmed'
+        }]);
     } catch (dbError) {
-      console.error('Failed to update payment record in database:', dbError);
-      // Continue anyway since user metadata is updated
+      console.error('Failed to update payment record:', dbError);
     }
-    
-    console.log("Payment confirmed successfully");
+
     return data;
   } catch (err) {
-    console.error("Payment confirmation process error:", err);
+    console.error('Payment confirmation error:', err);
     throw err;
   }
 }
@@ -195,14 +147,10 @@ export async function confirmPayment(planType: string) {
 export async function hasCompletedPayment() {
   try {
     const { data: { user }, error } = await supabase.auth.getUser();
-    
-    if (error || !user) {
-      return false;
-    }
-    
+    if (error || !user) return false;
     return user.user_metadata?.payment_confirmed === true;
   } catch (err) {
-    console.error("Check payment completion error:", err);
+    console.error('Check payment completion error:', err);
     return false;
   }
 }
@@ -210,14 +158,10 @@ export async function hasCompletedPayment() {
 export async function getUserPlanType() {
   try {
     const { data: { user }, error } = await supabase.auth.getUser();
-    
-    if (error || !user) {
-      return null;
-    }
-    
+    if (error || !user) return null;
     return user.user_metadata?.plan_type;
   } catch (err) {
-    console.error("Get user plan type error:", err);
+    console.error('Get user plan type error:', err);
     return null;
   }
 }
@@ -225,14 +169,10 @@ export async function getUserPlanType() {
 export async function isSignupCompleted() {
   try {
     const { data: { user }, error } = await supabase.auth.getUser();
-    
-    if (error || !user) {
-      return false;
-    }
-    
+    if (error || !user) return false;
     return user.user_metadata?.signup_completed === true;
   } catch (err) {
-    console.error("Check signup completion error:", err);
+    console.error('Check signup completion error:', err);
     return false;
   }
 }
