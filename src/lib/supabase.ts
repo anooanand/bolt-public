@@ -100,7 +100,7 @@ export async function signUp(email: string, password: string) {
       return { user: data.user, session: null, emailConfirmationRequired: true };
     }
     
-    // If signup was successful and no email confirmation is required
+    // If signup was successful and no session returned
     if (data?.user && !data.session) {
       console.log("User created but no session returned, attempting sign in");
       
@@ -190,4 +190,74 @@ export async function getCurrentUser() {
   }
 }
 
-// Rest of your functions remain unchanged
+export async function confirmPayment(planType: string) {
+  try {
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    
+    if (userError) throw userError;
+    if (!user) throw new Error('User not authenticated');
+
+    const { data, error } = await supabase.auth.updateUser({
+      data: {
+        email_confirmed: true,
+        payment_confirmed: true,
+        plan_type: planType,
+        signup_completed: true,
+        payment_date: new Date().toISOString()
+      }
+    });
+    
+    if (error) throw error;
+    
+    try {
+      await supabase
+        .from('user_payments')
+        .upsert([{
+          user_id: user.id,
+          plan_type: planType,
+          payment_date: new Date().toISOString(),
+          status: 'confirmed'
+        }]);
+    } catch (dbError) {
+      console.error('Failed to update payment record:', dbError);
+    }
+    
+    return data;
+  } catch (err) {
+    console.error("Payment confirmation error:", err);
+    throw err;
+  }
+}
+
+export async function hasCompletedPayment() {
+  try {
+    const { data: { user }, error } = await supabase.auth.getUser();
+    if (error || !user) return false;
+    return user.user_metadata?.payment_confirmed === true;
+  } catch (err) {
+    console.error("Check payment completion error:", err);
+    return false;
+  }
+}
+
+export async function getUserPlanType() {
+  try {
+    const { data: { user }, error } = await supabase.auth.getUser();
+    if (error || !user) return null;
+    return user.user_metadata?.plan_type;
+  } catch (err) {
+    console.error("Get user plan type error:", err);
+    return null;
+  }
+}
+
+export async function isSignupCompleted() {
+  try {
+    const { data: { user }, error } = await supabase.auth.getUser();
+    if (error || !user) return false;
+    return user.user_metadata?.signup_completed === true;
+  } catch (err) {
+    console.error("Check signup completion error:", err);
+    return false;
+  }
+}
