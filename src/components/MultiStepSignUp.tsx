@@ -71,18 +71,48 @@ export function MultiStepSignUp({ onSuccess, onSignInClick, simpleRedirect = fal
   const [isLoading, setIsLoading] = useState(false);
   const [redirectAfterSignup, setRedirectAfterSignup] = useState(false);
 
+  // Add a timeout reference to prevent hanging
+  const signupTimeoutRef = React.useRef<number | null>(null);
+
+  // Cleanup function for timeouts
+  useEffect(() => {
+    return () => {
+      if (signupTimeoutRef.current) {
+        clearTimeout(signupTimeoutRef.current);
+      }
+    };
+  }, []);
+
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    
     try {
+      // Validate form data
       signUpSchema.parse({ email, password, confirmPassword });
       setIsLoading(true);
+      
+      // Set a timeout to prevent hanging on the "Creating account..." state
+      signupTimeoutRef.current = window.setTimeout(() => {
+        if (isLoading) {
+          setIsLoading(false);
+          setError('Signup is taking longer than expected. Please try again or refresh the page.');
+        }
+      }, 15000); // 15 second timeout
+      
+      // Attempt signup
       await signUp(email, password);
 
+      // Store email in localStorage
       localStorage.setItem('userEmail', email);
       
+      // Clear timeout since signup completed
+      if (signupTimeoutRef.current) {
+        clearTimeout(signupTimeoutRef.current);
+        signupTimeoutRef.current = null;
+      }
+      
       // Always proceed to step 2 (plan selection) after successful signup
-      // Don't close the modal or call onSuccess yet
       setCurrentStep(2);
       
       // Only store the redirect preference, don't redirect yet
@@ -90,6 +120,12 @@ export function MultiStepSignUp({ onSuccess, onSignInClick, simpleRedirect = fal
         setRedirectAfterSignup(true);
       }
     } catch (err: any) {
+      // Clear timeout since we're handling the error
+      if (signupTimeoutRef.current) {
+        clearTimeout(signupTimeoutRef.current);
+        signupTimeoutRef.current = null;
+      }
+      
       if (err instanceof z.ZodError) {
         setError(err.errors[0].message);
       } else if (err.message?.includes('already registered') || err.message?.includes('already exists')) {
@@ -102,9 +138,13 @@ export function MultiStepSignUp({ onSuccess, onSignInClick, simpleRedirect = fal
           setRedirectAfterSignup(true);
         }
       } else {
-        setError(err.message || 'An error occurred during sign up');
+        // Provide more user-friendly error message
+        const errorMessage = err.message || 'An error occurred during sign up';
+        console.error('Signup error details:', err);
+        setError(`${errorMessage}. Please try again or contact support.`);
       }
     } finally {
+      // Always ensure loading state is cleared
       setIsLoading(false);
     }
   };
@@ -152,6 +192,15 @@ export function MultiStepSignUp({ onSuccess, onSignInClick, simpleRedirect = fal
               {error && (
                 <div className="p-3 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-md text-sm">
                   {error}
+                  {error.includes('taking longer than expected') && (
+                    <button 
+                      onClick={() => window.location.reload()}
+                      className="ml-2 underline font-medium"
+                      type="button"
+                    >
+                      Refresh page
+                    </button>
+                  )}
                 </div>
               )}
               
@@ -365,11 +414,8 @@ export function MultiStepSignUp({ onSuccess, onSignInClick, simpleRedirect = fal
             </div>
             
             <button
-              onClick={() => {
-                // Redirect to writing area or dashboard
-                window.location.href = '/dashboard';
-              }}
-              className="w-full py-3 px-6 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              onClick={completeSignup}
+              className="w-full py-2 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
             >
               Start Writing
             </button>
@@ -383,21 +429,18 @@ export function MultiStepSignUp({ onSuccess, onSignInClick, simpleRedirect = fal
 
   return (
     <div className="w-full max-w-md mx-auto">
-      <div className="bg-white dark:bg-gray-800 shadow-md rounded-lg px-8 pt-6 pb-8 mb-4">
-        <div className="flex justify-between mb-8">
+      <div className="mb-8">
+        <div className="flex justify-between items-center">
           {[1, 2, 3, 4].map((step) => (
             <div key={step} className="flex flex-col items-center">
-              <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                  currentStep >= step
-                    ? 'bg-indigo-600 text-white'
-                    : 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
-                }`}
-              >
-                {currentStep > step ? <Check className="h-5 w-5" /> : step}
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-2 ${
+                currentStep >= step
+                  ? 'bg-indigo-600 text-white'
+                  : 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
+              }`}>
+                {step}
               </div>
-              <span
-                className={`text-xs mt-2 ${
+              <span className={`text-xs ${
                   currentStep >= step
                     ? 'text-indigo-600 dark:text-indigo-400 font-medium'
                     : 'text-gray-500 dark:text-gray-400'
