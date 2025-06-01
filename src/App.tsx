@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ThemeContext } from './lib/ThemeContext';
-import { getCurrentUser, confirmPayment, hasCompletedPayment } from './lib/supabase';
+import { getCurrentUser, confirmPayment, hasCompletedPayment, supabase } from './lib/supabase';
 import { User } from '@supabase/supabase-js';
 
 // Components
@@ -18,6 +18,11 @@ import { AuthModal } from './components/AuthModal';
 import { SignupPage } from './components/SignupPage';
 import { WritingArea } from './components/WritingArea';
 
+// Key for storing temporary access timestamp in localStorage
+const TEMP_ACCESS_KEY = 'bolt_temp_access_until';
+// Temporary access duration in milliseconds (10 minutes)
+const TEMP_ACCESS_DURATION = 10 * 60 * 1000;
+
 const PaymentSuccess = () => {
   const [countdown, setCountdown] = useState(5);
   const [processingPayment, setProcessingPayment] = useState(true);
@@ -28,14 +33,35 @@ const PaymentSuccess = () => {
 
     const updatePayment = async () => {
       try {
-        await confirmPayment(planType);
+        // Set temporary access timestamp (current time + 10 minutes)
+        const tempAccessUntil = Date.now() + TEMP_ACCESS_DURATION;
+        localStorage.setItem(TEMP_ACCESS_KEY, tempAccessUntil.toString());
+        console.log("Temporary access granted until:", new Date(tempAccessUntil).toLocaleTimeString());
+        
+        // Confirm payment and update user metadata (continue in background)
+        confirmPayment(planType)
+          .then(async () => {
+            // Force refresh of the user session to get updated metadata
+            await supabase.auth.refreshSession();
+            
+            // Double-check that payment is confirmed in metadata
+            const { data: { user } } = await supabase.auth.getUser();
+            console.log("User metadata after payment:", user?.user_metadata);
+          })
+          .catch(error => {
+            console.error('Background payment confirmation failed:', error);
+            // Keep temporary access active even if this fails
+          });
+        
+        // Don't wait for payment confirmation to complete
         setProcessingPayment(false);
 
         const timer = setInterval(() => {
           setCountdown((prev) => {
             if (prev <= 1) {
               clearInterval(timer);
-              window.location.href = '/';
+              // Use absolute path and clear any query parameters
+              window.location.href = '/dashboard';
               return 0;
             }
             return prev - 1;
@@ -44,7 +70,7 @@ const PaymentSuccess = () => {
 
         return () => clearInterval(timer);
       } catch (error) {
-        console.error('Failed to confirm payment:', error);
+        console.error('Failed to process payment:', error);
         setProcessingPayment(false);
       }
     };
@@ -94,9 +120,83 @@ function App() {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [paymentCompleted, setPaymentCompleted] = useState(false);
+  const [hasTemporaryAccess, setHasTemporaryAccess] = useState(false);
+  const [temporaryAccessRemaining, setTemporaryAccessRemaining] = useState<number | null>(null);
 
   const urlParams = new URLSearchParams(window.location.search);
   const paymentSuccess = urlParams.get('payment_success') === 'true';
+
+  // Check if user has temporary access
+  const checkTemporaryAccess = () => {
+    const tempAccessUntil = localStorage.getItem(TEMP_ACCESS_KEY);
+    if (!tempAccessUntil) return false;
+    
+    const expiryTime = parseInt(tempAccessUntil, 10);
+    const now = Date.now();
+    
+    // Calculate remaining time in minutes
+    const remainingMs = expiryTime - now;
+    const remainingMinutes = Math.max(0, Math.ceil(remainingMs / 60000));
+    setTemporaryAccessRemaining(remainingMinutes);
+    
+    // Return true if current time is before expiry
+    return now < expiryTime;
+  };
+
+  // Function to refresh user data and payment status
+  const refreshUserData = async () => {
+    try {
+      // Force refresh the session to get latest metadata
+      await supabase.auth.refreshSession();
+      
+      // Get updated user data
+      const currentUser = await getCurrentUser();
+      setUser(currentUser);
+
+      if (currentUser) {
+        // Check payment status with fresh data
+        const completed = await hasCompletedPayment();
+        console.log("Payment completed status:", completed);
+        setPaymentCompleted(completed);
+        
+        // If payment is confirmed, clear temporary access
+        if (completed) {
+          localStorage.removeItem(TEMP_ACCESS_KEY);
+          setHasTemporaryAccess(false);
+          setTemporaryAccessRemaining(null);
+        } else {
+          // Check for temporary access if payment not confirmed
+          const tempAccess = checkTemporaryAccess();
+          setHasTemporaryAccess(tempAccess);
+        }
+      }
+    } catch (error) {
+      console.error('Error refreshing user data:', error);
+    }
+  };
+
+  // Effect to check temporary access periodically
+  useEffect(() => {
+    // Only run this effect if user is logged in but payment is not completed
+    if (!user || paymentCompleted) return;
+    
+    // Check temporary access immediately
+    const tempAccess = checkTemporaryAccess();
+    setHasTemporaryAccess(tempAccess);
+    
+    // Set up interval to check temporary access every minute
+    const interval = setInterval(() => {
+      const stillHasAccess = checkTemporaryAccess();
+      setHasTemporaryAccess(stillHasAccess);
+      
+      // If temporary access has expired, refresh user data to check if payment was confirmed
+      if (!stillHasAccess) {
+        refreshUserData();
+      }
+    }, 60000); // Check every minute
+    
+    return () => clearInterval(interval);
+  }, [user, paymentCompleted]);
 
   useEffect(() => {
     // Theme preference
@@ -112,6 +212,9 @@ function App() {
     // Authentication check
     const checkAuth = async () => {
       try {
+        // Force refresh the session to get latest metadata
+        await supabase.auth.refreshSession();
+        
         const currentUser = await getCurrentUser();
         setUser(currentUser);
 
@@ -123,8 +226,16 @@ function App() {
         }
 
         if (currentUser) {
+          // Check payment status with fresh data
           const completed = await hasCompletedPayment();
+          console.log("Initial payment completed status:", completed);
           setPaymentCompleted(completed);
+          
+          // If payment is not completed, check for temporary access
+          if (!completed) {
+            const tempAccess = checkTemporaryAccess();
+            setHasTemporaryAccess(tempAccess);
+          }
         }
       } catch (error) {
         console.error('Error checking auth status:', error);
@@ -134,7 +245,23 @@ function App() {
     };
 
     checkAuth();
+    
+    // Set up auth state change listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async () => {
+      await refreshUserData();
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, [theme]);
+
+  // Refresh user data when activePage changes to dashboard
+  useEffect(() => {
+    if (activePage === 'dashboard') {
+      refreshUserData();
+    }
+  }, [activePage]);
 
   const toggleTheme = () => {
     const newTheme = theme === 'light' ? 'dark' : 'light';
@@ -146,6 +273,11 @@ function App() {
   const handleNavigate = (page: string) => {
     setActivePage(page);
     window.scrollTo(0, 0);
+    
+    // Refresh user data when navigating to dashboard
+    if (page === 'dashboard') {
+      refreshUserData();
+    }
   };
 
   const handleSignInClick = () => {
@@ -159,15 +291,10 @@ function App() {
   };
 
   const handleAuthSuccess = async () => {
-    const currentUser = await getCurrentUser();
-    setUser(currentUser);
-
-    if (currentUser) {
-      const completed = await hasCompletedPayment();
-      setPaymentCompleted(completed);
-      if (completed) {
-        handleNavigate('dashboard');
-      }
+    await refreshUserData();
+    
+    if (user && (paymentCompleted || hasTemporaryAccess)) {
+      handleNavigate('dashboard');
     }
   };
 
@@ -219,11 +346,32 @@ function App() {
           {activePage === 'pricing' && <PricingPage />}
           {activePage === 'signup' && <SignupPage onSignUp={handleSignUpClick} />}
 
-          {activePage === 'dashboard' && user && paymentCompleted && (
-            <WritingArea user={user} />
+          {activePage === 'dashboard' && user && (paymentCompleted || hasTemporaryAccess) && (
+            <>
+              {hasTemporaryAccess && !paymentCompleted && (
+                <div className="bg-yellow-50 dark:bg-yellow-900/30 border-l-4 border-yellow-400 p-4 mb-4">
+                  <div className="flex">
+                    <div className="flex-shrink-0">
+                      <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <div className="ml-3">
+                      <p className="text-sm text-yellow-700 dark:text-yellow-200">
+                        You have temporary access for {temporaryAccessRemaining} {temporaryAccessRemaining === 1 ? 'minute' : 'minutes'}. 
+                        <a href="/pricing" className="font-medium underline text-yellow-700 dark:text-yellow-100 hover:text-yellow-600">
+                          Complete your subscription
+                        </a> to maintain access.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+              <WritingArea user={user} />
+            </>
           )}
 
-          {activePage === 'dashboard' && user && !paymentCompleted && (
+          {activePage === 'dashboard' && user && !paymentCompleted && !hasTemporaryAccess && (
             <div className="min-h-screen flex items-center justify-center">
               <div className="text-center max-w-md p-8 bg-white dark:bg-gray-800 rounded-lg shadow-md">
                 <h2 className="text-2xl font-bold mb-4">Complete Your Subscription</h2>
