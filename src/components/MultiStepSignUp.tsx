@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { signUp } from '../lib/supabase';
 import { z } from 'zod';
 import { Mail, Lock, Loader, Check, ArrowRight } from 'lucide-react';
@@ -87,6 +87,25 @@ export function MultiStepSignUp({ onSuccess, onSignInClick }: MultiStepSignUpPro
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Check for payment success on component mount
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const paymentSuccess = urlParams.get('payment_success');
+    const planId = urlParams.get('plan');
+    
+    if (paymentSuccess === 'true' && planId) {
+      // Find the selected plan
+      const plan = plans.find(p => p.id === planId);
+      if (plan) {
+        setSelectedPlan(plan);
+        setCurrentStep(4); // Move to final step
+        
+        // Clear URL parameters
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    }
+  }, []);
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -334,6 +353,56 @@ export function MultiStepSignUp({ onSuccess, onSignInClick }: MultiStepSignUpPro
             <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">
               By proceeding, you agree to our Terms of Service and Privacy Policy
             </p>
+          </div>
+        );
+      
+      case 4:
+        return (
+          <div className="w-full text-center">
+            <div className="mb-6 flex justify-center">
+              <div className="rounded-full bg-green-100 p-3">
+                <Check className="h-8 w-8 text-green-600" />
+              </div>
+            </div>
+            
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Payment Successful!</h2>
+            
+            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6 mb-6">
+              <p className="text-lg text-gray-800 dark:text-gray-200 mb-4">
+                Thank you for subscribing to {selectedPlan?.name}
+              </p>
+              
+              <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-md mb-4">
+                <div className="flex justify-between mb-2">
+                  <span className="text-gray-600 dark:text-gray-300">Plan:</span>
+                  <span className="font-medium text-gray-900 dark:text-white">{selectedPlan?.name}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600 dark:text-gray-300">Price:</span>
+                  <span className="font-medium text-gray-900 dark:text-white">{selectedPlan?.price}/month</span>
+                </div>
+                <div className="flex justify-between mt-2">
+                  <span className="text-gray-600 dark:text-gray-300">Trial ends:</span>
+                  <span className="font-medium text-gray-900 dark:text-white">
+                    {new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toLocaleDateString()}
+                  </span>
+                </div>
+              </div>
+              
+              <p className="text-gray-600 dark:text-gray-300">
+                Your 3-day free trial has started. You can now access all features of your plan.
+              </p>
+            </div>
+            
+            <button
+              onClick={() => {
+                // Redirect to writing area or dashboard
+                window.location.href = '/dashboard';
+              }}
+              className="w-full py-3 px-6 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            >
+              Start Writing
+            </button>
           </div>
         );
       
