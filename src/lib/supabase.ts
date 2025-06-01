@@ -24,17 +24,7 @@ export async function signUp(email: string, password: string) {
   try {
     console.log("Starting signup process for:", email);
     
-    // Check if user exists first
-    const { data: existingUser } = await supabase.auth.signInWithPassword({
-      email,
-      password
-    });
-
-    if (existingUser?.user) {
-      return existingUser;
-    }
-
-    // Create new user if they don't exist
+    // Create new user
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
