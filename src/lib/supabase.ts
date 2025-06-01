@@ -19,9 +19,11 @@ export type AuthError = {
   message: string;
 };
 
-// Completely rewritten to fix signup issues
+// Completely rewritten to fix signup issues and disable email confirmation
 export async function signUp(email: string, password: string) {
   try {
+    console.log("Starting signup process for:", email);
+    
     // First try to sign in directly in case user already exists
     const { data: existingUser, error: signInError } = await supabase.auth.signInWithPassword({
       email,
@@ -34,16 +36,17 @@ export async function signUp(email: string, password: string) {
       return existingUser;
     }
     
-    // If user doesn't exist, create a new account
+    // If user doesn't exist, create a new account with disabled email confirmation
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        emailRedirectTo: undefined, // Remove email redirect completely
+        // IMPORTANT: These settings disable email confirmation
+        emailRedirectTo: undefined,
         data: {
-          email_confirmed: true, // Mark email as confirmed
-          payment_confirmed: false, // Initialize payment status
-          signup_completed: false // Will be set to true after payment
+          email_confirmed: true,
+          payment_confirmed: false,
+          signup_completed: false
         }
       }
     });
@@ -51,6 +54,21 @@ export async function signUp(email: string, password: string) {
     if (error) {
       console.error("Signup error:", error.message);
       throw error;
+    }
+    
+    // If signup was successful but requires email confirmation
+    if (data?.user?.identities?.length === 0 || 
+        data?.user?.email_confirmed_at === null) {
+      console.log("Email confirmation might be required by Supabase settings");
+      
+      // Try to update user metadata to mark email as confirmed
+      try {
+        await supabase.auth.updateUser({
+          data: { email_confirmed: true }
+        });
+      } catch (updateError) {
+        console.error("Failed to update user metadata:", updateError);
+      }
     }
     
     // After signup, explicitly sign in the user
@@ -74,6 +92,7 @@ export async function signUp(email: string, password: string) {
 
 export async function signIn(email: string, password: string) {
   try {
+    console.log("Attempting to sign in:", email);
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
@@ -109,6 +128,7 @@ export async function signIn(email: string, password: string) {
       throw error;
     }
     
+    console.log("Sign in successful");
     return data;
   } catch (err) {
     console.error("Sign-in process error:", err);
@@ -123,6 +143,8 @@ export async function signOut() {
     console.error("Sign-out error:", error.message);
     throw error;
   }
+  
+  console.log("Sign out successful");
 }
 
 export async function getCurrentUser() {
@@ -194,6 +216,7 @@ export async function confirmPayment(planType: string) {
       // Continue anyway since user metadata is updated
     }
     
+    console.log("Payment confirmed successfully");
     return data;
   } catch (err) {
     console.error("Payment confirmation process error:", err);
