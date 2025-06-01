@@ -132,8 +132,16 @@ export function MultiStepSignUp({ onSuccess, onSignInClick, simpleRedirect = fal
     localStorage.setItem('selectedPlanId', selectedPlan.id);
     localStorage.setItem('userEmail', email);
     const successUrl = `${window.location.origin}?payment_success=true&plan=${selectedPlan.id}`;
-    const stripeUrlWithEmail = `${selectedPlan.stripeUrl}&prefilled_email=${encodeURIComponent(email)}`;
-    window.location.href = `${stripeUrlWithEmail}&redirect_to=${encodeURIComponent(successUrl)}`;
+    
+    // Fix: Add question mark before parameters if not already present
+    const stripeBaseUrl = selectedPlan.stripeUrl;
+    const stripeUrlWithEmail = stripeBaseUrl.includes('?') 
+      ? `${stripeBaseUrl}&prefilled_email=${encodeURIComponent(email)}`
+      : `${stripeBaseUrl}?prefilled_email=${encodeURIComponent(email)}`;
+    
+    // Add redirect parameter
+    const finalUrl = `${stripeUrlWithEmail}&redirect_to=${encodeURIComponent(successUrl)}`;
+    window.location.href = finalUrl;
   };
 
   // Only call onSuccess and close the modal when explicitly needed
