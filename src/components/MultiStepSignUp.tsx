@@ -137,8 +137,239 @@ export function MultiStepSignUp({ onSuccess, onSignInClick, simpleRedirect = fal
   };
 
   const renderStep = () => {
-    // Same as your current implementation — no change needed
-    // (Rendering forms, plan cards, trial start page, final confirmation)
+    switch (currentStep) {
+      case 1:
+        return (
+          <div className="w-full">
+            <form onSubmit={handleSignUp} className="space-y-6">
+              <h2 className="text-2xl font-bold text-center text-gray-900 dark:text-white">Create Your Free Account</h2>
+              
+              {error && (
+                <div className="p-3 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-md text-sm">
+                  {error}
+                </div>
+              )}
+              
+              <div>
+                <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2" htmlFor="email">
+                  Email
+                </label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+                  <input
+                    id="email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
+                    placeholder="you@example.com"
+                    required
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2" htmlFor="password">
+                  Password
+                </label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+                  <input
+                    id="password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
+                    placeholder="••••••••"
+                    required
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2" htmlFor="confirmPassword">
+                  Confirm Password
+                </label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+                  <input
+                    id="confirmPassword"
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
+                    placeholder="••••••••"
+                    required
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader className="animate-spin -ml-1 mr-2 h-5 w-5" />
+                      Creating account...
+                    </>
+                  ) : (
+                    'Sign Up'
+                  )}
+                </button>
+                
+                <button
+                  type="button"
+                  onClick={onSignInClick}
+                  className="mt-4 text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-300 text-center w-full"
+                >
+                  Already have an account? Sign in
+                </button>
+              </div>
+            </form>
+          </div>
+        );
+      
+      case 2:
+        return (
+          <div className="w-full">
+            <h2 className="text-2xl font-bold text-center text-gray-900 dark:text-white mb-6">Choose Your Plan</h2>
+            <p className="text-center text-gray-600 dark:text-gray-300 mb-8">
+              Select the subscription that best fits your needs
+            </p>
+            
+            <div className="space-y-6">
+              {plans.map((plan) => (
+                <div 
+                  key={plan.id}
+                  onClick={() => handlePlanSelection(plan)}
+                  className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6 cursor-pointer hover:shadow-md transition-shadow duration-200"
+                >
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-xl font-semibold text-gray-900 dark:text-white">{plan.name}</h3>
+                    <span className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">{plan.price}<span className="text-sm font-normal text-gray-500">/month</span></span>
+                  </div>
+                  
+                  <p className="text-gray-600 dark:text-gray-300 mb-4">{plan.description}</p>
+                  
+                  <ul className="space-y-2 mb-6">
+                    {plan.features.map((feature, index) => (
+                      <li key={index} className="flex items-start">
+                        <Check className="h-5 w-5 text-green-500 mr-2 shrink-0" />
+                        <span className="text-gray-600 dark:text-gray-300">{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  
+                  <button
+                    className="w-full py-2 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 flex items-center justify-center"
+                  >
+                    Select Plan
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      
+      case 3:
+        return (
+          <div className="w-full text-center">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">3-Day Free Trial</h2>
+            
+            <div className="bg-gradient-to-r from-purple-100 to-indigo-100 dark:from-purple-900/30 dark:to-indigo-900/30 p-6 rounded-lg mb-8">
+              <p className="text-lg text-gray-800 dark:text-gray-200 mb-4">
+                Try all features free for 3 days with {selectedPlan?.name}
+              </p>
+              <p className="text-gray-600 dark:text-gray-300 mb-6">
+                You won't be charged until your trial ends. Cancel anytime.
+              </p>
+              
+              <div className="bg-white dark:bg-gray-800 p-4 rounded-md mb-6">
+                <div className="flex justify-between mb-2">
+                  <span className="text-gray-600 dark:text-gray-300">Plan:</span>
+                  <span className="font-medium text-gray-900 dark:text-white">{selectedPlan?.name}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600 dark:text-gray-300">Price:</span>
+                  <span className="font-medium text-gray-900 dark:text-white">{selectedPlan?.price}/month</span>
+                </div>
+                <div className="flex justify-between mt-2">
+                  <span className="text-gray-600 dark:text-gray-300">Email:</span>
+                  <span className="font-medium text-gray-900 dark:text-white">{email}</span>
+                </div>
+              </div>
+            </div>
+            
+            <button
+              onClick={handlePaymentRedirect}
+              className="w-full py-3 px-6 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            >
+              Start Your Free Trial
+            </button>
+            
+            <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">
+              By proceeding, you agree to our Terms of Service and Privacy Policy
+            </p>
+          </div>
+        );
+      
+      case 4:
+        return (
+          <div className="w-full text-center">
+            <div className="mb-6 flex justify-center">
+              <div className="rounded-full bg-green-100 p-3">
+                <Check className="h-8 w-8 text-green-600" />
+              </div>
+            </div>
+            
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Payment Successful!</h2>
+            
+            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6 mb-6">
+              <p className="text-lg text-gray-800 dark:text-gray-200 mb-4">
+                Thank you for subscribing to {selectedPlan?.name}
+              </p>
+              
+              <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-md mb-4">
+                <div className="flex justify-between mb-2">
+                  <span className="text-gray-600 dark:text-gray-300">Plan:</span>
+                  <span className="font-medium text-gray-900 dark:text-white">{selectedPlan?.name}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600 dark:text-gray-300">Price:</span>
+                  <span className="font-medium text-gray-900 dark:text-white">{selectedPlan?.price}/month</span>
+                </div>
+                <div className="flex justify-between mt-2">
+                  <span className="text-gray-600 dark:text-gray-300">Trial ends:</span>
+                  <span className="font-medium text-gray-900 dark:text-white">
+                    {new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toLocaleDateString()}
+                  </span>
+                </div>
+              </div>
+              
+              <p className="text-gray-600 dark:text-gray-300">
+                Your 3-day free trial has started. You can now access all features of your plan.
+              </p>
+            </div>
+            
+            <button
+              onClick={() => {
+                // Redirect to writing area or dashboard
+                window.location.href = '/dashboard';
+              }}
+              className="w-full py-3 px-6 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            >
+              Start Writing
+            </button>
+          </div>
+        );
+      
+      default:
+        return null;
+    }
   };
 
   return (
