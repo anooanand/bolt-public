@@ -8,12 +8,19 @@ interface AuthModalProps {
   onClose: () => void;
   onSuccess: () => void;
   initialMode?: 'signin' | 'signup';
+  key?: string; // Added key prop to force re-render
 }
 
 type AuthMode = 'signin' | 'signup';
 
 export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'signin' }: AuthModalProps) {
+  // Initialize mode state with initialMode prop
   const [mode, setMode] = useState<AuthMode>(initialMode);
+  
+  // Update mode when initialMode changes
+  React.useEffect(() => {
+    setMode(initialMode);
+  }, [initialMode]);
 
   if (!isOpen) return null;
 
