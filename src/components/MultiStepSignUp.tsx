@@ -97,20 +97,32 @@ export function MultiStepSignUp({ onSuccess, onSignInClick }: MultiStepSignUpPro
       signUpSchema.parse({ email, password, confirmPassword });
       
       setIsLoading(true);
-      await signUp(email, password);
-      // Move to next step after successful signup
-      setCurrentStep(2);
+      
+      // Call the updated signUp function
+      const result = await signUp(email, password);
+      
+      if (result) {
+        console.log("Signup successful, proceeding to step 2");
+        // Store email for later use
+        localStorage.setItem('userEmail', email);
+        // Move to next step after successful signup
+        setCurrentStep(2);
+        // Notify parent component of successful authentication
+        onSuccess();
+      }
     } catch (err) {
+      console.error("Signup error in component:", err);
+      
       if (err instanceof z.ZodError) {
         setError(err.errors[0].message);
       } else if (err instanceof Error) {
-        // Simplified error handling - no email confirmation errors
-        if (err.message.includes('email') && err.message.includes('confirm')) {
-          // If it's an email confirmation error, just move to the next step
+        // If it's an "already registered" error, just move to the next step
+        if (err.message.includes('already registered') || 
+            err.message.includes('already exists')) {
+          console.log("User already exists, proceeding to step 2");
+          localStorage.setItem('userEmail', email);
           setCurrentStep(2);
-        } else if (err.message.includes('already registered')) {
-          // If user already exists, just move to the next step
-          setCurrentStep(2);
+          onSuccess();
         } else {
           setError(err.message);
         }
