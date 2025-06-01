@@ -21,7 +21,7 @@ const STRIPE_URLS = {
 interface MultiStepSignUpProps {
   onSuccess: () => void;
   onSignInClick: () => void;
-  simpleRedirect?: boolean; // NEW: if true, skip plan selection and redirect to /pricing
+  simpleRedirect?: boolean; // if true, skip plan selection and redirect to /pricing
 }
 
 type Plan = {
@@ -68,6 +68,7 @@ export function MultiStepSignUp({ onSuccess, onSignInClick, simpleRedirect = fal
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [redirectAfterSignup, setRedirectAfterSignup] = useState(false);
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -92,28 +93,27 @@ export function MultiStepSignUp({ onSuccess, onSignInClick, simpleRedirect = fal
       await signUp(email, password);
 
       localStorage.setItem('userEmail', email);
-      localStorage.setItem('redirect_after_signup', simpleRedirect ? 'pricing' : 'dashboard');
-
-      if (simpleRedirect) {
-        window.location.href = '/pricing';
-        onSuccess();
-        return;
-      }
-
+      
+      // Always proceed to step 2 (plan selection) after successful signup
+      // Don't close the modal or call onSuccess yet
       setCurrentStep(2);
-      onSuccess();
+      
+      // Only store the redirect preference, don't redirect yet
+      if (simpleRedirect) {
+        setRedirectAfterSignup(true);
+      }
     } catch (err: any) {
       if (err instanceof z.ZodError) {
         setError(err.errors[0].message);
       } else if (err.message?.includes('already registered') || err.message?.includes('already exists')) {
         localStorage.setItem('userEmail', email);
-        if (simpleRedirect) {
-          window.location.href = '/pricing';
-          onSuccess();
-          return;
-        }
+        
+        // Even for existing users, proceed to step 2 (plan selection)
         setCurrentStep(2);
-        onSuccess();
+        
+        if (simpleRedirect) {
+          setRedirectAfterSignup(true);
+        }
       } else {
         setError(err.message || 'An error occurred during sign up');
       }
@@ -134,6 +134,16 @@ export function MultiStepSignUp({ onSuccess, onSignInClick, simpleRedirect = fal
     const successUrl = `${window.location.origin}?payment_success=true&plan=${selectedPlan.id}`;
     const stripeUrlWithEmail = `${selectedPlan.stripeUrl}&prefilled_email=${encodeURIComponent(email)}`;
     window.location.href = `${stripeUrlWithEmail}&redirect_to=${encodeURIComponent(successUrl)}`;
+  };
+
+  // Only call onSuccess and close the modal when explicitly needed
+  const completeSignup = () => {
+    onSuccess();
+    
+    // If redirectAfterSignup is true, redirect to pricing page
+    if (redirectAfterSignup) {
+      window.location.href = '/pricing';
+    }
   };
 
   const renderStep = () => {
@@ -318,6 +328,10 @@ export function MultiStepSignUp({ onSuccess, onSignInClick, simpleRedirect = fal
         );
       
       case 4:
+        // Call completeSignup when rendering the final step
+        // This ensures the modal is closed only after showing the success message
+        setTimeout(() => completeSignup(), 2000);
+        
         return (
           <div className="w-full text-center">
             <div className="mb-6 flex justify-center">
