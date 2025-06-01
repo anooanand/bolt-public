@@ -19,6 +19,7 @@ export const NavBar: React.FC<NavBarProps> = ({
   onSignUpClick
 }) => {
   const { theme, toggleTheme } = React.useContext(ThemeContext);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const handleSignOut = async () => {
     try {
@@ -29,6 +30,12 @@ export const NavBar: React.FC<NavBarProps> = ({
     }
   };
 
+  const handleNavigation = (e: React.MouseEvent<HTMLAnchorElement>, page: string) => {
+    e.preventDefault();
+    onNavigate(page);
+    setMobileMenuOpen(false); // Close mobile menu when navigating
+  };
+
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-white dark:bg-gray-900 shadow-md">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -36,7 +43,7 @@ export const NavBar: React.FC<NavBarProps> = ({
           <div className="flex items-center">
             <a 
               href="#" 
-              onClick={(e) => { e.preventDefault(); onNavigate('home'); }}
+              onClick={(e) => handleNavigation(e, 'home')}
               className="flex-shrink-0 flex items-center"
             >
               <div className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-600 to-pink-600 dark:from-purple-400 dark:to-pink-400">
@@ -45,11 +52,43 @@ export const NavBar: React.FC<NavBarProps> = ({
             </a>
           </div>
           
+          {/* Mobile menu button */}
+          <div className="md:hidden flex items-center">
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500"
+            >
+              <span className="sr-only">{mobileMenuOpen ? 'Close menu' : 'Open menu'}</span>
+              {/* Icon when menu is closed */}
+              <svg
+                className={`${mobileMenuOpen ? 'hidden' : 'block'} h-6 w-6`}
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                aria-hidden="true"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+              {/* Icon when menu is open */}
+              <svg
+                className={`${mobileMenuOpen ? 'block' : 'hidden'} h-6 w-6`}
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                aria-hidden="true"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          
           <div className="hidden md:flex items-center space-x-4">
             {/* Navigation Links */}
             <a 
               href="#" 
-              onClick={(e) => { e.preventDefault(); onNavigate('home'); }}
+              onClick={(e) => handleNavigation(e, 'home')}
               className={`px-3 py-2 rounded-md text-sm font-medium ${
                 activePage === 'home' 
                   ? 'text-indigo-600 dark:text-indigo-400' 
@@ -61,7 +100,7 @@ export const NavBar: React.FC<NavBarProps> = ({
             
             <a 
               href="#" 
-              onClick={(e) => { e.preventDefault(); onNavigate('features'); }}
+              onClick={(e) => handleNavigation(e, 'features')}
               className={`px-3 py-2 rounded-md text-sm font-medium ${
                 activePage === 'features' 
                   ? 'text-indigo-600 dark:text-indigo-400' 
@@ -73,7 +112,7 @@ export const NavBar: React.FC<NavBarProps> = ({
             
             <a 
               href="#" 
-              onClick={(e) => { e.preventDefault(); onNavigate('about'); }}
+              onClick={(e) => handleNavigation(e, 'about')}
               className={`px-3 py-2 rounded-md text-sm font-medium ${
                 activePage === 'about' 
                   ? 'text-indigo-600 dark:text-indigo-400' 
@@ -85,7 +124,7 @@ export const NavBar: React.FC<NavBarProps> = ({
             
             <a 
               href="#" 
-              onClick={(e) => { e.preventDefault(); onNavigate('pricing'); }}
+              onClick={(e) => handleNavigation(e, 'pricing')}
               className={`px-3 py-2 rounded-md text-sm font-medium ${
                 activePage === 'pricing' 
                   ? 'text-indigo-600 dark:text-indigo-400' 
@@ -97,7 +136,7 @@ export const NavBar: React.FC<NavBarProps> = ({
             
             <a 
               href="#" 
-              onClick={(e) => { e.preventDefault(); onNavigate('faq'); }}
+              onClick={(e) => handleNavigation(e, 'faq')}
               className={`px-3 py-2 rounded-md text-sm font-medium ${
                 activePage === 'faq' 
                   ? 'text-indigo-600 dark:text-indigo-400' 
@@ -110,7 +149,7 @@ export const NavBar: React.FC<NavBarProps> = ({
             {user && (
               <a 
                 href="#" 
-                onClick={(e) => { e.preventDefault(); onNavigate('dashboard'); }}
+                onClick={(e) => handleNavigation(e, 'dashboard')}
                 className={`px-3 py-2 rounded-md text-sm font-medium ${
                   activePage === 'dashboard' 
                     ? 'text-indigo-600 dark:text-indigo-400' 
@@ -122,7 +161,7 @@ export const NavBar: React.FC<NavBarProps> = ({
             )}
           </div>
           
-          <div className="flex items-center space-x-4">
+          <div className="hidden md:flex items-center space-x-4">
             {/* Dark/Light Mode Toggle */}
             <button 
               onClick={toggleTheme}
@@ -172,12 +211,12 @@ export const NavBar: React.FC<NavBarProps> = ({
         </div>
       </div>
       
-      {/* Mobile menu - shown/hidden with JavaScript */}
-      <div className="md:hidden">
+      {/* Mobile menu - shown/hidden with state */}
+      <div className={`${mobileMenuOpen ? 'block' : 'hidden'} md:hidden`}>
         <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
           <a 
             href="#" 
-            onClick={(e) => { e.preventDefault(); onNavigate('home'); }}
+            onClick={(e) => handleNavigation(e, 'home')}
             className={`block px-3 py-2 rounded-md text-base font-medium ${
               activePage === 'home' 
                 ? 'text-indigo-600 dark:text-indigo-400' 
@@ -189,7 +228,7 @@ export const NavBar: React.FC<NavBarProps> = ({
           
           <a 
             href="#" 
-            onClick={(e) => { e.preventDefault(); onNavigate('features'); }}
+            onClick={(e) => handleNavigation(e, 'features')}
             className={`block px-3 py-2 rounded-md text-base font-medium ${
               activePage === 'features' 
                 ? 'text-indigo-600 dark:text-indigo-400' 
@@ -201,7 +240,7 @@ export const NavBar: React.FC<NavBarProps> = ({
           
           <a 
             href="#" 
-            onClick={(e) => { e.preventDefault(); onNavigate('about'); }}
+            onClick={(e) => handleNavigation(e, 'about')}
             className={`block px-3 py-2 rounded-md text-base font-medium ${
               activePage === 'about' 
                 ? 'text-indigo-600 dark:text-indigo-400' 
@@ -213,7 +252,7 @@ export const NavBar: React.FC<NavBarProps> = ({
           
           <a 
             href="#" 
-            onClick={(e) => { e.preventDefault(); onNavigate('pricing'); }}
+            onClick={(e) => handleNavigation(e, 'pricing')}
             className={`block px-3 py-2 rounded-md text-base font-medium ${
               activePage === 'pricing' 
                 ? 'text-indigo-600 dark:text-indigo-400' 
@@ -225,7 +264,7 @@ export const NavBar: React.FC<NavBarProps> = ({
           
           <a 
             href="#" 
-            onClick={(e) => { e.preventDefault(); onNavigate('faq'); }}
+            onClick={(e) => handleNavigation(e, 'faq')}
             className={`block px-3 py-2 rounded-md text-base font-medium ${
               activePage === 'faq' 
                 ? 'text-indigo-600 dark:text-indigo-400' 
@@ -238,7 +277,7 @@ export const NavBar: React.FC<NavBarProps> = ({
           {user && (
             <a 
               href="#" 
-              onClick={(e) => { e.preventDefault(); onNavigate('dashboard'); }}
+              onClick={(e) => handleNavigation(e, 'dashboard')}
               className={`block px-3 py-2 rounded-md text-base font-medium ${
                 activePage === 'dashboard' 
                   ? 'text-indigo-600 dark:text-indigo-400' 
@@ -248,6 +287,53 @@ export const NavBar: React.FC<NavBarProps> = ({
               Dashboard
             </a>
           )}
+          
+          {/* Mobile auth buttons */}
+          <div className="pt-4 pb-3 border-t border-gray-200 dark:border-gray-700">
+            {user ? (
+              <div className="flex items-center px-3">
+                <div className="flex-shrink-0">
+                  <div className="h-10 w-10 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center">
+                    <span className="text-indigo-600 dark:text-indigo-300 font-medium">
+                      {user.email?.charAt(0).toUpperCase() || 'U'}
+                    </span>
+                  </div>
+                </div>
+                <div className="ml-3">
+                  <div className="text-base font-medium text-gray-800 dark:text-white truncate max-w-[200px]">
+                    {user.email}
+                  </div>
+                  <button 
+                    onClick={handleSignOut}
+                    className="mt-2 px-4 py-2 rounded-md text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                  >
+                    Sign Out
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="px-3 space-y-2">
+                <button 
+                  onClick={() => {
+                    onSignInClick();
+                    setMobileMenuOpen(false);
+                  }}
+                  className="w-full px-4 py-2 rounded-md text-sm font-medium text-indigo-600 dark:text-indigo-400 border border-indigo-600 dark:border-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                >
+                  Sign In
+                </button>
+                <button 
+                  onClick={() => {
+                    onSignUpClick();
+                    setMobileMenuOpen(false);
+                  }}
+                  className="w-full px-4 py-2 rounded-md text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                >
+                  Sign Up
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </nav>
