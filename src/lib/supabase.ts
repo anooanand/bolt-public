@@ -12,7 +12,14 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: true,
-    flowType: 'pkce'
+    flowType: 'pkce',
+  },
+  global: {
+    fetch: fetch.bind(globalThis),
+    headers: { 'x-application-name': 'bolt-writing-assistant' }
+  },
+  realtime: {
+    timeout: 30000 // 30 seconds timeout
   }
 });
 
@@ -24,7 +31,6 @@ export async function signUp(email: string, password: string) {
   try {
     console.log("Starting signup process for:", email);
     
-    // Create new user
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -38,16 +44,32 @@ export async function signUp(email: string, password: string) {
       }
     });
 
-    if (error) throw error;
+    if (error) {
+      console.error("Signup error details:", {
+        message: error.message,
+        status: error.status,
+        name: error.name
+      });
+      throw error;
+    }
 
-    // Sign in the newly created user
+    console.log("User created successfully:", data);
+
     const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
       email,
       password
     });
 
-    if (signInError) throw signInError;
+    if (signInError) {
+      console.error("Sign-in error after signup:", {
+        message: signInError.message,
+        status: signInError.status,
+        name: signInError.name
+      });
+      throw signInError;
+    }
 
+    console.log("Sign-in successful after signup");
     return signInData;
   } catch (err) {
     console.error("Signup process error:", err);
@@ -168,5 +190,27 @@ export async function isSignupCompleted() {
   } catch (err) {
     console.error("Check signup completion error:", err);
     return false;
+  }
+}
+
+// Supabase network connectivity check
+export async function checkSupabaseConnection() {
+  try {
+    const start = Date.now();
+    const response = await fetch(supabaseUrl);
+    const elapsed = Date.now() - start;
+    
+    console.log(`Supabase connection check: ${response.status}, time: ${elapsed}ms`);
+    return {
+      connected: response.status >= 200 && response.status < 300,
+      status: response.status,
+      responseTime: elapsed
+    };
+  } catch (err) {
+    console.error("Supabase connection check failed:", err);
+    return {
+      connected: false,
+      error: err.message
+    };
   }
 }
