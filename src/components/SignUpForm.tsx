@@ -1,5 +1,7 @@
+// Updated SignUpForm.tsx with improved error handling and connectivity check
+
 import React, { useState } from 'react';
-import { signUp } from '../lib/supabase';
+import { signUp, checkSupabaseConnection } from '../lib/supabase';
 import { z } from 'zod';
 import { Mail, Lock, Loader } from 'lucide-react';
 
@@ -23,25 +25,61 @@ export function SignUpForm({ onSuccess, onSignInClick }: SignUpFormProps) {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState<{connected: boolean, message?: string} | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setConnectionStatus(null);
     
     try {
       // Validate form data
       signUpSchema.parse({ email, password, confirmPassword });
       
       setIsLoading(true);
-      await signUp(email, password);
+      
+      // Check Supabase connection first
+      const connection = await checkSupabaseConnection();
+      setConnectionStatus({
+        connected: connection.connected,
+        message: connection.connected 
+          ? 'Connected to Supabase successfully' 
+          : `Connection failed: ${connection.error || connection.status}`
+      });
+      
+      if (!connection.connected) {
+        throw new Error(`Unable to connect to Supabase: ${connection.error || connection.status}`);
+      }
+      
+      // Proceed with signup
+      const result = await signUp(email, password);
+      
+      // Handle email confirmation if needed
+      if (result?.emailConfirmationRequired) {
+        setError('Please check your email to confirm your account before signing in.');
+        setIsLoading(false);
+        return;
+      }
+      
       onSuccess();
     } catch (err) {
       if (err instanceof z.ZodError) {
         setError(err.errors[0].message);
       } else if (err instanceof Error) {
-        setError(err.message);
+        // Provide more user-friendly error messages for common issues
+        if (err.message.includes('already registered') || err.message.includes('already exists')) {
+          setError('This email is already registered. Please sign in instead.');
+        } else if (err.message.includes('network') || err.message.includes('connect')) {
+          setError('Network error: Please check your internet connection and try again.');
+        } else {
+          setError(err.message);
+        }
+        
+        // Log detailed error for debugging
+        console.error('Signup error details:', err);
       } else {
         setError('An unexpected error occurred');
+        console.error('Unknown signup error:', err);
       }
     } finally {
       setIsLoading(false);
@@ -56,6 +94,16 @@ export function SignUpForm({ onSuccess, onSignInClick }: SignUpFormProps) {
         {error && (
           <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-md text-sm">
             {error}
+          </div>
+        )}
+        
+        {connectionStatus && (
+          <div className={`mb-4 p-3 rounded-md text-sm ${
+            connectionStatus.connected 
+              ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300' 
+              : 'bg-yellow-50 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300'
+          }`}>
+            {connectionStatus.message}
           </div>
         )}
         
