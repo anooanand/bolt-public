@@ -73,7 +73,21 @@ export async function signUp(email: string, password: string) {
 
     if (autoSignInError) {
       console.error("Auto sign-in error:", autoSignInError);
-      throw autoSignInError;
+      
+      // Add additional delay and retry once more
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      const { data: retryData, error: retryError } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+      
+      if (retryError) {
+        console.error("Retry sign-in error:", retryError);
+        throw new Error('Account created but unable to sign in automatically. Please try signing in manually.');
+      }
+      
+      return retryData;
     }
 
     console.log("User created and signed in successfully");
@@ -88,6 +102,9 @@ export async function signUp(email: string, password: string) {
 export async function signIn(email: string, password: string) {
   try {
     console.log("Attempting to sign in:", email);
+    
+    // First refresh any existing session
+    await supabase.auth.refreshSession();
     
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
@@ -120,6 +137,9 @@ export async function signOut() {
 
 export async function getCurrentUser() {
   try {
+    // First try to refresh the session
+    await supabase.auth.refreshSession();
+    
     const { data: { user }, error } = await supabase.auth.getUser();
     
     if (error) {
