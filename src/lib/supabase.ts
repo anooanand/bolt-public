@@ -13,13 +13,14 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     persistSession: true,
     detectSessionInUrl: true,
     flowType: 'pkce',
+    storage: window.localStorage,
+    storageKey: 'bolt_auth_token'
   },
   global: {
-    fetch: fetch.bind(globalThis),
     headers: { 'x-application-name': 'bolt-writing-assistant' }
   },
   realtime: {
-    timeout: 30000 // 30 seconds timeout
+    timeout: 60000
   }
 });
 
@@ -31,6 +32,18 @@ export async function signUp(email: string, password: string) {
   try {
     console.log("Starting signup process for:", email);
     
+    // First check if user exists by trying to sign in
+    const { data: existingUser, error: signInError } = await supabase.auth.signInWithPassword({
+      email,
+      password
+    });
+
+    if (existingUser?.user) {
+      console.log("User already exists and signed in successfully");
+      return existingUser;
+    }
+
+    // If user doesn't exist, create new account
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -45,32 +58,27 @@ export async function signUp(email: string, password: string) {
     });
 
     if (error) {
-      console.error("Signup error details:", {
-        message: error.message,
-        status: error.status,
-        name: error.name
-      });
+      console.error("Signup error:", error);
       throw error;
     }
 
-    console.log("User created successfully:", data);
+    // Add delay before attempting sign in
+    await new Promise(resolve => setTimeout(resolve, 1000));
 
-    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+    // Attempt to sign in the newly created user
+    const { data: signInData, error: autoSignInError } = await supabase.auth.signInWithPassword({
       email,
       password
     });
 
-    if (signInError) {
-      console.error("Sign-in error after signup:", {
-        message: signInError.message,
-        status: signInError.status,
-        name: signInError.name
-      });
-      throw signInError;
+    if (autoSignInError) {
+      console.error("Auto sign-in error:", autoSignInError);
+      throw autoSignInError;
     }
 
-    console.log("Sign-in successful after signup");
+    console.log("User created and signed in successfully");
     return signInData;
+
   } catch (err) {
     console.error("Signup process error:", err);
     throw err;
@@ -80,25 +88,34 @@ export async function signUp(email: string, password: string) {
 export async function signIn(email: string, password: string) {
   try {
     console.log("Attempting to sign in:", email);
+    
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
     
-    if (error) throw error;
+    if (error) {
+      console.error("Sign in error:", error);
+      throw error;
+    }
     
     console.log("Sign in successful");
     return data;
   } catch (err) {
-    console.error("Sign-in process error:", err);
+    console.error("Sign in process error:", err);
     throw err;
   }
 }
 
 export async function signOut() {
-  const { error } = await supabase.auth.signOut();
-  if (error) throw error;
-  console.log("Sign out successful");
+  try {
+    const { error } = await supabase.auth.signOut();
+    if (error) throw error;
+    console.log("Sign out successful");
+  } catch (err) {
+    console.error("Sign out error:", err);
+    throw err;
+  }
 }
 
 export async function getCurrentUser() {
