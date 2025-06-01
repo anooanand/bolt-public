@@ -88,7 +88,12 @@ export async function signUp(email: string, password: string) {
     return signInData;
   } catch (err) {
     console.error("Signup process error:", err);
-    throw err;
+    // Ensure we're throwing a proper Error object with a message
+    if (err instanceof Error) {
+      throw err;
+    } else {
+      throw new Error('An unexpected error occurred during signup');
+    }
   }
 }
 
