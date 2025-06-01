@@ -11,7 +11,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: true // Enable session detection in URL
+    detectSessionInUrl: true
   }
 });
 
@@ -19,76 +19,38 @@ export type AuthError = {
   message: string;
 };
 
-// Completely rewritten to fix signup issues and disable email confirmation
 export async function signUp(email: string, password: string) {
   try {
     console.log("Starting signup process for:", email);
     
-    // First try to sign in directly in case user already exists
-    const { data: existingUser, error: signInError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    
-    // If sign in succeeds, user already exists and is now signed in
-    if (existingUser?.user) {
-      console.log("User already exists and is now signed in");
-      return existingUser;
-    }
-    
-    // If user doesn't exist, create a new account with disabled email confirmation
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        // IMPORTANT: These settings disable email confirmation
         emailRedirectTo: undefined,
         data: {
-          email_confirmed: true, // Mark email as confirmed
-          payment_confirmed: false, // Initialize payment status
-          signup_completed: false // Will be set to true after payment
+          email_confirmed: true,
+          payment_confirmed: false,
+          signup_completed: false
         }
       }
     });
     
     if (error) {
       console.error("Signup error:", error.message);
+      
+      // Handle specific error cases
+      if (error.message.includes('already registered')) {
+        throw new Error('This email is already registered. Please try signing in instead.');
+      }
+      
       throw error;
     }
     
-    // Add a delay before attempting to sign in
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // After signup, explicitly sign in the user
-    const { data: signInData, error: autoSignInError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    
-    if (autoSignInError) {
-      console.error("Auto sign-in error:", autoSignInError.message);
-      
-      // Try one more time with a longer delay
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      const { data: retrySignInData, error: retryError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-      
-      if (retryError) {
-        console.error("Retry sign-in error:", retryError.message);
-        throw new Error('Account created but failed to sign in automatically. Please try signing in manually.');
-      }
-      
-      return retrySignInData;
-    }
-    
-    console.log("User created and signed in successfully");
-    return signInData;
+    console.log("User created successfully");
+    return data;
   } catch (err) {
     console.error("Signup process error:", err);
-    // Ensure we're throwing a proper Error object with a message
     if (err instanceof Error) {
       throw err;
     } else {
@@ -176,7 +138,6 @@ export async function getCurrentUser() {
   }
 }
 
-// Enhanced function to confirm payment and complete signup
 export async function confirmPayment(planType: string) {
   try {
     const { data: { user }, error: userError } = await supabase.auth.getUser();
@@ -193,7 +154,7 @@ export async function confirmPayment(planType: string) {
     // Update user metadata to mark payment as confirmed and signup as completed
     const { data, error } = await supabase.auth.updateUser({
       data: {
-        email_confirmed: true, // Ensure email is marked as confirmed
+        email_confirmed: true,
         payment_confirmed: true,
         plan_type: planType,
         signup_completed: true,
@@ -231,7 +192,6 @@ export async function confirmPayment(planType: string) {
   }
 }
 
-// Check if user has completed payment
 export async function hasCompletedPayment() {
   try {
     const { data: { user }, error } = await supabase.auth.getUser();
@@ -247,7 +207,6 @@ export async function hasCompletedPayment() {
   }
 }
 
-// Get user's plan type
 export async function getUserPlanType() {
   try {
     const { data: { user }, error } = await supabase.auth.getUser();
@@ -263,7 +222,6 @@ export async function getUserPlanType() {
   }
 }
 
-// Check if signup is completed (both email confirmed and payment confirmed)
 export async function isSignupCompleted() {
   try {
     const { data: { user }, error } = await supabase.auth.getUser();
