@@ -3,7 +3,6 @@ import { ThemeContext } from './lib/ThemeContext';
 import { getCurrentUser, confirmPayment, hasCompletedPayment, supabase } from './lib/supabase';
 import { User } from '@supabase/supabase-js';
 
-// Components
 import { NavBar } from './components/NavBar';
 import { HeroSection } from './components/HeroSection';
 import { FeaturesSection } from './components/FeaturesSection';
@@ -102,9 +101,77 @@ function App() {
     };
   }, [theme]);
 
-  // ... rest of App logic ...
+  return (
+    <ThemeContext.Provider value={{ theme, toggleTheme: () => {
+      const newTheme = theme === 'light' ? 'dark' : 'light';
+      setTheme(newTheme);
+      localStorage.setItem('theme', newTheme);
+      document.documentElement.classList.toggle('dark', newTheme === 'dark');
+    }}}>
+      <div className="min-h-screen bg-white dark:bg-gray-900 text-gray-900 dark:text-white">
+        {authError && (
+          <div className="bg-red-50 dark:bg-red-900/30 border-l-4 border-red-400 p-4">
+            <p className="text-sm text-red-700 dark:text-red-200">
+              {authError}
+              <button 
+                onClick={() => window.location.reload()} 
+                className="ml-2 font-medium underline text-red-700 dark:text-red-100 hover:text-red-600"
+              >
+                Refresh
+              </button>
+            </p>
+          </div>
+        )}
 
-  return <div>App Content</div>;
+        <NavBar 
+          onNavigate={setActivePage} 
+          activePage={activePage} 
+          user={user} 
+          onSignInClick={() => {
+            setAuthMode('signin');
+            setShowAuthModal(true);
+          }}
+          onSignUpClick={() => {
+            setAuthMode('signup');
+            setShowAuthModal(true);
+          }}
+        />
+
+        <div className="pt-16">
+          {activePage === 'home' && (
+            <>
+              <HeroSection onGetStarted={() => setShowAuthModal(true)} onStartWriting={() => setActivePage('dashboard')} />
+              <FeaturesSection />
+              <ToolsSection />
+              <WritingTypesSection />
+              <WritingModesSection />
+              <HowItWorks />
+            </>
+          )}
+
+          {activePage === 'about' && <AboutPage />}
+          {activePage === 'faq' && <FAQPage />}
+          {activePage === 'pricing' && <PricingPage />}
+          {activePage === 'signup' && <SignupPage onSignUp={() => setShowAuthModal(true)} />}
+          {activePage === 'dashboard' && user && (paymentCompleted) && <WritingArea user={user} />}
+        </div>
+
+        <AuthModal 
+          isOpen={showAuthModal}
+          onClose={() => setShowAuthModal(false)}
+          onSuccess={async () => {
+            const refreshedUser = await getCurrentUser();
+            setUser(refreshedUser);
+            const completed = await hasCompletedPayment();
+            setPaymentCompleted(completed);
+            setActivePage('dashboard');
+          }}
+          initialMode={authMode}
+          key={authMode}
+        />
+      </div>
+    </ThemeContext.Provider>
+  );
 }
 
 export default App;
