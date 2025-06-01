@@ -170,6 +170,22 @@ function App() {
     if (currentUser) {
       const completed = await hasCompletedPayment();
       setPaymentCompleted(completed);
+      
+      // If payment is completed, redirect to dashboard
+      if (completed) {
+        handleNavigate('dashboard');
+      }
+    }
+  };
+
+  // Handle "Start Writing" button click
+  const handleStartWriting = () => {
+    if (user) {
+      // If user is logged in, go to dashboard
+      handleNavigate('dashboard');
+    } else {
+      // If user is not logged in, open signup modal
+      handleSignUpClick();
     }
   };
 
@@ -201,7 +217,7 @@ function App() {
         <div className="pt-16"> {/* Add padding to account for fixed navbar */}
           {activePage === 'home' && (
             <>
-              <HeroSection onGetStarted={() => handleNavigate('signup')} />
+              <HeroSection onGetStarted={handleSignUpClick} onStartWriting={handleStartWriting} />
               <FeaturesSection />
               <ToolsSection />
               <WritingTypesSection />
@@ -213,7 +229,7 @@ function App() {
           {activePage === 'about' && <AboutPage />}
           {activePage === 'faq' && <FAQPage />}
           {activePage === 'pricing' && <PricingPage />}
-          {activePage === 'signup' && <SignupPage />}
+          {activePage === 'signup' && <SignupPage onSignUp={handleSignUpClick} />}
           
           {activePage === 'dashboard' && user && paymentCompleted && (
             <WritingArea user={user} />
@@ -256,6 +272,7 @@ function App() {
           onClose={() => setShowAuthModal(false)}
           onSuccess={handleAuthSuccess}
           initialMode={authMode}
+          key={authMode} // Add key to force re-render when mode changes
         />
       </div>
     </ThemeContext.Provider>
