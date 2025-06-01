@@ -1,22 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { ThemeContext } from './lib/ThemeContext';
-import { getCurrentUser, confirmPayment, hasCompletedPayment, supabase } from './lib/supabase';
+import { ThemeContext } from '../lib/ThemeContext';
+import { getCurrentUser, confirmPayment, hasCompletedPayment, supabase } from '../lib/supabase';
 import { User } from '@supabase/supabase-js';
 
 // Components
-import { NavBar } from './components/NavBar';
-import { HeroSection } from './components/HeroSection';
-import { FeaturesSection } from './components/FeaturesSection';
-import { ToolsSection } from './components/ToolsSection';
-import { WritingTypesSection } from './components/WritingTypesSection';
-import { WritingModesSection } from './components/WritingModesSection';
-import { HowItWorks } from './components/HowItWorks';
-import { AboutPage } from './components/AboutPage';
-import { FAQPage } from './components/FAQPage';
-import { PricingPage } from './components/PricingPage';
-import { AuthModal } from './components/AuthModal';
-import { SignupPage } from './components/SignupPage';
-import { WritingArea } from './components/WritingArea';
+import { NavBar } from './NavBar';
+import { HeroSection } from './HeroSection';
+import { FeaturesSection } from './FeaturesSection';
+import { ToolsSection } from './ToolsSection';
+import { WritingTypesSection } from './WritingTypesSection';
+import { WritingModesSection } from './WritingModesSection';
+import { HowItWorks } from './HowItWorks';
+import { AboutPage } from './AboutPage';
+import { FAQPage } from './FAQPage';
+import { PricingPage } from './PricingPage';
+import { AuthModal } from './AuthModal';
+import { SignupPage } from './SignupPage';
+import { WritingArea } from './WritingArea';
 
 const PaymentSuccess = () => {
   const [countdown, setCountdown] = useState(5);
