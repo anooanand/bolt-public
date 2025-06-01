@@ -122,6 +122,7 @@ function App() {
   const [paymentCompleted, setPaymentCompleted] = useState(false);
   const [hasTemporaryAccess, setHasTemporaryAccess] = useState(false);
   const [temporaryAccessRemaining, setTemporaryAccessRemaining] = useState<number | null>(null);
+  const [authError, setAuthError] = useState<string | null>(null);
 
   const urlParams = new URLSearchParams(window.location.search);
   const paymentSuccess = urlParams.get('payment_success') === 'true';
@@ -172,6 +173,10 @@ function App() {
       }
     } catch (error) {
       console.error('Error refreshing user data:', error);
+      // Don't set auth error here as it's not a critical operation
+    } finally {
+      // Ensure loading state is updated even if there's an error
+      setIsLoading(false);
     }
   };
 
@@ -239,20 +244,39 @@ function App() {
         }
       } catch (error) {
         console.error('Error checking auth status:', error);
+        setAuthError('Failed to authenticate. Please try refreshing the page.');
       } finally {
+        // Always set isLoading to false after auth check completes or fails
+        // This ensures the app doesn't get stuck in loading state
         setIsLoading(false);
       }
     };
 
-    checkAuth();
+    // Add a timeout to ensure loading state is cleared even if auth check hangs
+    const authTimeout = setTimeout(() => {
+      setIsLoading(false);
+      console.warn('Auth check timed out - forcing app to load anyway');
+    }, 10000); // 10 second timeout
+
+    checkAuth().finally(() => {
+      // Clear the timeout if auth check completes normally
+      clearTimeout(authTimeout);
+    });
     
     // Set up auth state change listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async () => {
-      await refreshUserData();
+      try {
+        await refreshUserData();
+      } catch (error) {
+        console.error('Error in auth state change handler:', error);
+        // Ensure loading state is updated even if there's an error
+        setIsLoading(false);
+      }
     });
 
     return () => {
       subscription.unsubscribe();
+      clearTimeout(authTimeout);
     };
   }, [theme]);
 
@@ -321,6 +345,29 @@ function App() {
   return (
     <ThemeContext.Provider value={{ theme, toggleTheme }}>
       <div className="min-h-screen bg-white dark:bg-gray-900 text-gray-900 dark:text-white">
+        {authError && (
+          <div className="bg-red-50 dark:bg-red-900/30 border-l-4 border-red-400 p-4">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <p className="text-sm text-red-700 dark:text-red-200">
+                  {authError}
+                  <button 
+                    onClick={() => window.location.reload()} 
+                    className="ml-2 font-medium underline text-red-700 dark:text-red-100 hover:text-red-600"
+                  >
+                    Refresh
+                  </button>
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         <NavBar 
           onNavigate={handleNavigate} 
           activePage={activePage} 
