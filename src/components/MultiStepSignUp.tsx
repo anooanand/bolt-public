@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { signUp } from '../lib/supabase';
+import { signUp, confirmPayment } from '../lib/supabase';
 import { z } from 'zod';
 import { Mail, Lock, Loader, Check, ArrowRight } from 'lucide-react';
 
@@ -69,16 +69,29 @@ export function MultiStepSignUp({ onSuccess, onSignInClick, simpleRedirect = fal
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [redirectAfterSignup, setRedirectAfterSignup] = useState(false);
+  const [paymentConfirmed, setPaymentConfirmed] = useState(false);
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const paymentSuccess = urlParams.get('payment_success');
     const planId = urlParams.get('plan');
+    
     if (paymentSuccess === 'true' && planId) {
       const plan = plans.find(p => p.id === planId);
       if (plan) {
         setSelectedPlan(plan);
         setCurrentStep(4);
+        
+        // Call confirmPayment to update user metadata
+        confirmPayment(planId)
+          .then(() => {
+            console.log('Payment confirmed successfully');
+            setPaymentConfirmed(true);
+          })
+          .catch(err => {
+            console.error('Failed to confirm payment:', err);
+          });
+        
         window.history.replaceState({}, document.title, window.location.pathname);
       }
     }
@@ -379,7 +392,7 @@ export function MultiStepSignUp({ onSuccess, onSignInClick, simpleRedirect = fal
             
             <button
               onClick={() => {
-                // Redirect to writing area or dashboard
+                // Make sure we're using an absolute path
                 window.location.href = '/dashboard';
               }}
               className="w-full py-3 px-6 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
