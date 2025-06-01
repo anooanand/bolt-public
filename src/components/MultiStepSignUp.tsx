@@ -1,322 +1,418 @@
 import React, { useState, useEffect } from 'react';
-import { ThemeContext } from '../lib/ThemeContext';
-import { getCurrentUser, confirmPayment, hasCompletedPayment, supabase } from '../lib/supabase';
-import { User } from '@supabase/supabase-js';
+import { signUp } from '../lib/supabase';
+import { z } from 'zod';
+import { Mail, Lock, Loader, Check, ArrowRight } from 'lucide-react';
 
-// Components
-import { NavBar } from './NavBar';
-import { HeroSection } from './HeroSection';
-import { FeaturesSection } from './FeaturesSection';
-import { ToolsSection } from './ToolsSection';
-import { WritingTypesSection } from './WritingTypesSection';
-import { WritingModesSection } from './WritingModesSection';
-import { HowItWorks } from './HowItWorks';
-import { AboutPage } from './AboutPage';
-import { FAQPage } from './FAQPage';
-import { PricingPage } from './PricingPage';
-import { AuthModal } from './AuthModal';
-import { SignupPage } from './SignupPage';
-import { WritingArea } from './WritingArea';
+const signUpSchema = z.object({
+  email: z.string().email('Please enter a valid email'),
+  password: z.string().min(6, 'Password must be at least 6 characters'),
+  confirmPassword: z.string()
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
+});
 
-const PaymentSuccess = () => {
-  const [countdown, setCountdown] = useState(5);
-  const [processingPayment, setProcessingPayment] = useState(true);
+const STRIPE_URLS = {
+  tryOut: 'https://buy.stripe.com/test_14kaG7gNX1773v28wB',
+  base: 'https://buy.stripe.com/test_3cs5lNbtD5nn3v28wC',
+  premium: 'https://buy.stripe.com/test_6oE7tVdBL3fffdKbIP'
+};
 
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const planType = urlParams.get('plan') || 'base';
+interface MultiStepSignUpProps {
+  onSuccess: () => void;
+  onSignInClick: () => void;
+  simpleRedirect?: boolean; // if true, skip plan selection and redirect to /pricing
+}
 
-    const updatePayment = async () => {
-      try {
-        // Confirm payment and update user metadata
-        await confirmPayment(planType);
-        
-        // Force refresh of the user session to get updated metadata
-        await supabase.auth.refreshSession();
-        
-        // Double-check that payment is confirmed in metadata
-        const { data: { user } } = await supabase.auth.getUser();
-        console.log("User metadata after payment:", user?.user_metadata);
-        
-        setProcessingPayment(false);
+type Plan = {
+  id: string;
+  name: string;
+  price: string;
+  description: string;
+  features: string[];
+  stripeUrl: string;
+};
 
-        const timer = setInterval(() => {
-          setCountdown((prev) => {
-            if (prev <= 1) {
-              clearInterval(timer);
-              // Use absolute path and clear any query parameters
-              window.location.href = '/dashboard';
-              return 0;
-            }
-            return prev - 1;
-          });
-        }, 1000);
+const plans: Plan[] = [
+  {
+    id: 'tryout',
+    name: 'Try Out',
+    price: '$4.99',
+    description: 'Perfect for students just starting their preparation',
+    features: ['Access to basic writing tools', 'Limited AI feedback', 'Basic text type templates', 'Email support'],
+    stripeUrl: STRIPE_URLS.tryOut
+  },
+  {
+    id: 'base',
+    name: 'Base Plan',
+    price: '$19.99',
+    description: 'Ideal for students serious about exam preparation',
+    features: ['Unlimited AI feedback', 'All text type templates', 'Advanced writing analysis', 'Practice exam simulations', 'Priority support', 'Progress tracking'],
+    stripeUrl: STRIPE_URLS.base
+  },
+  {
+    id: 'premium',
+    name: 'Premium',
+    price: '$29.99',
+    description: 'The ultimate preparation package',
+    features: ['Everything in Base Plan', 'One-on-one coaching sessions', 'Personalized study plan', 'Mock exam reviews', 'Parent progress reports', 'Guaranteed score improvement'],
+    stripeUrl: STRIPE_URLS.premium
+  }
+];
 
-        return () => clearInterval(timer);
-      } catch (error) {
-        console.error('Failed to confirm payment:', error);
-        setProcessingPayment(false);
+// Export the MultiStepSignUp component as a named export
+export function MultiStepSignUp({ onSuccess, onSignInClick, simpleRedirect = false }: MultiStepSignUpProps) {
+  const [currentStep, setCurrentStep] = useState(1);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [redirectAfterSignup, setRedirectAfterSignup] = useState(false);
+
+  const handleSignUp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    try {
+      signUpSchema.parse({ email, password, confirmPassword });
+      setIsLoading(true);
+      await signUp(email, password);
+
+      localStorage.setItem('userEmail', email);
+      
+      // Always proceed to step 2 (plan selection) after successful signup
+      // Don't close the modal or call onSuccess yet
+      setCurrentStep(2);
+      
+      // Only store the redirect preference, don't redirect yet
+      if (simpleRedirect) {
+        setRedirectAfterSignup(true);
       }
-    };
+    } catch (err: any) {
+      if (err instanceof z.ZodError) {
+        setError(err.errors[0].message);
+      } else if (err.message?.includes('already registered') || err.message?.includes('already exists')) {
+        localStorage.setItem('userEmail', email);
+        
+        // Even for existing users, proceed to step 2 (plan selection)
+        setCurrentStep(2);
+        
+        if (simpleRedirect) {
+          setRedirectAfterSignup(true);
+        }
+      } else {
+        setError(err.message || 'An error occurred during sign up');
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-    updatePayment();
-  }, []);
+  const handlePlanSelection = (plan: Plan) => {
+    setSelectedPlan(plan);
+    setCurrentStep(3);
+  };
+
+  const handlePaymentRedirect = () => {
+    if (!selectedPlan) return;
+    localStorage.setItem('selectedPlanId', selectedPlan.id);
+    localStorage.setItem('userEmail', email);
+    const successUrl = `${window.location.origin}?payment_success=true&plan=${selectedPlan.id}`;
+    
+    // Fix: Add question mark before parameters if not already present
+    const stripeBaseUrl = selectedPlan.stripeUrl;
+    const stripeUrlWithEmail = stripeBaseUrl.includes('?') 
+      ? `${stripeBaseUrl}&prefilled_email=${encodeURIComponent(email)}`
+      : `${stripeBaseUrl}?prefilled_email=${encodeURIComponent(email)}`;
+    
+    // Add redirect parameter
+    const finalUrl = `${stripeUrlWithEmail}&redirect_to=${encodeURIComponent(successUrl)}`;
+    window.location.href = finalUrl;
+  };
+
+  // Only call onSuccess and close the modal when explicitly needed
+  const completeSignup = () => {
+    onSuccess();
+    
+    // If redirectAfterSignup is true, redirect to pricing page
+    if (redirectAfterSignup) {
+      window.location.href = '/pricing';
+    }
+  };
+
+  const renderStep = () => {
+    switch (currentStep) {
+      case 1:
+        return (
+          <div className="w-full">
+            <form onSubmit={handleSignUp} className="space-y-6">
+              <h2 className="text-2xl font-bold text-center text-gray-900 dark:text-white">Create Your Free Account</h2>
+              
+              {error && (
+                <div className="p-3 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-md text-sm">
+                  {error}
+                </div>
+              )}
+              
+              <div>
+                <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2" htmlFor="email">
+                  Email
+                </label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+                  <input
+                    id="email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
+                    placeholder="you@example.com"
+                    required
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2" htmlFor="password">
+                  Password
+                </label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+                  <input
+                    id="password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
+                    placeholder="••••••••"
+                    required
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2" htmlFor="confirmPassword">
+                  Confirm Password
+                </label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+                  <input
+                    id="confirmPassword"
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
+                    placeholder="••••••••"
+                    required
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader className="animate-spin -ml-1 mr-2 h-5 w-5" />
+                      Creating account...
+                    </>
+                  ) : (
+                    'Sign Up'
+                  )}
+                </button>
+                
+                <button
+                  type="button"
+                  onClick={onSignInClick}
+                  className="mt-4 text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-300 text-center w-full"
+                >
+                  Already have an account? Sign in
+                </button>
+              </div>
+            </form>
+          </div>
+        );
+      
+      case 2:
+        return (
+          <div className="w-full">
+            <h2 className="text-2xl font-bold text-center text-gray-900 dark:text-white mb-6">Choose Your Plan</h2>
+            <p className="text-center text-gray-600 dark:text-gray-300 mb-8">
+              Select the subscription that best fits your needs
+            </p>
+            
+            <div className="space-y-6">
+              {plans.map((plan) => (
+                <div 
+                  key={plan.id}
+                  onClick={() => handlePlanSelection(plan)}
+                  className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6 cursor-pointer hover:shadow-md transition-shadow duration-200"
+                >
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-xl font-semibold text-gray-900 dark:text-white">{plan.name}</h3>
+                    <span className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">{plan.price}<span className="text-sm font-normal text-gray-500">/month</span></span>
+                  </div>
+                  
+                  <p className="text-gray-600 dark:text-gray-300 mb-4">{plan.description}</p>
+                  
+                  <ul className="space-y-2 mb-6">
+                    {plan.features.map((feature, index) => (
+                      <li key={index} className="flex items-start">
+                        <Check className="h-5 w-5 text-green-500 mr-2 shrink-0" />
+                        <span className="text-gray-600 dark:text-gray-300">{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  
+                  <button
+                    className="w-full py-2 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 flex items-center justify-center"
+                  >
+                    Select Plan
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      
+      case 3:
+        return (
+          <div className="w-full text-center">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">3-Day Free Trial</h2>
+            
+            <div className="bg-gradient-to-r from-purple-100 to-indigo-100 dark:from-purple-900/30 dark:to-indigo-900/30 p-6 rounded-lg mb-8">
+              <p className="text-lg text-gray-800 dark:text-gray-200 mb-4">
+                Try all features free for 3 days with {selectedPlan?.name}
+              </p>
+              <p className="text-gray-600 dark:text-gray-300 mb-6">
+                You won't be charged until your trial ends. Cancel anytime.
+              </p>
+              
+              <div className="bg-white dark:bg-gray-800 p-4 rounded-md mb-6">
+                <div className="flex justify-between mb-2">
+                  <span className="text-gray-600 dark:text-gray-300">Plan:</span>
+                  <span className="font-medium text-gray-900 dark:text-white">{selectedPlan?.name}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600 dark:text-gray-300">Price:</span>
+                  <span className="font-medium text-gray-900 dark:text-white">{selectedPlan?.price}/month</span>
+                </div>
+                <div className="flex justify-between mt-2">
+                  <span className="text-gray-600 dark:text-gray-300">Email:</span>
+                  <span className="font-medium text-gray-900 dark:text-white">{email}</span>
+                </div>
+              </div>
+            </div>
+            
+            <button
+              onClick={handlePaymentRedirect}
+              className="w-full py-3 px-6 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            >
+              Start Your Free Trial
+            </button>
+            
+            <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">
+              By proceeding, you agree to our Terms of Service and Privacy Policy
+            </p>
+          </div>
+        );
+      
+      case 4:
+        // Call completeSignup when rendering the final step
+        // This ensures the modal is closed only after showing the success message
+        setTimeout(() => completeSignup(), 2000);
+        
+        return (
+          <div className="w-full text-center">
+            <div className="mb-6 flex justify-center">
+              <div className="rounded-full bg-green-100 p-3">
+                <Check className="h-8 w-8 text-green-600" />
+              </div>
+            </div>
+            
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Payment Successful!</h2>
+            
+            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6 mb-6">
+              <p className="text-lg text-gray-800 dark:text-gray-200 mb-4">
+                Thank you for subscribing to {selectedPlan?.name}
+              </p>
+              
+              <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-md mb-4">
+                <div className="flex justify-between mb-2">
+                  <span className="text-gray-600 dark:text-gray-300">Plan:</span>
+                  <span className="font-medium text-gray-900 dark:text-white">{selectedPlan?.name}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600 dark:text-gray-300">Price:</span>
+                  <span className="font-medium text-gray-900 dark:text-white">{selectedPlan?.price}/month</span>
+                </div>
+                <div className="flex justify-between mt-2">
+                  <span className="text-gray-600 dark:text-gray-300">Trial ends:</span>
+                  <span className="font-medium text-gray-900 dark:text-white">
+                    {new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toLocaleDateString()}
+                  </span>
+                </div>
+              </div>
+              
+              <p className="text-gray-600 dark:text-gray-300">
+                Your 3-day free trial has started. You can now access all features of your plan.
+              </p>
+            </div>
+            
+            <button
+              onClick={() => {
+                // Redirect to writing area or dashboard
+                window.location.href = '/dashboard';
+              }}
+              className="w-full py-3 px-6 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            >
+              Start Writing
+            </button>
+          </div>
+        );
+      
+      default:
+        return null;
+    }
+  };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-white to-gray-50 dark:from-gray-900 dark:to-gray-800">
-      <div className="max-w-md w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg p-8 text-center">
-        {processingPayment ? (
-          <>
-            <div className="w-16 h-16 mx-auto mb-6">
-              <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-indigo-500"></div>
+    <div className="w-full max-w-md mx-auto">
+      <div className="bg-white dark:bg-gray-800 shadow-md rounded-lg px-8 pt-6 pb-8 mb-4">
+        <div className="flex justify-between mb-8">
+          {[1, 2, 3, 4].map((step) => (
+            <div key={step} className="flex flex-col items-center">
+              <div
+                className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                  currentStep >= step
+                    ? 'bg-indigo-600 text-white'
+                    : 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
+                }`}
+              >
+                {currentStep > step ? <Check className="h-5 w-5" /> : step}
+              </div>
+              <span
+                className={`text-xs mt-2 ${
+                  currentStep >= step
+                    ? 'text-indigo-600 dark:text-indigo-400 font-medium'
+                    : 'text-gray-500 dark:text-gray-400'
+                }`}
+              >
+                {step === 1 && 'Sign Up'}
+                {step === 2 && 'Choose Plan'}
+                {step === 3 && '3-Day Trial'}
+                {step === 4 && 'Start Writing'}
+              </span>
             </div>
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Processing Payment</h2>
-            <p className="text-gray-600 dark:text-gray-300">
-              Please wait while we confirm your payment...
-            </p>
-          </>
-        ) : (
-          <>
-            <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto mb-6">
-              <svg className="w-8 h-8 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
-              </svg>
-            </div>
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Payment Successful!</h2>
-            <p className="text-gray-600 dark:text-gray-300 mb-6">
-              Thank you for your purchase. Your account has been activated and you now have full access to all features.
-            </p>
-            <p className="text-gray-500 dark:text-gray-400">
-              Redirecting to dashboard in {countdown} seconds...
-            </p>
-          </>
-        )}
+          ))}
+        </div>
+        {renderStep()}
       </div>
     </div>
   );
-};
-
-function App() {
-  const [theme, setTheme] = useState<'light' | 'dark'>('light');
-  const [activePage, setActivePage] = useState('home');
-  const [showAuthModal, setShowAuthModal] = useState(false);
-  const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [paymentCompleted, setPaymentCompleted] = useState(false);
-
-  const urlParams = new URLSearchParams(window.location.search);
-  const paymentSuccess = urlParams.get('payment_success') === 'true';
-
-  // Function to refresh user data and payment status
-  const refreshUserData = async () => {
-    try {
-      // Force refresh the session to get latest metadata
-      await supabase.auth.refreshSession();
-      
-      // Get updated user data
-      const currentUser = await getCurrentUser();
-      setUser(currentUser);
-
-      if (currentUser) {
-        // Check payment status with fresh data
-        const completed = await hasCompletedPayment();
-        console.log("Payment completed status:", completed);
-        setPaymentCompleted(completed);
-      }
-    } catch (error) {
-      console.error('Error refreshing user data:', error);
-    }
-  };
-
-  useEffect(() => {
-    // Theme preference
-    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-      setTheme('dark');
-    }
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'dark' || savedTheme === 'light') {
-      setTheme(savedTheme);
-    }
-    document.documentElement.classList.toggle('dark', theme === 'dark');
-
-    // Authentication check
-    const checkAuth = async () => {
-      try {
-        // Force refresh the session to get latest metadata
-        await supabase.auth.refreshSession();
-        
-        const currentUser = await getCurrentUser();
-        setUser(currentUser);
-
-        // ✅ Check and redirect after signup if flag exists
-        const redirectTarget = localStorage.getItem('redirect_after_signup');
-        if (currentUser && redirectTarget) {
-          localStorage.removeItem('redirect_after_signup');
-          setActivePage(redirectTarget);
-        }
-
-        if (currentUser) {
-          // Check payment status with fresh data
-          const completed = await hasCompletedPayment();
-          console.log("Initial payment completed status:", completed);
-          setPaymentCompleted(completed);
-        }
-      } catch (error) {
-        console.error('Error checking auth status:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    checkAuth();
-    
-    // Set up auth state change listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async () => {
-      await refreshUserData();
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [theme]);
-
-  // Refresh user data when activePage changes to dashboard
-  useEffect(() => {
-    if (activePage === 'dashboard') {
-      refreshUserData();
-    }
-  }, [activePage]);
-
-  const toggleTheme = () => {
-    const newTheme = theme === 'light' ? 'dark' : 'light';
-    setTheme(newTheme);
-    localStorage.setItem('theme', newTheme);
-    document.documentElement.classList.toggle('dark', newTheme === 'dark');
-  };
-
-  const handleNavigate = (page: string) => {
-    setActivePage(page);
-    window.scrollTo(0, 0);
-    
-    // Refresh user data when navigating to dashboard
-    if (page === 'dashboard') {
-      refreshUserData();
-    }
-  };
-
-  const handleSignInClick = () => {
-    setAuthMode('signin');
-    setShowAuthModal(true);
-  };
-
-  const handleSignUpClick = () => {
-    setAuthMode('signup');
-    setShowAuthModal(true);
-  };
-
-  const handleAuthSuccess = async () => {
-    await refreshUserData();
-    
-    if (user && paymentCompleted) {
-      handleNavigate('dashboard');
-    }
-  };
-
-  const handleStartWriting = () => {
-    if (user) {
-      handleNavigate('dashboard');
-    } else {
-      handleSignUpClick();
-    }
-  };
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-gray-900">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
-      </div>
-    );
-  }
-
-  if (paymentSuccess) {
-    return <PaymentSuccess />;
-  }
-
-  return (
-    <ThemeContext.Provider value={{ theme, toggleTheme }}>
-      <div className="min-h-screen bg-white dark:bg-gray-900 text-gray-900 dark:text-white">
-        <NavBar 
-          onNavigate={handleNavigate} 
-          activePage={activePage} 
-          user={user} 
-          onSignInClick={handleSignInClick}
-          onSignUpClick={handleSignUpClick}
-        />
-
-        <div className="pt-16">
-          {activePage === 'home' && (
-            <>
-              <HeroSection onGetStarted={handleSignUpClick} onStartWriting={handleStartWriting} />
-              <FeaturesSection />
-              <ToolsSection />
-              <WritingTypesSection />
-              <WritingModesSection />
-              <HowItWorks />
-            </>
-          )}
-
-          {activePage === 'about' && <AboutPage />}
-          {activePage === 'faq' && <FAQPage />}
-          {activePage === 'pricing' && <PricingPage />}
-          {activePage === 'signup' && <SignupPage onSignUp={handleSignUpClick} />}
-
-          {activePage === 'dashboard' && user && paymentCompleted && (
-            <WritingArea user={user} />
-          )}
-
-          {activePage === 'dashboard' && user && !paymentCompleted && (
-            <div className="min-h-screen flex items-center justify-center">
-              <div className="text-center max-w-md p-8 bg-white dark:bg-gray-800 rounded-lg shadow-md">
-                <h2 className="text-2xl font-bold mb-4">Complete Your Subscription</h2>
-                <p className="text-gray-600 dark:text-gray-300 mb-6">
-                  Your account has been created, but you need to complete your subscription to access all features.
-                </p>
-                <button 
-                  onClick={() => handleNavigate('pricing')}
-                  className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
-                >
-                  View Plans
-                </button>
-              </div>
-            </div>
-          )}
-
-          {activePage === 'dashboard' && !user && (
-            <div className="min-h-screen flex items-center justify-center">
-              <div className="text-center">
-                <h2 className="text-2xl font-bold mb-4">Please sign in to access your dashboard</h2>
-                <button 
-                  onClick={handleSignInClick}
-                  className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
-                >
-                  Sign In
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-
-        <AuthModal 
-          isOpen={showAuthModal}
-          onClose={() => setShowAuthModal(false)}
-          onSuccess={handleAuthSuccess}
-          initialMode={authMode}
-          key={authMode}
-        />
-      </div>
-    </ThemeContext.Provider>
-  );
 }
-
-export default App;
