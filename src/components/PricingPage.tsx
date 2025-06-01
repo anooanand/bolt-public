@@ -1,8 +1,34 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ArrowRight, Check, Star } from 'lucide-react';
 
 export function PricingPage() {
   const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>('monthly');
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  
+  // Get user email from localStorage on component mount
+  useEffect(() => {
+    const email = localStorage.getItem('userEmail');
+    setUserEmail(email);
+    
+    // If no email is found, check if there's a session cookie
+    if (!email) {
+      // Try to get email from session if available
+      const checkSession = async () => {
+        try {
+          const { supabase } = await import('../lib/supabase');
+          const { data } = await supabase.auth.getSession();
+          if (data.session?.user?.email) {
+            localStorage.setItem('userEmail', data.session.user.email);
+            setUserEmail(data.session.user.email);
+          }
+        } catch (error) {
+          console.error('Error checking session:', error);
+        }
+      };
+      
+      checkSession();
+    }
+  }, []);
   
   const plans = [
     {
@@ -58,6 +84,34 @@ export function PricingPage() {
       popular: false
     }
   ];
+
+  const handleSubscribe = (plan: typeof plans[0]) => {
+    // Get email from state or prompt user if not available
+    const email = userEmail || prompt('Please enter your email to continue:');
+    
+    if (!email) {
+      alert('Email is required to continue with subscription');
+      return;
+    }
+    
+    // Store email for future use
+    localStorage.setItem('userEmail', email);
+    
+    // Construct the URL with email and redirect parameters
+    let url = plan.buttonLink;
+    
+    // Add email parameter
+    url = `${url}&prefilled_email=${encodeURIComponent(email)}`;
+    
+    // Add success redirect parameter
+    const successUrl = `${window.location.origin}?payment_success=true&plan=${plan.name.toLowerCase().replace(/\s+/g, '-')}`;
+    url = `${url}&redirect_to=${encodeURIComponent(successUrl)}`;
+    
+    console.log('Redirecting to payment URL:', url);
+    
+    // Redirect to Stripe
+    window.location.href = url;
+  };
 
   return (
     <section className="py-16 bg-white dark:bg-gray-900" id="pricing">
@@ -128,22 +182,7 @@ export function PricingPage() {
                 </div>
                 
                 <button
-                  onClick={() => {
-                    // Get email from localStorage if available
-                    const email = localStorage.getItem('userEmail');
-                    let url = plan.buttonLink;
-                    
-                    // Add email parameter if available
-                    if (email) {
-                      url = `${url}&prefilled_email=${encodeURIComponent(email)}`;
-                    }
-                    
-                    // Add success redirect parameter
-                    const successUrl = `${window.location.origin}?payment_success=true&plan=${plan.name.toLowerCase().replace(' ', '-')}`;
-                    url = `${url}&redirect_to=${encodeURIComponent(successUrl)}`;
-                    
-                    window.location.href = url;
-                  }}
+                  onClick={() => handleSubscribe(plan)}
                   className={`w-full py-3 px-4 rounded-md ${
                     plan.popular
                       ? 'bg-indigo-600 hover:bg-indigo-700 text-white'
