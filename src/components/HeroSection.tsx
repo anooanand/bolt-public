@@ -3,9 +3,10 @@ import { ArrowRight, Star, Zap } from 'lucide-react';
 
 interface HeroSectionProps {
   onGetStarted: () => void;
+  onStartWriting: () => void; // Added prop for Start Writing button
 }
 
-export function HeroSection({ onGetStarted }: HeroSectionProps) {
+export function HeroSection({ onGetStarted, onStartWriting }: HeroSectionProps) {
   return (
     <section className="relative overflow-hidden bg-gradient-to-b from-white to-indigo-50 dark:from-gray-900 dark:to-gray-800 pt-20 pb-16 md:pt-32 md:pb-24">
       <div className="absolute inset-0 bg-grid opacity-30"></div>
@@ -34,11 +35,32 @@ export function HeroSection({ onGetStarted }: HeroSectionProps) {
             </button>
             
             <button 
-              onClick={() => document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' })}
+              onClick={onStartWriting}
               className="px-8 py-4 text-lg font-semibold rounded-md border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-800 transition-all duration-200 flex items-center justify-center"
             >
-              See How It Works
+              Start Writing
+              <ArrowRight className="ml-2 w-5 h-5" />
             </button>
+          </div>
+          
+          <div className="mt-12 flex flex-col sm:flex-row items-center justify-center gap-4 text-gray-600 dark:text-gray-400">
+            <div className="flex items-center">
+              <div className="flex mr-2">
+                {[1, 2, 3, 4, 5].map(star => (
+                  <Star key={star} className="w-4 h-4 text-yellow-400 fill-current" />
+                ))}
+              </div>
+              <span>5.0 (100+ reviews)</span>
+            </div>
+            <span className="hidden sm:inline-block">•</span>
+            <div className="flex items-center">
+              <Zap className="w-4 h-4 text-indigo-500 mr-1" />
+              <span>Used by 10,000+ students</span>
+            </div>
+            <span className="hidden sm:inline-block">•</span>
+            <div className="flex items-center">
+              <span>3-day free trial</span>
+            </div>
           </div>
         </div>
       </div>
