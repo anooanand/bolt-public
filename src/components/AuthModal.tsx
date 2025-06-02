@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { SignInForm } from './SignInForm';
-import { MultiStepSignUp } from './MultiStepSignUp';
+import { SimpleSignUp } from './SimpleSignUp';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -18,7 +18,7 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'signin' }
   const [mode, setMode] = useState<AuthMode>(initialMode);
   
   // Update mode when initialMode changes
-  React.useEffect(() => {
+  useEffect(() => {
     setMode(initialMode);
   }, [initialMode]);
 
@@ -56,7 +56,7 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'signin' }
                 onSignUpClick={() => setMode('signup')}
               />
             ) : (
-              <MultiStepSignUp
+              <SimpleSignUp
                 onSuccess={() => {
                   onSuccess();
                   onClose();
