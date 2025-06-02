@@ -1,9 +1,10 @@
-// Updated supabase.ts file with simplified signup logic and better error handling
+// Updated supabase.ts file with improved API key handling and error reporting
 
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+// Trim whitespace from environment variables to prevent issues
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.trim();
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim();
 
 // Log environment variables availability for debugging
 console.log("Environment variables check:");
@@ -16,6 +17,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing Supabase environment variables');
 }
 
+// Create Supabase client with explicit headers to ensure API key is properly sent
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     autoRefreshToken: true,
@@ -26,7 +28,10 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     storageKey: 'bolt_auth_token'
   },
   global: {
-    headers: { 'x-application-name': 'bolt-writing-assistant' }
+    headers: { 
+      'x-application-name': 'bolt-writing-assistant',
+      'apikey': supabaseAnonKey // Explicitly add API key to headers
+    }
   },
   realtime: {
     timeout: 60000
@@ -37,11 +42,28 @@ export type AuthError = {
   message: string;
 };
 
-// Updated Supabase connection check using a proper API endpoint
+// Updated Supabase connection check with detailed error reporting
 export async function checkSupabaseConnection() {
   try {
     const start = Date.now();
-    // Use getSession() as a lightweight way to verify connectivity
+    
+    // First check if we can reach the Supabase endpoint
+    try {
+      const response = await fetch(supabaseUrl);
+      if (!response.ok) {
+        return {
+          connected: false,
+          error: `Supabase endpoint returned status ${response.status}`
+        };
+      }
+    } catch (fetchErr) {
+      return {
+        connected: false,
+        error: `Cannot reach Supabase endpoint: ${fetchErr.message}`
+      };
+    }
+    
+    // Then try a lightweight auth operation
     const { data, error } = await supabase.auth.getSession();
     const elapsed = Date.now() - start;
     
@@ -49,7 +71,8 @@ export async function checkSupabaseConnection() {
       console.error("Supabase connection check failed:", error);
       return {
         connected: false,
-        error: error.message
+        error: error.message,
+        details: error
       };
     }
     
@@ -62,17 +85,18 @@ export async function checkSupabaseConnection() {
     console.error("Supabase connection check failed:", err);
     return {
       connected: false,
-      error: err.message
+      error: err.message,
+      details: err
     };
   }
 }
 
-// UPDATED: Simplified signup function without initial sign-in attempt
+// Simplified signup function with better error handling
 export async function signUp(email: string, password: string) {
   try {
     console.log("Starting signup process for:", email);
     
-    // Check connection first
+    // Check connection first with detailed logging
     const connectionCheck = await checkSupabaseConnection();
     console.log("Supabase connection check:", connectionCheck);
     
@@ -80,7 +104,13 @@ export async function signUp(email: string, password: string) {
       throw new Error(`Unable to connect to Supabase: ${connectionCheck.error || 'Connection failed'}`);
     }
     
-    // Directly attempt signup without checking if user exists first
+    // Log the headers being used (without exposing full key)
+    console.log("Using headers:", {
+      'apikey': '***' + supabaseAnonKey.substring(supabaseAnonKey.length - 5),
+      'Content-Type': 'application/json'
+    });
+    
+    // Directly attempt signup with explicit headers
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -97,6 +127,12 @@ export async function signUp(email: string, password: string) {
     if (error) {
       console.error("Signup error:", error);
       console.error("Error details:", JSON.stringify(error, null, 2));
+      
+      // Special handling for API key errors
+      if (error.message?.includes('API key') || error.status === 401) {
+        console.error("API key issue detected. Please verify your Supabase API key is correct and not expired.");
+      }
+      
       throw error;
     }
 
