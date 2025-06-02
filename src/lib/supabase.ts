@@ -37,17 +37,25 @@ export type AuthError = {
   message: string;
 };
 
-// Supabase network connectivity check
+// Updated Supabase connection check using a proper API endpoint
 export async function checkSupabaseConnection() {
   try {
     const start = Date.now();
-    const response = await fetch(supabaseUrl);
+    // Use getSession() as a lightweight way to verify connectivity
+    const { data, error } = await supabase.auth.getSession();
     const elapsed = Date.now() - start;
     
-    console.log(`Supabase connection check: ${response.status}, time: ${elapsed}ms`);
+    if (error) {
+      console.error("Supabase connection check failed:", error);
+      return {
+        connected: false,
+        error: error.message
+      };
+    }
+    
+    console.log(`Supabase connection check successful, time: ${elapsed}ms`);
     return {
-      connected: response.status >= 200 && response.status < 300,
-      status: response.status,
+      connected: true,
       responseTime: elapsed
     };
   } catch (err) {
@@ -69,7 +77,7 @@ export async function signUp(email: string, password: string) {
     console.log("Supabase connection check:", connectionCheck);
     
     if (!connectionCheck.connected) {
-      throw new Error(`Unable to connect to Supabase: ${connectionCheck.error || connectionCheck.status}`);
+      throw new Error(`Unable to connect to Supabase: ${connectionCheck.error || 'Connection failed'}`);
     }
     
     // Directly attempt signup without checking if user exists first
@@ -130,7 +138,7 @@ export async function signIn(email: string, password: string) {
     console.log("Sign in connection check:", connectionCheck);
     
     if (!connectionCheck.connected) {
-      throw new Error(`Unable to connect to Supabase: ${connectionCheck.error || connectionCheck.status}`);
+      throw new Error(`Unable to connect to Supabase: ${connectionCheck.error || 'Connection failed'}`);
     }
     
     // First refresh any existing session
