@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { signUp } from '../lib/supabase';
 import { z } from 'zod';
 import { Mail, Lock, Loader, Check, ArrowRight } from 'lucide-react';
@@ -80,8 +80,11 @@ export function MultiStepSignUp({ onSuccess, onSignInClick, simpleRedirect = fal
       signUpSchema.parse({ email, password, confirmPassword });
       setIsLoading(true);
       
+      console.log("Starting signup with validated data");
+      
       // Attempt signup
-      await signUp(email, password);
+      const result = await signUp(email, password);
+      console.log("Signup result:", result);
 
       // Store email in localStorage
       localStorage.setItem('userEmail', email);
@@ -94,6 +97,8 @@ export function MultiStepSignUp({ onSuccess, onSignInClick, simpleRedirect = fal
         setRedirectAfterSignup(true);
       }
     } catch (err: any) {
+      console.error("Signup error caught in component:", err);
+      
       if (err instanceof z.ZodError) {
         setError(err.errors[0].message);
       } else if (err.message?.includes('already registered') || err.message?.includes('already exists')) {
@@ -114,6 +119,7 @@ export function MultiStepSignUp({ onSuccess, onSignInClick, simpleRedirect = fal
     } finally {
       // Always ensure loading state is cleared
       setIsLoading(false);
+      console.log("Signup process completed (success or error)");
     }
   };
 
