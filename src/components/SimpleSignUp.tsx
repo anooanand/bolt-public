@@ -1,13 +1,6 @@
 import React, { useState } from 'react';
-import { createClient } from '@supabase/supabase-js';
 import { Mail, Lock, Loader } from 'lucide-react';
-
-// Create a minimal Supabase client directly in this component
-// This bypasses any potential issues in the main supabase.ts file
-const supabaseUrl = 'https://zrzicouoioyqptfplnkg.supabase.co';
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inpyemljb3VvaW95cXB0ZnBsbmtnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDg2ODg0NDgsImV4cCI6MjA2NDI2NDQ0OH0.ISq_Zdw8XUlGkeSlAXAAZukP2vDBkpPSvyYP7oQqr9s';
-
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+import { signUp } from '../lib/supabase'; // Import the shared signUp function
 
 interface SimpleSignUpProps {
   onSuccess: () => void;
@@ -47,20 +40,10 @@ export function SimpleSignUp({ onSuccess, onSignInClick }: SimpleSignUpProps) {
     setDebugInfo('Starting signup process...');
     
     try {
-      // Direct Supabase signup call with minimal options
-      const { data, error: signupError } = await supabase.auth.signUp({
-        email,
-        password
-      });
+      // Use the shared signUp function from supabase.ts
+      const data = await signUp(email, password);
       
       setDebugInfo(prev => `${prev}\nSignup API call completed.`);
-      
-      if (signupError) {
-        console.error('Signup error:', signupError);
-        setError(`Signup failed: ${signupError.message}`);
-        setDebugInfo(prev => `${prev}\nError: ${signupError.message}`);
-        return;
-      }
       
       if (!data || !data.user) {
         setError('Signup failed: No user data returned');
@@ -72,6 +55,9 @@ export function SimpleSignUp({ onSuccess, onSignInClick }: SimpleSignUpProps) {
       
       // Store email in localStorage
       localStorage.setItem('userEmail', email);
+      
+      // Set redirect target to pricing page
+      localStorage.setItem('redirect_after_signup', 'pricing');
       
       // Call success callback
       onSuccess();
