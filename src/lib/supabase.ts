@@ -1,10 +1,9 @@
-// Updated supabase.ts file with improved API key handling and error reporting
-
+// src/lib/supabase.ts
 import { createClient } from '@supabase/supabase-js';
 
-// Trim whitespace from environment variables to prevent issues
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.trim();
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim();
+// Get environment variables with fallbacks for local development
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.trim() || 'https://zrzicouoioyqptfplnkg.supabase.co';
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim() || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inpyemljb3VvaW95cXB0ZnBsbmtnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDg2ODg0NDgsImV4cCI6MjA2NDI2NDQ0OH0.ISq_Zdw8XUlGkeSlAXAAZukP2vDBkpPSvyYP7oQqr9s';
 
 // Log environment variables availability for debugging
 console.log("Environment variables check:");
@@ -13,11 +12,7 @@ console.log("SUPABASE_ANON_KEY available:", !!supabaseAnonKey);
 console.log("SUPABASE_URL prefix:", supabaseUrl?.substring(0, 20) + "...");
 console.log("SUPABASE_ANON_KEY prefix:", supabaseAnonKey?.substring(0, 20) + "...");
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase environment variables');
-}
-
-// Create Supabase client with explicit headers to ensure API key is properly sent
+// Create Supabase client with fetch implementation that handles CORS
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     autoRefreshToken: true,
@@ -30,7 +25,6 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   global: {
     headers: { 
       'x-application-name': 'bolt-writing-assistant',
-      'apikey': supabaseAnonKey // Explicitly add API key to headers
     }
   },
   realtime: {
@@ -47,23 +41,7 @@ export async function checkSupabaseConnection() {
   try {
     const start = Date.now();
     
-    // First check if we can reach the Supabase endpoint
-    try {
-      const response = await fetch(supabaseUrl);
-      if (!response.ok) {
-        return {
-          connected: false,
-          error: `Supabase endpoint returned status ${response.status}`
-        };
-      }
-    } catch (fetchErr) {
-      return {
-        connected: false,
-        error: `Cannot reach Supabase endpoint: ${fetchErr.message}`
-      };
-    }
-    
-    // Then try a lightweight auth operation
+    // Use a simple API call to check connectivity
     const { data, error } = await supabase.auth.getSession();
     const elapsed = Date.now() - start;
     
@@ -104,13 +82,7 @@ export async function signUp(email: string, password: string) {
       throw new Error(`Unable to connect to Supabase: ${connectionCheck.error || 'Connection failed'}`);
     }
     
-    // Log the headers being used (without exposing full key)
-    console.log("Using headers:", {
-      'apikey': '***' + supabaseAnonKey.substring(supabaseAnonKey.length - 5),
-      'Content-Type': 'application/json'
-    });
-    
-    // Directly attempt signup with explicit headers
+    // Directly attempt signup
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -127,12 +99,6 @@ export async function signUp(email: string, password: string) {
     if (error) {
       console.error("Signup error:", error);
       console.error("Error details:", JSON.stringify(error, null, 2));
-      
-      // Special handling for API key errors
-      if (error.message?.includes('API key') || error.status === 401) {
-        console.error("API key issue detected. Please verify your Supabase API key is correct and not expired.");
-      }
-      
       throw error;
     }
 
