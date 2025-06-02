@@ -71,18 +71,6 @@ export function MultiStepSignUp({ onSuccess, onSignInClick, simpleRedirect = fal
   const [isLoading, setIsLoading] = useState(false);
   const [redirectAfterSignup, setRedirectAfterSignup] = useState(false);
 
-  // Add a timeout reference to prevent hanging
-  const signupTimeoutRef = React.useRef<number | null>(null);
-
-  // Cleanup function for timeouts
-  useEffect(() => {
-    return () => {
-      if (signupTimeoutRef.current) {
-        clearTimeout(signupTimeoutRef.current);
-      }
-    };
-  }, []);
-
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -92,25 +80,11 @@ export function MultiStepSignUp({ onSuccess, onSignInClick, simpleRedirect = fal
       signUpSchema.parse({ email, password, confirmPassword });
       setIsLoading(true);
       
-      // Set a timeout to prevent hanging on the "Creating account..." state
-      signupTimeoutRef.current = window.setTimeout(() => {
-        if (isLoading) {
-          setIsLoading(false);
-          setError('Signup is taking longer than expected. Please try again or refresh the page.');
-        }
-      }, 15000); // 15 second timeout
-      
       // Attempt signup
       await signUp(email, password);
 
       // Store email in localStorage
       localStorage.setItem('userEmail', email);
-      
-      // Clear timeout since signup completed
-      if (signupTimeoutRef.current) {
-        clearTimeout(signupTimeoutRef.current);
-        signupTimeoutRef.current = null;
-      }
       
       // Always proceed to step 2 (plan selection) after successful signup
       setCurrentStep(2);
@@ -120,12 +94,6 @@ export function MultiStepSignUp({ onSuccess, onSignInClick, simpleRedirect = fal
         setRedirectAfterSignup(true);
       }
     } catch (err: any) {
-      // Clear timeout since we're handling the error
-      if (signupTimeoutRef.current) {
-        clearTimeout(signupTimeoutRef.current);
-        signupTimeoutRef.current = null;
-      }
-      
       if (err instanceof z.ZodError) {
         setError(err.errors[0].message);
       } else if (err.message?.includes('already registered') || err.message?.includes('already exists')) {
@@ -372,9 +340,8 @@ export function MultiStepSignUp({ onSuccess, onSignInClick, simpleRedirect = fal
         );
       
       case 4:
-        // Call completeSignup when rendering the final step
-        // This ensures the modal is closed only after showing the success message
-        setTimeout(() => completeSignup(), 2000);
+        // Call completeSignup immediately without delay
+        completeSignup();
         
         return (
           <div className="w-full text-center">
@@ -384,41 +351,13 @@ export function MultiStepSignUp({ onSuccess, onSignInClick, simpleRedirect = fal
               </div>
             </div>
             
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Payment Successful!</h2>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+              Success!
+            </h2>
             
-            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6 mb-6">
-              <p className="text-lg text-gray-800 dark:text-gray-200 mb-4">
-                Thank you for subscribing to {selectedPlan?.name}
-              </p>
-              
-              <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-md mb-4">
-                <div className="flex justify-between mb-2">
-                  <span className="text-gray-600 dark:text-gray-300">Plan:</span>
-                  <span className="font-medium text-gray-900 dark:text-white">{selectedPlan?.name}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600 dark:text-gray-300">Price:</span>
-                  <span className="font-medium text-gray-900 dark:text-white">{selectedPlan?.price}/month</span>
-                </div>
-                <div className="flex justify-between mt-2">
-                  <span className="text-gray-600 dark:text-gray-300">Trial ends:</span>
-                  <span className="font-medium text-gray-900 dark:text-white">
-                    {new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toLocaleDateString()}
-                  </span>
-                </div>
-              </div>
-              
-              <p className="text-gray-600 dark:text-gray-300">
-                Your 3-day free trial has started. You can now access all features of your plan.
-              </p>
-            </div>
-            
-            <button
-              onClick={completeSignup}
-              className="w-full py-2 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-            >
-              Start Writing
-            </button>
+            <p className="text-gray-600 dark:text-gray-300 mb-6">
+              Your account has been created successfully.
+            </p>
           </div>
         );
       
@@ -429,33 +368,7 @@ export function MultiStepSignUp({ onSuccess, onSignInClick, simpleRedirect = fal
 
   return (
     <div className="w-full max-w-md mx-auto">
-      <div className="mb-8">
-        <div className="flex justify-between items-center">
-          {[1, 2, 3, 4].map((step) => (
-            <div key={step} className="flex flex-col items-center">
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-2 ${
-                currentStep >= step
-                  ? 'bg-indigo-600 text-white'
-                  : 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
-              }`}>
-                {step}
-              </div>
-              <span className={`text-xs ${
-                  currentStep >= step
-                    ? 'text-indigo-600 dark:text-indigo-400 font-medium'
-                    : 'text-gray-500 dark:text-gray-400'
-                }`}
-              >
-                {step === 1 && 'Sign Up'}
-                {step === 2 && 'Choose Plan'}
-                {step === 3 && '3-Day Trial'}
-                {step === 4 && 'Start Writing'}
-              </span>
-            </div>
-          ))}
-        </div>
-        {renderStep()}
-      </div>
+      {renderStep()}
     </div>
   );
 }
