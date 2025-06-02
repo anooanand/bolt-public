@@ -26,6 +26,8 @@ function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [paymentCompleted, setPaymentCompleted] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
+  // Add a modalKey state to force remount when needed
+  const [modalKey, setModalKey] = useState(0);
 
   useEffect(() => {
     // Debug environment variables
@@ -101,6 +103,44 @@ function App() {
     };
   }, [theme]);
 
+  // Function to handle sign up click with proper modal reset
+  const handleSignUpClick = () => {
+    // First close the modal if it's open
+    if (showAuthModal) {
+      setShowAuthModal(false);
+      // Use setTimeout to ensure the modal is fully closed before changing mode and reopening
+      setTimeout(() => {
+        setAuthMode('signup');
+        setModalKey(prevKey => prevKey + 1); // Increment key to force remount
+        setShowAuthModal(true);
+      }, 50);
+    } else {
+      // If modal is not open, simply set mode and open
+      setAuthMode('signup');
+      setModalKey(prevKey => prevKey + 1); // Increment key to force remount
+      setShowAuthModal(true);
+    }
+  };
+
+  // Function to handle sign in click with proper modal reset
+  const handleSignInClick = () => {
+    // First close the modal if it's open
+    if (showAuthModal) {
+      setShowAuthModal(false);
+      // Use setTimeout to ensure the modal is fully closed before changing mode and reopening
+      setTimeout(() => {
+        setAuthMode('signin');
+        setModalKey(prevKey => prevKey + 1); // Increment key to force remount
+        setShowAuthModal(true);
+      }, 50);
+    } else {
+      // If modal is not open, simply set mode and open
+      setAuthMode('signin');
+      setModalKey(prevKey => prevKey + 1); // Increment key to force remount
+      setShowAuthModal(true);
+    }
+  };
+
   return (
     <ThemeContext.Provider value={{ theme, toggleTheme: () => {
       const newTheme = theme === 'light' ? 'dark' : 'light';
@@ -127,14 +167,8 @@ function App() {
           onNavigate={setActivePage} 
           activePage={activePage} 
           user={user} 
-          onSignInClick={() => {
-            setAuthMode('signin');
-            setShowAuthModal(true);
-          }}
-          onSignUpClick={() => {
-            setAuthMode('signup');
-            setShowAuthModal(true);
-          }}
+          onSignInClick={handleSignInClick}
+          onSignUpClick={handleSignUpClick}
         />
 
         <div className="pt-16">
@@ -152,7 +186,7 @@ function App() {
           {activePage === 'about' && <AboutPage />}
           {activePage === 'faq' && <FAQPage />}
           {activePage === 'pricing' && <PricingPage />}
-          {activePage === 'signup' && <SignupPage onSignUp={() => setShowAuthModal(true)} />}
+          {activePage === 'signup' && <SignupPage onSignUp={handleSignUpClick} />}
           {activePage === 'dashboard' && user && (paymentCompleted) && <WritingArea user={user} />}
         </div>
 
@@ -167,7 +201,7 @@ function App() {
             setActivePage('dashboard');
           }}
           initialMode={authMode}
-          key={authMode}
+          key={`auth-modal-${modalKey}-${authMode}`} // Use both key and authMode to ensure proper remounting
         />
       </div>
     </ThemeContext.Provider>
