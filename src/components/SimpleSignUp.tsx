@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Mail, Lock, Loader } from 'lucide-react';
-import { signUp } from '../lib/supabase'; // Import the shared signUp function
+import { signUp, signIn } from '../lib/supabase'; // Import both signUp and signIn functions
 
 interface SimpleSignUpProps {
   onSuccess: () => void;
@@ -18,7 +18,7 @@ export function SimpleSignUp({ onSuccess, onSignInClick }: SimpleSignUpProps) {
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    setDebugInfo(null);
+    setDebugInfo('Starting signup process...');
     
     // Basic validation
     if (!email || !email.includes('@')) {
@@ -37,36 +37,50 @@ export function SimpleSignUp({ onSuccess, onSignInClick }: SimpleSignUpProps) {
     }
     
     setIsLoading(true);
-    setDebugInfo('Starting signup process...');
     
     try {
-      // Use the shared signUp function from supabase.ts
-      const data = await signUp(email, password);
+      // Step 1: Sign up the user
+      setDebugInfo(prev => `${prev}\nAttempting to sign up user...`);
+      const signupResult = await signUp(email, password);
       
-      setDebugInfo(prev => `${prev}\nSignup API call completed.`);
-      
-      if (!data || !data.user) {
+      if (!signupResult || !signupResult.user) {
         setError('Signup failed: No user data returned');
-        setDebugInfo(prev => `${prev}\nNo user data returned`);
+        setDebugInfo(prev => `${prev}\nNo user data returned from signup`);
+        setIsLoading(false);
         return;
       }
       
-      setDebugInfo(prev => `${prev}\nUser created successfully. ID: ${data.user?.id.substring(0, 5)}...`);
+      setDebugInfo(prev => `${prev}\nUser created successfully. ID: ${signupResult.user?.id.substring(0, 5)}...`);
       
-      // Store email in localStorage
+      // Step 2: Explicitly sign in the user to ensure session is established
+      setDebugInfo(prev => `${prev}\nAttempting to sign in user...`);
+      const signinResult = await signIn(email, password);
+      
+      if (!signinResult || !signinResult.user) {
+        setError('Auto sign-in failed after signup');
+        setDebugInfo(prev => `${prev}\nAuto sign-in failed after signup`);
+        setIsLoading(false);
+        return;
+      }
+      
+      setDebugInfo(prev => `${prev}\nUser signed in successfully`);
+      
+      // Step 3: Store email and set redirect flag
       localStorage.setItem('userEmail', email);
-      
-      // Set redirect target to pricing page
       localStorage.setItem('redirect_after_signup', 'pricing');
       
-      // Call success callback
-      onSuccess();
+      setDebugInfo(prev => `${prev}\nRedirect flag set to 'pricing'`);
+      
+      // Step 4: Small delay to ensure localStorage is updated before callback
+      setTimeout(() => {
+        setDebugInfo(prev => `${prev}\nCalling onSuccess callback...`);
+        onSuccess();
+      }, 500);
       
     } catch (err: any) {
       console.error('Unexpected error during signup:', err);
       setError(`An unexpected error occurred: ${err.message || 'Unknown error'}`);
       setDebugInfo(prev => `${prev}\nCaught exception: ${err.message || 'Unknown error'}`);
-    } finally {
       setIsLoading(false);
     }
   };
