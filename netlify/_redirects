@@ -1,0 +1,8 @@
+# Proxy for Supabase API requests
+/.netlify/functions/supabase-proxy/*  https://zrzicouoioyqptfplnkg.supabase.co/:splat  200
+/.netlify/functions/supabase-auth/*   https://zrzicouoioyqptfplnkg.supabase.co/auth/v1/:splat  200
+/.netlify/functions/supabase-rest/*   https://zrzicouoioyqptfplnkg.supabase.co/rest/v1/:splat  200
+/.netlify/functions/supabase-realtime/* https://zrzicouoioyqptfplnkg.supabase.co/realtime/v1/:splat 200
+
+# SPA fallback
+/*    /index.html   200
