@@ -1,4 +1,4 @@
-// src/lib/supabase.ts
+// src/lib/supabase.ts - Updated with better error handling and debugging
 import { createClient } from '@supabase/supabase-js';
 
 // Get environment variables with fallbacks for local development
@@ -12,7 +12,7 @@ console.log("SUPABASE_ANON_KEY available:", !!supabaseAnonKey);
 console.log("SUPABASE_URL prefix:", supabaseUrl?.substring(0, 20) + "...");
 console.log("SUPABASE_ANON_KEY prefix:", supabaseAnonKey?.substring(0, 20) + "...");
 
-// Create Supabase client with fetch implementation that handles CORS
+// Create Supabase client with explicit headers
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     autoRefreshToken: true,
@@ -36,53 +36,12 @@ export type AuthError = {
   message: string;
 };
 
-// Updated Supabase connection check with detailed error reporting
-export async function checkSupabaseConnection() {
-  try {
-    const start = Date.now();
-    
-    // Use a simple API call to check connectivity
-    const { data, error } = await supabase.auth.getSession();
-    const elapsed = Date.now() - start;
-    
-    if (error) {
-      console.error("Supabase connection check failed:", error);
-      return {
-        connected: false,
-        error: error.message,
-        details: error
-      };
-    }
-    
-    console.log(`Supabase connection check successful, time: ${elapsed}ms`);
-    return {
-      connected: true,
-      responseTime: elapsed
-    };
-  } catch (err) {
-    console.error("Supabase connection check failed:", err);
-    return {
-      connected: false,
-      error: err.message,
-      details: err
-    };
-  }
-}
-
 // Simplified signup function with better error handling
 export async function signUp(email: string, password: string) {
   try {
     console.log("Starting signup process for:", email);
     
-    // Check connection first with detailed logging
-    const connectionCheck = await checkSupabaseConnection();
-    console.log("Supabase connection check:", connectionCheck);
-    
-    if (!connectionCheck.connected) {
-      throw new Error(`Unable to connect to Supabase: ${connectionCheck.error || 'Connection failed'}`);
-    }
-    
-    // Directly attempt signup
+    // Directly attempt signup with explicit error handling
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -114,9 +73,6 @@ export async function signUp(email: string, password: string) {
     if (data?.user && !data.session) {
       console.log("User created but no session returned, attempting sign in");
       
-      // Add delay before attempting sign in
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
       // Attempt to sign in the newly created user
       return await signIn(email, password);
     }
@@ -134,17 +90,6 @@ export async function signUp(email: string, password: string) {
 export async function signIn(email: string, password: string) {
   try {
     console.log("Attempting to sign in:", email);
-    
-    // Check connection first
-    const connectionCheck = await checkSupabaseConnection();
-    console.log("Sign in connection check:", connectionCheck);
-    
-    if (!connectionCheck.connected) {
-      throw new Error(`Unable to connect to Supabase: ${connectionCheck.error || 'Connection failed'}`);
-    }
-    
-    // First refresh any existing session
-    await supabase.auth.refreshSession();
     
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
@@ -166,6 +111,7 @@ export async function signIn(email: string, password: string) {
   }
 }
 
+// Rest of the file remains unchanged
 export async function signOut() {
   try {
     const { error } = await supabase.auth.signOut();
