@@ -35,7 +35,7 @@ export async function signUp(email: string, password: string) {
       email,
       password,
       options: {
-        emailRedirectTo: window.location.origin + '/auth/callback',
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
         data: {
           email_confirmed: false,
           payment_confirmed: false,
