@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Mail, Lock, Loader, AlertCircle, CheckCircle } from 'lucide-react';
+import { Mail, Lock, Loader, AlertCircle, CheckCircle, Clock } from 'lucide-react';
 import { signUp, signIn } from '../lib/supabase'; // Import both signUp and signIn functions
 
 interface SimpleSignUpProps {
@@ -16,6 +16,8 @@ export function SimpleSignUp({ onSuccess, onSignInClick }: SimpleSignUpProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [debugInfo, setDebugInfo] = useState<string | null>(null);
   const [passwordStrength, setPasswordStrength] = useState<'weak' | 'medium' | 'strong' | null>(null);
+  const [signupTimer, setSignupTimer] = useState<number>(0);
+  const [timerActive, setTimerActive] = useState<boolean>(false);
 
   // Password strength checker
   useEffect(() => {
@@ -39,6 +41,28 @@ export function SimpleSignUp({ onSuccess, onSignInClick }: SimpleSignUpProps) {
     }
   }, [password]);
 
+  // Timer for signup process
+  useEffect(() => {
+    let interval: number | undefined;
+    
+    if (timerActive) {
+      interval = window.setInterval(() => {
+        setSignupTimer(prev => prev + 1);
+        
+        // If signup takes more than 20 seconds, show a warning
+        if (signupTimer >= 20) {
+          setDebugInfo(prev => `${prev}\nSignup is taking longer than expected. This might indicate a network issue.`);
+        }
+      }, 1000);
+    } else {
+      setSignupTimer(0);
+    }
+    
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [timerActive, signupTimer]);
+
   // Email validation
   const validateEmail = (email: string): boolean => {
     const re = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
@@ -50,35 +74,42 @@ export function SimpleSignUp({ onSuccess, onSignInClick }: SimpleSignUpProps) {
     setError(null);
     setSuccessMessage(null);
     setDebugInfo('Starting signup process...');
+    setTimerActive(true);
     
     // Enhanced validation
     if (!email) {
       setError('Email is required');
+      setTimerActive(false);
       return;
     }
     
     if (!validateEmail(email)) {
       setError('Please enter a valid email address');
+      setTimerActive(false);
       return;
     }
     
     if (!password) {
       setError('Password is required');
+      setTimerActive(false);
       return;
     }
     
     if (password.length < 8) {
       setError('Password must be at least 8 characters');
+      setTimerActive(false);
       return;
     }
     
     if (!/[a-zA-Z]/.test(password) || !/[0-9]/.test(password)) {
       setError('Password must include both letters and numbers');
+      setTimerActive(false);
       return;
     }
     
     if (password !== confirmPassword) {
       setError('Passwords do not match');
+      setTimerActive(false);
       return;
     }
     
@@ -87,13 +118,29 @@ export function SimpleSignUp({ onSuccess, onSignInClick }: SimpleSignUpProps) {
     try {
       // Step 1: Sign up the user with enhanced error handling
       setDebugInfo(prev => `${prev}\nAttempting to sign up user...`);
-      const signupResult = await signUp(email, password);
+      
+      // Add manual timeout for UI feedback
+      const signupPromise = signUp(email, password);
+      
+      // Create a manual timeout promise
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => {
+          reject(new Error("Signup request is taking too long. This might indicate a network issue."));
+        }, 30000); // 30 seconds timeout for UI
+      });
+      
+      // Race between the signup and timeout
+      const signupResult = await Promise.race([signupPromise, timeoutPromise]) as any;
       
       // Handle various signup result scenarios
       if (signupResult.error) {
         setError(signupResult.error.message);
         setDebugInfo(prev => `${prev}\nError: ${signupResult.error.message}`);
+        if (signupResult.error.originalError) {
+          setDebugInfo(prev => `${prev}\nOriginal error: ${JSON.stringify(signupResult.error.originalError)}`);
+        }
         setIsLoading(false);
+        setTimerActive(false);
         return;
       }
       
@@ -101,6 +148,7 @@ export function SimpleSignUp({ onSuccess, onSignInClick }: SimpleSignUpProps) {
         setSuccessMessage('Please check your email to confirm your account.');
         setDebugInfo(prev => `${prev}\nEmail confirmation required. Verification email sent.`);
         setIsLoading(false);
+        setTimerActive(false);
         return;
       }
       
@@ -108,6 +156,7 @@ export function SimpleSignUp({ onSuccess, onSignInClick }: SimpleSignUpProps) {
         setError('Signup failed: No user data returned');
         setDebugInfo(prev => `${prev}\nNo user data returned from signup`);
         setIsLoading(false);
+        setTimerActive(false);
         return;
       }
       
@@ -123,6 +172,7 @@ export function SimpleSignUp({ onSuccess, onSignInClick }: SimpleSignUpProps) {
           setSuccessMessage('Account created! Please sign in to continue.');
           setDebugInfo(prev => `${prev}\nAuto sign-in failed: ${signinResult.error.message}`);
           setIsLoading(false);
+          setTimerActive(false);
           
           // Delay before redirecting to sign-in
           setTimeout(() => {
@@ -137,6 +187,7 @@ export function SimpleSignUp({ onSuccess, onSignInClick }: SimpleSignUpProps) {
           setSuccessMessage('Account created! Please sign in to continue.');
           setDebugInfo(prev => `${prev}\nAuto sign-in failed: No user returned`);
           setIsLoading(false);
+          setTimerActive(false);
           
           // Delay before redirecting to sign-in
           setTimeout(() => {
@@ -155,6 +206,7 @@ export function SimpleSignUp({ onSuccess, onSignInClick }: SimpleSignUpProps) {
       
       setDebugInfo(prev => `${prev}\nRedirect flag set to 'pricing'`);
       setSuccessMessage('Account created successfully!');
+      setTimerActive(false);
       
       // Step 4: Small delay to ensure localStorage is updated before callback
       setTimeout(() => {
@@ -166,7 +218,12 @@ export function SimpleSignUp({ onSuccess, onSignInClick }: SimpleSignUpProps) {
       console.error('Unexpected error during signup:', err);
       setError(`An unexpected error occurred: ${err.message || 'Unknown error'}`);
       setDebugInfo(prev => `${prev}\nCaught exception: ${err.message || 'Unknown error'}`);
+      if (err.stack) {
+        console.error('Error stack:', err.stack);
+        setDebugInfo(prev => `${prev}\nStack trace: ${err.stack}`);
+      }
       setIsLoading(false);
+      setTimerActive(false);
     }
   };
 
@@ -295,7 +352,14 @@ export function SimpleSignUp({ onSuccess, onSignInClick }: SimpleSignUpProps) {
             {isLoading ? (
               <>
                 <Loader className="animate-spin -ml-1 mr-2 h-5 w-5" />
-                Creating account...
+                {timerActive && signupTimer > 10 ? (
+                  <span className="flex items-center">
+                    Creating account... ({signupTimer}s)
+                    <Clock className="ml-1 h-4 w-4" />
+                  </span>
+                ) : (
+                  "Creating account..."
+                )}
               </>
             ) : (
               'Sign Up'
