@@ -20,35 +20,24 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     headers: {
       'x-application-name': 'bolt-writing-assistant',
       'x-client-version': '2.0.1'
-    },
-    fetch: (url, options) => {
-      const timeout = 30000; // 30 second timeout
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), timeout);
-
-      return fetch(url, {
-        ...options,
-        signal: controller.signal
-      }).finally(() => clearTimeout(timeoutId));
     }
   },
   realtime: {
-    timeout: 60000
+    timeout: 20000 // 20 second timeout for realtime connections
   }
 });
 
 export async function signUp(email: string, password: string) {
-  console.log("🚀 Starting signup process for:", email);
+  console.log("Starting signup process for:", email);
   
   try {
-    // Create a promise that rejects after 25 seconds
-    const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('Signup request timed out')), 25000);
-    });
+    // Set a shorter timeout for signup specifically
+    const signupTimeout = 15000; // 15 seconds
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), signupTimeout);
 
-    // Race between the signup request and the timeout
-    const { data, error } = await Promise.race([
-      supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp(
+      {
         email,
         password,
         options: {
@@ -61,12 +50,19 @@ export async function signUp(email: string, password: string) {
             last_login_attempt: new Date().toISOString()
           }
         }
-      }),
-      timeoutPromise
-    ]);
+      },
+      {
+        headers: {
+          'x-custom-timeout': signupTimeout.toString()
+        },
+        signal: controller.signal
+      }
+    );
+
+    clearTimeout(timeoutId);
 
     if (error) {
-      console.error("❌ Signup failed:", error.message);
+      console.error("Signup failed:", error.message);
       throw error;
     }
 
@@ -74,21 +70,16 @@ export async function signUp(email: string, password: string) {
       throw new Error('No user data returned from signup');
     }
 
-    console.log("✅ Signup successful:", {
-      user: data.user.id,
-      email: data.user.email,
-      session: !!data.session
-    });
-
+    console.log("Signup successful for:", data.user.email);
     return { success: true, user: data.user };
+
   } catch (err: any) {
-    console.error("🔥 Signup error:", err);
+    console.error("Signup error:", err);
     
-    if (err.message === 'Signup request timed out') {
-      throw new Error('The signup request is taking longer than expected. Please try again.');
+    if (err.name === 'AbortError') {
+      throw new Error('Signup request timed out. Please try again.');
     }
     
-    // Check if the error is due to an existing user
     if (err.message?.includes('already registered') || err.message?.includes('already exists')) {
       return { success: false, error: err, emailExists: true };
     }
@@ -99,13 +90,13 @@ export async function signUp(email: string, password: string) {
 
 export async function signIn(email: string, password: string) {
   try {
-    console.log("🔐 Attempting sign in for:", email);
+    console.log("Attempting sign in for:", email);
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
-    console.log("✅ Sign in successful:", data?.user?.email);
+    console.log("Sign in successful:", data?.user?.email);
     return data;
   } catch (err: any) {
-    console.error("❌ Sign in failed:", err.message);
+    console.error("Sign in failed:", err.message);
     throw err;
   }
 }
@@ -114,10 +105,10 @@ export async function signOut() {
   try {
     const { error } = await supabase.auth.signOut();
     if (error) throw error;
-    console.log("👋 Signed out successfully");
+    console.log("Signed out successfully");
     return true;
   } catch (err: any) {
-    console.error("⚠️ Sign out error:", err);
+    console.error("Sign out error:", err);
     return false;
   }
 }
@@ -128,7 +119,7 @@ export async function getCurrentUser() {
     if (error || !user) return null;
     return user;
   } catch (err: any) {
-    console.error("⚠️ Get current user error:", err);
+    console.error("Get current user error:", err);
     return null;
   }
 }
@@ -179,20 +170,20 @@ export async function isSignupCompleted() {
 
 export async function requestPasswordReset(email: string) {
   try {
-    console.log("📧 Sending password reset for:", email);
+    console.log("Sending password reset for:", email);
     const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/auth/reset-password`
     });
 
     if (error) {
-      console.error("❌ Password reset error:", error.message);
+      console.error("Password reset error:", error.message);
       throw error;
     }
 
-    console.log("✅ Password reset email sent:", data);
+    console.log("Password reset email sent");
     return { success: true };
   } catch (err: any) {
-    console.error("🔥 Password reset exception:", err);
+    console.error("Password reset exception:", err);
     throw new Error(err.message || "Failed to send password reset email.");
   }
 }
