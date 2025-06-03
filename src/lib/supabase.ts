@@ -2,7 +2,7 @@
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.trim() || 'https://zrzicouoioyqptfplnkg.supabase.co';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim() || 'eyJhbGciOiJI...';
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim() || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inpyemljb3VvaW95cXB0ZnBsbmtnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDg2ODg0NDgsImV4cCI6MjA2NDI2NDQ0OH0.ISq_Zdw8XUlGkeSlAXAAZukP2vDBkpPSvyYP7oQqr9s';
 
 console.log("Supabase Configuration:");
 console.log("URL:", supabaseUrl);
@@ -28,46 +28,51 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   }
 });
 
-function timeout<T>(promise: Promise<T>, ms: number): Promise<T> {
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => {
-      reject(new Error("Signup request is taking too long. This might indicate a network issue."));
-    }, ms);
-
-    promise
-      .then((res) => {
-        clearTimeout(timer);
-        resolve(res);
-      })
-      .catch((err) => {
-        clearTimeout(timer);
-        reject(err);
-      });
+async function retryWithTimeout<T>(
+  operation: () => Promise<T>,
+  retries = 2,
+  timeout = 30000
+): Promise<T> {
+  const timeoutPromise = new Promise((_, reject) => {
+    setTimeout(() => reject(new Error("Request timed out")), timeout);
   });
+
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      console.log(`Attempt ${attempt + 1}/${retries + 1}`);
+      // Race between the operation and timeout
+      const result = await Promise.race([operation(), timeoutPromise]) as T;
+      return result;
+    } catch (error) {
+      if (attempt === retries) throw error;
+      const delay = (attempt + 1) * 2000; // Exponential backoff
+      console.log(`Retrying in ${delay/1000} seconds...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+  throw new Error("All retry attempts failed");
 }
 
 export async function signUp(email: string, password: string) {
   console.log("🟢 Starting signup process for:", email);
+  
   try {
-    const response = await timeout(
-      supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: window.location.origin + '/auth/callback',
-          data: {
-            email_confirmed: false,
-            payment_confirmed: false,
-            signup_completed: false,
-            signup_date: new Date().toISOString(),
-            last_login_attempt: new Date().toISOString()
-          }
+    const signupOperation = () => supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: window.location.origin + '/auth/callback',
+        data: {
+          email_confirmed: false,
+          payment_confirmed: false,
+          signup_completed: false,
+          signup_date: new Date().toISOString(),
+          last_login_attempt: new Date().toISOString()
         }
-      }),
-      15000
-    );
+      }
+    });
 
-    const { data, error } = response;
+    const { data, error } = await retryWithTimeout(signupOperation);
 
     console.log("📦 Signup response:", {
       user: data?.user?.id || null,
