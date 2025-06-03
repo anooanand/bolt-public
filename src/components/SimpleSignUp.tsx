@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Mail, Lock, Loader } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Mail, Lock, Loader, AlertCircle, CheckCircle } from 'lucide-react';
 import { signUp, signIn } from '../lib/supabase'; // Import both signUp and signIn functions
 
 interface SimpleSignUpProps {
@@ -12,22 +12,68 @@ export function SimpleSignUp({ onSuccess, onSignInClick }: SimpleSignUpProps) {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [debugInfo, setDebugInfo] = useState<string | null>(null);
+  const [passwordStrength, setPasswordStrength] = useState<'weak' | 'medium' | 'strong' | null>(null);
+
+  // Password strength checker
+  useEffect(() => {
+    if (!password) {
+      setPasswordStrength(null);
+      return;
+    }
+    
+    const hasLetter = /[a-zA-Z]/.test(password);
+    const hasNumber = /[0-9]/.test(password);
+    const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+    
+    if (password.length < 8) {
+      setPasswordStrength('weak');
+    } else if (password.length >= 8 && (hasLetter && hasNumber) || (hasLetter && hasSpecial) || (hasNumber && hasSpecial)) {
+      setPasswordStrength('medium');
+    } else if (password.length >= 10 && hasLetter && hasNumber && hasSpecial) {
+      setPasswordStrength('strong');
+    } else {
+      setPasswordStrength('medium');
+    }
+  }, [password]);
+
+  // Email validation
+  const validateEmail = (email: string): boolean => {
+    const re = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+    return re.test(String(email).toLowerCase());
+  };
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setSuccessMessage(null);
     setDebugInfo('Starting signup process...');
     
-    // Basic validation
-    if (!email || !email.includes('@')) {
+    // Enhanced validation
+    if (!email) {
+      setError('Email is required');
+      return;
+    }
+    
+    if (!validateEmail(email)) {
       setError('Please enter a valid email address');
       return;
     }
     
-    if (!password || password.length < 6) {
-      setError('Password must be at least 6 characters');
+    if (!password) {
+      setError('Password is required');
+      return;
+    }
+    
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters');
+      return;
+    }
+    
+    if (!/[a-zA-Z]/.test(password) || !/[0-9]/.test(password)) {
+      setError('Password must include both letters and numbers');
       return;
     }
     
@@ -39,11 +85,26 @@ export function SimpleSignUp({ onSuccess, onSignInClick }: SimpleSignUpProps) {
     setIsLoading(true);
     
     try {
-      // Step 1: Sign up the user
+      // Step 1: Sign up the user with enhanced error handling
       setDebugInfo(prev => `${prev}\nAttempting to sign up user...`);
       const signupResult = await signUp(email, password);
       
-      if (!signupResult || !signupResult.user) {
+      // Handle various signup result scenarios
+      if (signupResult.error) {
+        setError(signupResult.error.message);
+        setDebugInfo(prev => `${prev}\nError: ${signupResult.error.message}`);
+        setIsLoading(false);
+        return;
+      }
+      
+      if (signupResult.emailConfirmationRequired) {
+        setSuccessMessage('Please check your email to confirm your account.');
+        setDebugInfo(prev => `${prev}\nEmail confirmation required. Verification email sent.`);
+        setIsLoading(false);
+        return;
+      }
+      
+      if (!signupResult.user) {
         setError('Signup failed: No user data returned');
         setDebugInfo(prev => `${prev}\nNo user data returned from signup`);
         setIsLoading(false);
@@ -52,30 +113,54 @@ export function SimpleSignUp({ onSuccess, onSignInClick }: SimpleSignUpProps) {
       
       setDebugInfo(prev => `${prev}\nUser created successfully. ID: ${signupResult.user?.id.substring(0, 5)}...`);
       
-      // Step 2: Explicitly sign in the user to ensure session is established
-      setDebugInfo(prev => `${prev}\nAttempting to sign in user...`);
-      const signinResult = await signIn(email, password);
-      
-      if (!signinResult || !signinResult.user) {
-        setError('Auto sign-in failed after signup');
-        setDebugInfo(prev => `${prev}\nAuto sign-in failed after signup`);
-        setIsLoading(false);
-        return;
+      // Step 2: If we don't have a session yet, explicitly sign in the user
+      if (!signupResult.session) {
+        setDebugInfo(prev => `${prev}\nNo session returned, attempting to sign in user...`);
+        const signinResult = await signIn(email, password);
+        
+        if (signinResult.error) {
+          // Non-blocking error - account was created but auto-login failed
+          setSuccessMessage('Account created! Please sign in to continue.');
+          setDebugInfo(prev => `${prev}\nAuto sign-in failed: ${signinResult.error.message}`);
+          setIsLoading(false);
+          
+          // Delay before redirecting to sign-in
+          setTimeout(() => {
+            onSignInClick();
+          }, 2000);
+          
+          return;
+        }
+        
+        if (!signinResult.user) {
+          // Non-blocking error - account was created but auto-login failed
+          setSuccessMessage('Account created! Please sign in to continue.');
+          setDebugInfo(prev => `${prev}\nAuto sign-in failed: No user returned`);
+          setIsLoading(false);
+          
+          // Delay before redirecting to sign-in
+          setTimeout(() => {
+            onSignInClick();
+          }, 2000);
+          
+          return;
+        }
+        
+        setDebugInfo(prev => `${prev}\nUser signed in successfully`);
       }
-      
-      setDebugInfo(prev => `${prev}\nUser signed in successfully`);
       
       // Step 3: Store email and set redirect flag
       localStorage.setItem('userEmail', email);
       localStorage.setItem('redirect_after_signup', 'pricing');
       
       setDebugInfo(prev => `${prev}\nRedirect flag set to 'pricing'`);
+      setSuccessMessage('Account created successfully!');
       
       // Step 4: Small delay to ensure localStorage is updated before callback
       setTimeout(() => {
         setDebugInfo(prev => `${prev}\nCalling onSuccess callback...`);
         onSuccess();
-      }, 500);
+      }, 1000);
       
     } catch (err: any) {
       console.error('Unexpected error during signup:', err);
@@ -91,8 +176,16 @@ export function SimpleSignUp({ onSuccess, onSignInClick }: SimpleSignUpProps) {
         <h2 className="text-2xl font-bold text-center text-gray-900 dark:text-white">Create Your Account</h2>
         
         {error && (
-          <div className="p-3 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-md text-sm">
-            {error}
+          <div className="p-3 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-md text-sm flex items-start">
+            <AlertCircle className="h-5 w-5 mr-2 flex-shrink-0 mt-0.5" />
+            <span>{error}</span>
+          </div>
+        )}
+        
+        {successMessage && (
+          <div className="p-3 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-md text-sm flex items-start">
+            <CheckCircle className="h-5 w-5 mr-2 flex-shrink-0 mt-0.5" />
+            <span>{successMessage}</span>
           </div>
         )}
         
@@ -116,8 +209,14 @@ export function SimpleSignUp({ onSuccess, onSignInClick }: SimpleSignUpProps) {
               className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
               placeholder="you@example.com"
               required
+              aria-describedby="email-validation"
             />
           </div>
+          {email && !validateEmail(email) && (
+            <p id="email-validation" className="mt-1 text-sm text-red-600 dark:text-red-400">
+              Please enter a valid email address
+            </p>
+          )}
         </div>
         
         <div>
@@ -134,8 +233,33 @@ export function SimpleSignUp({ onSuccess, onSignInClick }: SimpleSignUpProps) {
               className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
               placeholder="••••••••"
               required
+              aria-describedby="password-strength"
+              minLength={8}
             />
           </div>
+          {password && (
+            <div id="password-strength" className="mt-1">
+              <div className="flex items-center">
+                <div className="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
+                  <div 
+                    className={`h-2.5 rounded-full ${
+                      passwordStrength === 'weak' ? 'w-1/3 bg-red-500' : 
+                      passwordStrength === 'medium' ? 'w-2/3 bg-yellow-500' : 
+                      passwordStrength === 'strong' ? 'w-full bg-green-500' : ''
+                    }`}
+                  ></div>
+                </div>
+                <span className="ml-2 text-xs text-gray-500 dark:text-gray-400">
+                  {passwordStrength === 'weak' ? 'Weak' : 
+                   passwordStrength === 'medium' ? 'Medium' : 
+                   passwordStrength === 'strong' ? 'Strong' : ''}
+                </span>
+              </div>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                Password must be at least 8 characters with letters and numbers
+              </p>
+            </div>
+          )}
         </div>
         
         <div>
@@ -154,6 +278,11 @@ export function SimpleSignUp({ onSuccess, onSignInClick }: SimpleSignUpProps) {
               required
             />
           </div>
+          {confirmPassword && password !== confirmPassword && (
+            <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+              Passwords do not match
+            </p>
+          )}
         </div>
         
         <div>
@@ -161,6 +290,7 @@ export function SimpleSignUp({ onSuccess, onSignInClick }: SimpleSignUpProps) {
             type="submit"
             disabled={isLoading}
             className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+            aria-live="polite"
           >
             {isLoading ? (
               <>
