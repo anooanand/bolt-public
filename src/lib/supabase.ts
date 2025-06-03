@@ -626,7 +626,7 @@ export async function resendVerificationEmail(email: string) {
   }
 }
 
-// Password reset request
+// Password reset request ****
 export async function requestPasswordReset(email: string) {
   try {
     const { data, error } = await withTimeout(
