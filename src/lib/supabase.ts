@@ -167,3 +167,23 @@ export async function isSignupCompleted() {
     return false;
   }
 }
+
+export async function requestPasswordReset(email: string) {
+  try {
+    console.log("🔄 Requesting password reset for:", email);
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin + '/auth/callback'
+    });
+    
+    if (error) {
+      console.error("❌ Password reset request failed:", error.message);
+      throw error;
+    }
+    
+    console.log("✅ Password reset email sent successfully");
+    return { success: true };
+  } catch (err: any) {
+    console.error("🔥 Password reset exception:", err);
+    throw new Error(err.message || "Password reset request failed.");
+  }
+}
