@@ -2,75 +2,7 @@
   command = "npm run build"
   publish = "dist"
 
-# Proxy for Supabase API requests - force flag added to ensure proxy works
-[[redirects]]
-  from = "/.netlify/functions/supabase-proxy/*"
-  to = "https://zrzicouoioyqptfplnkg.supabase.co/:splat"
-  status = 200
-  force = true
-  headers = {Access-Control-Allow-Origin = "*", Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, PATCH, OPTIONS", Access-Control-Allow-Headers = "Origin, X-Requested-With, Content-Type, Accept, Authorization, apikey, X-Client-Info"}
-
-# Handle OPTIONS preflight requests for the Supabase proxy
-[[redirects]]
-  from = "/.netlify/functions/supabase-proxy/*"
-  to = "https://zrzicouoioyqptfplnkg.supabase.co/:splat"
-  status = 200
-  force = true
-  methods = ["OPTIONS"]
-  headers = {Access-Control-Allow-Origin = "*", Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, PATCH, OPTIONS", Access-Control-Allow-Headers = "Origin, X-Requested-With, Content-Type, Accept, Authorization, apikey, X-Client-Info"}
-
-# Proxy for Supabase Auth requests
-[[redirects]]
-  from = "/.netlify/functions/supabase-auth/*"
-  to = "https://zrzicouoioyqptfplnkg.supabase.co/auth/v1/:splat"
-  status = 200
-  force = true
-  headers = {Access-Control-Allow-Origin = "*", Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, PATCH, OPTIONS", Access-Control-Allow-Headers = "Origin, X-Requested-With, Content-Type, Accept, Authorization, apikey, X-Client-Info"}
-
-# Handle OPTIONS preflight requests for the Auth proxy
-[[redirects]]
-  from = "/.netlify/functions/supabase-auth/*"
-  to = "https://zrzicouoioyqptfplnkg.supabase.co/auth/v1/:splat"
-  status = 200
-  force = true
-  methods = ["OPTIONS"]
-  headers = {Access-Control-Allow-Origin = "*", Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, PATCH, OPTIONS", Access-Control-Allow-Headers = "Origin, X-Requested-With, Content-Type, Accept, Authorization, apikey, X-Client-Info"}
-
-# Proxy for Supabase REST API requests
-[[redirects]]
-  from = "/.netlify/functions/supabase-rest/*"
-  to = "https://zrzicouoioyqptfplnkg.supabase.co/rest/v1/:splat"
-  status = 200
-  force = true
-  headers = {Access-Control-Allow-Origin = "*", Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, PATCH, OPTIONS", Access-Control-Allow-Headers = "Origin, X-Requested-With, Content-Type, Accept, Authorization, apikey, X-Client-Info, Range, Content-Range"}
-
-# Handle OPTIONS preflight requests for the REST API proxy
-[[redirects]]
-  from = "/.netlify/functions/supabase-rest/*"
-  to = "https://zrzicouoioyqptfplnkg.supabase.co/rest/v1/:splat"
-  status = 200
-  force = true
-  methods = ["OPTIONS"]
-  headers = {Access-Control-Allow-Origin = "*", Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, PATCH, OPTIONS", Access-Control-Allow-Headers = "Origin, X-Requested-With, Content-Type, Accept, Authorization, apikey, X-Client-Info, Range, Content-Range"}
-
-# Proxy for Supabase Realtime API requests
-[[redirects]]
-  from = "/.netlify/functions/supabase-realtime/*"
-  to = "https://zrzicouoioyqptfplnkg.supabase.co/realtime/v1/:splat"
-  status = 200
-  force = true
-  headers = {Access-Control-Allow-Origin = "*", Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, PATCH, OPTIONS", Access-Control-Allow-Headers = "Origin, X-Requested-With, Content-Type, Accept, Authorization, apikey, X-Client-Info"}
-
-# Handle OPTIONS preflight requests for the Realtime API proxy
-[[redirects]]
-  from = "/.netlify/functions/supabase-realtime/*"
-  to = "https://zrzicouoioyqptfplnkg.supabase.co/realtime/v1/:splat"
-  status = 200
-  force = true
-  methods = ["OPTIONS"]
-  headers = {Access-Control-Allow-Origin = "*", Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, PATCH, OPTIONS", Access-Control-Allow-Headers = "Origin, X-Requested-With, Content-Type, Accept, Authorization, apikey, X-Client-Info"}
-
-# SPA fallback
+# SPA fallback only - removing all proxy configurations
 [[redirects]]
   from = "/*"
   to = "/index.html"
