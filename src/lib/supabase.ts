@@ -1,8 +1,8 @@
-// src/lib/supabase.ts - Full version with logging-enhanced signup and fallback retry
+// src/lib/supabase.ts - Full version with logging-enhanced signup, retry, and timeout
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.trim() || 'https://zrzicouoioyqptfplnkg.supabase.co';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim() || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inpyemljb3VvaW95cXB0ZnBsbmtnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDg2ODg0NDgsImV4cCI6MjA2NDI2NDQ0OH0.ISq_Zdw8XUlGkeSlAXAAZukP2vDBkpPSvyYP7oQqr9s';
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim() || 'eyJhbGciOiJI...';
 
 console.log("Supabase Configuration:");
 console.log("URL:", supabaseUrl);
@@ -28,24 +28,46 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   }
 });
 
-export async function signUp(email: string, password: string) {
-  try {
-    console.log("🟢 Starting signup process for:", email);
+function timeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error("Signup request is taking too long. This might indicate a network issue."));
+    }, ms);
 
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: window.location.origin + '/auth/callback',
-        data: {
-          email_confirmed: false,
-          payment_confirmed: false,
-          signup_completed: false,
-          signup_date: new Date().toISOString(),
-          last_login_attempt: new Date().toISOString()
+    promise
+      .then((res) => {
+        clearTimeout(timer);
+        resolve(res);
+      })
+      .catch((err) => {
+        clearTimeout(timer);
+        reject(err);
+      });
+  });
+}
+
+export async function signUp(email: string, password: string) {
+  console.log("🟢 Starting signup process for:", email);
+  try {
+    const response = await timeout(
+      supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: window.location.origin + '/auth/callback',
+          data: {
+            email_confirmed: false,
+            payment_confirmed: false,
+            signup_completed: false,
+            signup_date: new Date().toISOString(),
+            last_login_attempt: new Date().toISOString()
+          }
         }
-      }
-    });
+      }),
+      15000
+    );
+
+    const { data, error } = response;
 
     console.log("📦 Signup response:", {
       user: data?.user?.id || null,
@@ -99,26 +121,6 @@ export async function getCurrentUser() {
   } catch (err: any) {
     console.error("⚠️ Get current user error:", err);
     return null;
-  }
-}
-
-export async function requestPasswordReset(email: string) {
-  try {
-    console.log("🔄 Requesting password reset for:", email);
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: window.location.origin + '/auth/reset-password'
-    });
-    
-    if (error) {
-      console.error("❌ Password reset request failed:", error.message);
-      throw error;
-    }
-    
-    console.log("✉️ Password reset email sent successfully");
-    return { success: true };
-  } catch (err: any) {
-    console.error("🔥 Password reset exception:", err);
-    throw new Error(err.message || "Failed to request password reset.");
   }
 }
 
