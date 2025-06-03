@@ -16,6 +16,7 @@ import { PricingPage } from './components/PricingPage';
 import { AuthModal } from './components/AuthModal';
 import { SignupPage } from './components/SignupPage';
 import { WritingArea } from './components/WritingArea';
+import DebugEnv from './components/DebugEnv'; // ✅ ADDED
 
 function App() {
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
@@ -26,11 +27,9 @@ function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [paymentCompleted, setPaymentCompleted] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
-  // Add a modalKey state to force remount when needed
   const [modalKey, setModalKey] = useState(0);
 
   useEffect(() => {
-    // Debug environment variables
     console.log("Environment variables check:");
     console.log("SUPABASE_URL available:", !!import.meta.env.VITE_SUPABASE_URL);
     console.log("SUPABASE_ANON_KEY available:", !!import.meta.env.VITE_SUPABASE_ANON_KEY);
@@ -103,51 +102,46 @@ function App() {
     };
   }, [theme]);
 
-  // Function to handle sign up click with proper modal reset
   const handleSignUpClick = () => {
-    // First close the modal if it's open
     if (showAuthModal) {
       setShowAuthModal(false);
-      // Use setTimeout to ensure the modal is fully closed before changing mode and reopening
       setTimeout(() => {
         setAuthMode('signup');
-        setModalKey(prevKey => prevKey + 1); // Increment key to force remount
+        setModalKey(prevKey => prevKey + 1);
         setShowAuthModal(true);
       }, 50);
     } else {
-      // If modal is not open, simply set mode and open
       setAuthMode('signup');
-      setModalKey(prevKey => prevKey + 1); // Increment key to force remount
+      setModalKey(prevKey => prevKey + 1);
       setShowAuthModal(true);
     }
   };
 
-  // Function to handle sign in click with proper modal reset
   const handleSignInClick = () => {
-    // First close the modal if it's open
     if (showAuthModal) {
       setShowAuthModal(false);
-      // Use setTimeout to ensure the modal is fully closed before changing mode and reopening
       setTimeout(() => {
         setAuthMode('signin');
-        setModalKey(prevKey => prevKey + 1); // Increment key to force remount
+        setModalKey(prevKey => prevKey + 1);
         setShowAuthModal(true);
       }, 50);
     } else {
-      // If modal is not open, simply set mode and open
       setAuthMode('signin');
-      setModalKey(prevKey => prevKey + 1); // Increment key to force remount
+      setModalKey(prevKey => prevKey + 1);
       setShowAuthModal(true);
     }
   };
 
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme: () => {
-      const newTheme = theme === 'light' ? 'dark' : 'light';
-      setTheme(newTheme);
-      localStorage.setItem('theme', newTheme);
-      document.documentElement.classList.toggle('dark', newTheme === 'dark');
-    }}}>
+    <ThemeContext.Provider value={{
+      theme,
+      toggleTheme: () => {
+        const newTheme = theme === 'light' ? 'dark' : 'light';
+        setTheme(newTheme);
+        localStorage.setItem('theme', newTheme);
+        document.documentElement.classList.toggle('dark', newTheme === 'dark');
+      }
+    }}>
       <div className="min-h-screen bg-white dark:bg-gray-900 text-gray-900 dark:text-white">
         {authError && (
           <div className="bg-red-50 dark:bg-red-900/30 border-l-4 border-red-400 p-4">
@@ -175,6 +169,7 @@ function App() {
           {activePage === 'home' && (
             <>
               <HeroSection onGetStarted={() => setShowAuthModal(true)} onStartWriting={() => setActivePage('dashboard')} />
+              <DebugEnv /> {/* ✅ Injected Debug Display */}
               <FeaturesSection />
               <ToolsSection />
               <WritingTypesSection />
@@ -187,7 +182,7 @@ function App() {
           {activePage === 'faq' && <FAQPage />}
           {activePage === 'pricing' && <PricingPage />}
           {activePage === 'signup' && <SignupPage onSignUp={handleSignUpClick} />}
-          {activePage === 'dashboard' && user && (paymentCompleted) && <WritingArea user={user} />}
+          {activePage === 'dashboard' && user && paymentCompleted && <WritingArea user={user} />}
         </div>
 
         <AuthModal 
@@ -201,7 +196,7 @@ function App() {
             setActivePage('dashboard');
           }}
           initialMode={authMode}
-          key={`auth-modal-${modalKey}-${authMode}`} // Use both key and authMode to ensure proper remounting
+          key={`auth-modal-${modalKey}-${authMode}`}
         />
       </div>
     </ThemeContext.Provider>
