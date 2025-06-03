@@ -1,4 +1,3 @@
-// src/lib/supabase.ts - Full version with logging-enhanced signup, retry, and timeout
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.trim() || 'https://zrzicouoioyqptfplnkg.supabase.co';
@@ -28,42 +27,11 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   }
 });
 
-async function retryWithTimeout<T>(
-  operation: () => Promise<T>,
-  retries = 3, // Increased from 2 to 3 retries
-  timeout = 15000 // Reduced from 30000 to 15000 ms
-): Promise<T> {
-  const timeoutPromise = new Promise((_, reject) => {
-    setTimeout(() => reject(new Error("Request timed out")), timeout);
-  });
-
-  for (let attempt = 0; attempt <= retries; attempt++) {
-    try {
-      console.log(`Attempt ${attempt + 1}/${retries + 1}`);
-      // Race between the operation and timeout
-      const result = await Promise.race([operation(), timeoutPromise]) as T;
-      return result;
-    } catch (error: any) {
-      if (error.message === "Request timed out") {
-        console.log("Request timed out, retrying...");
-      } else {
-        console.error("Operation failed:", error);
-      }
-      
-      if (attempt === retries) throw error;
-      const delay = Math.min(1000 * Math.pow(2, attempt), 8000); // Exponential backoff with 8s max
-      console.log(`Retrying in ${delay/1000} seconds...`);
-      await new Promise(resolve => setTimeout(resolve, delay));
-    }
-  }
-  throw new Error("All retry attempts failed");
-}
-
 export async function signUp(email: string, password: string) {
   console.log("🟢 Starting signup process for:", email);
   
   try {
-    const signupOperation = () => supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -77,8 +45,6 @@ export async function signUp(email: string, password: string) {
         }
       }
     });
-
-    const { data, error } = await retryWithTimeout(signupOperation);
 
     console.log("📦 Signup response:", {
       user: data?.user?.id || null,
