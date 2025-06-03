@@ -1,4 +1,4 @@
-// src/lib/supabase.ts - Completely redesigned with robust error handling and session management
+// src/lib/supabase.ts - Fixed version without admin API calls
 import { createClient } from '@supabase/supabase-js';
 
 // Get environment variables with fallbacks for local development
@@ -33,34 +33,12 @@ export type AuthError = {
   status?: number;
 };
 
-// Completely redesigned signup function with robust error handling and retry logic
+// Completely redesigned signup function with robust error handling - FIXED VERSION WITHOUT ADMIN API
 export async function signUp(email: string, password: string) {
   try {
     console.log("Starting enhanced signup process for:", email);
     
-    // First check if user exists to provide better error messages
-    const { data: existingUser, error: checkError } = await supabase.auth.admin
-      .listUsers({
-        filters: {
-          email: email
-        }
-      })
-      .catch(() => ({ data: null, error: null })); // Fail silently on admin API errors
-    
-    if (existingUser?.users?.length > 0) {
-      console.log("User already exists, suggesting sign in instead");
-      return { 
-        user: null, 
-        session: null, 
-        error: { 
-          message: "This email is already registered. Please sign in instead.",
-          code: "user_exists",
-          status: 409
-        }
-      };
-    }
-    
-    // Attempt signup with enhanced options
+    // Attempt signup directly - we'll handle the "user exists" error properly
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -80,7 +58,7 @@ export async function signUp(email: string, password: string) {
       console.error("Signup error:", error);
       
       // Provide user-friendly error messages
-      if (error.message.includes("already registered")) {
+      if (error.message.includes("already registered") || error.message.includes("already exists") || error.status === 422) {
         return { 
           user: null, 
           session: null, 
