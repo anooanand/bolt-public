@@ -102,6 +102,26 @@ export async function getCurrentUser() {
   }
 }
 
+export async function requestPasswordReset(email: string) {
+  try {
+    console.log("🔄 Requesting password reset for:", email);
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin + '/auth/reset-password'
+    });
+    
+    if (error) {
+      console.error("❌ Password reset request failed:", error.message);
+      throw error;
+    }
+    
+    console.log("✉️ Password reset email sent successfully");
+    return { success: true };
+  } catch (err: any) {
+    console.error("🔥 Password reset exception:", err);
+    throw new Error(err.message || "Failed to request password reset.");
+  }
+}
+
 export async function confirmPayment(planType: string) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("No user found");
