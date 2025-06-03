@@ -30,8 +30,8 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 
 async function retryWithTimeout<T>(
   operation: () => Promise<T>,
-  retries = 2,
-  timeout = 30000
+  retries = 3, // Increased from 2 to 3 retries
+  timeout = 15000 // Reduced from 30000 to 15000 ms
 ): Promise<T> {
   const timeoutPromise = new Promise((_, reject) => {
     setTimeout(() => reject(new Error("Request timed out")), timeout);
@@ -43,9 +43,15 @@ async function retryWithTimeout<T>(
       // Race between the operation and timeout
       const result = await Promise.race([operation(), timeoutPromise]) as T;
       return result;
-    } catch (error) {
+    } catch (error: any) {
+      if (error.message === "Request timed out") {
+        console.log("Request timed out, retrying...");
+      } else {
+        console.error("Operation failed:", error);
+      }
+      
       if (attempt === retries) throw error;
-      const delay = (attempt + 1) * 2000; // Exponential backoff
+      const delay = Math.min(1000 * Math.pow(2, attempt), 8000); // Exponential backoff with 8s max
       console.log(`Retrying in ${delay/1000} seconds...`);
       await new Promise(resolve => setTimeout(resolve, delay));
     }
@@ -83,13 +89,19 @@ export async function signUp(email: string, password: string) {
 
     if (error) {
       console.error("❌ Signup failed:", error.message);
-      throw new Error(error.message || "An unknown error occurred during signup.");
+      throw error;
     }
 
     return { success: true, user: data?.user };
   } catch (err: any) {
     console.error("🔥 Signup exception:", err);
-    throw new Error(err.message || "Signup failed.");
+    
+    // Check if the error is due to an existing user
+    if (err.message?.includes('already registered') || err.message?.includes('already exists')) {
+      return { success: false, error: err, emailExists: true };
+    }
+    
+    throw err;
   }
 }
 
@@ -102,7 +114,7 @@ export async function signIn(email: string, password: string) {
     return data;
   } catch (err: any) {
     console.error("❌ Sign in failed:", err.message);
-    throw new Error(err.message || "Sign in failed.");
+    throw err;
   }
 }
 
