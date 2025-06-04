@@ -1,16 +1,18 @@
-// Updated Supabase Connection with DNS Fix
+// Updated frontend Supabase client that uses Netlify Function proxy
+// This bypasses direct browser-to-Supabase connectivity issues
+
 import { createClient } from '@supabase/supabase-js';
 
-// Get environment variables with fallbacks - ensure correct URL format with https://
-const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL?.trim() || 'https://rvlotczavccreigdzczo.supabase.co').replace(/([^:])\/\/+/g, '$1/');
+// Get environment variables with fallbacks
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.trim() || 'https://rvlotczavccreigdzczo.supabase.co';
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim() || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ2bG90Y3phdmNjcmVpZ2R6Y3pvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDg5NTkyNDMsImV4cCI6MjA2NDUzNTI0M30.6gIQ0XmqgwmoULkgvZg4m3GTvsFKPv0MmesXiscRjbg';
 
 // Log configuration for debugging
-console.log("Supabase Connection Configuration:");
+console.log("Supabase Configuration:");
 console.log("URL:", supabaseUrl);
 console.log("Key (first 10 chars):", supabaseAnonKey.substring(0, 10) + "...");
 
-// Create Supabase client with direct connection and DNS error handling
+// Create Supabase client for non-auth operations
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     autoRefreshToken: true,
@@ -18,40 +20,51 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     detectSessionInUrl: true,
     flowType: 'pkce',
     storage: typeof window !== 'undefined' ? window.localStorage : undefined,
-    storageKey: 'bolt_auth_token_v5' // Updated to avoid conflicts with previous versions
+    storageKey: 'bolt_auth_token_v6' // Updated to avoid conflicts with previous versions
   },
   global: {
     headers: { 
       'x-application-name': 'bolt-writing-assistant',
-      'x-client-version': '2.0.3'
+      'x-client-version': '2.0.4'
     }
   }
 });
 
-// Enhanced signup function with improved error handling for DNS issues
-export async function signUp(email: string, password: string) {
+// Function to call our Netlify auth proxy instead of direct Supabase
+async function callAuthProxy(action, data) {
+  console.log(`Calling auth proxy with action: ${action}`);
+  
+  try {
+    const response = await fetch('/.netlify/functions/auth-proxy', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        action,
+        ...data
+      })
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || `HTTP error ${response.status}`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error(`Auth proxy ${action} error:`, error);
+    throw error;
+  }
+}
+
+// Enhanced signup function using Netlify Function proxy
+export async function signUp(email, password) {
   console.log("Starting signup process for:", email);
   
   try {
-    // Verify URL is accessible before attempting signup
-    try {
-      console.log(`Verifying Supabase URL is accessible: ${supabaseUrl}`);
-      const pingResponse = await fetch(`${supabaseUrl}/auth/v1/`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': supabaseAnonKey
-        }
-      });
-      console.log("Supabase URL ping response:", pingResponse.status);
-    } catch (pingErr) {
-      console.error("Supabase URL is not accessible:", pingErr);
-      throw new Error(`Cannot connect to Supabase: ${pingErr.message || 'DNS resolution failed'}`);
-    }
-    
-    // Continue with normal signup using Supabase client
-    console.log("Proceeding with Supabase client signup...");
-    const { data, error } = await supabase.auth.signUp({
+    // Use our Netlify Function proxy instead of direct Supabase call
+    const result = await callAuthProxy('signup', {
       email,
       password,
       options: {
@@ -65,24 +78,32 @@ export async function signUp(email: string, password: string) {
         }
       }
     });
-
-    if (error) {
-      console.error("Signup failed:", error.message);
-      throw error;
+    
+    if (result.error) {
+      console.error("Signup failed:", result.error.message);
+      throw new Error(result.error.message);
     }
-
-    if (!data?.user) {
+    
+    if (!result.user) {
       throw new Error('No user data returned from signup');
     }
-
+    
     console.log("Signup successful:", {
-      user: data.user.id,
-      email: data.user.email,
-      session: !!data.session
+      user: result.user.id,
+      email: result.user.email,
+      session: !!result.session
     });
-
-    return { success: true, user: data.user };
-  } catch (err: any) {
+    
+    // Update the Supabase client session
+    if (result.session) {
+      await supabase.auth.setSession({
+        access_token: result.session.access_token,
+        refresh_token: result.session.refresh_token
+      });
+    }
+    
+    return { success: true, user: result.user };
+  } catch (err) {
     console.error("Signup error:", err);
     
     // Check if the error is due to an existing user
@@ -90,27 +111,32 @@ export async function signUp(email: string, password: string) {
       return { success: false, error: err, emailExists: true };
     }
     
-    // Check for DNS or network errors
-    if (err.message?.includes('Failed to fetch') || 
-        err.message?.includes('NetworkError') || 
-        err.message?.includes('network') ||
-        err.message?.includes('DNS') ||
-        err.message?.includes('ERR_NAME_NOT_RESOLVED')) {
-      throw new Error(`Network error: Cannot connect to Supabase. Please check your internet connection and Supabase project status. Original error: ${err.message}`);
-    }
-    
     throw err;
   }
 }
 
-export async function signIn(email: string, password: string) {
+export async function signIn(email, password) {
   try {
     console.log("Attempting sign in for:", email);
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) throw error;
-    console.log("Sign in successful:", data?.user?.email);
-    return data;
-  } catch (err: any) {
+    
+    // Use our Netlify Function proxy
+    const result = await callAuthProxy('signin', { email, password });
+    
+    if (result.error) {
+      throw new Error(result.error.message);
+    }
+    
+    // Update the Supabase client session
+    if (result.session) {
+      await supabase.auth.setSession({
+        access_token: result.session.access_token,
+        refresh_token: result.session.refresh_token
+      });
+    }
+    
+    console.log("Sign in successful:", result?.user?.email);
+    return result;
+  } catch (err) {
     console.error("Sign in failed:", err.message);
     throw err;
   }
@@ -118,11 +144,15 @@ export async function signIn(email: string, password: string) {
 
 export async function signOut() {
   try {
-    const { error } = await supabase.auth.signOut();
-    if (error) throw error;
+    // Use our Netlify Function proxy
+    await callAuthProxy('signout', {});
+    
+    // Also clear the local session
+    await supabase.auth.signOut();
+    
     console.log("Signed out successfully");
     return true;
-  } catch (err: any) {
+  } catch (err) {
     console.error("Sign out error:", err);
     return false;
   }
@@ -133,13 +163,38 @@ export async function getCurrentUser() {
     const { data: { user }, error } = await supabase.auth.getUser();
     if (error || !user) return null;
     return user;
-  } catch (err: any) {
+  } catch (err) {
     console.error("Get current user error:", err);
     return null;
   }
 }
 
-export async function confirmPayment(planType: string) {
+export async function requestPasswordReset(email) {
+  try {
+    console.log("Sending password reset for:", email);
+    
+    // Use our Netlify Function proxy
+    const result = await callAuthProxy('reset', {
+      email,
+      options: {
+        redirectTo: `${window.location.origin}/auth/reset-password`
+      }
+    });
+    
+    if (result.error) {
+      throw new Error(result.error.message);
+    }
+    
+    console.log("Password reset email sent");
+    return { success: true };
+  } catch (err) {
+    console.error("Password reset exception:", err);
+    throw new Error(err.message || "Failed to send password reset email.");
+  }
+}
+
+// Other functions remain the same, using the supabase client directly
+export async function confirmPayment(planType) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("No user found");
   await supabase.auth.updateUser({
@@ -180,25 +235,5 @@ export async function isSignupCompleted() {
     return user?.user_metadata?.signup_completed === true;
   } catch {
     return false;
-  }
-}
-
-export async function requestPasswordReset(email: string) {
-  try {
-    console.log("Sending password reset for:", email);
-    const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth/reset-password`
-    });
-
-    if (error) {
-      console.error("Password reset error:", error.message);
-      throw error;
-    }
-
-    console.log("Password reset email sent:", data);
-    return { success: true };
-  } catch (err: any) {
-    console.error("Password reset exception:", err);
-    throw new Error(err.message || "Failed to send password reset email.");
   }
 }
