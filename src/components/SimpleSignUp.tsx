@@ -7,7 +7,8 @@ interface SimpleSignUpProps {
   onSignUpSuccess?: (user: any) => void;
 }
 
-export default function SimpleSignUp({ onSignInClick, onSignUpSuccess }: SimpleSignUpProps) {
+// Changed from "export default function" to "export function" to match import style
+export function SimpleSignUp({ onSignInClick, onSignUpSuccess }: SimpleSignUpProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
