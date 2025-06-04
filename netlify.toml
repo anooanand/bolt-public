@@ -1,9 +1,16 @@
 [build]
   command = "npm run build"
   publish = "dist"
+  functions = "netlify/functions"
 
-# SPA fallback only - removing all proxy configurations
+# SPA fallback
 [[redirects]]
   from = "/*"
   to = "/index.html"
+  status = 200
+  
+# Ensure all function requests are handled properly
+[[redirects]]
+  from = "/.netlify/functions/*"
+  to = "/.netlify/functions/:splat"
   status = 200
