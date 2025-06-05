@@ -1,78 +1,117 @@
-// Updated SignUpForm.tsx with improved error handling and connectivity check
-
-import React, { useState } from 'react';
-import { signUp, checkSupabaseConnection } from '../lib/supabase';
-import { z } from 'zod';
+import React, { useState, useEffect } from 'react';
 import { Mail, Lock, Loader } from 'lucide-react';
+import { signUp } from '../lib/supabase';
 
-const signUpSchema = z.object({
-  email: z.string().email('Please enter a valid email'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
-  confirmPassword: z.string()
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords don't match",
-  path: ["confirmPassword"],
-});
-
-interface SignUpFormProps {
-  onSuccess: () => void;
+interface SimpleSignUpProps {
   onSignInClick: () => void;
+  onSignUpSuccess?: (user: any) => void;
 }
 
-export function SignUpForm({ onSuccess, onSignInClick }: SignUpFormProps) {
+// Changed from "export default function" to "export function" to match import style
+export function SimpleSignUp({ onSignInClick, onSignUpSuccess }: SimpleSignUpProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [connectionStatus, setConnectionStatus] = useState<{connected: boolean, message?: string} | null>(null);
+  const [connectionStatus, setConnectionStatus] = useState<{connected: boolean, message: string} | null>(null);
+
+  // Test connection to Netlify Function on component mount
+  useEffect(() => {
+    const testConnection = async () => {
+      try {
+        const response = await fetch('/.netlify/functions/auth-proxy', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            action: 'ping'
+          })
+        });
+        
+        if (response.ok) {
+          setConnectionStatus({
+            connected: true,
+            message: "Connected to authentication service"
+          });
+        } else {
+          setConnectionStatus({
+            connected: false,
+            message: "Connected to server but authentication service returned an error"
+          });
+        }
+      } catch (err) {
+        console.error("Connection test failed:", err);
+        setConnectionStatus({
+          connected: false,
+          message: "Could not connect to authentication service. Please try again later."
+        });
+      }
+    };
+    
+    testConnection();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
-    setConnectionStatus(null);
+    setError('');
+    
+    // Validate passwords match
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+    
+    // Validate password strength
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters');
+      return;
+    }
+    
+    setIsLoading(true);
     
     try {
-      // Validate form data
-      signUpSchema.parse({ email, password, confirmPassword });
-      
-      setIsLoading(true);
-      
-      // Check Supabase connection first
-      const connection = await checkSupabaseConnection();
-      setConnectionStatus({
-        connected: connection.connected,
-        message: connection.connected 
-          ? 'Connected to Supabase successfully' 
-          : `Connection failed: ${connection.error || connection.status}`
-      });
-      
-      if (!connection.connected) {
-        throw new Error(`Unable to connect to Supabase: ${connection.error || connection.status}`);
-      }
-      
-      // Proceed with signup
+      console.log("Starting signup process...");
       const result = await signUp(email, password);
       
-      // Handle email confirmation if needed
-      if (result?.emailConfirmationRequired) {
-        setError('Please check your email to confirm your account before signing in.');
-        setIsLoading(false);
-        return;
+      if (result.success) {
+        console.log("Signup successful!");
+        // Clear the form
+        setEmail('');
+        setPassword('');
+        setConfirmPassword('');
+        // Show success message
+        setConnectionStatus({
+          connected: true,
+          message: "Account created successfully! Redirecting..."
+        });
+        // Call the success handler
+        if (onSignUpSuccess) {
+          onSignUpSuccess(result.user);
+        }
+        // Close the modal or redirect after a short delay
+        setTimeout(() => {
+          // This will trigger the parent component to close the modal or redirect
+          if (onSignUpSuccess) {
+            onSignUpSuccess(result.user);
+          }
+        }, 2000);
+      } else if (result.emailExists) {
+        setError('This email is already registered. Please sign in instead.');
+      } else if (result.error) {
+        throw result.error;
       }
+    } catch (err: any) {
+      console.error("Signup failed:", err);
       
-      onSuccess();
-    } catch (err) {
-      if (err instanceof z.ZodError) {
-        setError(err.errors[0].message);
-      } else if (err instanceof Error) {
-        // Provide more user-friendly error messages for common issues
-        if (err.message.includes('already registered') || err.message.includes('already exists')) {
+      if (err && typeof err === 'object') {
+        if (err.message?.includes('already registered') || err.message?.includes('already exists')) {
           setError('This email is already registered. Please sign in instead.');
-        } else if (err.message.includes('network') || err.message.includes('connect')) {
+        } else if (err.message?.includes('network') || err.message?.includes('connect')) {
           setError('Network error: Please check your internet connection and try again.');
         } else {
-          setError(err.message);
+          setError(err.message || 'An unexpected error occurred');
         }
         
         // Log detailed error for debugging
@@ -85,7 +124,7 @@ export function SignUpForm({ onSuccess, onSignInClick }: SignUpFormProps) {
       setIsLoading(false);
     }
   };
-
+  
   return (
     <div className="w-full max-w-md">
       <form onSubmit={handleSubmit} className="bg-white dark:bg-gray-800 shadow-md rounded-lg px-8 pt-6 pb-8 mb-4">
