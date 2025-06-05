@@ -1,6 +1,4 @@
-// Updated frontend Supabase client with improved session management
-// This version includes enhanced session handling and debugging
-
+// Enhanced Supabase client with payment confirmation support
 import { createClient } from '@supabase/supabase-js';
 
 // Get environment variables with fallbacks
@@ -12,7 +10,7 @@ console.log("Supabase Configuration:");
 console.log("URL:", supabaseUrl);
 console.log("Key (first 10 chars):", supabaseAnonKey.substring(0, 10) + "...");
 
-// Create Supabase client for non-auth operations
+// Create Supabase client
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     autoRefreshToken: true,
@@ -20,17 +18,17 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     detectSessionInUrl: true,
     flowType: 'pkce',
     storage: typeof window !== 'undefined' ? window.localStorage : undefined,
-    storageKey: 'bolt_auth_token_v7' // Updated to avoid conflicts with previous versions
+    storageKey: 'bolt_auth_token_v8' // Updated version for payment fixes
   },
   global: {
     headers: { 
       'x-application-name': 'bolt-writing-assistant',
-      'x-client-version': '2.0.5'
+      'x-client-version': '2.1.0'
     }
   }
 });
 
-// Function to call our Netlify auth proxy instead of direct Supabase
+// Function to call our Netlify auth proxy
 async function callAuthProxy(action, data) {
   console.log(`Calling auth proxy with action: ${action}`);
   
@@ -58,12 +56,11 @@ async function callAuthProxy(action, data) {
   }
 }
 
-// Enhanced signup function with improved session management
+// Enhanced signup function
 export async function signUp(email, password) {
   console.log("Starting signup process for:", email);
   
   try {
-    // Use our Netlify Function proxy instead of direct Supabase call
     const result = await callAuthProxy('signup', {
       email,
       password,
@@ -94,11 +91,10 @@ export async function signUp(email, password) {
       session: !!result.session
     });
     
-    // ENHANCED SESSION MANAGEMENT
+    // Enhanced session management
     if (result.session) {
       console.log("Setting session with tokens...");
       
-      // Set the session in Supabase client
       const { data, error } = await supabase.auth.setSession({
         access_token: result.session.access_token,
         refresh_token: result.session.refresh_token
@@ -118,20 +114,20 @@ export async function signUp(email, password) {
         email: session?.user?.email
       });
       
-      // Store user email for pricing page
+      // Store user data for payment processing
       if (session?.user?.email) {
         localStorage.setItem('userEmail', session.user.email);
         localStorage.setItem('userId', session.user.id);
       }
     } else {
-      console.warn("No session returned from signup - this may cause issues");
+      console.warn("No session returned from signup - storing email for payment processing");
+      localStorage.setItem('userEmail', email);
     }
     
     return { success: true, user: result.user, session: result.session };
   } catch (err) {
     console.error("Signup error:", err);
     
-    // Check if the error is due to an existing user
     if (err.message?.includes('already registered') || err.message?.includes('already exists')) {
       return { success: false, error: err, emailExists: true };
     }
@@ -144,7 +140,6 @@ export async function signIn(email, password) {
   try {
     console.log("Attempting sign in for:", email);
     
-    // Use our Netlify Function proxy
     const result = await callAuthProxy('signin', { email, password });
     
     if (result.error) {
@@ -179,10 +174,7 @@ export async function signIn(email, password) {
 
 export async function signOut() {
   try {
-    // Use our Netlify Function proxy
     await callAuthProxy('signout', {});
-    
-    // Also clear the local session
     await supabase.auth.signOut();
     
     // Clear stored user info
@@ -208,53 +200,107 @@ export async function getCurrentUser() {
   }
 }
 
-export async function requestPasswordReset(email) {
+// ENHANCED PAYMENT CONFIRMATION FUNCTIONS
+
+export async function findUserByEmail(email) {
   try {
-    console.log("Sending password reset for:", email);
+    console.log("Looking up user by email:", email);
     
-    // Use our Netlify Function proxy
-    const result = await callAuthProxy('reset', {
-      email,
-      options: {
-        redirectTo: `${window.location.origin}/auth/reset-password`
-      }
-    });
-    
-    if (result.error) {
-      throw new Error(result.error.message);
+    // Try to get user from current session first
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user && user.email === email) {
+      console.log("Found user in current session");
+      return user;
     }
     
-    console.log("Password reset email sent");
-    return { success: true };
+    // If no current session, we need to sign in the user
+    // For now, return null and handle in the calling function
+    console.log("No current session for email:", email);
+    return null;
   } catch (err) {
-    console.error("Password reset exception:", err);
-    throw new Error(err.message || "Failed to send password reset email.");
+    console.error("Error finding user by email:", err);
+    return null;
   }
 }
 
-// Other functions remain the same, using the supabase client directly
 export async function confirmPayment(planType) {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("No user found");
-  await supabase.auth.updateUser({
-    data: {
-      payment_confirmed: true,
-      plan_type: planType,
-      signup_completed: true,
-      payment_date: new Date().toISOString()
+  try {
+    console.log("Confirming payment for plan:", planType);
+    
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      throw new Error("No authenticated user found");
     }
-  });
-  await supabase.from('user_payments').upsert([
-    { user_id: user.id, plan_type: planType, payment_date: new Date().toISOString(), status: 'confirmed' }
-  ]);
-  return true;
+    
+    console.log("Updating payment status for user:", user.email);
+    
+    // Update user metadata with payment information
+    const { data, error } = await supabase.auth.updateUser({
+      data: {
+        payment_confirmed: true,
+        plan_type: planType,
+        signup_completed: true,
+        payment_date: new Date().toISOString(),
+        subscription_status: 'active'
+      }
+    });
+    
+    if (error) {
+      console.error("Error updating user payment status:", error);
+      throw error;
+    }
+    
+    console.log("Payment confirmed successfully for user:", user.email);
+    
+    // Also try to insert into user_payments table (if it exists)
+    try {
+      await supabase.from('user_payments').upsert([
+        { 
+          user_id: user.id, 
+          plan_type: planType, 
+          payment_date: new Date().toISOString(), 
+          status: 'confirmed',
+          amount: getPlanAmount(planType)
+        }
+      ]);
+      console.log("Payment record inserted into user_payments table");
+    } catch (tableError) {
+      console.warn("Could not insert into user_payments table (table may not exist):", tableError);
+      // This is not critical - the user metadata update is sufficient
+    }
+    
+    return true;
+  } catch (err) {
+    console.error("Error confirming payment:", err);
+    throw err;
+  }
+}
+
+function getPlanAmount(planType) {
+  const amounts = {
+    'try-out': 9.00,
+    'base-plan': 19.99,
+    'premium': 29.99
+  };
+  return amounts[planType] || 0;
 }
 
 export async function hasCompletedPayment() {
   try {
     const { data: { user } } = await supabase.auth.getUser();
-    return user?.user_metadata?.payment_confirmed === true;
-  } catch {
+    if (!user) return false;
+    
+    const paymentConfirmed = user?.user_metadata?.payment_confirmed === true;
+    console.log("Payment status check:", {
+      userId: user.id,
+      email: user.email,
+      paymentConfirmed,
+      planType: user?.user_metadata?.plan_type
+    });
+    
+    return paymentConfirmed;
+  } catch (err) {
+    console.error("Error checking payment status:", err);
     return false;
   }
 }
@@ -274,6 +320,67 @@ export async function isSignupCompleted() {
     return user?.user_metadata?.signup_completed === true;
   } catch {
     return false;
+  }
+}
+
+// PAYMENT SUCCESS URL HANDLER
+export async function handlePaymentSuccessFromUrl() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const paymentSuccess = urlParams.get('payment_success');
+  const planType = urlParams.get('plan');
+  
+  if (paymentSuccess === 'true' && planType) {
+    console.log("Payment success detected from URL:", { paymentSuccess, planType });
+    
+    try {
+      // Get user email from localStorage
+      const userEmail = localStorage.getItem('userEmail');
+      if (!userEmail) {
+        throw new Error("No user email found in localStorage");
+      }
+      
+      // Check if user is already signed in
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session?.user) {
+        // User is signed in, confirm payment
+        await confirmPayment(planType);
+        console.log("Payment confirmed for signed-in user");
+        return { success: true, user: session.user, requiresSignIn: false };
+      } else {
+        // User needs to sign in
+        console.log("User needs to sign in to complete payment confirmation");
+        return { success: true, user: null, requiresSignIn: true, email: userEmail, plan: planType };
+      }
+    } catch (error) {
+      console.error("Error handling payment success:", error);
+      return { success: false, error: error.message };
+    }
+  }
+  
+  return null; // No payment success in URL
+}
+
+export async function requestPasswordReset(email) {
+  try {
+    console.log("Sending password reset for:", email);
+    
+    const result = await callAuthProxy('reset', {
+      email,
+      options: {
+        redirectTo: `${window.location.origin}/auth/reset-password`
+      }
+    });
+    
+    if (result.error) {
+      throw new Error(result.error.message);
+    }
+    
+    console.log("Password reset email sent");
+    return { success: true };
+  } catch (err) {
+    console.error("Password reset exception:", err);
+    throw new Error(err.message || "Failed to send password reset email.");
   }
 }
 
