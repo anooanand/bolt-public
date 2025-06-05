@@ -29,6 +29,7 @@ function App() {
   const [authError, setAuthError] = useState<string | null>(null);
   const [modalKey, setModalKey] = useState(0);
   const [paymentProcessing, setPaymentProcessing] = useState(false);
+  const [pendingPaymentPlan, setPendingPaymentPlan] = useState<string | null>(null);
 
   // PAYMENT SUCCESS HANDLER
   const handlePaymentSuccess = async (plan: string) => {
@@ -53,8 +54,8 @@ function App() {
       if (!session) {
         console.log("No active session - need to establish user session");
         
-        // For now, we'll create a temporary session by updating the user's payment status
-        // In a real implementation, you'd want to use a secure token or have the user sign in
+        // Store the plan type for after authentication
+        setPendingPaymentPlan(plan);
         
         // Alternative approach: Show a success message and ask user to sign in
         const shouldSignIn = confirm(
@@ -113,6 +114,9 @@ function App() {
     
     if (paymentSuccess === 'true' && planType) {
       console.log("Payment success detected:", { paymentSuccess, planType });
+      
+      // Store the plan type for after authentication
+      setPendingPaymentPlan(planType);
       
       // Handle payment success
       setTimeout(() => {
@@ -235,12 +239,44 @@ function App() {
     }
   };
 
+  // FIXED: Enhanced handleAuthSuccess to handle pending payments
   const handleAuthSuccess = async () => {
     console.log("Auth success - refreshing user state");
     
     const refreshedUser = await getCurrentUser();
     setUser(refreshedUser);
     
+    // Check if there's a pending payment to confirm
+    if (pendingPaymentPlan) {
+      console.log("Found pending payment plan:", pendingPaymentPlan);
+      
+      try {
+        console.log("Confirming payment for user after authentication");
+        await confirmPayment(pendingPaymentPlan);
+        
+        // Update payment status
+        setPaymentCompleted(true);
+        
+        // Navigate to dashboard
+        setActivePage('dashboard');
+        
+        // Clear pending payment
+        setPendingPaymentPlan(null);
+        
+        // Clean up URL parameters
+        window.history.replaceState({}, document.title, window.location.pathname);
+        
+        // Show success message
+        alert(`Welcome! Your ${pendingPaymentPlan} plan is now active. Enjoy your writing assistant!`);
+        
+        return;
+      } catch (error) {
+        console.error("Error confirming payment after authentication:", error);
+        alert("There was an error activating your subscription. Please contact support.");
+      }
+    }
+    
+    // If no pending payment or payment confirmation failed, check payment status
     const completed = await hasCompletedPayment();
     setPaymentCompleted(completed);
     
@@ -250,6 +286,16 @@ function App() {
     } else {
       // Otherwise, they should be on pricing page (handled by AuthModal)
       console.log("User authenticated but no payment - should be on pricing");
+      
+      // Check URL parameters again in case they were missed
+      const urlParams = new URLSearchParams(window.location.search);
+      const paymentSuccess = urlParams.get('payment_success');
+      const planType = urlParams.get('plan');
+      
+      if (paymentSuccess === 'true' && planType) {
+        console.log("Payment success parameters found after authentication");
+        handlePaymentSuccess(planType);
+      }
     }
   };
 
