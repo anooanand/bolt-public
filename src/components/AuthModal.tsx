@@ -6,26 +6,37 @@ import { SignInForm } from './SignInForm';
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onSuccess?: (user: any) => void;
   initialMode?: 'signin' | 'signup';
 }
 
-export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModalProps) {
+export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'signin' }: AuthModalProps) {
   const [mode, setMode] = useState<'signin' | 'signup'>(initialMode);
 
   const handleSuccess = (user: any) => {
     console.log("Auth success handler called with user:", user);
     
-    // Check for redirect flag
-    const redirectTarget = localStorage.getItem('redirect_after_signup');
-    
-    // Close the modal
+    // Close the modal first
     onClose();
     
-    // Handle redirect if needed
-    if (redirectTarget === 'pricing') {
-      window.location.href = '/pricing';
-    } else if (redirectTarget) {
-      window.location.href = `/${redirectTarget}`;
+    // For signup, automatically redirect to pricing page
+    if (mode === 'signup') {
+      console.log("Signup successful - redirecting to pricing page");
+      
+      // Set a flag to indicate we should redirect to pricing
+      localStorage.setItem('redirect_after_signup', 'pricing');
+      
+      // Small delay to ensure modal closes smoothly
+      setTimeout(() => {
+        // Force navigation to pricing page
+        window.location.hash = '#pricing';
+        window.location.reload(); // Ensure the page updates
+      }, 200);
+    } else {
+      // For signin, call the parent success handler if provided
+      if (onSuccess) {
+        onSuccess(user);
+      }
     }
   };
 
@@ -57,3 +68,4 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
     </div>
   );
 }
+
