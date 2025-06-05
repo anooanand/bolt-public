@@ -16,7 +16,7 @@ import { PricingPage } from './components/PricingPage';
 import { AuthModal } from './components/AuthModal';
 import { SignupPage } from './components/SignupPage';
 import { WritingArea } from './components/WritingArea';
-import DebugEnv from './components/DebugEnv'; // ✅ ADDED
+import DebugEnv from './components/DebugEnv';
 
 function App() {
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
@@ -46,10 +46,26 @@ function App() {
         const currentUser = await getCurrentUser();
         setUser(currentUser);
 
+        // IMPROVED REDIRECT HANDLING
         const redirectTarget = localStorage.getItem('redirect_after_signup');
         if (currentUser && redirectTarget) {
+          console.log("Found redirect target:", redirectTarget);
           localStorage.removeItem('redirect_after_signup');
-          setActivePage(redirectTarget);
+          
+          if (redirectTarget === 'pricing') {
+            console.log("Redirecting to pricing page");
+            setActivePage('pricing');
+          } else {
+            setActivePage(redirectTarget);
+          }
+        }
+
+        // Check for URL hash-based navigation (for pricing redirect)
+        if (window.location.hash === '#pricing') {
+          console.log("Hash-based navigation to pricing");
+          setActivePage('pricing');
+          // Clear the hash
+          window.history.replaceState(null, '', window.location.pathname);
         }
 
         if (currentUser) {
@@ -88,7 +104,9 @@ function App() {
 
     checkAuthWithRetry();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async () => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log("Auth state change:", event, !!session);
+      
       try {
         await checkAuth();
       } catch (error) {
@@ -132,6 +150,25 @@ function App() {
     }
   };
 
+  // IMPROVED SUCCESS HANDLER
+  const handleAuthSuccess = async () => {
+    console.log("Auth success - refreshing user state");
+    
+    const refreshedUser = await getCurrentUser();
+    setUser(refreshedUser);
+    
+    const completed = await hasCompletedPayment();
+    setPaymentCompleted(completed);
+    
+    // If user has completed payment, go to dashboard
+    if (completed) {
+      setActivePage('dashboard');
+    } else {
+      // Otherwise, they should be on pricing page (handled by AuthModal)
+      console.log("User authenticated but no payment - should be on pricing");
+    }
+  };
+
   return (
     <ThemeContext.Provider value={{
       theme,
@@ -169,7 +206,7 @@ function App() {
           {activePage === 'home' && (
             <>
               <HeroSection onGetStarted={() => setShowAuthModal(true)} onStartWriting={() => setActivePage('dashboard')} />
-              <DebugEnv /> {/* ✅ Injected Debug Display */}
+              <DebugEnv />
               <FeaturesSection />
               <ToolsSection />
               <WritingTypesSection />
@@ -188,13 +225,7 @@ function App() {
         <AuthModal 
           isOpen={showAuthModal}
           onClose={() => setShowAuthModal(false)}
-          onSuccess={async () => {
-            const refreshedUser = await getCurrentUser();
-            setUser(refreshedUser);
-            const completed = await hasCompletedPayment();
-            setPaymentCompleted(completed);
-            setActivePage('dashboard');
-          }}
+          onSuccess={handleAuthSuccess}
           initialMode={authMode}
           key={`auth-modal-${modalKey}-${authMode}`}
         />
@@ -204,3 +235,4 @@ function App() {
 }
 
 export default App;
+
