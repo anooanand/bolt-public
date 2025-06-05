@@ -104,27 +104,42 @@ export async function signOut() {
   }
 }
 
-// Get current user
+// Get current user - FIXED AUTH SESSION ERROR HANDLING
 export async function getCurrentUser() {
   try {
     const { data: { user }, error } = await supabase.auth.getUser();
     
     if (error) {
-      // Check if the error is due to missing auth session
-      if (error.message === 'Auth session missing!') {
-        console.info("No authenticated user found"); // Changed from console.error to console.info
+      // Check if the error is the expected "Auth session missing!" error
+      if (error.message === 'Auth session missing!' || error.name === 'AuthSessionMissingError') {
+        // This is expected when no user is signed in - log as info, not error
+        console.info("No authenticated user session found");
         return null;
       }
-      // Log other errors as actual errors
-      console.error("Error getting current user:", error);
+      // Only log actual unexpected errors
+      console.error("Unexpected error getting current user:", error);
       return null;
     }
 
+    // User found
+    if (user) {
+      console.log("Current user found:", user.email);
+    }
+    
     return user;
   } catch (error) {
-    // Only log as error if it's an unexpected error
-    if (error instanceof Error && error.message !== 'Auth session missing!') {
-      console.error("Error in getCurrentUser:", error);
+    // Handle caught exceptions - check if it's the expected auth session missing error
+    if (error instanceof Error) {
+      if (error.message === 'Auth session missing!' || error.name === 'AuthSessionMissingError') {
+        // This is expected when no user is signed in
+        console.info("No authenticated user session found");
+        return null;
+      }
+      // Log unexpected errors
+      console.error("Unexpected error in getCurrentUser:", error);
+    } else {
+      // Log non-Error objects
+      console.error("Unknown error in getCurrentUser:", error);
     }
     return null;
   }
@@ -295,3 +310,4 @@ export async function updatePassword(newPassword: string) {
 
 // Export the supabase client for direct use if needed
 export default supabase;
+
