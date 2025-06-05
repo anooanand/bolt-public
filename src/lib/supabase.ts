@@ -1,8 +1,31 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient, User, AuthError } from '@supabase/supabase-js';
 
-// Environment variables
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+// Define types for better TypeScript support
+interface AuthResult {
+  user?: User | null;
+  error?: AuthError | null;
+  success?: boolean;
+}
+
+interface PaymentStatus {
+  hasPayment: boolean;
+  planType: string | null;
+  subscriptionStatus?: string | null;
+  paymentDate?: string | null;
+}
+
+interface PaymentData {
+  payment_confirmed: boolean;
+  plan_type: string;
+  signup_completed: boolean;
+  payment_date: string;
+  subscription_status: string;
+  payment_amount?: number;
+}
+
+// Environment variables with proper typing
+const supabaseUrl: string = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey: string = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 console.log("Environment variables check:");
 console.log("SUPABASE_URL available:", !!supabaseUrl);
@@ -19,10 +42,10 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing Supabase environment variables');
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase: SupabaseClient = createClient(supabaseUrl, supabaseAnonKey);
 
 // Auth proxy function for Netlify functions
-async function callAuthProxy(action, data) {
+async function callAuthProxy(action: string, data: Record<string, any>): Promise<any> {
   try {
     const response = await fetch('/.netlify/functions/auth-proxy', {
       method: 'POST',
@@ -45,12 +68,14 @@ async function callAuthProxy(action, data) {
 }
 
 // Sign up function
-export async function signUp(email, password) {
+export async function signUp(email: string, password: string): Promise<AuthResult> {
   try {
     console.log("Attempting signup for:", email);
     
     // Store email in localStorage for later use
-    localStorage.setItem('userEmail', email);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('userEmail', email);
+    }
     
     const result = await callAuthProxy('signup', { email, password });
     
@@ -67,13 +92,15 @@ export async function signUp(email, password) {
 }
 
 // Sign in function
-export async function signIn(email, password) {
+export async function signIn(email: string, password: string): Promise<AuthResult> {
   try {
     console.log("Attempting sign in for:", email);
     console.log("Calling auth proxy with action: signin");
     
     // Store email in localStorage for later use
-    localStorage.setItem('userEmail', email);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('userEmail', email);
+    }
     
     const result = await callAuthProxy('signin', { email, password });
     
@@ -85,20 +112,22 @@ export async function signIn(email, password) {
     console.log("Sign in successful:", email);
     return result;
   } catch (error) {
-    console.error("Sign in failed:", error.message);
+    console.error("Sign in failed:", (error as Error).message);
     console.error("Unexpected error during sign in:", error);
     throw error;
   }
 }
 
 // Sign out function
-export async function signOut() {
+export async function signOut(): Promise<{ success: boolean }> {
   try {
     const { error } = await supabase.auth.signOut();
     if (error) throw error;
     
     // Clear stored user data
-    localStorage.removeItem('userEmail');
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('userEmail');
+    }
     
     return { success: true };
   } catch (error) {
@@ -108,7 +137,7 @@ export async function signOut() {
 }
 
 // Get current user
-export async function getCurrentUser() {
+export async function getCurrentUser(): Promise<User | null> {
   try {
     const { data: { user }, error } = await supabase.auth.getUser();
     
@@ -124,8 +153,8 @@ export async function getCurrentUser() {
   }
 }
 
-// Confirm payment function - NEW
-export async function confirmPayment(planType) {
+// Confirm payment function
+export async function confirmPayment(planType: string): Promise<any> {
   try {
     console.log("Confirming payment for plan:", planType);
     
@@ -136,15 +165,17 @@ export async function confirmPayment(planType) {
 
     console.log("Updating user metadata with payment confirmation");
     
+    const paymentData: PaymentData = {
+      payment_confirmed: true,
+      plan_type: planType,
+      signup_completed: true,
+      payment_date: new Date().toISOString(),
+      subscription_status: 'active'
+    };
+    
     // Update user metadata to confirm payment
     const { data, error } = await supabase.auth.updateUser({
-      data: {
-        payment_confirmed: true,
-        plan_type: planType,
-        signup_completed: true,
-        payment_date: new Date().toISOString(),
-        subscription_status: 'active'
-      }
+      data: paymentData
     });
 
     if (error) {
@@ -160,8 +191,8 @@ export async function confirmPayment(planType) {
   }
 }
 
-// Check payment status function - NEW
-export async function checkPaymentStatus(userEmail = null) {
+// Check payment status function
+export async function checkPaymentStatus(userEmail: string | null = null): Promise<PaymentStatus> {
   try {
     const user = await getCurrentUser();
     
@@ -194,8 +225,8 @@ export async function checkPaymentStatus(userEmail = null) {
   }
 }
 
-// Create or update user payment record - NEW
-export async function createPaymentRecord(planType, amount = null) {
+// Create or update user payment record
+export async function createPaymentRecord(planType: string, amount: number | null = null): Promise<any> {
   try {
     const user = await getCurrentUser();
     if (!user) {
@@ -204,7 +235,7 @@ export async function createPaymentRecord(planType, amount = null) {
 
     // For now, we'll store payment info in user metadata
     // In a production app, you might want a separate payments table
-    const paymentData = {
+    const paymentData: PaymentData = {
       payment_confirmed: true,
       plan_type: planType,
       signup_completed: true,
@@ -233,8 +264,8 @@ export async function createPaymentRecord(planType, amount = null) {
   }
 }
 
-// Get user by email function - NEW
-export async function getUserByEmail(email) {
+// Get user by email function
+export async function getUserByEmail(email: string): Promise<User | null> {
   try {
     // Note: This requires admin privileges in a real app
     // For now, we'll check if the current user matches the email
@@ -252,7 +283,7 @@ export async function getUserByEmail(email) {
 }
 
 // Initialize auth state listener
-export function onAuthStateChange(callback) {
+export function onAuthStateChange(callback: (event: string, session: any) => void) {
   return supabase.auth.onAuthStateChange((event, session) => {
     console.log("Auth state change:", event, session?.user?.email || 'no user');
     callback(event, session);
@@ -260,7 +291,7 @@ export function onAuthStateChange(callback) {
 }
 
 // Reset password function
-export async function resetPassword(email) {
+export async function resetPassword(email: string): Promise<{ success: boolean }> {
   try {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/reset-password`,
@@ -276,7 +307,7 @@ export async function resetPassword(email) {
 }
 
 // Update password function
-export async function updatePassword(newPassword) {
+export async function updatePassword(newPassword: string): Promise<{ success: boolean }> {
   try {
     const { error } = await supabase.auth.updateUser({
       password: newPassword
