@@ -12,7 +12,9 @@ interface AuthModalProps {
 export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModalProps) {
   const [mode, setMode] = useState<'signin' | 'signup'>(initialMode);
 
-  const handleSuccess = () => {
+  const handleSuccess = (user: any) => {
+    console.log("Auth success handler called with user:", user);
+    
     // Check for redirect flag
     const redirectTarget = localStorage.getItem('redirect_after_signup');
     
@@ -47,7 +49,7 @@ export function AuthModal({ isOpen, onClose, initialMode = 'signin' }: AuthModal
           />
         ) : (
           <SimpleSignUp 
-            onSuccess={handleSuccess} 
+            onSignUpSuccess={handleSuccess} 
             onSignInClick={() => setMode('signin')} 
           />
         )}
