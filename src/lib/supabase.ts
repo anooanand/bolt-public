@@ -371,5 +371,25 @@ export async function updatePassword(newPassword: string) {
   }
 }
 
+// Request password reset function
+export async function requestPasswordReset(email: string) {
+  try {
+    if (!supabaseUrl || !supabaseAnonKey) {
+      throw new Error('Supabase configuration is missing');
+    }
+    
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    
+    if (error) throw error;
+    
+    return { success: true };
+  } catch (error) {
+    console.error("Password reset request failed:", error);
+    throw error;
+  }
+}
+
 // Export the supabase client for direct use if needed
 export default supabase;
