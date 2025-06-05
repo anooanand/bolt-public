@@ -28,6 +28,72 @@ function App() {
   const [paymentCompleted, setPaymentCompleted] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   const [modalKey, setModalKey] = useState(0);
+  const [paymentProcessing, setPaymentProcessing] = useState(false);
+
+  // PAYMENT SUCCESS HANDLER
+  const handlePaymentSuccess = async (plan: string) => {
+    console.log("Processing payment success for plan:", plan);
+    setPaymentProcessing(true);
+    
+    try {
+      // Get user email from localStorage (set during signup/payment)
+      const userEmail = localStorage.getItem('userEmail');
+      console.log("User email from localStorage:", userEmail);
+      
+      if (!userEmail) {
+        console.error("No user email found - cannot confirm payment");
+        alert("Payment successful, but we couldn't find your account. Please contact support.");
+        return;
+      }
+      
+      // Try to sign in the user with their email (they should have an account from signup)
+      // First, let's check if there's already a session
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        console.log("No active session - need to establish user session");
+        
+        // For now, we'll create a temporary session by updating the user's payment status
+        // In a real implementation, you'd want to use a secure token or have the user sign in
+        
+        // Alternative approach: Show a success message and ask user to sign in
+        const shouldSignIn = confirm(
+          `Payment successful for ${plan} plan! Please sign in to access your dashboard.`
+        );
+        
+        if (shouldSignIn) {
+          setAuthMode('signin');
+          setShowAuthModal(true);
+          return;
+        }
+      }
+      
+      // If we have a session, confirm the payment
+      if (session?.user) {
+        console.log("Confirming payment for user:", session.user.email);
+        await confirmPayment(plan);
+        
+        // Update local state
+        setUser(session.user);
+        setPaymentCompleted(true);
+        setActivePage('dashboard');
+        
+        console.log("Payment confirmed successfully - redirecting to dashboard");
+        
+        // Clean up URL parameters
+        window.history.replaceState({}, document.title, window.location.pathname);
+        
+        // Show success message
+        alert(`Welcome! Your ${plan} plan is now active. Enjoy your writing assistant!`);
+      }
+      
+    } catch (error) {
+      console.error("Error processing payment success:", error);
+      alert("Payment was successful, but there was an error setting up your account. Please contact support.");
+    } finally {
+      setPaymentProcessing(false);
+    }
+  };
 
   useEffect(() => {
     console.log("Environment variables check:");
@@ -40,13 +106,27 @@ function App() {
       console.log("SUPABASE_ANON_KEY prefix:", import.meta.env.VITE_SUPABASE_ANON_KEY.substring(0, 15) + "...");
     }
 
+    // CHECK FOR PAYMENT SUCCESS URL PARAMETERS
+    const urlParams = new URLSearchParams(window.location.search);
+    const paymentSuccess = urlParams.get('payment_success');
+    const planType = urlParams.get('plan');
+    
+    if (paymentSuccess === 'true' && planType) {
+      console.log("Payment success detected:", { paymentSuccess, planType });
+      
+      // Handle payment success
+      setTimeout(() => {
+        handlePaymentSuccess(planType);
+      }, 1000); // Small delay to ensure page is loaded
+    }
+
     const checkAuth = async () => {
       try {
         await supabase.auth.refreshSession();
         const currentUser = await getCurrentUser();
         setUser(currentUser);
 
-        // IMPROVED REDIRECT HANDLING
+        // Handle redirect after signup
         const redirectTarget = localStorage.getItem('redirect_after_signup');
         if (currentUser && redirectTarget) {
           console.log("Found redirect target:", redirectTarget);
@@ -72,6 +152,11 @@ function App() {
           const completed = await hasCompletedPayment();
           console.log("Initial payment completed status:", completed);
           setPaymentCompleted(completed);
+          
+          // If user has completed payment, show dashboard
+          if (completed && activePage === 'home') {
+            setActivePage('dashboard');
+          }
         }
       } catch (error) {
         console.error('Error checking auth status:', error);
@@ -150,7 +235,6 @@ function App() {
     }
   };
 
-  // IMPROVED SUCCESS HANDLER
   const handleAuthSuccess = async () => {
     console.log("Auth success - refreshing user state");
     
@@ -168,6 +252,23 @@ function App() {
       console.log("User authenticated but no payment - should be on pricing");
     }
   };
+
+  // Show loading screen while processing payment
+  if (paymentProcessing) {
+    return (
+      <div className="min-h-screen bg-white dark:bg-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+            Processing Your Payment
+          </h2>
+          <p className="text-gray-600 dark:text-gray-300">
+            Please wait while we set up your account...
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <ThemeContext.Provider value={{
@@ -220,6 +321,46 @@ function App() {
           {activePage === 'pricing' && <PricingPage />}
           {activePage === 'signup' && <SignupPage onSignUp={handleSignUpClick} />}
           {activePage === 'dashboard' && user && paymentCompleted && <WritingArea user={user} />}
+          
+          {/* Show message if user tries to access dashboard without payment */}
+          {activePage === 'dashboard' && user && !paymentCompleted && (
+            <div className="min-h-screen bg-white dark:bg-gray-900 flex items-center justify-center">
+              <div className="text-center max-w-md mx-auto p-6">
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+                  Subscription Required
+                </h2>
+                <p className="text-gray-600 dark:text-gray-300 mb-6">
+                  You need an active subscription to access the writing dashboard.
+                </p>
+                <button
+                  onClick={() => setActivePage('pricing')}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-md"
+                >
+                  View Pricing Plans
+                </button>
+              </div>
+            </div>
+          )}
+          
+          {/* Show message if no user tries to access dashboard */}
+          {activePage === 'dashboard' && !user && (
+            <div className="min-h-screen bg-white dark:bg-gray-900 flex items-center justify-center">
+              <div className="text-center max-w-md mx-auto p-6">
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+                  Sign In Required
+                </h2>
+                <p className="text-gray-600 dark:text-gray-300 mb-6">
+                  Please sign in to access your writing dashboard.
+                </p>
+                <button
+                  onClick={handleSignInClick}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-md"
+                >
+                  Sign In
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         <AuthModal 
