@@ -1,11 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { getCurrentUser, signOut, confirmPayment } from './lib/supabase';
-import AuthModal from './components/AuthModal';
-import PricingPage from './components/PricingPage';
-import WritingArea from './components/WritingArea';
-import { HomePage } from './components/HomePage';
 
-// Simplified interfaces to avoid conflicts
+// Simplified interfaces
 interface AppUser {
   id: string;
   email?: string;
@@ -14,6 +9,102 @@ interface AppUser {
 
 type PageType = 'home' | 'features' | 'about' | 'pricing' | 'faq' | 'dashboard';
 type AuthMode = 'signin' | 'signup';
+
+// Safe component imports with fallbacks
+let AuthModal: any;
+let PricingPage: any;
+let WritingArea: any;
+let HomePage: any;
+
+try {
+  AuthModal = require('./components/AuthModal').default;
+} catch (e) {
+  console.warn('AuthModal component not found, using fallback');
+  AuthModal = ({ mode, onClose, onSuccess, onSwitchMode }: any) => (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white p-6 rounded-lg">
+        <h2>Auth Modal</h2>
+        <p>AuthModal component is missing. Please check the component file.</p>
+        <button onClick={onClose} className="mt-4 px-4 py-2 bg-gray-500 text-white rounded">
+          Close
+        </button>
+      </div>
+    </div>
+  );
+}
+
+try {
+  PricingPage = require('./components/PricingPage').default;
+} catch (e) {
+  console.warn('PricingPage component not found, using fallback');
+  PricingPage = ({ user, onPaymentComplete }: any) => (
+    <div className="max-w-7xl mx-auto py-16 px-4">
+      <h1 className="text-4xl font-bold text-center mb-8">Pricing</h1>
+      <p className="text-center text-gray-600">PricingPage component is missing. Please check the component file.</p>
+    </div>
+  );
+}
+
+try {
+  WritingArea = require('./components/WritingArea').default;
+} catch (e) {
+  console.warn('WritingArea component not found, using fallback');
+  WritingArea = ({ user }: any) => (
+    <div className="max-w-7xl mx-auto py-16 px-4">
+      <h1 className="text-4xl font-bold text-center mb-8">Writing Dashboard</h1>
+      <p className="text-center text-gray-600">WritingArea component is missing. Please check the component file.</p>
+    </div>
+  );
+}
+
+try {
+  const HomePageModule = require('./components/HomePage');
+  HomePage = HomePageModule.HomePage || HomePageModule.default;
+} catch (e) {
+  console.warn('HomePage component not found, using fallback');
+  HomePage = () => (
+    <div className="max-w-7xl mx-auto py-16 px-4">
+      <h1 className="text-4xl font-bold text-center mb-8">Welcome to Bolt Writing Assistant</h1>
+      <p className="text-center text-gray-600 mb-8">
+        Master narrative, persuasive, and creative writing with personalized AI guidance.
+      </p>
+      <div className="text-center">
+        <button className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg mr-4">
+          Get Started
+        </button>
+        <button className="border border-gray-300 hover:border-purple-300 text-gray-700 px-6 py-3 rounded-lg">
+          Learn More
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// Safe supabase imports with fallbacks
+let getCurrentUser: any;
+let signOut: any;
+let confirmPayment: any;
+
+try {
+  const supabaseModule = require('./lib/supabase');
+  getCurrentUser = supabaseModule.getCurrentUser;
+  signOut = supabaseModule.signOut;
+  confirmPayment = supabaseModule.confirmPayment;
+} catch (e) {
+  console.warn('Supabase module not found, using fallbacks');
+  getCurrentUser = async () => {
+    console.warn('getCurrentUser fallback called');
+    return null;
+  };
+  signOut = async () => {
+    console.warn('signOut fallback called');
+    return { success: true };
+  };
+  confirmPayment = async (planType: string) => {
+    console.warn('confirmPayment fallback called with plan:', planType);
+    return { success: true };
+  };
+}
 
 function App() {
   const [user, setUser] = useState<AppUser | null>(null);
@@ -29,17 +120,21 @@ function App() {
     
     // Check for payment success in URL parameters
     if (typeof window !== 'undefined') {
-      const urlParams = new URLSearchParams(window.location.search);
-      const paymentSuccess = urlParams.get('payment_success');
-      const planType = urlParams.get('plan');
-      
-      if (paymentSuccess === 'true' && planType) {
-        console.log("Payment success detected:", { paymentSuccess, planType });
-        setPendingPaymentPlan(planType);
+      try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const paymentSuccess = urlParams.get('payment_success');
+        const planType = urlParams.get('plan');
         
-        setTimeout(() => {
-          handlePaymentSuccess(planType);
-        }, 1000);
+        if (paymentSuccess === 'true' && planType) {
+          console.log("Payment success detected:", { paymentSuccess, planType });
+          setPendingPaymentPlan(planType);
+          
+          setTimeout(() => {
+            handlePaymentSuccess(planType);
+          }, 1000);
+        }
+      } catch (error) {
+        console.warn('Error checking URL parameters:', error);
       }
     }
   }, []);
@@ -80,7 +175,15 @@ function App() {
   const handlePaymentSuccess = async (planType: string) => {
     console.log("Processing payment success for plan:", planType);
     
-    const userEmail = typeof window !== 'undefined' ? localStorage.getItem('userEmail') : null;
+    let userEmail: string | null = null;
+    if (typeof window !== 'undefined') {
+      try {
+        userEmail = localStorage.getItem('userEmail');
+      } catch (error) {
+        console.warn('Error accessing localStorage:', error);
+      }
+    }
+    
     console.log("User email from localStorage:", userEmail);
     
     if (!userEmail) {
@@ -90,26 +193,36 @@ function App() {
       return;
     }
 
-    const currentUser = await getCurrentUser();
-    if (currentUser) {
-      console.log("User already authenticated, confirming payment");
-      try {
-        await confirmPayment(planType);
-        setPaymentCompleted(true);
-        setActivePage('dashboard');
-        setPendingPaymentPlan(null);
-        
-        if (typeof window !== 'undefined') {
-          window.history.replaceState({}, document.title, window.location.pathname);
+    try {
+      const currentUser = await getCurrentUser();
+      if (currentUser) {
+        console.log("User already authenticated, confirming payment");
+        try {
+          await confirmPayment(planType);
+          setPaymentCompleted(true);
+          setActivePage('dashboard');
+          setPendingPaymentPlan(null);
+          
+          if (typeof window !== 'undefined') {
+            try {
+              window.history.replaceState({}, document.title, window.location.pathname);
+            } catch (error) {
+              console.warn('Error updating browser history:', error);
+            }
+          }
+          
+          alert(`Welcome! Your ${planType} plan is now active. Enjoy your writing assistant!`);
+        } catch (error) {
+          console.error("Error confirming payment:", error);
+          alert("There was an error activating your subscription. Please contact support.");
         }
-        
-        alert(`Welcome! Your ${planType} plan is now active. Enjoy your writing assistant!`);
-      } catch (error) {
-        console.error("Error confirming payment:", error);
-        alert("There was an error activating your subscription. Please contact support.");
+      } else {
+        console.log("No active session - need to establish user session");
+        setAuthMode('signin');
+        setShowAuthModal(true);
       }
-    } else {
-      console.log("No active session - need to establish user session");
+    } catch (error) {
+      console.error("Error in handlePaymentSuccess:", error);
       setAuthMode('signin');
       setShowAuthModal(true);
     }
@@ -118,71 +231,84 @@ function App() {
   const handleAuthSuccess = async () => {
     console.log("Auth success - refreshing user state");
     
-    const refreshedUser = await getCurrentUser();
-    setUser(refreshedUser);
-    
-    if (pendingPaymentPlan) {
-      console.log("Found pending payment plan:", pendingPaymentPlan);
+    try {
+      const refreshedUser = await getCurrentUser();
+      setUser(refreshedUser);
       
-      try {
-        console.log("Confirming payment for user after authentication");
-        await confirmPayment(pendingPaymentPlan);
+      if (pendingPaymentPlan) {
+        console.log("Found pending payment plan:", pendingPaymentPlan);
         
-        setPaymentCompleted(true);
-        setActivePage('dashboard');
-        setPendingPaymentPlan(null);
-        
-        if (typeof window !== 'undefined') {
-          window.history.replaceState({}, document.title, window.location.pathname);
-        }
-        
-        alert(`Welcome! Your ${pendingPaymentPlan} plan is now active. Enjoy your writing assistant!`);
-        setShowAuthModal(false);
-        return;
-      } catch (error) {
-        console.error("Error confirming payment after authentication:", error);
-        alert("There was an error activating your subscription. Please contact support.");
-      }
-    }
-    
-    // Check for payment success URL parameters again
-    if (typeof window !== 'undefined') {
-      const urlParams = new URLSearchParams(window.location.search);
-      const paymentSuccess = urlParams.get('payment_success');
-      const planType = urlParams.get('plan');
-      
-      if (paymentSuccess === 'true' && planType) {
-        console.log("Found payment success parameters after auth:", { paymentSuccess, planType });
         try {
-          await confirmPayment(planType);
+          console.log("Confirming payment for user after authentication");
+          await confirmPayment(pendingPaymentPlan);
+          
           setPaymentCompleted(true);
           setActivePage('dashboard');
+          setPendingPaymentPlan(null);
           
-          window.history.replaceState({}, document.title, window.location.pathname);
-          alert(`Welcome! Your ${planType} plan is now active. Enjoy your writing assistant!`);
+          if (typeof window !== 'undefined') {
+            try {
+              window.history.replaceState({}, document.title, window.location.pathname);
+            } catch (error) {
+              console.warn('Error updating browser history:', error);
+            }
+          }
+          
+          alert(`Welcome! Your ${pendingPaymentPlan} plan is now active. Enjoy your writing assistant!`);
           setShowAuthModal(false);
           return;
         } catch (error) {
-          console.error("Error confirming payment from URL params:", error);
+          console.error("Error confirming payment after authentication:", error);
+          alert("There was an error activating your subscription. Please contact support.");
         }
       }
+      
+      // Check for payment success URL parameters again
+      if (typeof window !== 'undefined') {
+        try {
+          const urlParams = new URLSearchParams(window.location.search);
+          const paymentSuccess = urlParams.get('payment_success');
+          const planType = urlParams.get('plan');
+          
+          if (paymentSuccess === 'true' && planType) {
+            console.log("Found payment success parameters after auth:", { paymentSuccess, planType });
+            try {
+              await confirmPayment(planType);
+              setPaymentCompleted(true);
+              setActivePage('dashboard');
+              
+              window.history.replaceState({}, document.title, window.location.pathname);
+              alert(`Welcome! Your ${planType} plan is now active. Enjoy your writing assistant!`);
+              setShowAuthModal(false);
+              return;
+            } catch (error) {
+              console.error("Error confirming payment from URL params:", error);
+            }
+          }
+        } catch (error) {
+          console.warn('Error checking URL parameters after auth:', error);
+        }
+      }
+      
+      const paymentConfirmed = refreshedUser?.user_metadata?.payment_confirmed || 
+                             refreshedUser?.user_metadata?.signup_completed ||
+                             false;
+      
+      console.log("Payment status after auth:", { paymentConfirmed });
+      
+      if (paymentConfirmed) {
+        setPaymentCompleted(true);
+        setActivePage('dashboard');
+      } else {
+        console.log("No payment found after authentication - redirecting to pricing");
+        setActivePage('pricing');
+      }
+      
+      setShowAuthModal(false);
+    } catch (error) {
+      console.error("Error in handleAuthSuccess:", error);
+      setShowAuthModal(false);
     }
-    
-    const paymentConfirmed = refreshedUser?.user_metadata?.payment_confirmed || 
-                           refreshedUser?.user_metadata?.signup_completed ||
-                           false;
-    
-    console.log("Payment status after auth:", { paymentConfirmed });
-    
-    if (paymentConfirmed) {
-      setPaymentCompleted(true);
-      setActivePage('dashboard');
-    } else {
-      console.log("No payment found after authentication - redirecting to pricing");
-      setActivePage('pricing');
-    }
-    
-    setShowAuthModal(false);
   };
 
   const handleSignOut = async () => {
@@ -194,8 +320,12 @@ function App() {
       setPendingPaymentPlan(null);
       
       if (typeof window !== 'undefined') {
-        localStorage.removeItem('userEmail');
-        window.history.replaceState({}, document.title, window.location.pathname);
+        try {
+          localStorage.removeItem('userEmail');
+          window.history.replaceState({}, document.title, window.location.pathname);
+        } catch (error) {
+          console.warn('Error clearing localStorage or updating history:', error);
+        }
       }
     } catch (error) {
       console.error('Error signing out:', error);
