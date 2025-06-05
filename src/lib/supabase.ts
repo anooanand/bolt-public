@@ -1,5 +1,5 @@
-// Updated frontend Supabase client that uses Netlify Function proxy
-// This bypasses direct browser-to-Supabase connectivity issues
+// Updated frontend Supabase client with improved session management
+// This version includes enhanced session handling and debugging
 
 import { createClient } from '@supabase/supabase-js';
 
@@ -20,12 +20,12 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     detectSessionInUrl: true,
     flowType: 'pkce',
     storage: typeof window !== 'undefined' ? window.localStorage : undefined,
-    storageKey: 'bolt_auth_token_v6' // Updated to avoid conflicts with previous versions
+    storageKey: 'bolt_auth_token_v7' // Updated to avoid conflicts with previous versions
   },
   global: {
     headers: { 
       'x-application-name': 'bolt-writing-assistant',
-      'x-client-version': '2.0.4'
+      'x-client-version': '2.0.5'
     }
   }
 });
@@ -58,7 +58,7 @@ async function callAuthProxy(action, data) {
   }
 }
 
-// Enhanced signup function using Netlify Function proxy
+// Enhanced signup function with improved session management
 export async function signUp(email, password) {
   console.log("Starting signup process for:", email);
   
@@ -94,15 +94,40 @@ export async function signUp(email, password) {
       session: !!result.session
     });
     
-    // Update the Supabase client session
+    // ENHANCED SESSION MANAGEMENT
     if (result.session) {
-      await supabase.auth.setSession({
+      console.log("Setting session with tokens...");
+      
+      // Set the session in Supabase client
+      const { data, error } = await supabase.auth.setSession({
         access_token: result.session.access_token,
         refresh_token: result.session.refresh_token
       });
+      
+      if (error) {
+        console.error("Error setting session:", error);
+      } else {
+        console.log("Session set successfully:", !!data.session);
+      }
+      
+      // Verify session was established
+      const { data: { session } } = await supabase.auth.getSession();
+      console.log("Session verification:", {
+        sessionExists: !!session,
+        userId: session?.user?.id,
+        email: session?.user?.email
+      });
+      
+      // Store user email for pricing page
+      if (session?.user?.email) {
+        localStorage.setItem('userEmail', session.user.email);
+        localStorage.setItem('userId', session.user.id);
+      }
+    } else {
+      console.warn("No session returned from signup - this may cause issues");
     }
     
-    return { success: true, user: result.user };
+    return { success: true, user: result.user, session: result.session };
   } catch (err) {
     console.error("Signup error:", err);
     
@@ -128,10 +153,20 @@ export async function signIn(email, password) {
     
     // Update the Supabase client session
     if (result.session) {
-      await supabase.auth.setSession({
+      const { data, error } = await supabase.auth.setSession({
         access_token: result.session.access_token,
         refresh_token: result.session.refresh_token
       });
+      
+      if (error) {
+        console.error("Error setting session:", error);
+      }
+      
+      // Store user info
+      if (result.user?.email) {
+        localStorage.setItem('userEmail', result.user.email);
+        localStorage.setItem('userId', result.user.id);
+      }
     }
     
     console.log("Sign in successful:", result?.user?.email);
@@ -149,6 +184,10 @@ export async function signOut() {
     
     // Also clear the local session
     await supabase.auth.signOut();
+    
+    // Clear stored user info
+    localStorage.removeItem('userEmail');
+    localStorage.removeItem('userId');
     
     console.log("Signed out successfully");
     return true;
@@ -237,3 +276,4 @@ export async function isSignupCompleted() {
     return false;
   }
 }
+
