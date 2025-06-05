@@ -1,113 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { ThemeContext } from './lib/ThemeContext';
-import { getCurrentUser, confirmPayment, hasCompletedPayment, supabase } from './lib/supabase';
-import { User } from '@supabase/supabase-js';
-
-import { NavBar } from './components/NavBar';
-import { HeroSection } from './components/HeroSection';
-import { FeaturesSection } from './components/FeaturesSection';
-import { ToolsSection } from './components/ToolsSection';
-import { WritingTypesSection } from './components/WritingTypesSection';
-import { WritingModesSection } from './components/WritingModesSection';
-import { HowItWorks } from './components/HowItWorks';
-import { AboutPage } from './components/AboutPage';
-import { FAQPage } from './components/FAQPage';
-import { PricingPage } from './components/PricingPage';
-import { AuthModal } from './components/AuthModal';
-import { SignupPage } from './components/SignupPage';
-import { WritingArea } from './components/WritingArea';
-import DebugEnv from './components/DebugEnv';
+import { getCurrentUser, signOut, confirmPayment } from './lib/supabase';
+import AuthModal from './components/AuthModal';
+import PricingPage from './components/PricingPage';
+import WritingArea from './components/WritingArea';
+import HomePage from './components/HomePage';
 
 function App() {
-  const [theme, setTheme] = useState<'light' | 'dark'>('light');
-  const [activePage, setActivePage] = useState('home');
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [authMode, setAuthMode] = useState('signin');
+  const [activePage, setActivePage] = useState('home');
   const [paymentCompleted, setPaymentCompleted] = useState(false);
-  const [authError, setAuthError] = useState<string | null>(null);
-  const [modalKey, setModalKey] = useState(0);
-  const [paymentProcessing, setPaymentProcessing] = useState(false);
-  const [pendingPaymentPlan, setPendingPaymentPlan] = useState<string | null>(null);
-
-  // PAYMENT SUCCESS HANDLER
-  const handlePaymentSuccess = async (plan: string) => {
-    console.log("Processing payment success for plan:", plan);
-    setPaymentProcessing(true);
-    
-    try {
-      // Get user email from localStorage (set during signup/payment)
-      const userEmail = localStorage.getItem('userEmail');
-      console.log("User email from localStorage:", userEmail);
-      
-      if (!userEmail) {
-        console.error("No user email found - cannot confirm payment");
-        alert("Payment successful, but we couldn't find your account. Please contact support.");
-        return;
-      }
-      
-      // Try to sign in the user with their email (they should have an account from signup)
-      // First, let's check if there's already a session
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
-        console.log("No active session - need to establish user session");
-        
-        // Store the plan type for after authentication
-        setPendingPaymentPlan(plan);
-        
-        // Alternative approach: Show a success message and ask user to sign in
-        const shouldSignIn = confirm(
-          `Payment successful for ${plan} plan! Please sign in to access your dashboard.`
-        );
-        
-        if (shouldSignIn) {
-          setAuthMode('signin');
-          setShowAuthModal(true);
-          return;
-        }
-      }
-      
-      // If we have a session, confirm the payment
-      if (session?.user) {
-        console.log("Confirming payment for user:", session.user.email);
-        await confirmPayment(plan);
-        
-        // Update local state
-        setUser(session.user);
-        setPaymentCompleted(true);
-        setActivePage('dashboard');
-        
-        console.log("Payment confirmed successfully - redirecting to dashboard");
-        
-        // Clean up URL parameters
-        window.history.replaceState({}, document.title, window.location.pathname);
-        
-        // Show success message
-        alert(`Welcome! Your ${plan} plan is now active. Enjoy your writing assistant!`);
-      }
-      
-    } catch (error) {
-      console.error("Error processing payment success:", error);
-      alert("Payment was successful, but there was an error setting up your account. Please contact support.");
-    } finally {
-      setPaymentProcessing(false);
-    }
-  };
+  const [pendingPaymentPlan, setPendingPaymentPlan] = useState(null);
 
   useEffect(() => {
-    console.log("Environment variables check:");
-    console.log("SUPABASE_URL available:", !!import.meta.env.VITE_SUPABASE_URL);
-    console.log("SUPABASE_ANON_KEY available:", !!import.meta.env.VITE_SUPABASE_ANON_KEY);
-    if (import.meta.env.VITE_SUPABASE_URL) {
-      console.log("SUPABASE_URL prefix:", import.meta.env.VITE_SUPABASE_URL.substring(0, 15) + "...");
-    }
-    if (import.meta.env.VITE_SUPABASE_ANON_KEY) {
-      console.log("SUPABASE_ANON_KEY prefix:", import.meta.env.VITE_SUPABASE_ANON_KEY.substring(0, 15) + "...");
-    }
-
-    // CHECK FOR PAYMENT SUCCESS URL PARAMETERS
+    checkAuthStatus();
+    
+    // Check for payment success in URL parameters
     const urlParams = new URLSearchParams(window.location.search);
     const paymentSuccess = urlParams.get('payment_success');
     const planType = urlParams.get('plan');
@@ -121,125 +31,86 @@ function App() {
       // Handle payment success
       setTimeout(() => {
         handlePaymentSuccess(planType);
-      }, 1000); // Small delay to ensure page is loaded
+      }, 1000);
     }
+  }, []);
 
-    const checkAuth = async () => {
-      try {
-        await supabase.auth.refreshSession();
-        const currentUser = await getCurrentUser();
-        setUser(currentUser);
-
-        // Handle redirect after signup
-        const redirectTarget = localStorage.getItem('redirect_after_signup');
-        if (currentUser && redirectTarget) {
-          console.log("Found redirect target:", redirectTarget);
-          localStorage.removeItem('redirect_after_signup');
-          
-          if (redirectTarget === 'pricing') {
-            console.log("Redirecting to pricing page");
-            setActivePage('pricing');
-          } else {
-            setActivePage(redirectTarget);
-          }
-        }
-
-        // Check for URL hash-based navigation (for pricing redirect)
-        if (window.location.hash === '#pricing') {
-          console.log("Hash-based navigation to pricing");
-          setActivePage('pricing');
-          // Clear the hash
-          window.history.replaceState(null, '', window.location.pathname);
-        }
-
-        if (currentUser) {
-          const completed = await hasCompletedPayment();
-          console.log("Initial payment completed status:", completed);
-          setPaymentCompleted(completed);
-          
-          // If user has completed payment, show dashboard
-          if (completed && activePage === 'home') {
-            setActivePage('dashboard');
-          }
-        }
-      } catch (error) {
-        console.error('Error checking auth status:', error);
-        setAuthError('Failed to authenticate. Please try refreshing the page.');
-        throw error;
-      }
-    };
-
-    const checkAuthWithRetry = async (retries = 2) => {
-      for (let attempt = 0; attempt <= retries; attempt++) {
-        try {
-          console.log(`Auth check attempt ${attempt + 1}/${retries + 1}`);
-          await checkAuth();
-          console.log(`Auth check successful on attempt ${attempt + 1}`);
-          setIsLoading(false);
-          return;
-        } catch (error) {
-          if (attempt < retries) {
-            const delay = (attempt + 1) * 3000;
-            console.log(`Retrying in ${delay / 1000} seconds...`);
-            await new Promise(resolve => setTimeout(resolve, delay));
-          } else {
-            console.error('All auth check attempts failed');
-            setIsLoading(false);
-            setAuthError('Authentication service is currently unavailable. Some features may be limited.');
-          }
-        }
-      }
-    };
-
-    checkAuthWithRetry();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log("Auth state change:", event, !!session);
+  const checkAuthStatus = async () => {
+    try {
+      console.log("Auth check attempt 1/3");
+      const currentUser = await getCurrentUser();
+      console.log("Auth check successful on attempt 1");
       
-      try {
-        await checkAuth();
-      } catch (error) {
-        console.error('Error in auth state change handler:', error);
-        setIsLoading(false);
+      if (currentUser) {
+        setUser(currentUser);
+        
+        // Check payment status
+        const paymentConfirmed = currentUser.user_metadata?.payment_confirmed || 
+                               currentUser.user_metadata?.signup_completed ||
+                               false;
+        
+        console.log("Payment status check:", { paymentConfirmed });
+        
+        if (paymentConfirmed) {
+          setPaymentCompleted(true);
+          setActivePage('dashboard');
+        } else {
+          console.log("User authenticated but no payment - should be on pricing");
+          setActivePage('pricing');
+        }
+      } else {
+        console.log("No authenticated user found");
+        setActivePage('home');
       }
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [theme]);
-
-  const handleSignUpClick = () => {
-    if (showAuthModal) {
-      setShowAuthModal(false);
-      setTimeout(() => {
-        setAuthMode('signup');
-        setModalKey(prevKey => prevKey + 1);
-        setShowAuthModal(true);
-      }, 50);
-    } else {
-      setAuthMode('signup');
-      setModalKey(prevKey => prevKey + 1);
-      setShowAuthModal(true);
+    } catch (error) {
+      console.error("Auth check failed:", error);
+      setActivePage('home');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleSignInClick = () => {
-    if (showAuthModal) {
-      setShowAuthModal(false);
-      setTimeout(() => {
-        setAuthMode('signin');
-        setModalKey(prevKey => prevKey + 1);
-        setShowAuthModal(true);
-      }, 50);
-    } else {
+  const handlePaymentSuccess = async (planType) => {
+    console.log("Processing payment success for plan:", planType);
+    
+    // Get user email from localStorage (stored during signup/signin)
+    const userEmail = localStorage.getItem('userEmail');
+    console.log("User email from localStorage:", userEmail);
+    
+    if (!userEmail) {
+      console.log("No user email found - need to establish user session");
+      // Show sign-in modal to establish user session
       setAuthMode('signin');
-      setModalKey(prevKey => prevKey + 1);
+      setShowAuthModal(true);
+      return;
+    }
+
+    // Check if user is already authenticated
+    const currentUser = await getCurrentUser();
+    if (currentUser) {
+      console.log("User already authenticated, confirming payment");
+      try {
+        await confirmPayment(planType);
+        setPaymentCompleted(true);
+        setActivePage('dashboard');
+        setPendingPaymentPlan(null);
+        
+        // Clean up URL parameters
+        window.history.replaceState({}, document.title, window.location.pathname);
+        
+        alert(`Welcome! Your ${planType} plan is now active. Enjoy your writing assistant!`);
+      } catch (error) {
+        console.error("Error confirming payment:", error);
+        alert("There was an error activating your subscription. Please contact support.");
+      }
+    } else {
+      console.log("No active session - need to establish user session");
+      // Show sign-in modal
+      setAuthMode('signin');
       setShowAuthModal(true);
     }
   };
 
-  // FIXED: Enhanced handleAuthSuccess to handle pending payments
   const handleAuthSuccess = async () => {
     console.log("Auth success - refreshing user state");
     
@@ -276,148 +147,338 @@ function App() {
       }
     }
     
-    // If no pending payment or payment confirmation failed, check payment status
-    const completed = await hasCompletedPayment();
-    setPaymentCompleted(completed);
+    // Check for payment success URL parameters again (in case they were missed)
+    const urlParams = new URLSearchParams(window.location.search);
+    const paymentSuccess = urlParams.get('payment_success');
+    const planType = urlParams.get('plan');
     
-    // If user has completed payment, go to dashboard
-    if (completed) {
+    if (paymentSuccess === 'true' && planType) {
+      console.log("Found payment success parameters after auth:", { paymentSuccess, planType });
+      try {
+        await confirmPayment(planType);
+        setPaymentCompleted(true);
+        setActivePage('dashboard');
+        
+        // Clean up URL parameters
+        window.history.replaceState({}, document.title, window.location.pathname);
+        
+        alert(`Welcome! Your ${planType} plan is now active. Enjoy your writing assistant!`);
+        return;
+      } catch (error) {
+        console.error("Error confirming payment from URL params:", error);
+      }
+    }
+    
+    // Check payment status from user metadata
+    const paymentConfirmed = refreshedUser?.user_metadata?.payment_confirmed || 
+                           refreshedUser?.user_metadata?.signup_completed ||
+                           false;
+    
+    console.log("Payment status after auth:", { paymentConfirmed });
+    
+    if (paymentConfirmed) {
+      setPaymentCompleted(true);
       setActivePage('dashboard');
     } else {
-      // Otherwise, they should be on pricing page (handled by AuthModal)
-      console.log("User authenticated but no payment - should be on pricing");
+      console.log("No payment found after authentication - redirecting to pricing");
+      setActivePage('pricing');
+    }
+    
+    setShowAuthModal(false);
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      setUser(null);
+      setPaymentCompleted(false);
+      setActivePage('home');
+      setPendingPaymentPlan(null);
       
-      // Check URL parameters again in case they were missed
-      const urlParams = new URLSearchParams(window.location.search);
-      const paymentSuccess = urlParams.get('payment_success');
-      const planType = urlParams.get('plan');
+      // Clear any stored user data
+      localStorage.removeItem('userEmail');
       
-      if (paymentSuccess === 'true' && planType) {
-        console.log("Payment success parameters found after authentication");
-        handlePaymentSuccess(planType);
-      }
+      // Clean up URL parameters
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } catch (error) {
+      console.error('Error signing out:', error);
     }
   };
 
-  // Show loading screen while processing payment
-  if (paymentProcessing) {
+  const handlePaymentComplete = async (planType) => {
+    console.log("Payment completed for plan:", planType);
+    
+    try {
+      // Confirm payment in the system
+      await confirmPayment(planType);
+      
+      // Update state
+      setPaymentCompleted(true);
+      setActivePage('dashboard');
+      
+      // Show success message
+      alert(`Welcome! Your ${planType} plan is now active. Enjoy your writing assistant!`);
+    } catch (error) {
+      console.error("Error confirming payment:", error);
+      alert("There was an error activating your subscription. Please contact support.");
+    }
+  };
+
+  if (loading) {
     return (
-      <div className="min-h-screen bg-white dark:bg-gray-900 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-            Processing Your Payment
-          </h2>
-          <p className="text-gray-600 dark:text-gray-300">
-            Please wait while we set up your account...
-          </p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
         </div>
       </div>
     );
   }
 
-  return (
-    <ThemeContext.Provider value={{
-      theme,
-      toggleTheme: () => {
-        const newTheme = theme === 'light' ? 'dark' : 'light';
-        setTheme(newTheme);
-        localStorage.setItem('theme', newTheme);
-        document.documentElement.classList.toggle('dark', newTheme === 'dark');
-      }
-    }}>
-      <div className="min-h-screen bg-white dark:bg-gray-900 text-gray-900 dark:text-white">
-        {authError && (
-          <div className="bg-red-50 dark:bg-red-900/30 border-l-4 border-red-400 p-4">
-            <p className="text-sm text-red-700 dark:text-red-200">
-              {authError}
-              <button 
-                onClick={() => window.location.reload()} 
-                className="ml-2 font-medium underline text-red-700 dark:text-red-100 hover:text-red-600"
-              >
-                Refresh
-              </button>
-            </p>
-          </div>
-        )}
-
-        <NavBar 
-          onNavigate={setActivePage} 
-          activePage={activePage} 
-          user={user} 
-          onSignInClick={handleSignInClick}
-          onSignUpClick={handleSignUpClick}
-        />
-
-        <div className="pt-16">
-          {activePage === 'home' && (
-            <>
-              <HeroSection onGetStarted={() => setShowAuthModal(true)} onStartWriting={() => setActivePage('dashboard')} />
-              <DebugEnv />
-              <FeaturesSection />
-              <ToolsSection />
-              <WritingTypesSection />
-              <WritingModesSection />
-              <HowItWorks />
-            </>
-          )}
-
-          {activePage === 'about' && <AboutPage />}
-          {activePage === 'faq' && <FAQPage />}
-          {activePage === 'pricing' && <PricingPage />}
-          {activePage === 'signup' && <SignupPage onSignUp={handleSignUpClick} />}
-          {activePage === 'dashboard' && user && paymentCompleted && <WritingArea user={user} />}
-          
-          {/* Show message if user tries to access dashboard without payment */}
-          {activePage === 'dashboard' && user && !paymentCompleted && (
-            <div className="min-h-screen bg-white dark:bg-gray-900 flex items-center justify-center">
-              <div className="text-center max-w-md mx-auto p-6">
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-                  Subscription Required
-                </h2>
-                <p className="text-gray-600 dark:text-gray-300 mb-6">
-                  You need an active subscription to access the writing dashboard.
-                </p>
-                <button
-                  onClick={() => setActivePage('pricing')}
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-md"
-                >
-                  View Pricing Plans
-                </button>
+  // Show sign-in required page if we have pending payment but no user
+  if (pendingPaymentPlan && !user) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50">
+        <nav className="bg-white shadow-sm border-b">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-between items-center h-16">
+              <div className="flex items-center">
+                <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+                  Bolt Writing Assistant
+                </h1>
               </div>
-            </div>
-          )}
-          
-          {/* Show message if no user tries to access dashboard */}
-          {activePage === 'dashboard' && !user && (
-            <div className="min-h-screen bg-white dark:bg-gray-900 flex items-center justify-center">
-              <div className="text-center max-w-md mx-auto p-6">
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-                  Sign In Required
-                </h2>
-                <p className="text-gray-600 dark:text-gray-300 mb-6">
-                  Please sign in to access your writing dashboard.
-                </p>
+              <div className="flex items-center space-x-4">
                 <button
-                  onClick={handleSignInClick}
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-md"
+                  onClick={() => {
+                    setAuthMode('signin');
+                    setShowAuthModal(true);
+                  }}
+                  className="text-gray-700 hover:text-purple-600 px-3 py-2 rounded-md text-sm font-medium border border-gray-300 hover:border-purple-300"
                 >
                   Sign In
                 </button>
+                <button
+                  onClick={() => {
+                    setAuthMode('signup');
+                    setShowAuthModal(true);
+                  }}
+                  className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-md text-sm font-medium"
+                >
+                  Sign Up
+                </button>
               </div>
             </div>
-          )}
+          </div>
+        </nav>
+
+        <div className="flex items-center justify-center min-h-[calc(100vh-4rem)]">
+          <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8 text-center">
+            <div className="mb-6">
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Payment Successful!</h2>
+              <p className="text-gray-600 mb-6">
+                Your payment has been processed successfully. Please sign in to access your writing dashboard.
+              </p>
+            </div>
+            
+            <button
+              onClick={() => {
+                setAuthMode('signin');
+                setShowAuthModal(true);
+              }}
+              className="w-full bg-purple-600 hover:bg-purple-700 text-white font-medium py-3 px-4 rounded-lg transition duration-200"
+            >
+              Sign In to Continue
+            </button>
+            
+            <p className="text-sm text-gray-500 mt-4">
+              Don't have an account?{' '}
+              <button
+                onClick={() => {
+                  setAuthMode('signup');
+                  setShowAuthModal(true);
+                }}
+                className="text-purple-600 hover:text-purple-700 font-medium"
+              >
+                Sign up here
+              </button>
+            </p>
+          </div>
         </div>
 
-        <AuthModal 
-          isOpen={showAuthModal}
+        {showAuthModal && (
+          <AuthModal
+            mode={authMode}
+            onClose={() => setShowAuthModal(false)}
+            onSuccess={handleAuthSuccess}
+            onSwitchMode={(mode) => setAuthMode(mode)}
+          />
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50">
+      {/* Navigation */}
+      <nav className="bg-white shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center">
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+                Bolt Writing Assistant
+              </h1>
+            </div>
+            
+            <div className="hidden md:block">
+              <div className="ml-10 flex items-baseline space-x-4">
+                <button
+                  onClick={() => setActivePage('home')}
+                  className={`px-3 py-2 rounded-md text-sm font-medium ${
+                    activePage === 'home'
+                      ? 'text-purple-600 bg-purple-50'
+                      : 'text-gray-700 hover:text-purple-600'
+                  }`}
+                >
+                  Home
+                </button>
+                <button
+                  onClick={() => setActivePage('features')}
+                  className={`px-3 py-2 rounded-md text-sm font-medium ${
+                    activePage === 'features'
+                      ? 'text-purple-600 bg-purple-50'
+                      : 'text-gray-700 hover:text-purple-600'
+                  }`}
+                >
+                  Features
+                </button>
+                <button
+                  onClick={() => setActivePage('about')}
+                  className={`px-3 py-2 rounded-md text-sm font-medium ${
+                    activePage === 'about'
+                      ? 'text-purple-600 bg-purple-50'
+                      : 'text-gray-700 hover:text-purple-600'
+                  }`}
+                >
+                  About
+                </button>
+                <button
+                  onClick={() => setActivePage('pricing')}
+                  className={`px-3 py-2 rounded-md text-sm font-medium ${
+                    activePage === 'pricing'
+                      ? 'text-purple-600 bg-purple-50'
+                      : 'text-gray-700 hover:text-purple-600'
+                  }`}
+                >
+                  Pricing
+                </button>
+                <button
+                  onClick={() => setActivePage('faq')}
+                  className={`px-3 py-2 rounded-md text-sm font-medium ${
+                    activePage === 'faq'
+                      ? 'text-purple-600 bg-purple-50'
+                      : 'text-gray-700 hover:text-purple-600'
+                  }`}
+                >
+                  FAQ
+                </button>
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-4">
+              {user ? (
+                <div className="flex items-center space-x-4">
+                  {paymentCompleted && (
+                    <button
+                      onClick={() => setActivePage('dashboard')}
+                      className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-md text-sm font-medium"
+                    >
+                      Dashboard
+                    </button>
+                  )}
+                  <span className="text-gray-700 text-sm">
+                    {user.email}
+                  </span>
+                  <button
+                    onClick={handleSignOut}
+                    className="text-gray-700 hover:text-purple-600 px-3 py-2 rounded-md text-sm font-medium"
+                  >
+                    Sign Out
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <button
+                    onClick={() => {
+                      setAuthMode('signin');
+                      setShowAuthModal(true);
+                    }}
+                    className="text-gray-700 hover:text-purple-600 px-3 py-2 rounded-md text-sm font-medium border border-gray-300 hover:border-purple-300"
+                  >
+                    Sign In
+                  </button>
+                  <button
+                    onClick={() => {
+                      setAuthMode('signup');
+                      setShowAuthModal(true);
+                    }}
+                    className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-md text-sm font-medium"
+                  >
+                    Sign Up
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      </nav>
+
+      {/* Main Content */}
+      <main>
+        {activePage === 'home' && <HomePage />}
+        {activePage === 'pricing' && (
+          <PricingPage 
+            user={user} 
+            onPaymentComplete={handlePaymentComplete}
+          />
+        )}
+        {activePage === 'dashboard' && paymentCompleted && (
+          <WritingArea user={user} />
+        )}
+        {activePage === 'features' && (
+          <div className="max-w-7xl mx-auto py-16 px-4 sm:px-6 lg:px-8">
+            <h1 className="text-4xl font-bold text-center mb-8">Features</h1>
+            <p className="text-center text-gray-600">Features page content coming soon...</p>
+          </div>
+        )}
+        {activePage === 'about' && (
+          <div className="max-w-7xl mx-auto py-16 px-4 sm:px-6 lg:px-8">
+            <h1 className="text-4xl font-bold text-center mb-8">About</h1>
+            <p className="text-center text-gray-600">About page content coming soon...</p>
+          </div>
+        )}
+        {activePage === 'faq' && (
+          <div className="max-w-7xl mx-auto py-16 px-4 sm:px-6 lg:px-8">
+            <h1 className="text-4xl font-bold text-center mb-8">FAQ</h1>
+            <p className="text-center text-gray-600">FAQ page content coming soon...</p>
+          </div>
+        )}
+      </main>
+
+      {/* Auth Modal */}
+      {showAuthModal && (
+        <AuthModal
+          mode={authMode}
           onClose={() => setShowAuthModal(false)}
           onSuccess={handleAuthSuccess}
-          initialMode={authMode}
-          key={`auth-modal-${modalKey}-${authMode}`}
+          onSwitchMode={(mode) => setAuthMode(mode)}
         />
-      </div>
-    </ThemeContext.Provider>
+      )}
+    </div>
   );
 }
 
