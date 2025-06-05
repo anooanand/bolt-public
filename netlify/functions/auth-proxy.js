@@ -26,14 +26,39 @@ exports.handler = async (event, context) => {
 
   try {
     // Parse the request body
-    const body = JSON.parse(event.body || '{}');
+    let body = {};
+    try {
+      body = JSON.parse(event.body || '{}');
+    } catch (e) {
+      console.log('Error parsing request body:', e);
+      return {
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({ error: 'Invalid request body' })
+      };
+    }
+    
     const { action, email, password, options } = body;
     
-    console.log(`Processing ${action} request for ${email}`);
+    console.log(`Processing ${action} request`);
+    
+    // Handle ping action for connection testing
+    if (action === 'ping') {
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({ 
+          status: 'ok', 
+          message: 'Auth proxy is working',
+          timestamp: new Date().toISOString()
+        })
+      };
+    }
     
     // Determine which Supabase endpoint to call based on the action
     let endpoint = '';
     let requestBody = {};
+    let method = 'POST';
     
     switch (action) {
       case 'signup':
@@ -59,9 +84,11 @@ exports.handler = async (event, context) => {
         };
     }
     
+    console.log(`Forwarding request to Supabase: ${SUPABASE_URL}${endpoint}`);
+    
     // Forward the request to Supabase
     const response = await fetch(`${SUPABASE_URL}${endpoint}`, {
-      method: 'POST',
+      method,
       headers: {
         'Content-Type': 'application/json',
         'apikey': SUPABASE_ANON_KEY
@@ -71,6 +98,8 @@ exports.handler = async (event, context) => {
     
     // Get the response data
     const data = await response.json();
+    
+    console.log(`Supabase response status: ${response.status}`);
     
     // Return the response from Supabase
     return {
@@ -86,7 +115,8 @@ exports.handler = async (event, context) => {
       headers,
       body: JSON.stringify({ 
         error: 'Internal server error',
-        message: error.message
+        message: error.message,
+        stack: error.stack
       })
     };
   }
