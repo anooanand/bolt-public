@@ -1,5 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { getCurrentUser, signOut, confirmPayment } from './lib/supabase';
+import AuthModal from './components/AuthModal';
+import PricingPage from './components/PricingPage';
+import WritingArea from './components/WritingArea';
+import { HomePage } from './components/HomePage';
 
 // Simplified interfaces to avoid conflicts
 interface AppUser {
@@ -10,40 +14,6 @@ interface AppUser {
 
 type PageType = 'home' | 'features' | 'about' | 'pricing' | 'faq' | 'dashboard';
 type AuthMode = 'signin' | 'signup';
-
-// Import components with error handling
-let AuthModal: any;
-let PricingPage: any;
-let WritingArea: any;
-let HomePage: any;
-
-try {
-  AuthModal = require('./components/AuthModal').default;
-} catch (e) {
-  console.warn('AuthModal component not found');
-  AuthModal = () => <div>AuthModal component missing</div>;
-}
-
-try {
-  PricingPage = require('./components/PricingPage').default;
-} catch (e) {
-  console.warn('PricingPage component not found');
-  PricingPage = () => <div>PricingPage component missing</div>;
-}
-
-try {
-  WritingArea = require('./components/WritingArea').default;
-} catch (e) {
-  console.warn('WritingArea component not found');
-  WritingArea = () => <div>WritingArea component missing</div>;
-}
-
-try {
-  HomePage = require('./components/HomePage').default;
-} catch (e) {
-  console.warn('HomePage component not found');
-  HomePage = () => <div>HomePage component missing</div>;
-}
 
 function App() {
   const [user, setUser] = useState<AppUser | null>(null);
