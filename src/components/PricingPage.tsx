@@ -86,8 +86,21 @@ export function PricingPage() {
   ];
 
   const handleSubscribe = (plan: typeof plans[0]) => {
+    console.log("Payment button clicked for plan:", plan.name);
+    console.log("Current user email:", userEmail);
+    
     // Get email from state or prompt user if not available
-    const email = userEmail || prompt('Please enter your email to continue:');
+    let email = userEmail;
+    
+    if (!email) {
+      // Try to get from localStorage again
+      email = localStorage.getItem('userEmail');
+    }
+    
+    if (!email) {
+      // Prompt user for email if still not available
+      email = prompt('Please enter your email to continue:');
+    }
     
     if (!email) {
       alert('Email is required to continue with subscription');
@@ -96,21 +109,47 @@ export function PricingPage() {
     
     // Store email for future use
     localStorage.setItem('userEmail', email);
+    setUserEmail(email);
     
     // Construct the URL with email and redirect parameters
     let url = plan.buttonLink;
     
     // Add email parameter
-    url = `${url}&prefilled_email=${encodeURIComponent(email)}`;
+    url = `${url}?prefilled_email=${encodeURIComponent(email)}`;
     
     // Add success redirect parameter
     const successUrl = `${window.location.origin}?payment_success=true&plan=${plan.name.toLowerCase().replace(/\s+/g, '-')}`;
-    url = `${url}&redirect_to=${encodeURIComponent(successUrl)}`;
+    url = `${url}&success_url=${encodeURIComponent(successUrl)}`;
     
     console.log('Redirecting to payment URL:', url);
     
+    // Add loading state feedback
+    const button = document.activeElement as HTMLButtonElement;
+    if (button) {
+      const originalText = button.textContent;
+      button.textContent = 'Redirecting...';
+      button.disabled = true;
+      
+      // Restore button after a delay in case redirect fails
+      setTimeout(() => {
+        button.textContent = originalText;
+        button.disabled = false;
+      }, 5000);
+    }
+    
     // Redirect to Stripe
-    window.location.href = url;
+    try {
+      window.location.href = url;
+    } catch (error) {
+      console.error('Error redirecting to payment:', error);
+      alert('Error redirecting to payment. Please try again.');
+      
+      // Restore button
+      if (button) {
+        button.textContent = plan.buttonText;
+        button.disabled = false;
+      }
+    }
   };
 
   return (
@@ -123,6 +162,12 @@ export function PricingPage() {
           <p className="text-lg text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
             All plans include a 3-day free trial. Cancel anytime.
           </p>
+          
+          {userEmail && (
+            <div className="mt-4 p-3 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-md inline-block">
+              ✅ Signed in as: {userEmail}
+            </div>
+          )}
           
           <div className="mt-8 inline-flex items-center p-1 bg-gray-100 dark:bg-gray-800 rounded-lg">
             <button
@@ -187,7 +232,7 @@ export function PricingPage() {
                     plan.popular
                       ? 'bg-indigo-600 hover:bg-indigo-700 text-white'
                       : 'bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-900 dark:text-white'
-                  } font-medium flex items-center justify-center`}
+                  } font-medium flex items-center justify-center transition-colors duration-200`}
                 >
                   {plan.buttonText}
                   <ArrowRight className="ml-2 w-4 h-4" />
@@ -233,3 +278,4 @@ export function PricingPage() {
     </section>
   );
 }
+
