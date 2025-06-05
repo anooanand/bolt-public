@@ -5,14 +5,30 @@ import PricingPage from './components/PricingPage';
 import WritingArea from './components/WritingArea';
 import HomePage from './components/HomePage';
 
-function App() {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [showAuthModal, setShowAuthModal] = useState(false);
-  const [authMode, setAuthMode] = useState('signin');
-  const [activePage, setActivePage] = useState('home');
-  const [paymentCompleted, setPaymentCompleted] = useState(false);
-  const [pendingPaymentPlan, setPendingPaymentPlan] = useState(null);
+// Define types for better TypeScript support
+interface User {
+  id: string;
+  email?: string;
+  user_metadata?: {
+    payment_confirmed?: boolean;
+    signup_completed?: boolean;
+    plan_type?: string;
+    subscription_status?: string;
+    payment_date?: string;
+  };
+}
+
+type PageType = 'home' | 'features' | 'about' | 'pricing' | 'faq' | 'dashboard';
+type AuthMode = 'signin' | 'signup';
+
+function App(): JSX.Element {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [showAuthModal, setShowAuthModal] = useState<boolean>(false);
+  const [authMode, setAuthMode] = useState<AuthMode>('signin');
+  const [activePage, setActivePage] = useState<PageType>('home');
+  const [paymentCompleted, setPaymentCompleted] = useState<boolean>(false);
+  const [pendingPaymentPlan, setPendingPaymentPlan] = useState<string | null>(null);
 
   useEffect(() => {
     checkAuthStatus();
@@ -35,7 +51,7 @@ function App() {
     }
   }, []);
 
-  const checkAuthStatus = async () => {
+  const checkAuthStatus = async (): Promise<void> => {
     try {
       console.log("Auth check attempt 1/3");
       const currentUser = await getCurrentUser();
@@ -70,11 +86,11 @@ function App() {
     }
   };
 
-  const handlePaymentSuccess = async (planType) => {
+  const handlePaymentSuccess = async (planType: string): Promise<void> => {
     console.log("Processing payment success for plan:", planType);
     
     // Get user email from localStorage (stored during signup/signin)
-    const userEmail = localStorage.getItem('userEmail');
+    const userEmail = typeof window !== 'undefined' ? localStorage.getItem('userEmail') : null;
     console.log("User email from localStorage:", userEmail);
     
     if (!userEmail) {
@@ -96,7 +112,9 @@ function App() {
         setPendingPaymentPlan(null);
         
         // Clean up URL parameters
-        window.history.replaceState({}, document.title, window.location.pathname);
+        if (typeof window !== 'undefined') {
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }
         
         alert(`Welcome! Your ${planType} plan is now active. Enjoy your writing assistant!`);
       } catch (error) {
@@ -111,7 +129,7 @@ function App() {
     }
   };
 
-  const handleAuthSuccess = async () => {
+  const handleAuthSuccess = async (): Promise<void> => {
     console.log("Auth success - refreshing user state");
     
     const refreshedUser = await getCurrentUser();
@@ -135,7 +153,9 @@ function App() {
         setPendingPaymentPlan(null);
         
         // Clean up URL parameters
-        window.history.replaceState({}, document.title, window.location.pathname);
+        if (typeof window !== 'undefined') {
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }
         
         // Show success message
         alert(`Welcome! Your ${pendingPaymentPlan} plan is now active. Enjoy your writing assistant!`);
@@ -160,7 +180,9 @@ function App() {
         setActivePage('dashboard');
         
         // Clean up URL parameters
-        window.history.replaceState({}, document.title, window.location.pathname);
+        if (typeof window !== 'undefined') {
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }
         
         alert(`Welcome! Your ${planType} plan is now active. Enjoy your writing assistant!`);
         return;
@@ -187,7 +209,7 @@ function App() {
     setShowAuthModal(false);
   };
 
-  const handleSignOut = async () => {
+  const handleSignOut = async (): Promise<void> => {
     try {
       await signOut();
       setUser(null);
@@ -196,16 +218,18 @@ function App() {
       setPendingPaymentPlan(null);
       
       // Clear any stored user data
-      localStorage.removeItem('userEmail');
-      
-      // Clean up URL parameters
-      window.history.replaceState({}, document.title, window.location.pathname);
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('userEmail');
+        
+        // Clean up URL parameters
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
     } catch (error) {
       console.error('Error signing out:', error);
     }
   };
 
-  const handlePaymentComplete = async (planType) => {
+  const handlePaymentComplete = async (planType: string): Promise<void> => {
     console.log("Payment completed for plan:", planType);
     
     try {
@@ -315,7 +339,7 @@ function App() {
             mode={authMode}
             onClose={() => setShowAuthModal(false)}
             onSuccess={handleAuthSuccess}
-            onSwitchMode={(mode) => setAuthMode(mode)}
+            onSwitchMode={(mode: AuthMode) => setAuthMode(mode)}
           />
         )}
       </div>
@@ -475,7 +499,7 @@ function App() {
           mode={authMode}
           onClose={() => setShowAuthModal(false)}
           onSuccess={handleAuthSuccess}
-          onSwitchMode={(mode) => setAuthMode(mode)}
+          onSwitchMode={(mode: AuthMode) => setAuthMode(mode)}
         />
       )}
     </div>
