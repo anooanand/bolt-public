@@ -104,48 +104,37 @@ export async function signOut() {
   }
 }
 
-// Get current user - FIXED AUTH SESSION ERROR HANDLING
+// Get current user
 export async function getCurrentUser() {
   try {
     const { data: { user }, error } = await supabase.auth.getUser();
     
     if (error) {
-      // Check if the error is the expected "Auth session missing!" error
+      // Check if the error is due to missing auth session
       if (error.message === 'Auth session missing!' || error.name === 'AuthSessionMissingError') {
-        // This is expected when no user is signed in - log as info, not error
-        console.info("No authenticated user session found");
+        console.info("No authenticated user session found"); // Expected state, not an error
         return null;
       }
-      // Only log actual unexpected errors
+      // Log other errors as actual errors
       console.error("Unexpected error getting current user:", error);
       return null;
     }
 
-    // User found
-    if (user) {
-      console.log("Current user found:", user.email);
-    }
-    
     return user;
   } catch (error) {
-    // Handle caught exceptions - check if it's the expected auth session missing error
-    if (error instanceof Error) {
-      if (error.message === 'Auth session missing!' || error.name === 'AuthSessionMissingError') {
-        // This is expected when no user is signed in
-        console.info("No authenticated user session found");
-        return null;
-      }
-      // Log unexpected errors
-      console.error("Unexpected error in getCurrentUser:", error);
+    // Only log as error if it's an unexpected error
+    if (error instanceof Error && 
+        error.message !== 'Auth session missing!' && 
+        error.name !== 'AuthSessionMissingError') {
+      console.error("Error in getCurrentUser:", error);
     } else {
-      // Log non-Error objects
-      console.error("Unknown error in getCurrentUser:", error);
+      console.info("No authenticated user session found");
     }
     return null;
   }
 }
 
-// Confirm payment function
+// Confirm payment function - Enhanced with better error handling
 export async function confirmPayment(planType: string) {
   try {
     console.log("Confirming payment for plan:", planType);
@@ -155,7 +144,7 @@ export async function confirmPayment(planType: string) {
       throw new Error("No authenticated user found");
     }
 
-    console.log("Updating user metadata with payment confirmation");
+    console.log("Updating user metadata with payment confirmation for user:", user.email);
     
     // Update user metadata to confirm payment
     const { data, error } = await supabase.auth.updateUser({
@@ -173,7 +162,7 @@ export async function confirmPayment(planType: string) {
       throw error;
     }
 
-    console.log("Payment confirmation successful:", data);
+    console.log("Payment confirmation successful for user:", user.email, "plan:", planType);
     return data;
   } catch (error) {
     console.error("Error confirming payment:", error);
@@ -181,7 +170,37 @@ export async function confirmPayment(planType: string) {
   }
 }
 
-// Check payment status function
+// Check if user has completed payment - Enhanced function
+export async function hasCompletedPayment() {
+  try {
+    const user = await getCurrentUser();
+    
+    if (!user) {
+      console.log("No user found for payment check");
+      return false;
+    }
+
+    // Check user metadata for payment confirmation
+    const paymentConfirmed = user.user_metadata?.payment_confirmed || 
+                           user.user_metadata?.signup_completed ||
+                           false;
+    
+    const planType = user.user_metadata?.plan_type || null;
+    
+    console.log("Payment status check for user:", user.email, {
+      paymentConfirmed, 
+      planType,
+      subscriptionStatus: user.user_metadata?.subscription_status
+    });
+
+    return paymentConfirmed;
+  } catch (error) {
+    console.error("Error checking payment status:", error);
+    return false;
+  }
+}
+
+// Check payment status function - Enhanced
 export async function checkPaymentStatus(userEmail: string | null = null) {
   try {
     const user = await getCurrentUser();
