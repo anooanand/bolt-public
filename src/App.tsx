@@ -1,66 +1,87 @@
 import React, { useState, useEffect } from 'react';
 import { getCurrentUser, signOut, confirmPayment } from './lib/supabase';
-import AuthModal from './components/AuthModal';
-import PricingPage from './components/PricingPage';
-import WritingArea from './components/WritingArea';
-import HomePage from './components/HomePage';
 
-// Define types for better TypeScript support
-interface User {
+// Simplified interfaces to avoid conflicts
+interface AppUser {
   id: string;
   email?: string;
-  user_metadata?: {
-    payment_confirmed?: boolean;
-    signup_completed?: boolean;
-    plan_type?: string;
-    subscription_status?: string;
-    payment_date?: string;
-  };
+  user_metadata?: Record<string, any>;
 }
 
 type PageType = 'home' | 'features' | 'about' | 'pricing' | 'faq' | 'dashboard';
 type AuthMode = 'signin' | 'signup';
 
-function App(): JSX.Element {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [showAuthModal, setShowAuthModal] = useState<boolean>(false);
+// Import components with error handling
+let AuthModal: any;
+let PricingPage: any;
+let WritingArea: any;
+let HomePage: any;
+
+try {
+  AuthModal = require('./components/AuthModal').default;
+} catch (e) {
+  console.warn('AuthModal component not found');
+  AuthModal = () => <div>AuthModal component missing</div>;
+}
+
+try {
+  PricingPage = require('./components/PricingPage').default;
+} catch (e) {
+  console.warn('PricingPage component not found');
+  PricingPage = () => <div>PricingPage component missing</div>;
+}
+
+try {
+  WritingArea = require('./components/WritingArea').default;
+} catch (e) {
+  console.warn('WritingArea component not found');
+  WritingArea = () => <div>WritingArea component missing</div>;
+}
+
+try {
+  HomePage = require('./components/HomePage').default;
+} catch (e) {
+  console.warn('HomePage component not found');
+  HomePage = () => <div>HomePage component missing</div>;
+}
+
+function App() {
+  const [user, setUser] = useState<AppUser | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [showAuthModal, setShowAuthModal] = useState(false);
   const [authMode, setAuthMode] = useState<AuthMode>('signin');
   const [activePage, setActivePage] = useState<PageType>('home');
-  const [paymentCompleted, setPaymentCompleted] = useState<boolean>(false);
+  const [paymentCompleted, setPaymentCompleted] = useState(false);
   const [pendingPaymentPlan, setPendingPaymentPlan] = useState<string | null>(null);
 
   useEffect(() => {
     checkAuthStatus();
     
     // Check for payment success in URL parameters
-    const urlParams = new URLSearchParams(window.location.search);
-    const paymentSuccess = urlParams.get('payment_success');
-    const planType = urlParams.get('plan');
-    
-    if (paymentSuccess === 'true' && planType) {
-      console.log("Payment success detected:", { paymentSuccess, planType });
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const paymentSuccess = urlParams.get('payment_success');
+      const planType = urlParams.get('plan');
       
-      // Store the plan type for after authentication
-      setPendingPaymentPlan(planType);
-      
-      // Handle payment success
-      setTimeout(() => {
-        handlePaymentSuccess(planType);
-      }, 1000);
+      if (paymentSuccess === 'true' && planType) {
+        console.log("Payment success detected:", { paymentSuccess, planType });
+        setPendingPaymentPlan(planType);
+        
+        setTimeout(() => {
+          handlePaymentSuccess(planType);
+        }, 1000);
+      }
     }
   }, []);
 
-  const checkAuthStatus = async (): Promise<void> => {
+  const checkAuthStatus = async () => {
     try {
-      console.log("Auth check attempt 1/3");
+      console.log("Auth check attempt");
       const currentUser = await getCurrentUser();
-      console.log("Auth check successful on attempt 1");
       
       if (currentUser) {
         setUser(currentUser);
         
-        // Check payment status
         const paymentConfirmed = currentUser.user_metadata?.payment_confirmed || 
                                currentUser.user_metadata?.signup_completed ||
                                false;
@@ -86,22 +107,19 @@ function App(): JSX.Element {
     }
   };
 
-  const handlePaymentSuccess = async (planType: string): Promise<void> => {
+  const handlePaymentSuccess = async (planType: string) => {
     console.log("Processing payment success for plan:", planType);
     
-    // Get user email from localStorage (stored during signup/signin)
     const userEmail = typeof window !== 'undefined' ? localStorage.getItem('userEmail') : null;
     console.log("User email from localStorage:", userEmail);
     
     if (!userEmail) {
       console.log("No user email found - need to establish user session");
-      // Show sign-in modal to establish user session
       setAuthMode('signin');
       setShowAuthModal(true);
       return;
     }
 
-    // Check if user is already authenticated
     const currentUser = await getCurrentUser();
     if (currentUser) {
       console.log("User already authenticated, confirming payment");
@@ -111,7 +129,6 @@ function App(): JSX.Element {
         setActivePage('dashboard');
         setPendingPaymentPlan(null);
         
-        // Clean up URL parameters
         if (typeof window !== 'undefined') {
           window.history.replaceState({}, document.title, window.location.pathname);
         }
@@ -123,19 +140,17 @@ function App(): JSX.Element {
       }
     } else {
       console.log("No active session - need to establish user session");
-      // Show sign-in modal
       setAuthMode('signin');
       setShowAuthModal(true);
     }
   };
 
-  const handleAuthSuccess = async (): Promise<void> => {
+  const handleAuthSuccess = async () => {
     console.log("Auth success - refreshing user state");
     
     const refreshedUser = await getCurrentUser();
     setUser(refreshedUser);
     
-    // Check if there's a pending payment to confirm
     if (pendingPaymentPlan) {
       console.log("Found pending payment plan:", pendingPaymentPlan);
       
@@ -143,23 +158,16 @@ function App(): JSX.Element {
         console.log("Confirming payment for user after authentication");
         await confirmPayment(pendingPaymentPlan);
         
-        // Update payment status
         setPaymentCompleted(true);
-        
-        // Navigate to dashboard
         setActivePage('dashboard');
-        
-        // Clear pending payment
         setPendingPaymentPlan(null);
         
-        // Clean up URL parameters
         if (typeof window !== 'undefined') {
           window.history.replaceState({}, document.title, window.location.pathname);
         }
         
-        // Show success message
         alert(`Welcome! Your ${pendingPaymentPlan} plan is now active. Enjoy your writing assistant!`);
-        
+        setShowAuthModal(false);
         return;
       } catch (error) {
         console.error("Error confirming payment after authentication:", error);
@@ -167,31 +175,29 @@ function App(): JSX.Element {
       }
     }
     
-    // Check for payment success URL parameters again (in case they were missed)
-    const urlParams = new URLSearchParams(window.location.search);
-    const paymentSuccess = urlParams.get('payment_success');
-    const planType = urlParams.get('plan');
-    
-    if (paymentSuccess === 'true' && planType) {
-      console.log("Found payment success parameters after auth:", { paymentSuccess, planType });
-      try {
-        await confirmPayment(planType);
-        setPaymentCompleted(true);
-        setActivePage('dashboard');
-        
-        // Clean up URL parameters
-        if (typeof window !== 'undefined') {
+    // Check for payment success URL parameters again
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const paymentSuccess = urlParams.get('payment_success');
+      const planType = urlParams.get('plan');
+      
+      if (paymentSuccess === 'true' && planType) {
+        console.log("Found payment success parameters after auth:", { paymentSuccess, planType });
+        try {
+          await confirmPayment(planType);
+          setPaymentCompleted(true);
+          setActivePage('dashboard');
+          
           window.history.replaceState({}, document.title, window.location.pathname);
+          alert(`Welcome! Your ${planType} plan is now active. Enjoy your writing assistant!`);
+          setShowAuthModal(false);
+          return;
+        } catch (error) {
+          console.error("Error confirming payment from URL params:", error);
         }
-        
-        alert(`Welcome! Your ${planType} plan is now active. Enjoy your writing assistant!`);
-        return;
-      } catch (error) {
-        console.error("Error confirming payment from URL params:", error);
       }
     }
     
-    // Check payment status from user metadata
     const paymentConfirmed = refreshedUser?.user_metadata?.payment_confirmed || 
                            refreshedUser?.user_metadata?.signup_completed ||
                            false;
@@ -209,7 +215,7 @@ function App(): JSX.Element {
     setShowAuthModal(false);
   };
 
-  const handleSignOut = async (): Promise<void> => {
+  const handleSignOut = async () => {
     try {
       await signOut();
       setUser(null);
@@ -217,11 +223,8 @@ function App(): JSX.Element {
       setActivePage('home');
       setPendingPaymentPlan(null);
       
-      // Clear any stored user data
       if (typeof window !== 'undefined') {
         localStorage.removeItem('userEmail');
-        
-        // Clean up URL parameters
         window.history.replaceState({}, document.title, window.location.pathname);
       }
     } catch (error) {
@@ -229,18 +232,13 @@ function App(): JSX.Element {
     }
   };
 
-  const handlePaymentComplete = async (planType: string): Promise<void> => {
+  const handlePaymentComplete = async (planType: string) => {
     console.log("Payment completed for plan:", planType);
     
     try {
-      // Confirm payment in the system
       await confirmPayment(planType);
-      
-      // Update state
       setPaymentCompleted(true);
       setActivePage('dashboard');
-      
-      // Show success message
       alert(`Welcome! Your ${planType} plan is now active. Enjoy your writing assistant!`);
     } catch (error) {
       console.error("Error confirming payment:", error);
@@ -339,7 +337,7 @@ function App(): JSX.Element {
             mode={authMode}
             onClose={() => setShowAuthModal(false)}
             onSuccess={handleAuthSuccess}
-            onSwitchMode={(mode: AuthMode) => setAuthMode(mode)}
+            onSwitchMode={setAuthMode}
           />
         )}
       </div>
@@ -360,56 +358,19 @@ function App(): JSX.Element {
             
             <div className="hidden md:block">
               <div className="ml-10 flex items-baseline space-x-4">
-                <button
-                  onClick={() => setActivePage('home')}
-                  className={`px-3 py-2 rounded-md text-sm font-medium ${
-                    activePage === 'home'
-                      ? 'text-purple-600 bg-purple-50'
-                      : 'text-gray-700 hover:text-purple-600'
-                  }`}
-                >
-                  Home
-                </button>
-                <button
-                  onClick={() => setActivePage('features')}
-                  className={`px-3 py-2 rounded-md text-sm font-medium ${
-                    activePage === 'features'
-                      ? 'text-purple-600 bg-purple-50'
-                      : 'text-gray-700 hover:text-purple-600'
-                  }`}
-                >
-                  Features
-                </button>
-                <button
-                  onClick={() => setActivePage('about')}
-                  className={`px-3 py-2 rounded-md text-sm font-medium ${
-                    activePage === 'about'
-                      ? 'text-purple-600 bg-purple-50'
-                      : 'text-gray-700 hover:text-purple-600'
-                  }`}
-                >
-                  About
-                </button>
-                <button
-                  onClick={() => setActivePage('pricing')}
-                  className={`px-3 py-2 rounded-md text-sm font-medium ${
-                    activePage === 'pricing'
-                      ? 'text-purple-600 bg-purple-50'
-                      : 'text-gray-700 hover:text-purple-600'
-                  }`}
-                >
-                  Pricing
-                </button>
-                <button
-                  onClick={() => setActivePage('faq')}
-                  className={`px-3 py-2 rounded-md text-sm font-medium ${
-                    activePage === 'faq'
-                      ? 'text-purple-600 bg-purple-50'
-                      : 'text-gray-700 hover:text-purple-600'
-                  }`}
-                >
-                  FAQ
-                </button>
+                {['home', 'features', 'about', 'pricing', 'faq'].map((page) => (
+                  <button
+                    key={page}
+                    onClick={() => setActivePage(page as PageType)}
+                    className={`px-3 py-2 rounded-md text-sm font-medium capitalize ${
+                      activePage === page
+                        ? 'text-purple-600 bg-purple-50'
+                        : 'text-gray-700 hover:text-purple-600'
+                    }`}
+                  >
+                    {page}
+                  </button>
+                ))}
               </div>
             </div>
 
@@ -473,22 +434,10 @@ function App(): JSX.Element {
         {activePage === 'dashboard' && paymentCompleted && (
           <WritingArea user={user} />
         )}
-        {activePage === 'features' && (
+        {['features', 'about', 'faq'].includes(activePage) && (
           <div className="max-w-7xl mx-auto py-16 px-4 sm:px-6 lg:px-8">
-            <h1 className="text-4xl font-bold text-center mb-8">Features</h1>
-            <p className="text-center text-gray-600">Features page content coming soon...</p>
-          </div>
-        )}
-        {activePage === 'about' && (
-          <div className="max-w-7xl mx-auto py-16 px-4 sm:px-6 lg:px-8">
-            <h1 className="text-4xl font-bold text-center mb-8">About</h1>
-            <p className="text-center text-gray-600">About page content coming soon...</p>
-          </div>
-        )}
-        {activePage === 'faq' && (
-          <div className="max-w-7xl mx-auto py-16 px-4 sm:px-6 lg:px-8">
-            <h1 className="text-4xl font-bold text-center mb-8">FAQ</h1>
-            <p className="text-center text-gray-600">FAQ page content coming soon...</p>
+            <h1 className="text-4xl font-bold text-center mb-8 capitalize">{activePage}</h1>
+            <p className="text-center text-gray-600">{activePage} page content coming soon...</p>
           </div>
         )}
       </main>
@@ -499,7 +448,7 @@ function App(): JSX.Element {
           mode={authMode}
           onClose={() => setShowAuthModal(false)}
           onSuccess={handleAuthSuccess}
-          onSwitchMode={(mode: AuthMode) => setAuthMode(mode)}
+          onSwitchMode={setAuthMode}
         />
       )}
     </div>
