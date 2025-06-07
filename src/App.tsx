@@ -28,17 +28,12 @@ function App() {
   const [authError, setAuthError] = useState<string | null>(null);
   const [modalKey, setModalKey] = useState(0);
   const [pendingPaymentPlan, setPendingPaymentPlan] = useState<string | null>(null);
+  const [showPaymentSuccess, setShowPaymentSuccess] = useState(false);
 
   useEffect(() => {
     console.log("Environment variables check:");
     console.log("SUPABASE_URL available:", !!import.meta.env.VITE_SUPABASE_URL);
     console.log("SUPABASE_ANON_KEY available:", !!import.meta.env.VITE_SUPABASE_ANON_KEY);
-    if (import.meta.env.VITE_SUPABASE_URL) {
-      console.log("SUPABASE_URL prefix:", import.meta.env.VITE_SUPABASE_URL.substring(0, 15) + "...");
-    }
-    if (import.meta.env.VITE_SUPABASE_ANON_KEY) {
-      console.log("SUPABASE_ANON_KEY prefix:", import.meta.env.VITE_SUPABASE_ANON_KEY.substring(0, 15) + "...");
-    }
 
     // Check for payment success in URL parameters first
     if (typeof window !== 'undefined') {
@@ -46,9 +41,12 @@ function App() {
       const paymentSuccess = urlParams.get('payment_success');
       const planType = urlParams.get('plan');
       
+      console.log("URL Parameters:", { paymentSuccess, planType });
+      
       if (paymentSuccess === 'true' && planType) {
         console.log("Payment success detected:", { paymentSuccess, planType });
         setPendingPaymentPlan(planType);
+        setShowPaymentSuccess(true);
         
         // Store user email if available
         const userEmail = urlParams.get('email') || localStorage.getItem('userEmail');
@@ -62,11 +60,12 @@ function App() {
       try {
         await supabase.auth.refreshSession();
         const currentUser = await getCurrentUser();
+        console.log("Current user:", currentUser?.email || 'none');
         setUser(currentUser);
 
         if (currentUser) {
           const completed = await hasCompletedPayment();
-          console.log("Initial payment completed status:", completed);
+          console.log("Payment completed status:", completed);
           setPaymentCompleted(completed);
           
           // If user is authenticated and we have a pending payment, confirm it
@@ -77,6 +76,7 @@ function App() {
               setPaymentCompleted(true);
               setActivePage('dashboard');
               setPendingPaymentPlan(null);
+              setShowPaymentSuccess(false);
               
               // Clean up URL
               if (typeof window !== 'undefined') {
@@ -87,12 +87,15 @@ function App() {
             } catch (error) {
               console.error("Error confirming payment:", error);
             }
+          } else if (completed) {
+            // User already has payment, go to dashboard
+            setActivePage('dashboard');
+            setShowPaymentSuccess(false);
           }
         }
       } catch (error) {
         console.error('Error checking auth status:', error);
         setAuthError('Failed to authenticate. Please try refreshing the page.');
-        throw error;
       }
     };
 
@@ -135,6 +138,7 @@ function App() {
             setPaymentCompleted(true);
             setActivePage('dashboard');
             setPendingPaymentPlan(null);
+            setShowPaymentSuccess(false);
             
             // Clean up URL
             if (typeof window !== 'undefined') {
@@ -142,7 +146,7 @@ function App() {
             }
             
             alert(`Welcome! Your ${pendingPaymentPlan} plan is now active. Enjoy your writing assistant!`);
-            setShowAuthModal(false); // Close modal after successful payment confirmation
+            setShowAuthModal(false);
           } catch (error) {
             console.error("Error confirming payment after sign in:", error);
           }
@@ -155,12 +159,10 @@ function App() {
           if (completed) {
             setActivePage('dashboard');
           } else {
-            // Redirect to pricing after successful signup/signin
-            console.log("No payment found - redirecting to pricing");
             setActivePage('pricing');
           }
           
-          setShowAuthModal(false); // Close modal after successful sign-in
+          setShowAuthModal(false);
         }
         
         setIsLoading(false);
@@ -222,6 +224,7 @@ function App() {
           setPaymentCompleted(true);
           setActivePage('dashboard');
           setPendingPaymentPlan(null);
+          setShowPaymentSuccess(false);
           
           // Clean up URL
           if (typeof window !== 'undefined') {
@@ -240,13 +243,11 @@ function App() {
         if (completed) {
           setActivePage('dashboard');
         } else {
-          // Redirect to pricing if no payment found - this is the key fix
-          console.log("No payment found - redirecting to pricing");
           setActivePage('pricing');
         }
       }
       
-      // Close the modal - this fixes the modal staying open issue
+      // Close the modal
       setShowAuthModal(false);
     } catch (error) {
       console.error("Error in auth success handler:", error);
@@ -255,7 +256,7 @@ function App() {
   };
 
   // Show payment success page if we have pending payment but no user
-  if (pendingPaymentPlan && !user && !isLoading) {
+  if (showPaymentSuccess && pendingPaymentPlan && !user && !isLoading) {
     return (
       <ThemeContext.Provider value={{
         theme,
@@ -285,7 +286,8 @@ function App() {
                 </div>
                 <h2 className="text-2xl font-bold text-gray-900 mb-2">Payment Successful!</h2>
                 <p className="text-gray-600 mb-6">
-                  Your payment has been processed successfully. Please sign in to access your writing dashboard.
+                  Your payment for the <strong>{pendingPaymentPlan}</strong> plan has been processed successfully. 
+                  Please sign in to access your writing dashboard.
                 </p>
               </div>
               
