@@ -159,17 +159,17 @@ export async function confirmPayment(planType: string) {
     if (!supabaseUrl || !supabaseAnonKey) {
       throw new Error('Supabase configuration is missing');
     }
-    
-    console.log("Confirming payment for plan:", planType);
-    
+
+    console.log("[DEBUG] Confirming payment for plan:", planType);
+
     const user = await getCurrentUser();
     if (!user) {
+      console.error("[DEBUG] No authenticated user found when confirming payment");
       throw new Error("No authenticated user found");
     }
 
-    console.log("Updating user metadata with payment confirmation for user:", user.email);
-    
-    // Update user metadata to confirm payment
+    console.log("[DEBUG] Updating user metadata with payment confirmation for user:", user.email);
+
     const { data, error } = await supabase.auth.updateUser({
       data: {
         payment_confirmed: true,
@@ -181,25 +181,42 @@ export async function confirmPayment(planType: string) {
     });
 
     if (error) {
-      console.error("Error updating user metadata:", error);
+      console.error("[DEBUG] Error updating user metadata:", error);
       throw error;
     }
 
-    // Force a refresh of the user session to ensure metadata is updated
-    await supabase.auth.refreshSession();
-    
-    // Double-check that the payment was confirmed
-    const refreshedUser = await getCurrentUser();
-    if (!refreshedUser?.user_metadata?.payment_confirmed) {
-      console.warn("Payment confirmation not reflected in refreshed user metadata");
-    } else {
-      console.log("Payment confirmation verified in refreshed user metadata");
+    console.log("[DEBUG] User metadata updated, forcing session refresh");
+
+    const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+
+    if (refreshError) {
+      console.error("[DEBUG] Error refreshing session:", refreshError);
+      throw refreshError;
     }
 
-    console.log("Payment confirmation successful for user:", user.email, "plan:", planType);
+    console.log("[DEBUG] Session refreshed successfully");
+
+    const refreshedUser = await getCurrentUser();
+
+    if (!refreshedUser?.user_metadata?.payment_confirmed) {
+      console.warn("[DEBUG] Payment confirmation not reflected in refreshed user metadata");
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      const { data: retryData, error: retryError } = await supabase.auth.refreshSession();
+      if (retryError) console.error("[DEBUG] Error in retry session refresh:", retryError);
+      const retryUser = await getCurrentUser();
+      if (!retryUser?.user_metadata?.payment_confirmed) {
+        console.error("[DEBUG] Payment confirmation still not reflected after retry");
+      } else {
+        console.log("[DEBUG] Payment confirmation verified in retry user metadata");
+      }
+    } else {
+      console.log("[DEBUG] Payment confirmation verified in refreshed user metadata");
+    }
+
+    console.log("[DEBUG] Payment confirmation successful for user:", user.email, "plan:", planType);
     return data;
   } catch (error) {
-    console.error("Error confirming payment:", error);
+    console.error("[DEBUG] Error confirming payment:", error);
     throw error;
   }
 }
