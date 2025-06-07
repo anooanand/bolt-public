@@ -59,41 +59,68 @@ function App() {
       logDebug("All URL parameters:", Object.fromEntries(urlParams.entries()));
       
       if (paymentSuccess === 'true' && planType) {
-  console.log("Payment success detected:", { paymentSuccess, planType });
-  setPendingPaymentPlan(planType);
-  setShowPaymentSuccess(true);
+        console.log("Payment success detected:", { paymentSuccess, planType });
+        setPendingPaymentPlan(planType);
+        setShowPaymentSuccess(true);
 
-  const userEmail = urlParams.get('email') || localStorage.getItem('userEmail');
-  if (userEmail) {
-    console.log("[DEBUG] User email stored in localStorage:", userEmail);
-    localStorage.setItem('userEmail', userEmail);
-  }
+        const userEmail = urlParams.get('email') || localStorage.getItem('userEmail');
+        if (userEmail) {
+          console.log("[DEBUG] User email stored in localStorage:", userEmail);
+          localStorage.setItem('userEmail', userEmail);
+        }
 
-  const attemptAutoRedirect = async () => {
-    const currentUser = await getCurrentUser();
-    if (currentUser) {
-      console.log("[DEBUG] Auto-redirect: user is already signed in, calling handleAuthSuccess");
-      await handleAuthSuccess(currentUser);
-    } else {
-      console.log("[DEBUG] Auto-redirect: user not signed in, showing auth modal");
-      setShowAuthModal(true);
-      setAuthMode('signin');
+        const attemptAutoRedirect = async () => {
+          const currentUser = await getCurrentUser();
+          if (currentUser) {
+            console.log("[DEBUG] Auto-redirect: user is already signed in, calling handleAuthSuccess");
+            await handleAuthSuccess(currentUser);
+          } else {
+            console.log("[DEBUG] Auto-redirect: user not signed in, showing auth modal");
+            setShowAuthModal(true);
+            setAuthMode('signin');
+          }
+        };
+
+        attemptAutoRedirect();
+
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
     }
-  };
 
-  attemptAutoRedirect();
+    const checkAuth = async () => {
+      try {
+        logDebug("Starting auth check");
+        const currentUser = await getCurrentUser();
+        setUser(currentUser);
+        logDebug("Current user:", currentUser?.email || 'None');
 
-  window.history.replaceState({}, document.title, window.location.pathname);
-}
-                }
-                
+        if (currentUser && pendingPaymentPlan) {
+          logDebug("User found with pending payment plan, confirming payment");
+          try {
+            await confirmPayment(pendingPaymentPlan);
+            const completed = await hasCompletedPayment();
+            setPaymentCompleted(completed);
+            logDebug("Payment confirmation completed:", completed);
+
+            if (completed) {
+              setTimeout(() => {
+                setActivePage('dashboard');
+                setPendingPaymentPlan(null);
+                setShowPaymentSuccess(false);
+                window.history.replaceState({}, document.title, window.location.pathname);
                 alert(`Welcome! Your ${pendingPaymentPlan} plan is now active. Enjoy your writing assistant!`);
               }, 1000);
-            } catch (error) {
-              console.error("Error confirming payment:", error);
-              alert("There was an error confirming your payment. Please contact support.");
             }
-          } else if (completed) {
+          } catch (error) {
+            console.error("Error confirming payment:", error);
+            alert("There was an error confirming your payment. Please contact support.");
+          }
+        } else if (currentUser) {
+          const completed = await hasCompletedPayment();
+          setPaymentCompleted(completed);
+          logDebug("Payment status for existing user:", completed);
+
+          if (completed) {
             // User already has payment, go to dashboard
             logDebug("User has completed payment, redirecting to dashboard");
             setActivePage('dashboard');
@@ -131,56 +158,56 @@ function App() {
     checkAuthWithRetry();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-  console.log("[DEBUG] Auth state change:", event, session?.user?.email);
-  try {
-    const currentUser = await getCurrentUser();
-    setUser(currentUser);
-
-    if (event === 'SIGNED_IN' && pendingPaymentPlan) {
+      console.log("[DEBUG] Auth state change:", event, session?.user?.email);
       try {
-        await confirmPayment(pendingPaymentPlan);
-        const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
-        if (refreshError) throw refreshError;
+        const currentUser = await getCurrentUser();
+        setUser(currentUser);
 
-        const refreshedUser = await getCurrentUser();
-        setUser(refreshedUser);
-        setPaymentCompleted(true);
+        if (event === 'SIGNED_IN' && pendingPaymentPlan) {
+          try {
+            await confirmPayment(pendingPaymentPlan);
+            const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+            if (refreshError) throw refreshError;
 
-        setTimeout(() => {
-          setActivePage('dashboard');
-          setPendingPaymentPlan(null);
-          setShowPaymentSuccess(false);
-          window.history.replaceState({}, document.title, window.location.pathname);
-          alert(`Welcome! Your ${pendingPaymentPlan} plan is now active. Enjoy your writing assistant!`);
-          setShowAuthModal(false);
-        }, 2000);
+            const refreshedUser = await getCurrentUser();
+            setUser(refreshedUser);
+            setPaymentCompleted(true);
+
+            setTimeout(() => {
+              setActivePage('dashboard');
+              setPendingPaymentPlan(null);
+              setShowPaymentSuccess(false);
+              window.history.replaceState({}, document.title, window.location.pathname);
+              alert(`Welcome! Your ${pendingPaymentPlan} plan is now active. Enjoy your writing assistant!`);
+              setShowAuthModal(false);
+            }, 2000);
+          } catch (error) {
+            console.error("[DEBUG] Error confirming payment after sign in:", error);
+            alert("There was an error confirming your payment. Please contact support.");
+          }
+        } else if (event === 'SIGNED_IN') {
+          const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+          if (!refreshError) {
+            const refreshedUser = await getCurrentUser();
+            setUser(refreshedUser);
+          }
+
+          const completed = await hasCompletedPayment();
+          setPaymentCompleted(completed);
+
+          setTimeout(() => {
+            setActivePage(completed ? 'dashboard' : 'pricing');
+            setShowAuthModal(false);
+          }, 1500);
+        }
+
+        setIsLoading(false);
       } catch (error) {
-        console.error("[DEBUG] Error confirming payment after sign in:", error);
-        alert("There was an error confirming your payment. Please contact support.");
+        console.error('[DEBUG] Error in auth state change handler:', error);
+        setIsLoading(false);
+        alert("There was an error processing your authentication. Please try again or contact support.");
       }
-    } else if (event === 'SIGNED_IN') {
-      const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
-      if (!refreshError) {
-        const refreshedUser = await getCurrentUser();
-        setUser(refreshedUser);
-      }
-
-      const completed = await hasCompletedPayment();
-      setPaymentCompleted(completed);
-
-      setTimeout(() => {
-        setActivePage(completed ? 'dashboard' : 'pricing');
-        setShowAuthModal(false);
-      }, 1500);
-    }
-
-    setIsLoading(false);
-  } catch (error) {
-    console.error('[DEBUG] Error in auth state change handler:', error);
-    setIsLoading(false);
-    alert("There was an error processing your authentication. Please try again or contact support.");
-  }
-});
+    });
 
     return () => {
       subscription.unsubscribe();
@@ -220,54 +247,54 @@ function App() {
   };
 
   const handleAuthSuccess = async (user: any) => {
-  console.log("[DEBUG] Auth success handler called with user:", user?.email);
+    console.log("[DEBUG] Auth success handler called with user:", user?.email);
 
-  try {
-    setUser(user);
-    console.log("[DEBUG] User state set directly with received user object");
+    try {
+      setUser(user);
+      console.log("[DEBUG] User state set directly with received user object");
 
-    if (pendingPaymentPlan) {
-      console.log("[DEBUG] Found pending payment plan:", pendingPaymentPlan);
-      try {
-        console.log("[DEBUG] Attempting to confirm payment for plan:", pendingPaymentPlan);
-        await confirmPayment(pendingPaymentPlan);
-        console.log("[DEBUG] Payment confirmation successful");
+      if (pendingPaymentPlan) {
+        console.log("[DEBUG] Found pending payment plan:", pendingPaymentPlan);
+        try {
+          console.log("[DEBUG] Attempting to confirm payment for plan:", pendingPaymentPlan);
+          await confirmPayment(pendingPaymentPlan);
+          console.log("[DEBUG] Payment confirmation successful");
 
-        const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
-        if (refreshError) throw refreshError;
+          const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+          if (refreshError) throw refreshError;
 
-        const refreshedUser = await getCurrentUser();
-        setUser(refreshedUser);
-        setPaymentCompleted(true);
-        console.log("[DEBUG] Payment completed state set to true");
+          const refreshedUser = await getCurrentUser();
+          setUser(refreshedUser);
+          setPaymentCompleted(true);
+          console.log("[DEBUG] Payment completed state set to true");
+
+          setTimeout(() => {
+            setActivePage('dashboard');
+            setPendingPaymentPlan(null);
+            setShowPaymentSuccess(false);
+            window.history.replaceState({}, document.title, window.location.pathname);
+            alert(`Welcome! Your ${pendingPaymentPlan} plan is now active. Enjoy your writing assistant!`);
+          }, 2000);
+        } catch (error) {
+          console.error("[DEBUG] Error confirming payment:", error);
+          alert("There was an error confirming your payment. Please contact support.");
+        }
+      } else {
+        const completed = await hasCompletedPayment();
+        setPaymentCompleted(completed);
 
         setTimeout(() => {
-          setActivePage('dashboard');
-          setPendingPaymentPlan(null);
-          setShowPaymentSuccess(false);
-          window.history.replaceState({}, document.title, window.location.pathname);
-          alert(`Welcome! Your ${pendingPaymentPlan} plan is now active. Enjoy your writing assistant!`);
-        }, 2000);
-      } catch (error) {
-        console.error("[DEBUG] Error confirming payment:", error);
-        alert("There was an error confirming your payment. Please contact support.");
+          setActivePage(completed ? 'dashboard' : 'pricing');
+        }, 1500);
       }
-    } else {
-      const completed = await hasCompletedPayment();
-      setPaymentCompleted(completed);
 
-      setTimeout(() => {
-        setActivePage(completed ? 'dashboard' : 'pricing');
-      }, 1500);
+      setShowAuthModal(false);
+    } catch (error) {
+      console.error("[DEBUG] Error in auth success handler:", error);
+      setShowAuthModal(false);
+      alert("There was an error processing your request. Please try again or contact support.");
     }
-
-    setShowAuthModal(false);
-  } catch (error) {
-    console.error("[DEBUG] Error in auth success handler:", error);
-    setShowAuthModal(false);
-    alert("There was an error processing your request. Please try again or contact support.");
-  }
-};
+  };
 
   // Show payment success page if we have pending payment but no user
   if (showPaymentSuccess && pendingPaymentPlan && !user && !isLoading) {
@@ -425,4 +452,3 @@ function App() {
 }
 
 export default App;
-
