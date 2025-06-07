@@ -59,54 +59,32 @@ function App() {
       logDebug("All URL parameters:", Object.fromEntries(urlParams.entries()));
       
       if (paymentSuccess === 'true' && planType) {
-        logDebug("Payment success detected:", { paymentSuccess, planType });
-        setPendingPaymentPlan(planType);
-        setShowPaymentSuccess(true);
-        
-        // Store user email if available
-        const userEmail = urlParams.get('email') || localStorage.getItem('userEmail');
-        if (userEmail) {
-          localStorage.setItem('userEmail', userEmail);
-          logDebug("User email stored in localStorage:", userEmail);
-        }
-      }
+  console.log("Payment success detected:", { paymentSuccess, planType });
+  setPendingPaymentPlan(planType);
+  setShowPaymentSuccess(true);
+
+  const userEmail = urlParams.get('email') || localStorage.getItem('userEmail');
+  if (userEmail) {
+    console.log("[DEBUG] User email stored in localStorage:", userEmail);
+    localStorage.setItem('userEmail', userEmail);
+  }
+
+  const attemptAutoRedirect = async () => {
+    const currentUser = await getCurrentUser();
+    if (currentUser) {
+      console.log("[DEBUG] Auto-redirect: user is already signed in, calling handleAuthSuccess");
+      await handleAuthSuccess(currentUser);
+    } else {
+      console.log("[DEBUG] Auto-redirect: user not signed in, showing auth modal");
+      setShowAuthModal(true);
+      setAuthMode('signin');
     }
+  };
 
-    const checkAuth = async () => {
-      try {
-        await supabase.auth.refreshSession();
-        const currentUser = await getCurrentUser();
-        logDebug("Current user:", currentUser?.email || 'none');
-        setUser(currentUser);
+  attemptAutoRedirect();
 
-        if (currentUser) {
-          const completed = await hasCompletedPayment();
-          logDebug("Payment completed status:", completed);
-          setPaymentCompleted(completed);
-          
-          // If user is authenticated and we have a pending payment, confirm it
-          if (pendingPaymentPlan && !completed) {
-            logDebug("User authenticated with pending payment, confirming...");
-            try {
-              await confirmPayment(pendingPaymentPlan);
-              
-              // Force a refresh of the user session to ensure metadata is updated
-              await supabase.auth.refreshSession();
-              const refreshedUser = await getCurrentUser();
-              logDebug("User session refreshed after payment confirmation:", refreshedUser);
-              
-              setPaymentCompleted(true);
-              
-              // Force a timeout before redirecting to ensure state updates are processed
-              setTimeout(() => {
-                logDebug("Timeout completed, redirecting to dashboard");
-                setActivePage('dashboard');
-                setPendingPaymentPlan(null);
-                setShowPaymentSuccess(false);
-                
-                // Clean up URL
-                if (typeof window !== 'undefined') {
-                  window.history.replaceState({}, document.title, window.location.pathname);
+  window.history.replaceState({}, document.title, window.location.pathname);
+}
                 }
                 
                 alert(`Welcome! Your ${pendingPaymentPlan} plan is now active. Enjoy your writing assistant!`);
