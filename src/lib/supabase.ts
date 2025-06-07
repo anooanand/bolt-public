@@ -112,6 +112,12 @@ export async function signIn(email: string, password: string) {
         refresh_token: result.refresh_token,
         expires_at: Date.now() + (result.expires_in || 3600) * 1000
       }));
+
+      // FIXED: Set the session on the Supabase client
+      await supabase.auth.setSession({
+        access_token: result.access_token,
+        refresh_token: result.refresh_token
+      });
     }
 
     console.log("Sign in successful:", email);
