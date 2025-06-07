@@ -294,3 +294,40 @@ export async function confirmPayment(planType: string) {
     throw error;
   }
 }
+
+export async function confirmPayment(planType: string) {
+  try {
+    console.log("[DEBUG] Confirming payment for plan:", planType);
+
+    const user = await getCurrentUser();
+    if (!user) throw new Error("No authenticated user found");
+
+    const { data, error } = await supabase.auth.updateUser({
+      data: {
+        payment_confirmed: true,
+        plan_type: planType,
+        signup_completed: true,
+        payment_date: new Date().toISOString(),
+        subscription_status: 'active',
+      }
+    });
+
+    if (error) throw error;
+
+    const { error: refreshError } = await supabase.auth.refreshSession();
+    if (refreshError) throw refreshError;
+
+    const refreshedUser = await getCurrentUser();
+    if (!refreshedUser?.user_metadata?.payment_confirmed) {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      const { error: retryError } = await supabase.auth.refreshSession();
+      if (retryError) console.error("[DEBUG] Retry session error:", retryError);
+    }
+
+    console.log("[DEBUG] Payment confirmed for user:", user.email);
+    return data;
+  } catch (error) {
+    console.error("[DEBUG] Error confirming payment:", error);
+    throw error;
+  }
+}
