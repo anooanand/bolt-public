@@ -14,30 +14,19 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'signin' }
   const [mode, setMode] = useState<'signin' | 'signup'>(initialMode);
 
   const handleSuccess = (user: any) => {
-    console.log("Auth success handler called with user:", user);
+    console.log("AuthModal: handleSuccess called with user:", user);
+    console.log("AuthModal: Current mode:", mode);
     
-    // Close the modal first
-    onClose();
-    
-    // For signup, automatically redirect to pricing page
-    if (mode === 'signup') {
-      console.log("Signup successful - redirecting to pricing page");
-      
-      // Set a flag to indicate we should redirect to pricing
-      localStorage.setItem('redirect_after_signup', 'pricing');
-      
-      // Small delay to ensure modal closes smoothly
-      setTimeout(() => {
-        // Force navigation to pricing page
-        window.location.hash = '#pricing';
-        window.location.reload(); // Ensure the page updates
-      }, 200);
+    // Always call the parent success handler first
+    if (onSuccess) {
+      console.log("AuthModal: Calling parent onSuccess callback");
+      onSuccess(user);
     } else {
-      // For signin, call the parent success handler if provided
-      if (onSuccess) {
-        onSuccess(user);
-      }
+      console.warn("AuthModal: No onSuccess callback provided from parent");
     }
+    
+    // The parent App component will handle closing the modal and navigation
+    // We don't need to do it here anymore
   };
 
   if (!isOpen) return null;
