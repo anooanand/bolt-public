@@ -1,73 +1,3 @@
-import { createClient } from '@supabase/supabase-js';
-
-// Environment variables
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-// Development-only logging
-if (import.meta.env.DEV) {
-  console.log("Environment variables check:");
-  console.log("SUPABASE_URL available:", !!supabaseUrl);
-  console.log("SUPABASE_ANON_KEY available:", !!supabaseAnonKey);
-}
-
-// Provide fallback values for build process
-const url = supabaseUrl || 'https://placeholder-url.supabase.co';
-const key = supabaseAnonKey || 'placeholder-key';
-
-export const supabase = createClient(url, key);
-
-// Auth proxy function for Netlify functions
-async function callAuthProxy(action: string, data: any) {
-  try {
-    const response = await fetch('/.netlify/functions/auth-proxy', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ action, ...data }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const result = await response.json();
-    return result;
-  } catch (error) {
-    console.error('Auth proxy error:', error);
-    throw error;
-  }
-}
-
-// Sign up function
-export async function signUp(email: string, password: string) {
-  try {
-    if (!supabaseUrl || !supabaseAnonKey) {
-      throw new Error('Supabase configuration is missing');
-    }
-    
-    console.log("Attempting signup for:", email);
-    
-    // Store email in localStorage for later use
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('userEmail', email);
-    }
-    
-    const result = await callAuthProxy('signup', { email, password });
-    
-    if (result.error) {
-      throw new Error(result.error.message);
-    }
-
-    console.log("Signup successful:", result);
-    return result;
-  } catch (error) {
-    console.error("Signup failed:", error);
-    throw error;
-  }
-}
-
 // Sign in function
 export async function signIn(email: string, password: string) {
   try {
@@ -89,6 +19,15 @@ export async function signIn(email: string, password: string) {
       throw new Error(result.error.message);
     }
 
+    // FIXED: Store the access token and refresh token in localStorage
+    if (result.access_token && result.refresh_token) {
+      localStorage.setItem('supabase.auth.token', JSON.stringify({
+        access_token: result.access_token,
+        refresh_token: result.refresh_token,
+        expires_at: Date.now() + (result.expires_in || 3600) * 1000
+      }));
+    }
+
     console.log("Sign in successful:", email);
     return result;
   } catch (error) {
@@ -97,63 +36,7 @@ export async function signIn(email: string, password: string) {
   }
 }
 
-// Sign out function
-export async function signOut() {
-  try {
-    if (!supabaseUrl || !supabaseAnonKey) {
-      throw new Error('Supabase configuration is missing');
-    }
-    
-    const { error } = await supabase.auth.signOut();
-    if (error) throw error;
-    
-    // Clear stored user data
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('userEmail');
-    }
-    
-    return { success: true };
-  } catch (error) {
-    console.error("Sign out failed:", error);
-    throw error;
-  }
-}
-
-// Get current user
-export async function getCurrentUser() {
-  try {
-    if (!supabaseUrl || !supabaseAnonKey) {
-      return null;
-    }
-    
-    const { data: { user }, error } = await supabase.auth.getUser();
-    
-    if (error) {
-      // Check if the error is due to missing auth session
-      if (error.message === 'Auth session missing!' || error.name === 'AuthSessionMissingError') {
-        console.info("No authenticated user session found"); // Expected state, not an error
-        return null;
-      }
-      // Log other errors as actual errors
-      console.error("Unexpected error getting current user:", error);
-      return null;
-    }
-
-    return user;
-  } catch (error) {
-    // Only log as error if it's an unexpected error
-    if (error instanceof Error && 
-        error.message !== 'Auth session missing!' && 
-        error.name !== 'AuthSessionMissingError') {
-      console.error("Error in getCurrentUser:", error);
-    } else {
-      console.info("No authenticated user session found");
-    }
-    return null;
-  }
-}
-
-// Confirm payment function - Enhanced with better error handling
+// Confirm payment function - Enhanced with better error handling and retry logic
 export async function confirmPayment(planType: string) {
   try {
     if (!supabaseUrl || !supabaseAnonKey) {
@@ -162,9 +45,50 @@ export async function confirmPayment(planType: string) {
 
     console.log("[DEBUG] Confirming payment for plan:", planType);
 
-    const user = await getCurrentUser();
+    // FIXED: Add a retry mechanism for getting the current user
+    let user = await getCurrentUser();
+    let retryCount = 0;
+    const maxRetries = 3;
+    
+    while (!user && retryCount < maxRetries) {
+      console.log(`[DEBUG] No user found, retrying... (${retryCount + 1}/${maxRetries})`);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // FIXED: Try to refresh the session before getting the user again
+      try {
+        const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+        if (!refreshError) {
+          console.log("[DEBUG] Session refreshed successfully during retry");
+        }
+      } catch (refreshErr) {
+        console.error("[DEBUG] Error refreshing session during retry:", refreshErr);
+      }
+      
+      user = await getCurrentUser();
+      retryCount++;
+    }
+    
     if (!user) {
-      console.error("[DEBUG] No authenticated user found when confirming payment");
+      console.error("[DEBUG] No authenticated user found when confirming payment after retries");
+      
+      // FIXED: Try to use the email from localStorage as a fallback
+      const userEmail = localStorage.getItem('userEmail');
+      if (userEmail) {
+        console.log("[DEBUG] Attempting to create payment record with email from localStorage:", userEmail);
+        
+        // Create a payment record in a separate table that can be linked to the user later
+        // This is a fallback mechanism and would require additional server-side logic
+        return {
+          success: false,
+          error: "No authenticated user found",
+          fallback: {
+            email: userEmail,
+            planType: planType,
+            paymentDate: new Date().toISOString()
+          }
+        };
+      }
+      
       throw new Error("No authenticated user found");
     }
 
@@ -220,205 +144,3 @@ export async function confirmPayment(planType: string) {
     throw error;
   }
 }
-
-// Check if user has completed payment - Enhanced function
-export async function hasCompletedPayment() {
-  try {
-    const user = await getCurrentUser();
-    
-    if (!user) {
-      console.log("No user found for payment check");
-      return false;
-    }
-
-    // Check user metadata for payment confirmation
-    const paymentConfirmed = user.user_metadata?.payment_confirmed || 
-                           user.user_metadata?.signup_completed ||
-                           false;
-    
-    const planType = user.user_metadata?.plan_type || null;
-    
-    console.log("Payment status check for user:", user.email, {
-      paymentConfirmed, 
-      planType,
-      subscriptionStatus: user.user_metadata?.subscription_status
-    });
-
-    return paymentConfirmed;
-  } catch (error) {
-    console.error("Error checking payment status:", error);
-    return false;
-  }
-}
-
-// Check payment status function - Enhanced
-export async function checkPaymentStatus(userEmail: string | null = null) {
-  try {
-    const user = await getCurrentUser();
-    
-    if (!user && !userEmail) {
-      return { hasPayment: false, planType: null };
-    }
-
-    // Check user metadata for payment confirmation
-    const paymentConfirmed = user?.user_metadata?.payment_confirmed || 
-                           user?.user_metadata?.signup_completed ||
-                           false;
-    
-    const planType = user?.user_metadata?.plan_type || null;
-    
-    console.log("Payment status check:", { 
-      paymentConfirmed, 
-      planType,
-      userEmail: user?.email || userEmail 
-    });
-
-    return {
-      hasPayment: paymentConfirmed,
-      planType: planType,
-      subscriptionStatus: user?.user_metadata?.subscription_status || null,
-      paymentDate: user?.user_metadata?.payment_date || null
-    };
-  } catch (error) {
-    console.error("Error checking payment status:", error);
-    return { hasPayment: false, planType: null };
-  }
-}
-
-// Create or update user payment record
-export async function createPaymentRecord(planType: string, amount: number | null = null) {
-  try {
-    if (!supabaseUrl || !supabaseAnonKey) {
-      throw new Error('Supabase configuration is missing');
-    }
-    
-    const user = await getCurrentUser();
-    if (!user) {
-      throw new Error("No authenticated user found");
-    }
-
-    const paymentData: any = {
-      payment_confirmed: true,
-      plan_type: planType,
-      signup_completed: true,
-      payment_date: new Date().toISOString(),
-      subscription_status: 'active'
-    };
-
-    if (amount) {
-      paymentData.payment_amount = amount;
-    }
-
-    const { data, error } = await supabase.auth.updateUser({
-      data: paymentData
-    });
-
-    if (error) {
-      console.error("Error creating payment record:", error);
-      throw error;
-    }
-
-    console.log("Payment record created successfully:", data);
-    return data;
-  } catch (error) {
-    console.error("Error creating payment record:", error);
-    throw error;
-  }
-}
-
-// Get user by email function
-export async function getUserByEmail(email: string) {
-  try {
-    if (!supabaseUrl || !supabaseAnonKey) {
-      return null;
-    }
-    
-    const user = await getCurrentUser();
-    
-    if (user && user.email === email) {
-      return user;
-    }
-    
-    return null;
-  } catch (error) {
-    console.error("Error getting user by email:", error);
-    return null;
-  }
-}
-
-// Initialize auth state listener
-export function onAuthStateChange(callback: (event: string, session: any) => void) {
-  if (!supabaseUrl || !supabaseAnonKey) {
-    console.warn('Supabase configuration is missing');
-    return () => {}; // Return no-op cleanup function
-  }
-  
-  return supabase.auth.onAuthStateChange((event, session) => {
-    console.log("Auth state change:", event, session?.user?.email || 'no user');
-    callback(event, session);
-  });
-}
-
-// Reset password function
-export async function resetPassword(email: string) {
-  try {
-    if (!supabaseUrl || !supabaseAnonKey) {
-      throw new Error('Supabase configuration is missing');
-    }
-    
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
-    });
-    
-    if (error) throw error;
-    
-    return { success: true };
-  } catch (error) {
-    console.error("Password reset failed:", error);
-    throw error;
-  }
-}
-
-// Update password function
-export async function updatePassword(newPassword: string) {
-  try {
-    if (!supabaseUrl || !supabaseAnonKey) {
-      throw new Error('Supabase configuration is missing');
-    }
-    
-    const { error } = await supabase.auth.updateUser({
-      password: newPassword
-    });
-    
-    if (error) throw error;
-    
-    return { success: true };
-  } catch (error) {
-    console.error("Password update failed:", error);
-    throw error;
-  }
-}
-
-// Request password reset function
-export async function requestPasswordReset(email: string) {
-  try {
-    if (!supabaseUrl || !supabaseAnonKey) {
-      throw new Error('Supabase configuration is missing');
-    }
-    
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
-    });
-    
-    if (error) throw error;
-    
-    return { success: true };
-  } catch (error) {
-    console.error("Password reset request failed:", error);
-    throw error;
-  }
-}
-
-// Export the supabase client for direct use if needed
-export default supabase;
-
