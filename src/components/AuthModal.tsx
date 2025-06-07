@@ -17,9 +17,9 @@ export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'signin' }
     console.log("AuthModal: handleSuccess called with user:", user);
     console.log("AuthModal: Current mode:", mode);
     
-    // Always call the parent success handler first
+    // Always call the parent success handler with the user object
     if (onSuccess) {
-      console.log("AuthModal: Calling parent onSuccess callback");
+      console.log("AuthModal: Calling parent onSuccess callback with user object");
       onSuccess(user);
     } else {
       console.warn("AuthModal: No onSuccess callback provided from parent");
