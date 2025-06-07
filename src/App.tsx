@@ -63,6 +63,9 @@ function App() {
         const completed = await hasCompletedPayment();
         setPaymentCompleted(completed);
 
+        console.log("[DEBUG] Setting activePage to pricing after auth success");
+        // Force redirect to pricing page after signup if payment not completed
+        // This is the key fix for the redirection issue
         setTimeout(() => {
           setActivePage(completed ? 'dashboard' : 'pricing');
         }, 1500);
@@ -172,6 +175,8 @@ function App() {
             const completed = await hasCompletedPayment();
             setPaymentCompleted(completed);
             
+            console.log("[DEBUG] Setting activePage to pricing after auth state change");
+            // Force redirect to pricing page after signup if payment not completed
             setTimeout(() => {
               setActivePage(completed ? 'dashboard' : 'pricing');
               setShowAuthModal(false);
