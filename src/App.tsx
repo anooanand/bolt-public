@@ -153,72 +153,56 @@ function App() {
     checkAuthWithRetry();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      logDebug("Auth state change:", event, session?.user?.email);
+  console.log("[DEBUG] Auth state change:", event, session?.user?.email);
+  try {
+    const currentUser = await getCurrentUser();
+    setUser(currentUser);
+
+    if (event === 'SIGNED_IN' && pendingPaymentPlan) {
       try {
-        // Refresh user state
-        const currentUser = await getCurrentUser();
-        setUser(currentUser);
-        
-        // Handle auth success with pending payment
-        if (event === 'SIGNED_IN' && pendingPaymentPlan) {
-          logDebug("User signed in with pending payment, confirming...");
-          try {
-            await confirmPayment(pendingPaymentPlan);
-            
-            // Force a refresh of the user session to ensure metadata is updated
-            await supabase.auth.refreshSession();
-            const refreshedUser = await getCurrentUser();
-            logDebug("User session refreshed after payment confirmation:", refreshedUser);
-            
-            setPaymentCompleted(true);
-            
-            // Force a timeout before redirecting to ensure state updates are processed
-            setTimeout(() => {
-              logDebug("Timeout completed, redirecting to dashboard");
-              setActivePage('dashboard');
-              
-              setPendingPaymentPlan(null);
-              setShowPaymentSuccess(false);
-              
-              // Clean up URL
-              if (typeof window !== 'undefined') {
-                window.history.replaceState({}, document.title, window.location.pathname);
-              }
-              
-              alert(`Welcome! Your ${pendingPaymentPlan} plan is now active. Enjoy your writing assistant!`);
-              setShowAuthModal(false);
-            }, 1000);
-          } catch (error) {
-            console.error("Error confirming payment after sign in:", error);
-            alert("There was an error confirming your payment. Please contact support.");
-          }
-        } else if (event === 'SIGNED_IN') {
-          // Regular sign-in without pending payment
-          logDebug("Regular sign-in successful");
-          const completed = await hasCompletedPayment();
-          setPaymentCompleted(completed);
-          
-          // Force a timeout before redirecting to ensure state updates are processed
-          setTimeout(() => {
-            if (completed) {
-              logDebug("User has completed payment, redirecting to dashboard");
-              setActivePage('dashboard');
-            } else {
-              logDebug("User has not completed payment, redirecting to pricing");
-              setActivePage('pricing');
-            }
-            
-            setShowAuthModal(false);
-          }, 1000);
-        }
-        
-        setIsLoading(false);
+        await confirmPayment(pendingPaymentPlan);
+        const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+        if (refreshError) throw refreshError;
+
+        const refreshedUser = await getCurrentUser();
+        setUser(refreshedUser);
+        setPaymentCompleted(true);
+
+        setTimeout(() => {
+          setActivePage('dashboard');
+          setPendingPaymentPlan(null);
+          setShowPaymentSuccess(false);
+          window.history.replaceState({}, document.title, window.location.pathname);
+          alert(`Welcome! Your ${pendingPaymentPlan} plan is now active. Enjoy your writing assistant!`);
+          setShowAuthModal(false);
+        }, 2000);
       } catch (error) {
-        console.error('Error in auth state change handler:', error);
-        setIsLoading(false);
-        alert("There was an error processing your authentication. Please try again or contact support.");
+        console.error("[DEBUG] Error confirming payment after sign in:", error);
+        alert("There was an error confirming your payment. Please contact support.");
       }
-    });
+    } else if (event === 'SIGNED_IN') {
+      const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+      if (!refreshError) {
+        const refreshedUser = await getCurrentUser();
+        setUser(refreshedUser);
+      }
+
+      const completed = await hasCompletedPayment();
+      setPaymentCompleted(completed);
+
+      setTimeout(() => {
+        setActivePage(completed ? 'dashboard' : 'pricing');
+        setShowAuthModal(false);
+      }, 1500);
+    }
+
+    setIsLoading(false);
+  } catch (error) {
+    console.error('[DEBUG] Error in auth state change handler:', error);
+    setIsLoading(false);
+    alert("There was an error processing your authentication. Please try again or contact support.");
+  }
+});
 
     return () => {
       subscription.unsubscribe();
@@ -258,82 +242,54 @@ function App() {
   };
 
   const handleAuthSuccess = async (user: any) => {
-    logDebug("Auth success handler called with user:", user);
-    
-    try {
-      // Set the user state directly with the received user object
-      setUser(user);
-      logDebug("User state set directly with received user object");
-      
-      // Check if we have a pending payment to confirm
-      if (pendingPaymentPlan) {
-        logDebug("Found pending payment plan:", pendingPaymentPlan);
-        try {
-          logDebug("Attempting to confirm payment for plan:", pendingPaymentPlan);
-          await confirmPayment(pendingPaymentPlan);
-          logDebug("Payment confirmation successful");
-          
-          // Force a refresh of the user session to ensure metadata is updated
-          await supabase.auth.refreshSession();
-          const refreshedUser = await getCurrentUser();
-          logDebug("User session refreshed after payment confirmation:", refreshedUser);
-          
-          setPaymentCompleted(true);
-          logDebug("Payment completed state set to true");
-          
-          // Force a timeout before redirecting to ensure state updates are processed
-          setTimeout(() => {
-            logDebug("Timeout completed, redirecting to dashboard");
-            setActivePage('dashboard');
-            logDebug("Active page set to dashboard");
-            
-            setPendingPaymentPlan(null);
-            logDebug("Pending payment plan cleared");
-            
-            setShowPaymentSuccess(false);
-            logDebug("Payment success page hidden");
-            
-            // Clean up URL
-            if (typeof window !== 'undefined') {
-              window.history.replaceState({}, document.title, window.location.pathname);
-              logDebug("URL parameters cleared from address bar");
-            }
-            
-            alert(`Welcome! Your ${pendingPaymentPlan} plan is now active. Enjoy your writing assistant!`);
-          }, 1000);
-        } catch (error) {
-          console.error("Error confirming payment:", error);
-          alert("There was an error confirming your payment. Please contact support.");
-        }
-      } else {
-        // Check regular payment status
-        logDebug("No pending payment plan, checking payment status");
-        const completed = await hasCompletedPayment();
-        logDebug("Payment completed status:", completed);
-        
-        setPaymentCompleted(completed);
-        
-        // Force a timeout before redirecting to ensure state updates are processed
+  console.log("[DEBUG] Auth success handler called with user:", user?.email);
+
+  try {
+    setUser(user);
+    console.log("[DEBUG] User state set directly with received user object");
+
+    if (pendingPaymentPlan) {
+      console.log("[DEBUG] Found pending payment plan:", pendingPaymentPlan);
+      try {
+        console.log("[DEBUG] Attempting to confirm payment for plan:", pendingPaymentPlan);
+        await confirmPayment(pendingPaymentPlan);
+        console.log("[DEBUG] Payment confirmation successful");
+
+        const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+        if (refreshError) throw refreshError;
+
+        const refreshedUser = await getCurrentUser();
+        setUser(refreshedUser);
+        setPaymentCompleted(true);
+        console.log("[DEBUG] Payment completed state set to true");
+
         setTimeout(() => {
-          if (completed) {
-            logDebug("Payment already completed, redirecting to dashboard");
-            setActivePage('dashboard');
-          } else {
-            logDebug("No payment completed, redirecting to pricing page");
-            setActivePage('pricing');
-          }
-        }, 1000);
+          setActivePage('dashboard');
+          setPendingPaymentPlan(null);
+          setShowPaymentSuccess(false);
+          window.history.replaceState({}, document.title, window.location.pathname);
+          alert(`Welcome! Your ${pendingPaymentPlan} plan is now active. Enjoy your writing assistant!`);
+        }, 2000);
+      } catch (error) {
+        console.error("[DEBUG] Error confirming payment:", error);
+        alert("There was an error confirming your payment. Please contact support.");
       }
-      
-      // Close the modal
-      logDebug("Closing auth modal");
-      setShowAuthModal(false);
-    } catch (error) {
-      console.error("Error in auth success handler:", error);
-      setShowAuthModal(false);
-      alert("There was an error processing your request. Please try again or contact support.");
+    } else {
+      const completed = await hasCompletedPayment();
+      setPaymentCompleted(completed);
+
+      setTimeout(() => {
+        setActivePage(completed ? 'dashboard' : 'pricing');
+      }, 1500);
     }
-  };
+
+    setShowAuthModal(false);
+  } catch (error) {
+    console.error("[DEBUG] Error in auth success handler:", error);
+    setShowAuthModal(false);
+    alert("There was an error processing your request. Please try again or contact support.");
+  }
+};
 
   // Show payment success page if we have pending payment but no user
   if (showPaymentSuccess && pendingPaymentPlan && !user && !isLoading) {
