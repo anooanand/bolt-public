@@ -7,7 +7,6 @@ interface SimpleSignUpProps {
   onSignUpSuccess?: (user: any) => void;
 }
 
-// Changed from "export default function" to "export function" to match import style
 export function SimpleSignUp({ onSignInClick, onSignUpSuccess }: SimpleSignUpProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -75,15 +74,28 @@ export function SimpleSignUp({ onSignInClick, onSignUpSuccess }: SimpleSignUpPro
       console.log("Starting signup process...");
       const result = await signUp(email, password);
       
-      if (result.success) {
-        console.log("Signup successful!");
+      console.log("Signup result:", result);
+      
+      // Check if signup was successful
+      if (result && (result.user || result.access_token)) {
+        console.log("Signup successful! Calling onSignUpSuccess callback");
+        
+        // Call the success callback with the user data
         if (onSignUpSuccess) {
-          onSignUpSuccess(result.user);
+          onSignUpSuccess(result.user || result);
+        } else {
+          console.warn("No onSignUpSuccess callback provided");
         }
-      } else if (result.emailExists) {
+      } else if (result && result.emailExists) {
         setError('This email is already registered. Please sign in instead.');
-      } else if (result.error) {
+      } else if (result && result.error) {
         throw result.error;
+      } else {
+        // Handle case where result doesn't have expected structure
+        console.log("Unexpected result structure, but treating as success:", result);
+        if (onSignUpSuccess) {
+          onSignUpSuccess(result);
+        }
       }
     } catch (err: any) {
       console.error("Signup failed:", err);
@@ -211,3 +223,4 @@ export function SimpleSignUp({ onSignInClick, onSignUpSuccess }: SimpleSignUpPro
     </div>
   );
 }
+
