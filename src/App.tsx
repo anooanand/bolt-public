@@ -64,12 +64,6 @@ function App() {
         const currentUser = await getCurrentUser();
         setUser(currentUser);
 
-        const redirectTarget = localStorage.getItem('redirect_after_signup');
-        if (currentUser && redirectTarget) {
-          localStorage.removeItem('redirect_after_signup');
-          setActivePage(redirectTarget);
-        }
-
         if (currentUser) {
           const completed = await hasCompletedPayment();
           console.log("Initial payment completed status:", completed);
@@ -129,7 +123,9 @@ function App() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log("Auth state change:", event, session?.user?.email);
       try {
-        await checkAuth();
+        // Refresh user state
+        const currentUser = await getCurrentUser();
+        setUser(currentUser);
         
         // Handle auth success with pending payment
         if (event === 'SIGNED_IN' && pendingPaymentPlan) {
@@ -146,10 +142,28 @@ function App() {
             }
             
             alert(`Welcome! Your ${pendingPaymentPlan} plan is now active. Enjoy your writing assistant!`);
+            setShowAuthModal(false); // Close modal after successful payment confirmation
           } catch (error) {
             console.error("Error confirming payment after sign in:", error);
           }
+        } else if (event === 'SIGNED_IN') {
+          // Regular sign-in without pending payment
+          console.log("Regular sign-in successful");
+          const completed = await hasCompletedPayment();
+          setPaymentCompleted(completed);
+          
+          if (completed) {
+            setActivePage('dashboard');
+          } else {
+            // Redirect to pricing after successful signup/signin
+            console.log("No payment found - redirecting to pricing");
+            setActivePage('pricing');
+          }
+          
+          setShowAuthModal(false); // Close modal after successful sign-in
         }
+        
+        setIsLoading(false);
       } catch (error) {
         console.error('Error in auth state change handler:', error);
         setIsLoading(false);
@@ -194,44 +208,50 @@ function App() {
   };
 
   const handleAuthSuccess = async () => {
-    console.log("Auth success - refreshing user state");
-    const refreshedUser = await getCurrentUser();
-    setUser(refreshedUser);
+    console.log("Auth success handler called");
     
-    // Check if we have a pending payment to confirm
-    if (pendingPaymentPlan) {
-      console.log("Found pending payment plan:", pendingPaymentPlan);
-      try {
-        await confirmPayment(pendingPaymentPlan);
-        setPaymentCompleted(true);
-        setActivePage('dashboard');
-        setPendingPaymentPlan(null);
-        
-        // Clean up URL
-        if (typeof window !== 'undefined') {
-          window.history.replaceState({}, document.title, window.location.pathname);
+    try {
+      const refreshedUser = await getCurrentUser();
+      setUser(refreshedUser);
+      
+      // Check if we have a pending payment to confirm
+      if (pendingPaymentPlan) {
+        console.log("Found pending payment plan:", pendingPaymentPlan);
+        try {
+          await confirmPayment(pendingPaymentPlan);
+          setPaymentCompleted(true);
+          setActivePage('dashboard');
+          setPendingPaymentPlan(null);
+          
+          // Clean up URL
+          if (typeof window !== 'undefined') {
+            window.history.replaceState({}, document.title, window.location.pathname);
+          }
+          
+          alert(`Welcome! Your ${pendingPaymentPlan} plan is now active. Enjoy your writing assistant!`);
+        } catch (error) {
+          console.error("Error confirming payment:", error);
         }
+      } else {
+        // Check regular payment status
+        const completed = await hasCompletedPayment();
+        setPaymentCompleted(completed);
         
-        alert(`Welcome! Your ${pendingPaymentPlan} plan is now active. Enjoy your writing assistant!`);
-        setShowAuthModal(false);
-        return;
-      } catch (error) {
-        console.error("Error confirming payment:", error);
+        if (completed) {
+          setActivePage('dashboard');
+        } else {
+          // Redirect to pricing if no payment found - this is the key fix
+          console.log("No payment found - redirecting to pricing");
+          setActivePage('pricing');
+        }
       }
+      
+      // Close the modal - this fixes the modal staying open issue
+      setShowAuthModal(false);
+    } catch (error) {
+      console.error("Error in auth success handler:", error);
+      setShowAuthModal(false);
     }
-    
-    // Check regular payment status
-    const completed = await hasCompletedPayment();
-    setPaymentCompleted(completed);
-    
-    if (completed) {
-      setActivePage('dashboard');
-    } else {
-      // Redirect to pricing if no payment found
-      setActivePage('pricing');
-    }
-    
-    setShowAuthModal(false);
   };
 
   // Show payment success page if we have pending payment but no user
