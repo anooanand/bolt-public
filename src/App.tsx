@@ -10,7 +10,7 @@ import { ToolsSection } from './components/ToolsSection';
 import { WritingTypesSection } from './components/WritingTypesSection';
 import { Footer } from './components/Footer';
 import { PaymentSuccessPage } from './components/PaymentSuccessPage';
-import { Pricing } from './components/Pricing';
+import { PricingPage } from './components/PricingPage';
 
 function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -164,7 +164,7 @@ function App() {
             }}
           />
         ) : activePage === 'pricing' ? (
-          <Pricing />
+          <PricingPage />
         ) : (
           <>
             <HeroSection />
@@ -180,3 +180,4 @@ function App() {
 }
 
 export default App;
+
