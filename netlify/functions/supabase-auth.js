@@ -1,8 +1,8 @@
-const https = require('https' );
+const https = require('https'  );
 
 exports.handler = async (event) => {
   // Handle OPTIONS requests for CORS preflight
-  if (event.httpMethod === 'OPTIONS' ) {
+  if (event.httpMethod === 'OPTIONS'  ) {
     return {
       statusCode: 204,
       headers: {
@@ -19,13 +19,14 @@ exports.handler = async (event) => {
   const path = event.path.replace('/.netlify/functions/supabase-auth', '');
   
   // Set up the request options
+  // FIXED: Updated to match the client-side configuration
   const options = {
-    hostname: 'zrzicouoioyqptfplnkg.supabase.co',
+    hostname: 'rvlotczavccreigdzczo.supabase.co',
     path: `/auth/v1${path}`,
     method: event.httpMethod,
     headers: {
       ...event.headers,
-      host: 'zrzicouoioyqptfplnkg.supabase.co',
+      host: 'rvlotczavccreigdzczo.supabase.co',
     },
   };
 
@@ -36,8 +37,8 @@ exports.handler = async (event) => {
 
   try {
     // Make the request to Supabase
-    const response = await new Promise((resolve, reject ) => {
-      const req = https.request(options, (res ) => {
+    const response = await new Promise((resolve, reject  ) => {
+      const req = https.request(options, (res  ) => {
         let body = '';
         res.on('data', (chunk) => (body += chunk));
         res.on('end', () => {
