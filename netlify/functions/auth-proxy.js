@@ -4,7 +4,6 @@
 const fetch = require('node-fetch');
 
 // Supabase project details - these will be used server-side
-// FIXED: Updated to match the client-side configuration
 const SUPABASE_URL = 'https://rvlotczavccreigdzczo.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ2bG90Y3phdmNjcmVpZ2R6Y3pvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDg5NTkyNDMsImV4cCI6MjA2NDUzNTI0M30.6gIQ0XmqgwmoULkgvZg4m3GTvsFKPv0MmesXiscRjbg';
 
@@ -63,12 +62,23 @@ exports.handler = async (event, context ) => {
     
     switch (action) {
       case 'signup':
+        // FIXED: Use the v1/signup endpoint with proper data structure
         endpoint = '/auth/v1/signup';
-        requestBody = { email, password, options };
+        requestBody = { 
+          email, 
+          password,
+          data: options?.data || {},  // Include user metadata if provided
+          gotrue_meta_security: {}    // Required by newer Supabase versions
+        };
         break;
       case 'signin':
+        // FIXED: Use the password grant type with proper structure
         endpoint = '/auth/v1/token?grant_type=password';
-        requestBody = { email, password };
+        requestBody = { 
+          email, 
+          password,
+          gotrue_meta_security: {}    // Required by newer Supabase versions
+        };
         break;
       case 'signout':
         endpoint = '/auth/v1/logout';
@@ -102,16 +112,24 @@ exports.handler = async (event, context ) => {
     
     console.log(`Supabase response status: ${response.status}`);
     
-    // For sign-in and sign-up, ensure we return a complete session object
+    // FIXED: For sign-in and sign-up, ensure we return a complete session object with all required fields
     if ((action === 'signin' || action === 'signup') && data.access_token) {
+      // Calculate expires_at if not provided
+      const expiresIn = data.expires_in || 3600;
+      const expiresAt = data.expires_at || Math.floor(Date.now() / 1000) + expiresIn;
+      
       // Ensure we have all required session properties
       const completeSession = {
         access_token: data.access_token,
         refresh_token: data.refresh_token,
-        expires_in: data.expires_in || 3600,
-        expires_at: data.expires_at,
+        expires_in: expiresIn,
+        expires_at: expiresAt,
         token_type: data.token_type || 'bearer',
-        user: data.user || null
+        user: data.user || null,
+        
+        // FIXED: Add additional properties needed by Supabase client
+        provider_token: data.provider_token || null,
+        provider_refresh_token: data.provider_refresh_token || null
       };
       
       // Return the complete session
