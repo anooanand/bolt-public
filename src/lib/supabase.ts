@@ -185,6 +185,17 @@ export async function confirmPayment(planType: string) {
       throw error;
     }
 
+    // Force a refresh of the user session to ensure metadata is updated
+    await supabase.auth.refreshSession();
+    
+    // Double-check that the payment was confirmed
+    const refreshedUser = await getCurrentUser();
+    if (!refreshedUser?.user_metadata?.payment_confirmed) {
+      console.warn("Payment confirmation not reflected in refreshed user metadata");
+    } else {
+      console.log("Payment confirmation verified in refreshed user metadata");
+    }
+
     console.log("Payment confirmation successful for user:", user.email, "plan:", planType);
     return data;
   } catch (error) {
@@ -393,3 +404,4 @@ export async function requestPasswordReset(email: string) {
 
 // Export the supabase client for direct use if needed
 export default supabase;
+
