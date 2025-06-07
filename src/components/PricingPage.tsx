@@ -46,6 +46,7 @@ export function PricingPage() {
       buttonText: 'Start Free Trial',
       buttonLink: 'https://buy.stripe.com/test_14kaG7gNX1773v28wB',
       popular: false
+      planType: 'try-out'
     },
     {
       name: 'Base Plan',
@@ -64,6 +65,7 @@ export function PricingPage() {
       buttonText: 'Start Free Trial',
       buttonLink: 'https://buy.stripe.com/test_3cs5lNbtD5nn3v28wC',
       popular: true
+      planType: 'base-plan'
     },
     {
       name: 'Premium',
@@ -82,6 +84,7 @@ export function PricingPage() {
       buttonText: 'Start Free Trial',
       buttonLink: 'https://buy.stripe.com/test_6oE7tVdBL3fffdKbIP',
       popular: false
+      planType: 'premium'
     }
   ];
 
