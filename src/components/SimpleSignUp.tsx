@@ -76,6 +76,9 @@ export function SimpleSignUp({ onSignInClick, onSignUpSuccess }: SimpleSignUpPro
       
       console.log("Signup result:", result);
       
+      // Store email in localStorage for later use
+      localStorage.setItem('userEmail', email);
+      
       // Check if signup was successful
       if (result && (result.user || result.access_token)) {
         console.log("Signup successful! Calling onSignUpSuccess callback");
