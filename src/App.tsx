@@ -104,10 +104,11 @@ function App() {
   const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
     console.log("[DEBUG] Auth state change:", event, session?.user?.email);
     try {
-      const currentUser = await getCurrentUser();
+      // Use the user from the session directly instead of calling getCurrentUser()
+      const currentUser = session?.user || null;
       setUser(currentUser);
 
-      if (event === 'SIGNED_IN' && pendingPaymentPlan) {
+      if (event === 'SIGNED_IN' && pendingPaymentPlan && currentUser) {
         await confirmPayment(pendingPaymentPlan);
         await supabase.auth.refreshSession();
         const refreshedUser = await getCurrentUser();
@@ -124,7 +125,7 @@ function App() {
           alert(`Welcome! Your ${pendingPaymentPlan} plan is now active. Enjoy your writing assistant!`);
           setShowAuthModal(false);
         }, 2000);
-      } else if (event === 'SIGNED_IN') {
+      } else if (event === 'SIGNED_IN' && currentUser) {
         await supabase.auth.refreshSession();
         const refreshedUser = await getCurrentUser();
         setUser(refreshedUser);
@@ -180,4 +181,3 @@ function App() {
 }
 
 export default App;
-
