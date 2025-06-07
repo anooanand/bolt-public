@@ -38,8 +38,8 @@ function App() {
     // Check for payment success in URL parameters first
     if (typeof window !== 'undefined') {
       const urlParams = new URLSearchParams(window.location.search);
-      const paymentSuccess = urlParams.get('payment_success');
-      const planType = urlParams.get('plan');
+      const paymentSuccess = urlParams.get('paymentSuccess');
+      const planType = urlParams.get('planType');
       
       console.log("URL Parameters:", { paymentSuccess, planType });
       
