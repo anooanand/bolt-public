@@ -76,18 +76,14 @@ export async function signUp(email: string, password: string) {
       throw new Error(result.error.message);
     }
 
-    // FIXED: Store the access token and refresh token in localStorage and set session
+    // Set the complete session using the entire result object
     if (result.access_token && result.refresh_token) {
-      localStorage.setItem('supabase.auth.token', JSON.stringify({
-        access_token: result.access_token,
-        refresh_token: result.refresh_token,
-        expires_at: Date.now() + (result.expires_in || 3600) * 1000
-      }));
-
-      // FIXED: Set the session on the Supabase client
       await supabase.auth.setSession({
         access_token: result.access_token,
-        refresh_token: result.refresh_token
+        refresh_token: result.refresh_token,
+        expires_in: result.expires_in,
+        token_type: result.token_type || 'bearer',
+        user: result.user
       });
     }
 
@@ -120,18 +116,14 @@ export async function signIn(email: string, password: string) {
       throw new Error(result.error.message);
     }
 
-    // FIXED: Store the access token and refresh token in localStorage
+    // Set the complete session using the entire result object
     if (result.access_token && result.refresh_token) {
-      localStorage.setItem('supabase.auth.token', JSON.stringify({
-        access_token: result.access_token,
-        refresh_token: result.refresh_token,
-        expires_at: Date.now() + (result.expires_in || 3600) * 1000
-      }));
-
-      // FIXED: Set the session on the Supabase client
       await supabase.auth.setSession({
         access_token: result.access_token,
-        refresh_token: result.refresh_token
+        refresh_token: result.refresh_token,
+        expires_in: result.expires_in,
+        token_type: result.token_type || 'bearer',
+        user: result.user
       });
     }
 
