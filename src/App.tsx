@@ -55,15 +55,6 @@ function App() {
 
         // Optional: clear URL parameters from address bar
         window.history.replaceState({}, document.title, window.location.pathname);
-      });
-        setPendingPaymentPlan(planType);
-        setShowPaymentSuccess(true);
-        
-        // Store user email if available
-        const userEmail = urlParams.get('email') || localStorage.getItem('userEmail');
-        if (userEmail) {
-          localStorage.setItem('userEmail', userEmail);
-        }
       }
     }
 
@@ -407,4 +398,3 @@ function App() {
 }
 
 export default App;
-
