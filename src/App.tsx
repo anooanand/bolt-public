@@ -29,32 +29,46 @@ function App() {
   const [modalKey, setModalKey] = useState(0);
   const [pendingPaymentPlan, setPendingPaymentPlan] = useState<string | null>(null);
   const [showPaymentSuccess, setShowPaymentSuccess] = useState(false);
+  const [debugInfo, setDebugInfo] = useState<any>({});
+
+  // Add debug logging function
+  const logDebug = (message: string, data?: any) => {
+    console.log(`[DEBUG] ${message}`, data || '');
+    setDebugInfo(prev => ({
+      ...prev,
+      [Date.now()]: { message, data }
+    }));
+  };
 
   useEffect(() => {
-    console.log("Environment variables check:");
-    console.log("SUPABASE_URL available:", !!import.meta.env.VITE_SUPABASE_URL);
-    console.log("SUPABASE_ANON_KEY available:", !!import.meta.env.VITE_SUPABASE_ANON_KEY);
+    logDebug("Environment variables check:");
+    logDebug("SUPABASE_URL available:", !!import.meta.env.VITE_SUPABASE_URL);
+    logDebug("SUPABASE_ANON_KEY available:", !!import.meta.env.VITE_SUPABASE_ANON_KEY);
 
     // Check for payment success in URL parameters first
     if (typeof window !== 'undefined') {
       const urlParams = new URLSearchParams(window.location.search);
-      const paymentSuccess = urlParams.get('paymentSuccess');
-      const planType = urlParams.get('planType');
       
-      console.log("URL Parameters:", { paymentSuccess, planType });
+      // Check for both parameter formats (payment_success and paymentSuccess)
+      const paymentSuccess = urlParams.get('paymentSuccess') || urlParams.get('payment_success');
+      
+      // Check for both parameter formats (plan and planType)
+      const planType = urlParams.get('planType') || urlParams.get('plan');
+      
+      logDebug("URL Parameters:", { paymentSuccess, planType });
+      logDebug("All URL parameters:", Object.fromEntries(urlParams.entries()));
       
       if (paymentSuccess === 'true' && planType) {
-        console.log("Payment success detected:", { paymentSuccess, planType });
+        logDebug("Payment success detected:", { paymentSuccess, planType });
         setPendingPaymentPlan(planType);
         setShowPaymentSuccess(true);
-
+        
+        // Store user email if available
         const userEmail = urlParams.get('email') || localStorage.getItem('userEmail');
         if (userEmail) {
           localStorage.setItem('userEmail', userEmail);
+          logDebug("User email stored in localStorage:", userEmail);
         }
-
-        // Optional: clear URL parameters from address bar
-        window.history.replaceState({}, document.title, window.location.pathname);
       }
     }
 
@@ -62,17 +76,17 @@ function App() {
       try {
         await supabase.auth.refreshSession();
         const currentUser = await getCurrentUser();
-        console.log("Current user:", currentUser?.email || 'none');
+        logDebug("Current user:", currentUser?.email || 'none');
         setUser(currentUser);
 
         if (currentUser) {
           const completed = await hasCompletedPayment();
-          console.log("Payment completed status:", completed);
+          logDebug("Payment completed status:", completed);
           setPaymentCompleted(completed);
           
           // If user is authenticated and we have a pending payment, confirm it
           if (pendingPaymentPlan && !completed) {
-            console.log("User authenticated with pending payment, confirming...");
+            logDebug("User authenticated with pending payment, confirming...");
             try {
               await confirmPayment(pendingPaymentPlan);
               setPaymentCompleted(true);
@@ -91,6 +105,7 @@ function App() {
             }
           } else if (completed) {
             // User already has payment, go to dashboard
+            logDebug("User has completed payment, redirecting to dashboard");
             setActivePage('dashboard');
             setShowPaymentSuccess(false);
           }
@@ -104,15 +119,15 @@ function App() {
     const checkAuthWithRetry = async (retries = 2) => {
       for (let attempt = 0; attempt <= retries; attempt++) {
         try {
-          console.log(`Auth check attempt ${attempt + 1}/${retries + 1}`);
+          logDebug(`Auth check attempt ${attempt + 1}/${retries + 1}`);
           await checkAuth();
-          console.log(`Auth check successful on attempt ${attempt + 1}`);
+          logDebug(`Auth check successful on attempt ${attempt + 1}`);
           setIsLoading(false);
           return;
         } catch (error) {
           if (attempt < retries) {
             const delay = (attempt + 1) * 3000;
-            console.log(`Retrying in ${delay / 1000} seconds...`);
+            logDebug(`Retrying in ${delay / 1000} seconds...`);
             await new Promise(resolve => setTimeout(resolve, delay));
           } else {
             console.error('All auth check attempts failed');
@@ -126,7 +141,7 @@ function App() {
     checkAuthWithRetry();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log("Auth state change:", event, session?.user?.email);
+      logDebug("Auth state change:", event, session?.user?.email);
       try {
         // Refresh user state
         const currentUser = await getCurrentUser();
@@ -134,7 +149,7 @@ function App() {
         
         // Handle auth success with pending payment
         if (event === 'SIGNED_IN' && pendingPaymentPlan) {
-          console.log("User signed in with pending payment, confirming...");
+          logDebug("User signed in with pending payment, confirming...");
           try {
             await confirmPayment(pendingPaymentPlan);
             setPaymentCompleted(true);
@@ -154,13 +169,15 @@ function App() {
           }
         } else if (event === 'SIGNED_IN') {
           // Regular sign-in without pending payment
-          console.log("Regular sign-in successful");
+          logDebug("Regular sign-in successful");
           const completed = await hasCompletedPayment();
           setPaymentCompleted(completed);
           
           if (completed) {
+            logDebug("User has completed payment, redirecting to dashboard");
             setActivePage('dashboard');
           } else {
+            logDebug("User has not completed payment, redirecting to pricing");
             setActivePage('pricing');
           }
           
@@ -180,7 +197,7 @@ function App() {
   }, [theme, pendingPaymentPlan]);
 
   const handleSignUpClick = () => {
-    console.log("Sign up button clicked");
+    logDebug("Sign up button clicked");
     if (showAuthModal) {
       setShowAuthModal(false);
       setTimeout(() => {
@@ -196,7 +213,7 @@ function App() {
   };
 
   const handleSignInClick = () => {
-    console.log("Sign in button clicked");
+    logDebug("Sign in button clicked");
     if (showAuthModal) {
       setShowAuthModal(false);
       setTimeout(() => {
@@ -211,26 +228,38 @@ function App() {
     }
   };
 
-  const handleAuthSuccess = async () => {
-    console.log("Auth success handler called");
+  const handleAuthSuccess = async (user: any) => {
+    logDebug("Auth success handler called with user:", user);
     
     try {
-      const refreshedUser = await getCurrentUser();
-      setUser(refreshedUser);
+      // Set the user state directly with the received user object
+      setUser(user);
+      logDebug("User state set directly with received user object");
       
       // Check if we have a pending payment to confirm
       if (pendingPaymentPlan) {
-        console.log("Found pending payment plan:", pendingPaymentPlan);
+        logDebug("Found pending payment plan:", pendingPaymentPlan);
         try {
+          logDebug("Attempting to confirm payment for plan:", pendingPaymentPlan);
           await confirmPayment(pendingPaymentPlan);
+          logDebug("Payment confirmation successful");
+          
           setPaymentCompleted(true);
+          logDebug("Payment completed state set to true");
+          
           setActivePage('dashboard');
+          logDebug("Active page set to dashboard");
+          
           setPendingPaymentPlan(null);
+          logDebug("Pending payment plan cleared");
+          
           setShowPaymentSuccess(false);
+          logDebug("Payment success page hidden");
           
           // Clean up URL
           if (typeof window !== 'undefined') {
             window.history.replaceState({}, document.title, window.location.pathname);
+            logDebug("URL parameters cleared from address bar");
           }
           
           alert(`Welcome! Your ${pendingPaymentPlan} plan is now active. Enjoy your writing assistant!`);
@@ -239,17 +268,23 @@ function App() {
         }
       } else {
         // Check regular payment status
+        logDebug("No pending payment plan, checking payment status");
         const completed = await hasCompletedPayment();
+        logDebug("Payment completed status:", completed);
+        
         setPaymentCompleted(completed);
         
         if (completed) {
+          logDebug("Payment already completed, redirecting to dashboard");
           setActivePage('dashboard');
         } else {
+          logDebug("No payment completed, redirecting to pricing page");
           setActivePage('pricing');
         }
       }
       
       // Close the modal
+      logDebug("Closing auth modal");
       setShowAuthModal(false);
     } catch (error) {
       console.error("Error in auth success handler:", error);
@@ -288,7 +323,7 @@ function App() {
                 </div>
                 <h2 className="text-2xl font-bold text-gray-900 mb-2">Payment Successful!</h2>
                 <p className="text-gray-600 mb-6">
-                  Your payment for the <strong>{pendingPaymentPlan}</strong> plan has been processed successfully. 
+                  Your payment for the <strong>{pendingPaymentPlan.replace(/-/g, ' ')}</strong> plan has been processed successfully. 
                   Please sign in to access your writing dashboard.
                 </p>
               </div>
@@ -383,6 +418,21 @@ function App() {
           {activePage === 'pricing' && <PricingPage />}
           {activePage === 'signup' && <SignupPage onSignUp={handleSignUpClick} />}
           {activePage === 'dashboard' && user && paymentCompleted && <WritingArea user={user} />}
+          
+          {/* Debug info panel - only visible in development */}
+          {import.meta.env.DEV && (
+            <div className="fixed bottom-0 right-0 bg-black bg-opacity-80 text-white p-4 max-w-md max-h-64 overflow-auto text-xs">
+              <h3 className="font-bold mb-2">Debug Info:</h3>
+              <div>
+                <p>User: {user ? user.email : 'Not logged in'}</p>
+                <p>Payment Completed: {paymentCompleted ? 'Yes' : 'No'}</p>
+                <p>Pending Plan: {pendingPaymentPlan || 'None'}</p>
+                <p>Active Page: {activePage}</p>
+                <p>Show Auth Modal: {showAuthModal ? 'Yes' : 'No'}</p>
+                <p>Auth Mode: {authMode}</p>
+              </div>
+            </div>
+          )}
         </div>
 
         <AuthModal 
@@ -398,3 +448,4 @@ function App() {
 }
 
 export default App;
+
