@@ -4,10 +4,11 @@
 const fetch = require('node-fetch');
 
 // Supabase project details - these will be used server-side
+// FIXED: Updated to match the client-side configuration
 const SUPABASE_URL = 'https://rvlotczavccreigdzczo.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ2bG90Y3phdmNjcmVpZ2R6Y3pvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDg5NTkyNDMsImV4cCI6MjA2NDUzNTI0M30.6gIQ0XmqgwmoULkgvZg4m3GTvsFKPv0MmesXiscRjbg';
 
-exports.handler = async (event, context) => {
+exports.handler = async (event, context ) => {
   // Enable CORS for all origins
   const headers = {
     'Access-Control-Allow-Origin': '*',
@@ -16,7 +17,7 @@ exports.handler = async (event, context) => {
   };
 
   // Handle preflight OPTIONS request
-  if (event.httpMethod === 'OPTIONS') {
+  if (event.httpMethod === 'OPTIONS' ) {
     return {
       statusCode: 200,
       headers,
