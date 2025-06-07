@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ThemeContext } from './lib/ThemeContext';
+import { ThemeProvider } from './lib/ThemeContext';
 import { getCurrentUser, confirmPayment, hasCompletedPayment, supabase } from './lib/supabase';
 import { User } from '@supabase/supabase-js';
 
@@ -11,16 +11,19 @@ import { WritingTypesSection } from './components/WritingTypesSection';
 import { Footer } from './components/Footer';
 import { PaymentSuccessPage } from './components/PaymentSuccessPage';
 import { PricingPage } from './components/PricingPage';
+import { Dashboard } from './components/Dashboard'; // Import the Dashboard component
+import { AuthModal } from './components/AuthModal'; // Import the AuthModal component
 
 function App() {
   const [user, setUser] = useState<User | null>(null);
   const [activePage, setActivePage] = useState('home');
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authModalMode, setAuthModalMode] = useState<'signin' | 'signup'>('signin');
   const [showPaymentSuccess, setShowPaymentSuccess] = useState(false);
   const [pendingPaymentPlan, setPendingPaymentPlan] = useState<string | null>(null);
   const [paymentCompleted, setPaymentCompleted] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [sessionChecked, setSessionChecked] = useState(false); // FIXED: Added state to track session check
+  const [sessionChecked, setSessionChecked] = useState(false);
 
   const handleAuthSuccess = async (user: any) => {
     console.log("[DEBUG] Auth success handler called with user:", user?.email);
@@ -35,11 +38,9 @@ function App() {
           await confirmPayment(pendingPaymentPlan);
           console.log("[DEBUG] Payment confirmation successful");
 
-          // FIXED: Ensure session is refreshed after payment confirmation
           const { data: sessionData, error: refreshError } = await supabase.auth.refreshSession();
           if (refreshError) throw refreshError;
 
-          // FIXED: Get user from session data directly if available
           const refreshedUser = sessionData?.session?.user || await getCurrentUser();
           setUser(refreshedUser);
           setPaymentCompleted(true);
@@ -75,13 +76,16 @@ function App() {
     }
   };
 
-  // FIXED: Added function to initialize auth state
+  // Function to handle navigation
+  const handleNavigation = (page: string) => {
+    setActivePage(page);
+  };
+
   const initializeAuthState = async () => {
     try {
       console.log("[DEBUG] Initializing auth state");
       setIsLoading(true);
       
-      // FIXED: First check if we have a session
       const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
       
       if (sessionError) {
@@ -91,7 +95,6 @@ function App() {
         return;
       }
       
-      // If we have a session, get the user
       if (sessionData.session) {
         console.log('[DEBUG] Session found, getting user');
         const currentUser = sessionData.session.user;
@@ -99,6 +102,11 @@ function App() {
         
         const completed = await hasCompletedPayment();
         setPaymentCompleted(completed);
+        
+        // If user is authenticated, set activePage to dashboard
+        if (completed) {
+          setActivePage('dashboard');
+        }
       } else {
         console.log('[DEBUG] No session found');
         setUser(null);
@@ -124,23 +132,19 @@ function App() {
   };
 
   useEffect(() => {
-    // FIXED: Initialize auth state
     initializeAuthState();
     
-    // FIXED: Set up auth state change listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log("[DEBUG] Auth state change:", event, session?.user?.email);
       
       try {
         if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-          // Use the user from the session directly
           const currentUser = session?.user || null;
           setUser(currentUser);
           
           if (event === 'SIGNED_IN' && pendingPaymentPlan && currentUser) {
             await confirmPayment(pendingPaymentPlan);
             
-            // Refresh session after payment confirmation
             const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
             if (refreshError) throw refreshError;
             
@@ -159,7 +163,6 @@ function App() {
               setShowAuthModal(false);
             }, 2000);
           } else if (event === 'SIGNED_IN' && currentUser) {
-            // Refresh session
             const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
             if (refreshError) throw refreshError;
             
@@ -184,21 +187,31 @@ function App() {
       }
     });
     
-    // Clean up subscription on unmount
     return () => {
       subscription.unsubscribe();
     };
-  }, [pendingPaymentPlan]); // FIXED: Added pendingPaymentPlan as dependency
+  }, [pendingPaymentPlan]);
 
-  // FIXED: Show loading state until session is checked
   if (isLoading || !sessionChecked) {
     return <div className="flex items-center justify-center h-screen">Loading...</div>;
   }
 
   return (
-    <>
-      <ThemeContext.Provider value={{}}>
-        <NavBar onAuthSuccess={handleAuthSuccess} showAuthModal={showAuthModal} setShowAuthModal={setShowAuthModal} />
+    <ThemeProvider>
+      <NavBar 
+        onNavigate={handleNavigation}
+        activePage={activePage}
+        user={user}
+        onSignInClick={() => {
+          setAuthModalMode('signin');
+          setShowAuthModal(true);
+        }}
+        onSignUpClick={() => {
+          setAuthModalMode('signup');
+          setShowAuthModal(true);
+        }}
+      />
+      <div className="mt-16"> {/* Add margin-top to account for fixed navbar */}
         {showPaymentSuccess ? (
           <PaymentSuccessPage
             plan={pendingPaymentPlan || 'unknown'}
@@ -206,11 +219,14 @@ function App() {
             onSignInRequired={(email, plan) => {
               localStorage.setItem('userEmail', email);
               setPendingPaymentPlan(plan);
+              setAuthModalMode('signin');
               setShowAuthModal(true);
             }}
           />
         ) : activePage === 'pricing' ? (
           <PricingPage />
+        ) : activePage === 'dashboard' ? (
+          <Dashboard user={user} />
         ) : (
           <>
             <HeroSection />
@@ -220,8 +236,16 @@ function App() {
           </>
         )}
         <Footer />
-      </ThemeContext.Provider>
-    </>
+      </div>
+      
+      {/* Auth Modal */}
+      <AuthModal 
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        onSuccess={handleAuthSuccess}
+        initialMode={authModalMode}
+      />
+    </ThemeProvider>
   );
 }
 
