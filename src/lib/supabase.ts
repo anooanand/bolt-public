@@ -76,6 +76,21 @@ export async function signUp(email: string, password: string) {
       throw new Error(result.error.message);
     }
 
+    // FIXED: Store the access token and refresh token in localStorage and set session
+    if (result.access_token && result.refresh_token) {
+      localStorage.setItem('supabase.auth.token', JSON.stringify({
+        access_token: result.access_token,
+        refresh_token: result.refresh_token,
+        expires_at: Date.now() + (result.expires_in || 3600) * 1000
+      }));
+
+      // FIXED: Set the session on the Supabase client
+      await supabase.auth.setSession({
+        access_token: result.access_token,
+        refresh_token: result.refresh_token
+      });
+    }
+
     console.log("Sign up successful:", email);
     return result;
   } catch (error) {
