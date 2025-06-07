@@ -20,6 +20,7 @@ function App() {
   const [pendingPaymentPlan, setPendingPaymentPlan] = useState<string | null>(null);
   const [paymentCompleted, setPaymentCompleted] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [sessionChecked, setSessionChecked] = useState(false); // FIXED: Added state to track session check
 
   const handleAuthSuccess = async (user: any) => {
     console.log("[DEBUG] Auth success handler called with user:", user?.email);
@@ -34,10 +35,12 @@ function App() {
           await confirmPayment(pendingPaymentPlan);
           console.log("[DEBUG] Payment confirmation successful");
 
-          const { error: refreshError } = await supabase.auth.refreshSession();
+          // FIXED: Ensure session is refreshed after payment confirmation
+          const { data: sessionData, error: refreshError } = await supabase.auth.refreshSession();
           if (refreshError) throw refreshError;
 
-          const refreshedUser = await getCurrentUser();
+          // FIXED: Get user from session data directly if available
+          const refreshedUser = sessionData?.session?.user || await getCurrentUser();
           setUser(refreshedUser);
           setPaymentCompleted(true);
 
@@ -72,82 +75,124 @@ function App() {
     }
   };
 
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const currentUser = await getCurrentUser();
-        setUser(currentUser);
-
-        const urlParams = new URLSearchParams(window.location.search);
-        const paymentSuccess = urlParams.get('payment_success');
-        const plan = urlParams.get('plan');
-
-        if (paymentSuccess && plan) {
-          setShowPaymentSuccess(true);
-          setPendingPaymentPlan(plan);
-        }
-
-        if (currentUser) {
-          const completed = await hasCompletedPayment();
-          setPaymentCompleted(completed);
-        }
-      } catch (error) {
-        console.error('Error checking auth status:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    checkAuth();
-  }, []);
-
-  const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-    console.log("[DEBUG] Auth state change:", event, session?.user?.email);
+  // FIXED: Added function to initialize auth state
+  const initializeAuthState = async () => {
     try {
-      // Use the user from the session directly instead of calling getCurrentUser()
-      const currentUser = session?.user || null;
-      setUser(currentUser);
-
-      if (event === 'SIGNED_IN' && pendingPaymentPlan && currentUser) {
-        await confirmPayment(pendingPaymentPlan);
-        await supabase.auth.refreshSession();
-        const refreshedUser = await getCurrentUser();
-        setUser(refreshedUser);
-        setPaymentCompleted(true);
-
-        setTimeout(() => {
-          setActivePage('dashboard');
-          setPendingPaymentPlan(null);
-          setShowPaymentSuccess(false);
-          if (typeof window !== 'undefined') {
-            window.history.replaceState({}, document.title, window.location.pathname);
-          }
-          alert(`Welcome! Your ${pendingPaymentPlan} plan is now active. Enjoy your writing assistant!`);
-          setShowAuthModal(false);
-        }, 2000);
-      } else if (event === 'SIGNED_IN' && currentUser) {
-        await supabase.auth.refreshSession();
-        const refreshedUser = await getCurrentUser();
-        setUser(refreshedUser);
-
+      console.log("[DEBUG] Initializing auth state");
+      setIsLoading(true);
+      
+      // FIXED: First check if we have a session
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError) {
+        console.error('[DEBUG] Error getting session:', sessionError);
+        setIsLoading(false);
+        setSessionChecked(true);
+        return;
+      }
+      
+      // If we have a session, get the user
+      if (sessionData.session) {
+        console.log('[DEBUG] Session found, getting user');
+        const currentUser = sessionData.session.user;
+        setUser(currentUser);
+        
         const completed = await hasCompletedPayment();
         setPaymentCompleted(completed);
-
-        setTimeout(() => {
-          setActivePage(completed ? 'dashboard' : 'pricing');
-          setShowAuthModal(false);
-        }, 1500);
+      } else {
+        console.log('[DEBUG] No session found');
+        setUser(null);
       }
+      
+      // Check URL parameters for payment success
+      const urlParams = new URLSearchParams(window.location.search);
+      const paymentSuccess = urlParams.get('payment_success');
+      const plan = urlParams.get('plan');
 
+      if (paymentSuccess && plan) {
+        setShowPaymentSuccess(true);
+        setPendingPaymentPlan(plan);
+      }
+      
+      setSessionChecked(true);
       setIsLoading(false);
     } catch (error) {
-      console.error('[DEBUG] Error in auth state change handler:', error);
+      console.error('[DEBUG] Error initializing auth state:', error);
       setIsLoading(false);
+      setSessionChecked(true);
     }
-  });
+  };
 
-  if (isLoading) {
-    return <div>Loading...</div>;
+  useEffect(() => {
+    // FIXED: Initialize auth state
+    initializeAuthState();
+    
+    // FIXED: Set up auth state change listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log("[DEBUG] Auth state change:", event, session?.user?.email);
+      
+      try {
+        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+          // Use the user from the session directly
+          const currentUser = session?.user || null;
+          setUser(currentUser);
+          
+          if (event === 'SIGNED_IN' && pendingPaymentPlan && currentUser) {
+            await confirmPayment(pendingPaymentPlan);
+            
+            // Refresh session after payment confirmation
+            const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+            if (refreshError) throw refreshError;
+            
+            const refreshedUser = refreshData?.session?.user || await getCurrentUser();
+            setUser(refreshedUser);
+            setPaymentCompleted(true);
+            
+            setTimeout(() => {
+              setActivePage('dashboard');
+              setPendingPaymentPlan(null);
+              setShowPaymentSuccess(false);
+              if (typeof window !== 'undefined') {
+                window.history.replaceState({}, document.title, window.location.pathname);
+              }
+              alert(`Welcome! Your ${pendingPaymentPlan} plan is now active. Enjoy your writing assistant!`);
+              setShowAuthModal(false);
+            }, 2000);
+          } else if (event === 'SIGNED_IN' && currentUser) {
+            // Refresh session
+            const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+            if (refreshError) throw refreshError;
+            
+            const refreshedUser = refreshData?.session?.user || await getCurrentUser();
+            setUser(refreshedUser);
+            
+            const completed = await hasCompletedPayment();
+            setPaymentCompleted(completed);
+            
+            setTimeout(() => {
+              setActivePage(completed ? 'dashboard' : 'pricing');
+              setShowAuthModal(false);
+            }, 1500);
+          }
+        } else if (event === 'SIGNED_OUT') {
+          setUser(null);
+          setPaymentCompleted(false);
+          setActivePage('home');
+        }
+      } catch (error) {
+        console.error('[DEBUG] Error in auth state change handler:', error);
+      }
+    });
+    
+    // Clean up subscription on unmount
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [pendingPaymentPlan]); // FIXED: Added pendingPaymentPlan as dependency
+
+  // FIXED: Show loading state until session is checked
+  if (isLoading || !sessionChecked) {
+    return <div className="flex items-center justify-center h-screen">Loading...</div>;
   }
 
   return (
@@ -181,3 +226,4 @@ function App() {
 }
 
 export default App;
+
