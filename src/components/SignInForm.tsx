@@ -4,7 +4,7 @@ import { signIn } from '../lib/supabase';
 import { requestPasswordReset } from '../lib/supabase';
 
 interface SignInFormProps {
-  onSuccess: () => void;
+  onSuccess: (user: any) => void; // Updated to accept user parameter
   onSignUpClick: () => void;
 }
 
@@ -46,8 +46,10 @@ export function SignInForm({ onSuccess, onSignUpClick }: SignInFormProps) {
       // Store user email in localStorage
       localStorage.setItem('userEmail', email);
       
-      // Call success callback
-      onSuccess();
+      console.log('Sign in successful, calling onSuccess with user:', result.user);
+      
+      // Call success callback with the user object
+      onSuccess(result.user);
       
     } catch (err: any) {
       console.error('Unexpected error during sign in:', err);
@@ -239,3 +241,4 @@ export function SignInForm({ onSuccess, onSignUpClick }: SignInFormProps) {
     </div>
   );
 }
+
