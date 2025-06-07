@@ -73,9 +73,9 @@ exports.handler = async (event, context ) => {
       case 'signout':
         endpoint = '/auth/v1/logout';
         break;
-      case 'reset':
+      case 'reset-password':
         endpoint = '/auth/v1/recover';
-        requestBody = { email, options };
+        requestBody = { email };
         break;
       default:
         return {
@@ -102,6 +102,26 @@ exports.handler = async (event, context ) => {
     
     console.log(`Supabase response status: ${response.status}`);
     
+    // For sign-in and sign-up, ensure we return a complete session object
+    if ((action === 'signin' || action === 'signup') && data.access_token) {
+      // Ensure we have all required session properties
+      const completeSession = {
+        access_token: data.access_token,
+        refresh_token: data.refresh_token,
+        expires_in: data.expires_in || 3600,
+        expires_at: data.expires_at,
+        token_type: data.token_type || 'bearer',
+        user: data.user || null
+      };
+      
+      // Return the complete session
+      return {
+        statusCode: response.status,
+        headers,
+        body: JSON.stringify(completeSession)
+      };
+    }
+    
     // Return the response from Supabase
     return {
       statusCode: response.status,
@@ -122,3 +142,4 @@ exports.handler = async (event, context ) => {
     };
   }
 };
+
