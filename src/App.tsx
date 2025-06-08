@@ -11,8 +11,8 @@ import { WritingTypesSection } from './components/WritingTypesSection';
 import { Footer } from './components/Footer';
 import { PaymentSuccessPage } from './components/PaymentSuccessPage';
 import { PricingPage } from './components/PricingPage';
-import { Dashboard } from './components/Dashboard'; // Import the Dashboard component
-import { AuthModal } from './components/AuthModal'; // Import the AuthModal component
+import { Dashboard } from './components/Dashboard';
+import { AuthModal } from './components/AuthModal';
 
 function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -63,9 +63,6 @@ function App() {
         const completed = await hasCompletedPayment();
         setPaymentCompleted(completed);
 
-        console.log("[DEBUG] Setting activePage to pricing after auth success");
-        // Force redirect to pricing page after signup if payment not completed
-        // This is the key fix for the redirection issue
         setTimeout(() => {
           setActivePage(completed ? 'dashboard' : 'pricing');
         }, 1500);
@@ -79,7 +76,6 @@ function App() {
     }
   };
 
-  // Function to handle navigation
   const handleNavigation = (page: string) => {
     setActivePage(page);
   };
@@ -88,43 +84,60 @@ function App() {
     try {
       console.log("[DEBUG] Initializing auth state");
       setIsLoading(true);
-      
+
+      const timeoutId = setTimeout(() => {
+        console.log("[DEBUG] Auth initialization timed out, forcing reset");
+        setIsLoading(false);
+        setSessionChecked(true);
+
+        if (typeof window !== 'undefined') {
+          Object.keys(localStorage).forEach(key => {
+            if (key.startsWith('supabase.') || key.includes('auth')) {
+              localStorage.removeItem(key);
+            }
+          });
+
+          if (process.env.NODE_ENV === 'production') {
+            window.location.reload();
+          } else {
+            console.warn('[DEBUG] Skipping reload in development');
+          }
+        }
+      }, 10000);
+
       const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-      
+      clearTimeout(timeoutId);
+
       if (sessionError) {
         console.error('[DEBUG] Error getting session:', sessionError);
         setIsLoading(false);
         setSessionChecked(true);
         return;
       }
-      
+
       if (sessionData.session) {
         console.log('[DEBUG] Session found, getting user');
         const currentUser = sessionData.session.user;
-        setUser(currentUser);
-        
+        if (currentUser?.email) setUser(currentUser);
+
         const completed = await hasCompletedPayment();
         setPaymentCompleted(completed);
-        
-        // If user is authenticated, set activePage to dashboard
-        if (completed) {
-          setActivePage('dashboard');
-        }
+        setActivePage(completed ? 'dashboard' : 'pricing');
       } else {
         console.log('[DEBUG] No session found');
         setUser(null);
       }
-      
-      // Check URL parameters for payment success
+
       const urlParams = new URLSearchParams(window.location.search);
       const paymentSuccess = urlParams.get('payment_success');
       const plan = urlParams.get('plan');
 
       if (paymentSuccess && plan) {
+        console.log(`[DEBUG] Payment success detected for plan: ${plan}`);
         setShowPaymentSuccess(true);
         setPendingPaymentPlan(plan);
       }
-      
+
       setSessionChecked(true);
       setIsLoading(false);
     } catch (error) {
@@ -136,25 +149,24 @@ function App() {
 
   useEffect(() => {
     initializeAuthState();
-    
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log("[DEBUG] Auth state change:", event, session?.user?.email);
-      
+
       try {
         if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
           const currentUser = session?.user || null;
           setUser(currentUser);
-          
+
           if (event === 'SIGNED_IN' && pendingPaymentPlan && currentUser) {
             await confirmPayment(pendingPaymentPlan);
-            
             const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
             if (refreshError) throw refreshError;
-            
+
             const refreshedUser = refreshData?.session?.user || await getCurrentUser();
             setUser(refreshedUser);
             setPaymentCompleted(true);
-            
+
             setTimeout(() => {
               setActivePage('dashboard');
               setPendingPaymentPlan(null);
@@ -165,18 +177,16 @@ function App() {
               alert(`Welcome! Your ${pendingPaymentPlan} plan is now active. Enjoy your writing assistant!`);
               setShowAuthModal(false);
             }, 2000);
-          } else if (event === 'SIGNED_IN' && currentUser) {
+          } else if (currentUser) {
             const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
             if (refreshError) throw refreshError;
-            
+
             const refreshedUser = refreshData?.session?.user || await getCurrentUser();
             setUser(refreshedUser);
-            
+
             const completed = await hasCompletedPayment();
             setPaymentCompleted(completed);
-            
-            console.log("[DEBUG] Setting activePage to pricing after auth state change");
-            // Force redirect to pricing page after signup if payment not completed
+
             setTimeout(() => {
               setActivePage(completed ? 'dashboard' : 'pricing');
               setShowAuthModal(false);
@@ -191,7 +201,7 @@ function App() {
         console.error('[DEBUG] Error in auth state change handler:', error);
       }
     });
-    
+
     return () => {
       subscription.unsubscribe();
     };
@@ -203,7 +213,7 @@ function App() {
 
   return (
     <ThemeProvider>
-      <NavBar 
+      <NavBar
         onNavigate={handleNavigation}
         activePage={activePage}
         user={user}
@@ -216,7 +226,7 @@ function App() {
           setShowAuthModal(true);
         }}
       />
-      <div className="mt-16"> {/* Add margin-top to account for fixed navbar */}
+      <div className="mt-16">
         {showPaymentSuccess ? (
           <PaymentSuccessPage
             plan={pendingPaymentPlan || 'unknown'}
@@ -242,9 +252,8 @@ function App() {
         )}
         <Footer />
       </div>
-      
-      {/* Auth Modal */}
-      <AuthModal 
+
+      <AuthModal
         isOpen={showAuthModal}
         onClose={() => setShowAuthModal(false)}
         onSuccess={handleAuthSuccess}
@@ -255,4 +264,3 @@ function App() {
 }
 
 export default App;
-
