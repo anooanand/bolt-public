@@ -105,6 +105,16 @@ export async function signUp(email: string, password: string) {
       }
 
       console.log("Session set successfully after signup");
+
+      // Update user metadata to mark signup as completed
+      const { data: updateData, error: updateError } = await supabase.auth.updateUser({
+        data: { signup_completed: true }
+      });
+
+      if (updateError) {
+        console.error("Error updating user metadata after signup:", updateError);
+        // Optionally, handle this error more gracefully, but don't block signup success
+      }
     }
 
     console.log("Sign up successful:", email);
