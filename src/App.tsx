@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { ThemeProvider } from './lib/ThemeContext';
-import { getCurrentUser, confirmPayment, hasCompletedPayment, supabase } from './lib/supabase';
+import { getCurrentUser, confirmPayment, hasCompletedPayment, supabase, forceSignOut } from './lib/supabase';
 import { User } from '@supabase/supabase-js';
 
 import { NavBar } from './components/NavBar';
@@ -24,6 +24,37 @@ function App() {
   const [paymentCompleted, setPaymentCompleted] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [sessionChecked, setSessionChecked] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+
+  // FIXED: Added emergency reset function
+  const emergencyReset = () => {
+    console.log("[DEBUG] Performing emergency reset");
+    
+    // Clear all auth-related localStorage items
+    if (typeof window !== 'undefined') {
+      Object.keys(localStorage).forEach(key => {
+        if (key.startsWith('supabase.') || key.includes('auth') || key === 'userEmail') {
+          localStorage.removeItem(key);
+        }
+      });
+    }
+    
+    // Reset state
+    setUser(null);
+    setActivePage('home');
+    setShowAuthModal(false);
+    setShowPaymentSuccess(false);
+    setPendingPaymentPlan(null);
+    setPaymentCompleted(false);
+    setIsLoading(false);
+    setSessionChecked(true);
+    setAuthError(null);
+    
+    // Force page reload
+    if (typeof window !== 'undefined') {
+      window.location.reload();
+    }
+  };
 
   const handleAuthSuccess = async (user: any) => {
     console.log("[DEBUG] Auth success handler called with user:", user?.email);
@@ -63,21 +94,33 @@ function App() {
         const completed = await hasCompletedPayment();
         setPaymentCompleted(completed);
 
-        setTimeout(() => {
-          setActivePage(completed ? 'dashboard' : 'pricing');
-        }, 1500);
+        console.log("[DEBUG] Setting activePage to " + (completed ? 'dashboard' : 'pricing'));
+        // FIXED: Direct assignment instead of setTimeout for faster response
+        setActivePage(completed ? 'dashboard' : 'pricing');
       }
 
       setShowAuthModal(false);
     } catch (error) {
       console.error("[DEBUG] Error in auth success handler:", error);
       setShowAuthModal(false);
-      alert("There was an error processing your request. Please try again or contact support.");
+      setAuthError("There was an error processing your request. Please try again or contact support.");
     }
   };
 
   const handleNavigation = (page: string) => {
+    console.log("[DEBUG] Navigation to page:", page);
     setActivePage(page);
+  };
+
+  // FIXED: Added force sign out button to NavBar
+  const handleForceSignOut = async () => {
+    try {
+      await forceSignOut();
+      // The forceSignOut function will handle the page reload
+    } catch (error) {
+      console.error("[DEBUG] Error during force sign out:", error);
+      emergencyReset();
+    }
   };
 
   const initializeAuthState = async () => {
@@ -85,63 +128,69 @@ function App() {
       console.log("[DEBUG] Initializing auth state");
       setIsLoading(true);
 
+      // FIXED: Shorter timeout (5 seconds instead of 10)
       const timeoutId = setTimeout(() => {
         console.log("[DEBUG] Auth initialization timed out, forcing reset");
-        setIsLoading(false);
-        setSessionChecked(true);
+        emergencyReset();
+      }, 5000);
 
-        if (typeof window !== 'undefined') {
-          Object.keys(localStorage).forEach(key => {
-            if (key.startsWith('supabase.') || key.includes('auth')) {
-              localStorage.removeItem(key);
-            }
-          });
+      try {
+        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+        
+        // Clear the timeout since we got a response
+        clearTimeout(timeoutId);
 
-          if (process.env.NODE_ENV === 'production') {
-            window.location.reload();
-          } else {
-            console.warn('[DEBUG] Skipping reload in development');
-          }
+        if (sessionError) {
+          console.error('[DEBUG] Error getting session:', sessionError);
+          setIsLoading(false);
+          setSessionChecked(true);
+          return;
         }
-      }, 10000);
 
-      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-      clearTimeout(timeoutId);
+        if (sessionData.session) {
+          console.log('[DEBUG] Session found, getting user');
+          const currentUser = sessionData.session.user;
+          if (currentUser?.email) {
+            setUser(currentUser);
+            
+            try {
+              const completed = await hasCompletedPayment();
+              setPaymentCompleted(completed);
+              console.log('[DEBUG] Payment completed:', completed);
+              setActivePage(completed ? 'dashboard' : 'pricing');
+            } catch (paymentError) {
+              console.error('[DEBUG] Error checking payment status:', paymentError);
+              setActivePage('pricing');
+            }
+          } else {
+            console.warn('[DEBUG] Session found but user has no email');
+            setUser(null);
+          }
+        } else {
+          console.log('[DEBUG] No session found');
+          setUser(null);
+        }
 
-      if (sessionError) {
-        console.error('[DEBUG] Error getting session:', sessionError);
-        setIsLoading(false);
+        const urlParams = new URLSearchParams(window.location.search);
+        const paymentSuccess = urlParams.get('payment_success');
+        const plan = urlParams.get('plan');
+
+        if (paymentSuccess && plan) {
+          console.log(`[DEBUG] Payment success detected for plan: ${plan}`);
+          setShowPaymentSuccess(true);
+          setPendingPaymentPlan(plan);
+        }
+
         setSessionChecked(true);
-        return;
+        setIsLoading(false);
+      } catch (error) {
+        // Clear the timeout if there's an error
+        clearTimeout(timeoutId);
+        throw error;
       }
-
-      if (sessionData.session) {
-        console.log('[DEBUG] Session found, getting user');
-        const currentUser = sessionData.session.user;
-        if (currentUser?.email) setUser(currentUser);
-
-        const completed = await hasCompletedPayment();
-        setPaymentCompleted(completed);
-        setActivePage(completed ? 'dashboard' : 'pricing');
-      } else {
-        console.log('[DEBUG] No session found');
-        setUser(null);
-      }
-
-      const urlParams = new URLSearchParams(window.location.search);
-      const paymentSuccess = urlParams.get('payment_success');
-      const plan = urlParams.get('plan');
-
-      if (paymentSuccess && plan) {
-        console.log(`[DEBUG] Payment success detected for plan: ${plan}`);
-        setShowPaymentSuccess(true);
-        setPendingPaymentPlan(plan);
-      }
-
-      setSessionChecked(true);
-      setIsLoading(false);
     } catch (error) {
       console.error('[DEBUG] Error initializing auth state:', error);
+      setAuthError("There was an error loading your session. Please try refreshing the page.");
       setIsLoading(false);
       setSessionChecked(true);
     }
@@ -187,10 +236,9 @@ function App() {
             const completed = await hasCompletedPayment();
             setPaymentCompleted(completed);
 
-            setTimeout(() => {
-              setActivePage(completed ? 'dashboard' : 'pricing');
-              setShowAuthModal(false);
-            }, 1500);
+            console.log("[DEBUG] Setting activePage to " + (completed ? 'dashboard' : 'pricing'));
+            setActivePage(completed ? 'dashboard' : 'pricing');
+            setShowAuthModal(false);
           }
         } else if (event === 'SIGNED_OUT') {
           setUser(null);
@@ -199,6 +247,7 @@ function App() {
         }
       } catch (error) {
         console.error('[DEBUG] Error in auth state change handler:', error);
+        setAuthError("There was an error processing your authentication. Please try signing in again.");
       }
     });
 
@@ -207,8 +256,42 @@ function App() {
     };
   }, [pendingPaymentPlan]);
 
+  // FIXED: Added error display and emergency reset button
+  if (authError) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen p-4">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md w-full text-center">
+          <h2 className="text-xl font-bold text-red-700 mb-2">Authentication Error</h2>
+          <p className="text-red-600 mb-4">{authError}</p>
+          <button 
+            onClick={emergencyReset}
+            className="bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-md"
+          >
+            Reset Authentication State
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (isLoading || !sessionChecked) {
-    return <div className="flex items-center justify-center h-screen">Loading...</div>;
+    return (
+      <div className="flex flex-col items-center justify-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500 mb-4"></div>
+        <p className="text-gray-600">Loading...</p>
+        
+        {/* FIXED: Added emergency reset button that appears after 3 seconds */}
+        <div className="mt-8">
+          <p className="text-sm text-gray-500 mb-2">Taking too long to load?</p>
+          <button 
+            onClick={emergencyReset}
+            className="bg-red-600 hover:bg-red-700 text-white text-sm py-1 px-3 rounded-md"
+          >
+            Emergency Reset
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -225,6 +308,7 @@ function App() {
           setAuthModalMode('signup');
           setShowAuthModal(true);
         }}
+        onForceSignOut={handleForceSignOut}
       />
       <div className="mt-16">
         {showPaymentSuccess ? (
