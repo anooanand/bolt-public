@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Mail, Lock, Loader } from 'lucide-react';
 import { signUp } from '../lib/supabase';
 
@@ -14,9 +14,10 @@ export function SimpleSignUp({ onSignInClick, onSignUpSuccess }: SimpleSignUpPro
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<{connected: boolean, message: string} | null>(null);
+  const isMounted = useRef(false);
 
-  // Test connection to Netlify Function on component mount
   useEffect(() => {
+    isMounted.current = true;
     const testConnection = async () => {
       try {
         const response = await fetch('/.netlify/functions/auth-proxy', {
@@ -50,10 +51,19 @@ export function SimpleSignUp({ onSignInClick, onSignUpSuccess }: SimpleSignUpPro
     };
     
     testConnection();
+
+    return () => {
+      isMounted.current = false;
+    };
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!isMounted.current) {
+      console.log("Form submitted before component mounted, ignoring.");
+      return;
+    }
     setError('');
     
     // Validate passwords match
