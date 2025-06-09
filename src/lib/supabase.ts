@@ -336,7 +336,7 @@ export async function confirmPayment(planType: string) {
   }
 }
 
-// ✅ NEW: Force sign out and clean up
+// ✅ Force sign out all sessions and cleanup
 export async function forceSignOut() {
   try {
     console.log("[DEBUG] Force signing out all sessions");
