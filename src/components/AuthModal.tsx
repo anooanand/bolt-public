@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { SimpleSignUp } from './SimpleSignUp';
 import { SignInForm } from './SignInForm';
@@ -13,26 +13,45 @@ interface AuthModalProps {
 export function AuthModal({ isOpen, onClose, onSuccess, initialMode = 'signin' }: AuthModalProps) {
   const [mode, setMode] = useState<'signin' | 'signup'>(initialMode);
 
+  // FIXED: Reset mode when modal opens with new initialMode
+  useEffect(() => {
+    if (isOpen) {
+      setMode(initialMode);
+    }
+  }, [isOpen, initialMode]);
+
   const handleSuccess = (user: any) => {
     console.log("AuthModal: handleSuccess called with user:", user);
     console.log("AuthModal: Current mode:", mode);
     
-    // Always call the parent success handler with the user object
-    if (onSuccess) {
-      console.log("AuthModal: Calling parent onSuccess callback with user object");
-      onSuccess(user);
-    } else {
-      console.warn("AuthModal: No onSuccess callback provided from parent");
-    }
+    // FIXED: Close modal immediately on success
+    onClose();
     
-    // The parent App component will handle closing the modal and navigation
-    // We don't need to do it here anymore
+    // FIXED: Use setTimeout to ensure modal closes before calling parent callback
+    setTimeout(() => {
+      if (onSuccess) {
+        console.log("AuthModal: Calling parent onSuccess callback with user object");
+        onSuccess(user);
+      } else {
+        console.warn("AuthModal: No onSuccess callback provided from parent");
+      }
+    }, 100); // Small delay to ensure modal closes first
+  };
+
+  // FIXED: Close modal when clicking outside
+  const handleBackdropClick = (e: React.MouseEvent) => {
+    if (e.target === e.currentTarget) {
+      onClose();
+    }
   };
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50"
+      onClick={handleBackdropClick}
+    >
       <div className="relative w-full max-w-md bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6">
         <button
           onClick={onClose}
