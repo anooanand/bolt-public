@@ -16,27 +16,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   }
 });
 
-async function callAuthProxy(action: string, data: any) {
-  try {
-    const response = await fetch('/.netlify/functions/auth-proxy', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ action, ...data }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error('Auth proxy error:', error);
-    throw error;
-  }
-}
-
+// FIXED: Removed auth proxy dependency and use direct Supabase authentication
 export async function getCurrentUser() {
   try {
     const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
@@ -78,6 +58,7 @@ export async function hasCompletedPayment() {
   }
 }
 
+// FIXED: Use direct Supabase sign up instead of auth proxy
 export async function signUp(email: string, password: string) {
   try {
     if (!supabaseUrl || !supabaseAnonKey) {
@@ -86,45 +67,39 @@ export async function signUp(email: string, password: string) {
 
     console.log("Attempting sign up for:", email);
 
-    const result = await callAuthProxy('signup', { email, password });
+    // Use direct Supabase authentication
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          signup_completed: true
+        }
+      }
+    });
 
-    if (result.error) {
-      console.error("Sign up failed:", result.error.message);
-      throw new Error(result.error.message);
+    if (error) {
+      console.error("Sign up failed:", error.message);
+      throw new Error(error.message);
     }
 
-    if (result.access_token && result.refresh_token) {
-      const sessionResult = await supabase.auth.setSession({
-        access_token: result.access_token,
-        refresh_token: result.refresh_token
-      });
-
-      if (sessionResult.error) {
-        console.error("Error setting session:", sessionResult.error);
-        throw sessionResult.error;
-      }
-
-      console.log("Session set successfully after signup");
-
-      // Update user metadata to mark signup as completed
-      const { data: updateData, error: updateError } = await supabase.auth.updateUser({
-        data: { signup_completed: true }
-      });
-
-      if (updateError) {
-        console.error("Error updating user metadata after signup:", updateError);
-        // Optionally, handle this error more gracefully, but don't block signup success
-      }
+    if (data.user) {
+      console.log("Sign up successful:", email);
+      
+      // Store email in localStorage for later use
+      localStorage.setItem('userEmail', email);
+      
+      return data;
+    } else {
+      throw new Error("Sign up failed: No user data returned");
     }
-
-    console.log("Sign up successful:", email);
-    return result;
   } catch (error) {
     console.error("Sign up failed:", error);
     throw error;
   }
 }
 
+// FIXED: Use direct Supabase sign in instead of auth proxy
 export async function signIn(email: string, password: string) {
   try {
     if (!supabaseUrl || !supabaseAnonKey) {
@@ -137,42 +112,22 @@ export async function signIn(email: string, password: string) {
       localStorage.setItem('userEmail', email);
     }
 
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword({ 
+      email, 
+      password 
+    });
 
-      if (!error && data.user) {
-        console.log("Direct Supabase sign in successful:", email);
-        return data;
-      }
-
-      console.log("Direct auth failed, falling back to proxy");
-    } catch (directAuthError) {
-      console.log("Direct auth error, falling back to proxy:", directAuthError);
+    if (error) {
+      console.error("Sign in failed:", error.message);
+      throw new Error(error.message);
     }
 
-    const result = await callAuthProxy('signin', { email, password });
-
-    if (result.error) {
-      console.error("Sign in failed:", result.error.message);
-      throw new Error(result.error.message);
+    if (data.user) {
+      console.log("Sign in successful:", email);
+      return data;
+    } else {
+      throw new Error("Sign in failed: No user data returned");
     }
-
-    if (result.access_token && result.refresh_token) {
-      const sessionResult = await supabase.auth.setSession({
-        access_token: result.access_token,
-        refresh_token: result.refresh_token
-      });
-
-      if (sessionResult.error) {
-        console.error("Error setting session:", sessionResult.error);
-        throw sessionResult.error;
-      }
-
-      console.log("Session set successfully after signin");
-    }
-
-    console.log("Sign in successful:", email);
-    return result;
   } catch (error) {
     console.error("Sign in failed:", error);
     throw error;
@@ -202,6 +157,7 @@ export async function signOut() {
   }
 }
 
+// FIXED: Use direct Supabase password reset instead of auth proxy
 export async function requestPasswordReset(email: string) {
   try {
     if (!supabaseUrl || !supabaseAnonKey) {
@@ -210,27 +166,15 @@ export async function requestPasswordReset(email: string) {
 
     console.log("Requesting password reset for:", email);
 
-    try {
-      const { data, error } = await supabase.auth.resetPasswordForEmail(email);
-      if (!error) {
-        console.log("Direct Supabase password reset successful:", email);
-        return { success: true };
-      }
-
-      console.log("Direct password reset failed, falling back to proxy");
-    } catch (directResetError) {
-      console.log("Direct password reset error, falling back to proxy:", directResetError);
-    }
-
-    const result = await callAuthProxy('reset-password', { email });
-
-    if (result.error) {
-      console.error("Password reset request failed:", result.error.message);
-      throw new Error(result.error.message);
+    const { data, error } = await supabase.auth.resetPasswordForEmail(email);
+    
+    if (error) {
+      console.error("Password reset request failed:", error.message);
+      throw new Error(error.message);
     }
 
     console.log("Password reset request successful:", email);
-    return result;
+    return { success: true };
   } catch (error) {
     console.error("Password reset request failed:", error);
     throw error;
@@ -381,3 +325,4 @@ export async function forceSignOut() {
     throw error;
   }
 }
+
