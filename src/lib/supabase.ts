@@ -20,8 +20,8 @@ export const supabase = createClient(
   }
 );
 
-// FIXED: Add timeout wrapper for all Supabase calls
-const withTimeout = <T>(promise: Promise<T>, timeoutMs: number = 3000): Promise<T> => {
+// FIXED: Shorter timeout wrapper for faster responses
+const withTimeout = <T>(promise: Promise<T>, timeoutMs: number = 1500): Promise<T> => {
   return Promise.race([
     promise,
     new Promise<T>((_, reject) => 
@@ -37,9 +37,10 @@ export async function getCurrentUser() {
       return null;
     }
 
+    // FIXED: Much shorter timeout for faster response
     const { data: sessionData, error: sessionError } = await withTimeout(
       supabase.auth.getSession(),
-      2000
+      1000
     );
     
     if (sessionError) {
@@ -54,7 +55,7 @@ export async function getCurrentUser() {
 
     const { data: { user }, error } = await withTimeout(
       supabase.auth.getUser(),
-      2000
+      1000
     );
 
     if (error) {
@@ -69,15 +70,30 @@ export async function getCurrentUser() {
   }
 }
 
+// FIXED: Faster payment check with immediate fallback
 export async function hasCompletedPayment() {
   try {
-    const user = await getCurrentUser();
-    if (!user) return false;
+    // FIXED: Use direct session check instead of getCurrentUser for speed
+    const { data: { session }, error } = await withTimeout(
+      supabase.auth.getSession(),
+      800
+    );
+    
+    if (error || !session?.user) {
+      console.log('[DEBUG] No session or error in hasCompletedPayment:', error);
+      return false;
+    }
 
-    return user.user_metadata?.payment_confirmed === true || 
-           user.user_metadata?.signup_completed === true;
+    const user = session.user;
+    const paymentConfirmed = user.user_metadata?.payment_confirmed === true;
+    
+    console.log('[DEBUG] Payment check for user:', user.email, 'payment_confirmed:', paymentConfirmed);
+    
+    // FIXED: Only return true if payment was actually confirmed
+    return paymentConfirmed;
   } catch (error) {
-    console.error('Error checking payment status:', error);
+    console.error('[DEBUG] Error checking payment status (timeout):', error);
+    // FIXED: On timeout, assume no payment for faster flow
     return false;
   }
 }
@@ -90,17 +106,21 @@ export async function signUp(email: string, password: string) {
 
     console.log("Attempting sign up for:", email);
 
+    // FIXED: Shorter timeout for sign up
     const { data, error } = await withTimeout(
       supabase.auth.signUp({
         email,
         password,
         options: {
           data: {
-            signup_completed: true
+            // FIXED: Explicitly set payment_confirmed to false
+            payment_confirmed: false,
+            subscription_status: 'pending',
+            created_at: new Date().toISOString()
           }
         }
       }),
-      5000
+      3000
     );
 
     if (error) {
@@ -133,9 +153,10 @@ export async function signIn(email: string, password: string) {
       localStorage.setItem('userEmail', email);
     }
 
+    // FIXED: Shorter timeout for sign in
     const { data, error } = await withTimeout(
       supabase.auth.signInWithPassword({ email, password }),
-      5000
+      3000
     );
 
     if (error) {
@@ -165,7 +186,7 @@ export async function signOut() {
 
     const { error } = await withTimeout(
       supabase.auth.signOut(),
-      3000
+      2000
     );
 
     if (error) {
@@ -195,7 +216,7 @@ export async function requestPasswordReset(email: string) {
 
     const { data, error } = await withTimeout(
       supabase.auth.resetPasswordForEmail(email),
-      5000
+      3000
     );
     
     if (error) {
@@ -219,9 +240,13 @@ export async function confirmPayment(planType: string) {
 
     console.log("[DEBUG] Confirming payment for plan:", planType);
 
-    let user = await getCurrentUser();
+    // FIXED: Use session check instead of getCurrentUser for speed
+    const { data: { session }, error: sessionError } = await withTimeout(
+      supabase.auth.getSession(),
+      1000
+    );
     
-    if (!user) {
+    if (sessionError || !session?.user) {
       console.error("[DEBUG] No authenticated user found when confirming payment");
       const userEmail = localStorage.getItem('userEmail');
       if (userEmail) {
@@ -239,6 +264,7 @@ export async function confirmPayment(planType: string) {
       throw new Error("No authenticated user found");
     }
 
+    const user = session.user;
     console.log("[DEBUG] Updating user metadata with payment confirmation for user:", user.email);
 
     const { data, error } = await withTimeout(
@@ -246,12 +272,11 @@ export async function confirmPayment(planType: string) {
         data: {
           payment_confirmed: true,
           plan_type: planType,
-          signup_completed: true,
           payment_date: new Date().toISOString(),
           subscription_status: 'active'
         }
       }),
-      5000
+      3000
     );
 
     if (error) {
@@ -279,7 +304,7 @@ export async function forceSignOut() {
     try {
       await withTimeout(
         supabase.auth.signOut({ scope: 'global' }),
-        2000
+        1000
       );
     } catch (signOutError) {
       console.warn("[DEBUG] Sign out API call failed, but continuing with local cleanup");
