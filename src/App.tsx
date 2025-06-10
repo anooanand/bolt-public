@@ -56,50 +56,49 @@ function App() {
     }
   };
 
+  // FIXED: Simplified authentication success handler
   const handleAuthSuccess = async (user: any) => {
     console.log("[DEBUG] Auth success handler called with user:", user?.email);
 
     try {
       setUser(user);
+      setShowAuthModal(false); // Close modal immediately
 
+      // FIXED: Simple navigation logic
       if (pendingPaymentPlan) {
         console.log("[DEBUG] Found pending payment plan:", pendingPaymentPlan);
         try {
-          console.log("[DEBUG] Attempting to confirm payment for plan:", pendingPaymentPlan);
           await confirmPayment(pendingPaymentPlan);
-          console.log("[DEBUG] Payment confirmation successful");
-
-          const { data: sessionData, error: refreshError } = await supabase.auth.refreshSession();
-          if (refreshError) throw refreshError;
-
-          const refreshedUser = sessionData?.session?.user || await getCurrentUser();
-          setUser(refreshedUser);
           setPaymentCompleted(true);
-
+          setActivePage('dashboard');
+          setPendingPaymentPlan(null);
+          setShowPaymentSuccess(false);
+          
+          // Clear URL parameters
+          if (typeof window !== 'undefined') {
+            window.history.replaceState({}, document.title, window.location.pathname);
+          }
+          
+          // Show success message
           setTimeout(() => {
-            setActivePage('dashboard');
-            setPendingPaymentPlan(null);
-            setShowPaymentSuccess(false);
-            if (typeof window !== 'undefined') {
-              window.history.replaceState({}, document.title, window.location.pathname);
-            }
             alert(`Welcome! Your ${pendingPaymentPlan} plan is now active. Enjoy your writing assistant!`);
-          }, 2000);
+          }, 500);
         } catch (error) {
           console.error("[DEBUG] Error confirming payment:", error);
           alert("There was an error confirming your payment. Please contact support.");
+          setActivePage('pricing');
         }
       } else {
         console.log("[DEBUG] No pending payment plan, checking payment status");
-        const completed = await hasCompletedPayment();
-        setPaymentCompleted(completed);
-
-        console.log("[DEBUG] Setting activePage to " + (completed ? 'dashboard' : 'pricing'));
-        // FIXED: Direct assignment instead of setTimeout for faster response
-        setActivePage(completed ? 'dashboard' : 'pricing');
+        try {
+          const completed = await hasCompletedPayment();
+          setPaymentCompleted(completed);
+          setActivePage(completed ? 'dashboard' : 'pricing');
+        } catch (error) {
+          console.error("[DEBUG] Error checking payment status:", error);
+          setActivePage('pricing');
+        }
       }
-
-      setShowAuthModal(false);
     } catch (error) {
       console.error("[DEBUG] Error in auth success handler:", error);
       setShowAuthModal(false);
@@ -123,16 +122,17 @@ function App() {
     }
   };
 
+  // FIXED: Simplified auth state initialization
   const initializeAuthState = async () => {
     try {
       console.log("[DEBUG] Initializing auth state");
       setIsLoading(true);
 
-      // FIXED: Shorter timeout (5 seconds instead of 10)
+      // FIXED: Shorter timeout (3 seconds)
       const timeoutId = setTimeout(() => {
         console.log("[DEBUG] Auth initialization timed out, forcing reset");
         emergencyReset();
-      }, 5000);
+      }, 3000);
 
       try {
         const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
@@ -147,30 +147,26 @@ function App() {
           return;
         }
 
-        if (sessionData.session) {
-          console.log('[DEBUG] Session found, getting user');
+        if (sessionData.session?.user) {
+          console.log('[DEBUG] Session found, setting user');
           const currentUser = sessionData.session.user;
-          if (currentUser?.email) {
-            setUser(currentUser);
-            
-            try {
-              const completed = await hasCompletedPayment();
-              setPaymentCompleted(completed);
-              console.log('[DEBUG] Payment completed:', completed);
-              setActivePage(completed ? 'dashboard' : 'pricing');
-            } catch (paymentError) {
-              console.error('[DEBUG] Error checking payment status:', paymentError);
-              setActivePage('pricing');
-            }
-          } else {
-            console.warn('[DEBUG] Session found but user has no email');
-            setUser(null);
+          setUser(currentUser);
+          
+          try {
+            const completed = await hasCompletedPayment();
+            setPaymentCompleted(completed);
+            console.log('[DEBUG] Payment completed:', completed);
+            setActivePage(completed ? 'dashboard' : 'pricing');
+          } catch (paymentError) {
+            console.error('[DEBUG] Error checking payment status:', paymentError);
+            setActivePage('pricing');
           }
         } else {
           console.log('[DEBUG] No session found');
           setUser(null);
         }
 
+        // Check for payment success in URL
         const urlParams = new URLSearchParams(window.location.search);
         const paymentSuccess = urlParams.get('payment_success');
         const plan = urlParams.get('plan');
@@ -199,6 +195,7 @@ function App() {
   useEffect(() => {
     initializeAuthState();
 
+    // FIXED: Simplified auth state change handler
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log("[DEBUG] Auth state change:", event, session?.user?.email);
 
@@ -207,38 +204,38 @@ function App() {
           const currentUser = session?.user || null;
           setUser(currentUser);
 
-          if (event === 'SIGNED_IN' && pendingPaymentPlan && currentUser) {
-            await confirmPayment(pendingPaymentPlan);
-            const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
-            if (refreshError) throw refreshError;
-
-            const refreshedUser = refreshData?.session?.user || await getCurrentUser();
-            setUser(refreshedUser);
-            setPaymentCompleted(true);
-
-            setTimeout(() => {
-              setActivePage('dashboard');
-              setPendingPaymentPlan(null);
-              setShowPaymentSuccess(false);
-              if (typeof window !== 'undefined') {
-                window.history.replaceState({}, document.title, window.location.pathname);
+          if (currentUser && event === 'SIGNED_IN') {
+            // Handle payment confirmation if needed
+            if (pendingPaymentPlan) {
+              try {
+                await confirmPayment(pendingPaymentPlan);
+                setPaymentCompleted(true);
+                setActivePage('dashboard');
+                setPendingPaymentPlan(null);
+                setShowPaymentSuccess(false);
+                
+                if (typeof window !== 'undefined') {
+                  window.history.replaceState({}, document.title, window.location.pathname);
+                }
+                
+                setTimeout(() => {
+                  alert(`Welcome! Your ${pendingPaymentPlan} plan is now active. Enjoy your writing assistant!`);
+                }, 500);
+              } catch (error) {
+                console.error("[DEBUG] Error confirming payment in auth state change:", error);
+                setActivePage('pricing');
               }
-              alert(`Welcome! Your ${pendingPaymentPlan} plan is now active. Enjoy your writing assistant!`);
-              setShowAuthModal(false);
-            }, 2000);
-          } else if (currentUser) {
-            const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
-            if (refreshError) throw refreshError;
-
-            const refreshedUser = refreshData?.session?.user || await getCurrentUser();
-            setUser(refreshedUser);
-
-            const completed = await hasCompletedPayment();
-            setPaymentCompleted(completed);
-
-            console.log("[DEBUG] Setting activePage to " + (completed ? 'dashboard' : 'pricing'));
-            setActivePage(completed ? 'dashboard' : 'pricing');
-            setShowAuthModal(false);
+            } else {
+              // Check payment status and navigate accordingly
+              try {
+                const completed = await hasCompletedPayment();
+                setPaymentCompleted(completed);
+                setActivePage(completed ? 'dashboard' : 'pricing');
+              } catch (error) {
+                console.error("[DEBUG] Error checking payment status in auth state change:", error);
+                setActivePage('pricing');
+              }
+            }
           }
         } else if (event === 'SIGNED_OUT') {
           setUser(null);
@@ -280,7 +277,7 @@ function App() {
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500 mb-4"></div>
         <p className="text-gray-600">Loading...</p>
         
-        {/* FIXED: Added emergency reset button that appears after 3 seconds */}
+        {/* FIXED: Added emergency reset button that appears after 2 seconds */}
         <div className="mt-8">
           <p className="text-sm text-gray-500 mb-2">Taking too long to load?</p>
           <button 
@@ -348,3 +345,4 @@ function App() {
 }
 
 export default App;
+
