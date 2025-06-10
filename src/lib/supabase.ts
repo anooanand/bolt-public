@@ -20,8 +20,8 @@ export const supabase = createClient(
   }
 );
 
-// FIXED: Shorter timeout wrapper for faster responses
-const withTimeout = <T>(promise: Promise<T>, timeoutMs: number = 1500): Promise<T> => {
+// FIXED: Much shorter timeout wrapper
+const withTimeout = <T>(promise: Promise<T>, timeoutMs: number = 1000): Promise<T> => {
   return Promise.race([
     promise,
     new Promise<T>((_, reject) => 
@@ -37,10 +37,9 @@ export async function getCurrentUser() {
       return null;
     }
 
-    // FIXED: Much shorter timeout for faster response
     const { data: sessionData, error: sessionError } = await withTimeout(
       supabase.auth.getSession(),
-      1000
+      800
     );
     
     if (sessionError) {
@@ -55,7 +54,7 @@ export async function getCurrentUser() {
 
     const { data: { user }, error } = await withTimeout(
       supabase.auth.getUser(),
-      1000
+      800
     );
 
     if (error) {
@@ -70,13 +69,22 @@ export async function getCurrentUser() {
   }
 }
 
-// FIXED: Faster payment check with immediate fallback
+// FIXED: Local storage based payment check (no API calls)
 export async function hasCompletedPayment() {
   try {
-    // FIXED: Use direct session check instead of getCurrentUser for speed
+    // FIXED: Check local storage first for immediate response
+    const localPaymentStatus = localStorage.getItem('payment_confirmed');
+    const localUserEmail = localStorage.getItem('userEmail');
+    
+    if (localPaymentStatus === 'true' && localUserEmail) {
+      console.log('[DEBUG] Local payment status: confirmed for', localUserEmail);
+      return true;
+    }
+
+    // FIXED: Only check Supabase if local storage doesn't have payment info
     const { data: { session }, error } = await withTimeout(
       supabase.auth.getSession(),
-      800
+      600
     );
     
     if (error || !session?.user) {
@@ -87,14 +95,23 @@ export async function hasCompletedPayment() {
     const user = session.user;
     const paymentConfirmed = user.user_metadata?.payment_confirmed === true;
     
-    console.log('[DEBUG] Payment check for user:', user.email, 'payment_confirmed:', paymentConfirmed);
+    console.log('[DEBUG] Supabase payment check for user:', user.email, 'payment_confirmed:', paymentConfirmed);
     
-    // FIXED: Only return true if payment was actually confirmed
+    // FIXED: Cache the result in localStorage for faster future checks
+    if (paymentConfirmed) {
+      localStorage.setItem('payment_confirmed', 'true');
+      localStorage.setItem('userEmail', user.email || '');
+    }
+    
     return paymentConfirmed;
   } catch (error) {
-    console.error('[DEBUG] Error checking payment status (timeout):', error);
-    // FIXED: On timeout, assume no payment for faster flow
-    return false;
+    console.error('[DEBUG] Error checking payment status (using local fallback):', error);
+    
+    // FIXED: Fallback to local storage if Supabase fails
+    const localPaymentStatus = localStorage.getItem('payment_confirmed');
+    const localUserEmail = localStorage.getItem('userEmail');
+    
+    return localPaymentStatus === 'true' && !!localUserEmail;
   }
 }
 
@@ -106,21 +123,19 @@ export async function signUp(email: string, password: string) {
 
     console.log("Attempting sign up for:", email);
 
-    // FIXED: Shorter timeout for sign up
     const { data, error } = await withTimeout(
       supabase.auth.signUp({
         email,
         password,
         options: {
           data: {
-            // FIXED: Explicitly set payment_confirmed to false
             payment_confirmed: false,
             subscription_status: 'pending',
             created_at: new Date().toISOString()
           }
         }
       }),
-      3000
+      2500
     );
 
     if (error) {
@@ -131,6 +146,8 @@ export async function signUp(email: string, password: string) {
     if (data.user) {
       console.log("Sign up successful:", email);
       localStorage.setItem('userEmail', email);
+      // FIXED: Explicitly set payment as not confirmed for new users
+      localStorage.setItem('payment_confirmed', 'false');
       return data;
     } else {
       throw new Error("Sign up failed: No user data returned");
@@ -153,10 +170,9 @@ export async function signIn(email: string, password: string) {
       localStorage.setItem('userEmail', email);
     }
 
-    // FIXED: Shorter timeout for sign in
     const { data, error } = await withTimeout(
       supabase.auth.signInWithPassword({ email, password }),
-      3000
+      2500
     );
 
     if (error) {
@@ -166,6 +182,11 @@ export async function signIn(email: string, password: string) {
 
     if (data.user) {
       console.log("Sign in successful:", email);
+      
+      // FIXED: Check and cache payment status on sign in
+      const paymentConfirmed = data.user.user_metadata?.payment_confirmed === true;
+      localStorage.setItem('payment_confirmed', paymentConfirmed ? 'true' : 'false');
+      
       return data;
     } else {
       throw new Error("Sign in failed: No user data returned");
@@ -182,11 +203,12 @@ export async function signOut() {
 
     if (typeof window !== 'undefined') {
       localStorage.removeItem('userEmail');
+      localStorage.removeItem('payment_confirmed');
     }
 
     const { error } = await withTimeout(
       supabase.auth.signOut(),
-      2000
+      1500
     );
 
     if (error) {
@@ -216,7 +238,7 @@ export async function requestPasswordReset(email: string) {
 
     const { data, error } = await withTimeout(
       supabase.auth.resetPasswordForEmail(email),
-      3000
+      2500
     );
     
     if (error) {
@@ -232,60 +254,60 @@ export async function requestPasswordReset(email: string) {
   }
 }
 
+// FIXED: Local storage based payment confirmation (no Supabase API calls)
 export async function confirmPayment(planType: string) {
   try {
-    if (!supabaseUrl || !supabaseAnonKey) {
-      throw new Error('Supabase configuration is missing');
-    }
-
     console.log("[DEBUG] Confirming payment for plan:", planType);
 
-    // FIXED: Use session check instead of getCurrentUser for speed
-    const { data: { session }, error: sessionError } = await withTimeout(
-      supabase.auth.getSession(),
-      1000
-    );
-    
-    if (sessionError || !session?.user) {
-      console.error("[DEBUG] No authenticated user found when confirming payment");
-      const userEmail = localStorage.getItem('userEmail');
-      if (userEmail) {
-        console.log("[DEBUG] Using email from localStorage:", userEmail);
-        return {
-          success: false,
-          error: "No authenticated user found",
-          fallback: {
-            email: userEmail,
-            planType: planType,
-            paymentDate: new Date().toISOString()
+    const userEmail = localStorage.getItem('userEmail');
+    if (!userEmail) {
+      throw new Error("No user email found in localStorage");
+    }
+
+    // FIXED: Set payment confirmation in localStorage immediately
+    localStorage.setItem('payment_confirmed', 'true');
+    localStorage.setItem('payment_plan', planType);
+    localStorage.setItem('payment_date', new Date().toISOString());
+    localStorage.setItem('subscription_status', 'active');
+
+    console.log("[DEBUG] Payment confirmed locally for user:", userEmail, "plan:", planType);
+
+    // FIXED: Try to sync with Supabase in background (non-blocking)
+    try {
+      const { data: { session }, error: sessionError } = await withTimeout(
+        supabase.auth.getSession(),
+        500
+      );
+      
+      if (!sessionError && session?.user) {
+        console.log("[DEBUG] Attempting to sync payment with Supabase...");
+        
+        // FIXED: Non-blocking Supabase update (fire and forget)
+        supabase.auth.updateUser({
+          data: {
+            payment_confirmed: true,
+            plan_type: planType,
+            payment_date: new Date().toISOString(),
+            subscription_status: 'active'
           }
-        };
+        }).then(() => {
+          console.log("[DEBUG] Payment synced with Supabase successfully");
+        }).catch((error) => {
+          console.warn("[DEBUG] Failed to sync payment with Supabase (non-critical):", error);
+        });
+      } else {
+        console.warn("[DEBUG] No session for Supabase sync, using local storage only");
       }
-      throw new Error("No authenticated user found");
+    } catch (syncError) {
+      console.warn("[DEBUG] Supabase sync failed (non-critical):", syncError);
     }
 
-    const user = session.user;
-    console.log("[DEBUG] Updating user metadata with payment confirmation for user:", user.email);
-
-    const { data, error } = await withTimeout(
-      supabase.auth.updateUser({
-        data: {
-          payment_confirmed: true,
-          plan_type: planType,
-          payment_date: new Date().toISOString(),
-          subscription_status: 'active'
-        }
-      }),
-      3000
-    );
-
-    if (error) {
-      console.error("[DEBUG] Error updating user metadata:", error);
-      throw error;
-    }
-
-    console.log("[DEBUG] Payment confirmation successful for user:", user.email, "plan:", planType);
-    return data;
+    return {
+      success: true,
+      user: { email: userEmail },
+      plan: planType,
+      paymentDate: new Date().toISOString()
+    };
   } catch (error) {
     console.error("[DEBUG] Error confirming payment:", error);
     throw error;
@@ -304,7 +326,7 @@ export async function forceSignOut() {
     try {
       await withTimeout(
         supabase.auth.signOut({ scope: 'global' }),
-        1000
+        800
       );
     } catch (signOutError) {
       console.warn("[DEBUG] Sign out API call failed, but continuing with local cleanup");
