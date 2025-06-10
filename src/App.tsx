@@ -75,33 +75,22 @@ function App() {
     return { success: false, plan: null };
   };
 
-  // FIXED: Robust payment confirmation with session persistence
-  const confirmPaymentWithRetry = async (planType: string, maxRetries: number = 3) => {
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        console.log(`[DEBUG] Payment confirmation attempt ${attempt}/${maxRetries} for plan:`, planType);
-        
-        // FIXED: Wait a bit for session to stabilize
-        if (attempt > 1) {
-          await new Promise(resolve => setTimeout(resolve, 1000));
-        }
-        
-        await confirmPayment(planType);
-        console.log("[DEBUG] Payment confirmation successful on attempt", attempt);
-        return true;
-      } catch (error) {
-        console.error(`[DEBUG] Payment confirmation attempt ${attempt} failed:`, error);
-        
-        if (attempt === maxRetries) {
-          console.error("[DEBUG] All payment confirmation attempts failed");
-          return false;
-        }
-      }
+  // FIXED: Simplified payment confirmation using localStorage (no retries needed)
+  const confirmPaymentLocal = async (planType: string) => {
+    try {
+      console.log("[DEBUG] Confirming payment locally for plan:", planType);
+      
+      // FIXED: Use local storage based confirmation (always succeeds)
+      const result = await confirmPayment(planType);
+      console.log("[DEBUG] Local payment confirmation successful:", result);
+      return true;
+    } catch (error) {
+      console.error("[DEBUG] Local payment confirmation failed:", error);
+      return false;
     }
-    return false;
   };
 
-  // FIXED: Simplified authentication success handler with better session handling
+  // FIXED: Fast authentication success handler with local storage
   const handleAuthSuccess = async (user: any) => {
     console.log("[DEBUG] Auth success handler called with user:", user?.email);
 
@@ -113,31 +102,48 @@ function App() {
       if (pendingPaymentPlan) {
         console.log("[DEBUG] Processing pending payment plan:", pendingPaymentPlan);
         
-        // FIXED: Use retry logic for payment confirmation
-        const paymentSuccess = await confirmPaymentWithRetry(pendingPaymentPlan);
+        // FIXED: Use local storage based payment confirmation (no timeouts)
+        const paymentSuccess = await confirmPaymentLocal(pendingPaymentPlan);
         
         if (paymentSuccess) {
           setPaymentCompleted(true);
           setActivePage('dashboard');
           setPendingPaymentPlan(null);
           
-          console.log("[DEBUG] Payment confirmed successfully, redirecting to dashboard");
+          console.log("[DEBUG] Payment confirmed locally, redirecting to dashboard");
           
           setTimeout(() => {
             alert(`Welcome! Your ${pendingPaymentPlan} plan is now active. Enjoy your writing assistant!`);
           }, 500);
         } else {
-          console.error("[DEBUG] Payment confirmation failed after retries");
-          alert("There was an error confirming your payment. Please contact support or try refreshing the page.");
+          console.error("[DEBUG] Local payment confirmation failed");
+          alert("There was an error confirming your payment. Please contact support.");
           setActivePage('pricing');
         }
       } else {
         console.log("[DEBUG] No pending payment plan, checking payment status");
         
-        // FIXED: Use direct session check instead of hasCompletedPayment for speed
+        // FIXED: Use fast local storage check first
         try {
-          const paymentConfirmed = user.user_metadata?.payment_confirmed === true;
-          console.log("[DEBUG] Direct payment check result:", paymentConfirmed);
+          const localPaymentStatus = localStorage.getItem('payment_confirmed');
+          const userEmail = localStorage.getItem('userEmail');
+          
+          let paymentConfirmed = false;
+          
+          if (localPaymentStatus === 'true' && userEmail === user?.email) {
+            console.log("[DEBUG] Local payment status: confirmed");
+            paymentConfirmed = true;
+          } else {
+            // FIXED: Fallback to user metadata if local storage doesn't match
+            paymentConfirmed = user.user_metadata?.payment_confirmed === true;
+            console.log("[DEBUG] Supabase payment status:", paymentConfirmed);
+            
+            // Update local storage to match
+            if (paymentConfirmed) {
+              localStorage.setItem('payment_confirmed', 'true');
+              localStorage.setItem('userEmail', user.email || '');
+            }
+          }
           
           setPaymentCompleted(paymentConfirmed);
           
@@ -175,7 +181,7 @@ function App() {
     }
   };
 
-  // FIXED: Much faster auth initialization with immediate fallbacks
+  // FIXED: Ultra-fast auth initialization with local storage priority
   const initializeAuthState = async () => {
     try {
       console.log("[DEBUG] Initializing auth state");
@@ -184,19 +190,19 @@ function App() {
       // FIXED: Check payment success from URL first
       const paymentResult = checkPaymentSuccessFromURL();
       
-      // FIXED: Very short timeout (500ms) to prevent hanging
+      // FIXED: Ultra-short timeout (300ms) to prevent any hanging
       const timeoutId = setTimeout(() => {
-        console.log("[DEBUG] Auth initialization timed out after 500ms, using emergency reset");
+        console.log("[DEBUG] Auth initialization timed out after 300ms, using emergency reset");
         emergencyReset();
-      }, 500);
+      }, 300);
 
       try {
-        // FIXED: Much shorter timeout for session check
+        // FIXED: Very short timeout for session check
         const sessionPromise = supabase.auth.getSession();
         const result = await Promise.race([
           sessionPromise,
           new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Session check timeout')), 400)
+            setTimeout(() => reject(new Error('Session check timeout')), 250)
           )
         ]);
 
@@ -224,12 +230,12 @@ function App() {
           const currentUser = sessionData.session.user;
           setUser(currentUser);
           
-          // FIXED: If payment success detected, handle it immediately with session user
+          // FIXED: If payment success detected, handle it immediately
           if (paymentResult.success && paymentResult.plan) {
             console.log("[DEBUG] Processing payment success for authenticated user");
             
-            // FIXED: Use retry logic for payment confirmation
-            const paymentSuccess = await confirmPaymentWithRetry(paymentResult.plan);
+            // FIXED: Use local storage based payment confirmation
+            const paymentSuccess = await confirmPaymentLocal(paymentResult.plan);
             
             if (paymentSuccess) {
               setPaymentCompleted(true);
@@ -240,14 +246,31 @@ function App() {
                 alert(`Welcome! Your ${paymentResult.plan} plan is now active. Enjoy your writing assistant!`);
               }, 1000);
             } else {
-              console.error("[DEBUG] Error processing payment after session found");
+              console.error("[DEBUG] Error processing payment");
               setActivePage('pricing');
             }
           } else {
-            // FIXED: Use direct metadata check instead of API call
-            const paymentConfirmed = currentUser.user_metadata?.payment_confirmed === true;
+            // FIXED: Use local storage check first, then fallback to metadata
+            const localPaymentStatus = localStorage.getItem('payment_confirmed');
+            const userEmail = localStorage.getItem('userEmail');
+            
+            let paymentConfirmed = false;
+            
+            if (localPaymentStatus === 'true' && userEmail === currentUser.email) {
+              console.log('[DEBUG] Local payment check: confirmed');
+              paymentConfirmed = true;
+            } else {
+              paymentConfirmed = currentUser.user_metadata?.payment_confirmed === true;
+              console.log('[DEBUG] Supabase payment check:', paymentConfirmed);
+              
+              // Update local storage to match
+              if (paymentConfirmed) {
+                localStorage.setItem('payment_confirmed', 'true');
+                localStorage.setItem('userEmail', currentUser.email || '');
+              }
+            }
+            
             setPaymentCompleted(paymentConfirmed);
-            console.log('[DEBUG] Direct payment check:', paymentConfirmed);
             
             if (paymentConfirmed) {
               console.log("[DEBUG] User has payment -> dashboard");
@@ -291,17 +314,17 @@ function App() {
   };
 
   useEffect(() => {
-    // FIXED: Immediate initialization with very short fallback
+    // FIXED: Ultra-fast initialization with very short fallback
     const initTimeout = setTimeout(() => {
       console.log("[DEBUG] useEffect timeout - forcing emergency reset");
       emergencyReset();
-    }, 1000);
+    }, 500);
 
     initializeAuthState().finally(() => {
       clearTimeout(initTimeout);
     });
 
-    // FIXED: Simplified auth state change handler with better session persistence
+    // FIXED: Simplified auth state change handler with local storage priority
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log("[DEBUG] Auth state change:", event, session?.user?.email);
 
@@ -317,8 +340,8 @@ function App() {
             if (paymentResult.success && paymentResult.plan) {
               console.log("[DEBUG] Processing payment for newly signed in user");
               
-              // FIXED: Use retry logic for payment confirmation
-              const paymentSuccess = await confirmPaymentWithRetry(paymentResult.plan);
+              // FIXED: Use local storage based payment confirmation
+              const paymentSuccess = await confirmPaymentLocal(paymentResult.plan);
               
               if (paymentSuccess) {
                 setPaymentCompleted(true);
@@ -334,8 +357,8 @@ function App() {
                 setActivePage('pricing');
               }
             } else if (pendingPaymentPlan) {
-              // FIXED: Use retry logic for pending payment
-              const paymentSuccess = await confirmPaymentWithRetry(pendingPaymentPlan);
+              // FIXED: Use local storage based payment confirmation
+              const paymentSuccess = await confirmPaymentLocal(pendingPaymentPlan);
               
               if (paymentSuccess) {
                 setPaymentCompleted(true);
@@ -351,8 +374,26 @@ function App() {
                 setActivePage('pricing');
               }
             } else {
-              // FIXED: Use direct metadata check for existing users
-              const paymentConfirmed = currentUser.user_metadata?.payment_confirmed === true;
+              // FIXED: Use local storage check first
+              const localPaymentStatus = localStorage.getItem('payment_confirmed');
+              const userEmail = localStorage.getItem('userEmail');
+              
+              let paymentConfirmed = false;
+              
+              if (localPaymentStatus === 'true' && userEmail === currentUser.email) {
+                console.log("[DEBUG] Local payment status: confirmed");
+                paymentConfirmed = true;
+              } else {
+                paymentConfirmed = currentUser.user_metadata?.payment_confirmed === true;
+                console.log("[DEBUG] Supabase payment status:", paymentConfirmed);
+                
+                // Update local storage to match
+                if (paymentConfirmed) {
+                  localStorage.setItem('payment_confirmed', 'true');
+                  localStorage.setItem('userEmail', currentUser.email || '');
+                }
+              }
+              
               setPaymentCompleted(paymentConfirmed);
               
               if (paymentConfirmed) {
@@ -399,7 +440,7 @@ function App() {
     );
   }
 
-  // FIXED: Much shorter loading timeout with immediate reset option
+  // FIXED: Ultra-short loading timeout with immediate reset option
   if (isLoading || !sessionChecked) {
     return (
       <div className="flex flex-col items-center justify-center h-screen">
