@@ -75,7 +75,33 @@ function App() {
     return { success: false, plan: null };
   };
 
-  // FIXED: Simplified authentication success handler with immediate dashboard redirect
+  // FIXED: Robust payment confirmation with session persistence
+  const confirmPaymentWithRetry = async (planType: string, maxRetries: number = 3) => {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`[DEBUG] Payment confirmation attempt ${attempt}/${maxRetries} for plan:`, planType);
+        
+        // FIXED: Wait a bit for session to stabilize
+        if (attempt > 1) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+        
+        await confirmPayment(planType);
+        console.log("[DEBUG] Payment confirmation successful on attempt", attempt);
+        return true;
+      } catch (error) {
+        console.error(`[DEBUG] Payment confirmation attempt ${attempt} failed:`, error);
+        
+        if (attempt === maxRetries) {
+          console.error("[DEBUG] All payment confirmation attempts failed");
+          return false;
+        }
+      }
+    }
+    return false;
+  };
+
+  // FIXED: Simplified authentication success handler with better session handling
   const handleAuthSuccess = async (user: any) => {
     console.log("[DEBUG] Auth success handler called with user:", user?.email);
 
@@ -86,31 +112,45 @@ function App() {
 
       if (pendingPaymentPlan) {
         console.log("[DEBUG] Processing pending payment plan:", pendingPaymentPlan);
-        try {
-          await confirmPayment(pendingPaymentPlan);
+        
+        // FIXED: Use retry logic for payment confirmation
+        const paymentSuccess = await confirmPaymentWithRetry(pendingPaymentPlan);
+        
+        if (paymentSuccess) {
           setPaymentCompleted(true);
           setActivePage('dashboard');
           setPendingPaymentPlan(null);
           
-          console.log("[DEBUG] Payment confirmed, redirecting to dashboard");
+          console.log("[DEBUG] Payment confirmed successfully, redirecting to dashboard");
           
           setTimeout(() => {
             alert(`Welcome! Your ${pendingPaymentPlan} plan is now active. Enjoy your writing assistant!`);
           }, 500);
-        } catch (error) {
-          console.error("[DEBUG] Error confirming payment:", error);
-          alert("There was an error confirming your payment. Please contact support.");
+        } else {
+          console.error("[DEBUG] Payment confirmation failed after retries");
+          alert("There was an error confirming your payment. Please contact support or try refreshing the page.");
           setActivePage('pricing');
         }
       } else {
         console.log("[DEBUG] No pending payment plan, checking payment status");
+        
+        // FIXED: Use direct session check instead of hasCompletedPayment for speed
         try {
-          const completed = await hasCompletedPayment();
-          setPaymentCompleted(completed);
-          setActivePage(completed ? 'dashboard' : 'pricing');
-          console.log("[DEBUG] Payment status checked:", completed, "-> redirecting to:", completed ? 'dashboard' : 'pricing');
+          const paymentConfirmed = user.user_metadata?.payment_confirmed === true;
+          console.log("[DEBUG] Direct payment check result:", paymentConfirmed);
+          
+          setPaymentCompleted(paymentConfirmed);
+          
+          if (paymentConfirmed) {
+            console.log("[DEBUG] User has completed payment -> dashboard");
+            setActivePage('dashboard');
+          } else {
+            console.log("[DEBUG] User has NOT completed payment -> pricing page");
+            setActivePage('pricing');
+          }
         } catch (error) {
           console.error("[DEBUG] Error checking payment status:", error);
+          // On error, assume no payment and redirect to pricing
           setActivePage('pricing');
         }
       }
@@ -135,7 +175,7 @@ function App() {
     }
   };
 
-  // FIXED: Improved auth initialization with payment URL handling
+  // FIXED: Much faster auth initialization with immediate fallbacks
   const initializeAuthState = async () => {
     try {
       console.log("[DEBUG] Initializing auth state");
@@ -144,19 +184,19 @@ function App() {
       // FIXED: Check payment success from URL first
       const paymentResult = checkPaymentSuccessFromURL();
       
-      // FIXED: Very short timeout (1 second) to prevent hanging
+      // FIXED: Very short timeout (500ms) to prevent hanging
       const timeoutId = setTimeout(() => {
-        console.log("[DEBUG] Auth initialization timed out after 1 second, using emergency reset");
+        console.log("[DEBUG] Auth initialization timed out after 500ms, using emergency reset");
         emergencyReset();
-      }, 1000);
+      }, 500);
 
       try {
-        // FIXED: Race condition - if this takes too long, timeout wins
+        // FIXED: Much shorter timeout for session check
         const sessionPromise = supabase.auth.getSession();
         const result = await Promise.race([
           sessionPromise,
           new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Session check timeout')), 800)
+            setTimeout(() => reject(new Error('Session check timeout')), 400)
           )
         ]);
 
@@ -166,8 +206,14 @@ function App() {
 
         if (sessionError) {
           console.error('[DEBUG] Error getting session:', sessionError);
-          // Don't reset immediately if we have payment success
-          if (!paymentResult.success) {
+          // If we have payment success, don't reset - show payment success page
+          if (paymentResult.success) {
+            console.log("[DEBUG] Session error but payment success detected, showing payment success page");
+            setShowPaymentSuccess(true);
+            setIsLoading(false);
+            setSessionChecked(true);
+            return;
+          } else {
             emergencyReset();
             return;
           }
@@ -178,11 +224,14 @@ function App() {
           const currentUser = sessionData.session.user;
           setUser(currentUser);
           
-          // FIXED: If payment success detected, handle it immediately
+          // FIXED: If payment success detected, handle it immediately with session user
           if (paymentResult.success && paymentResult.plan) {
             console.log("[DEBUG] Processing payment success for authenticated user");
-            try {
-              await confirmPayment(paymentResult.plan);
+            
+            // FIXED: Use retry logic for payment confirmation
+            const paymentSuccess = await confirmPaymentWithRetry(paymentResult.plan);
+            
+            if (paymentSuccess) {
               setPaymentCompleted(true);
               setActivePage('dashboard');
               console.log("[DEBUG] Payment processed successfully, showing dashboard");
@@ -190,19 +239,21 @@ function App() {
               setTimeout(() => {
                 alert(`Welcome! Your ${paymentResult.plan} plan is now active. Enjoy your writing assistant!`);
               }, 1000);
-            } catch (error) {
-              console.error("[DEBUG] Error processing payment:", error);
+            } else {
+              console.error("[DEBUG] Error processing payment after session found");
               setActivePage('pricing');
             }
           } else {
-            // Normal flow - check payment status
-            try {
-              const completed = await hasCompletedPayment();
-              setPaymentCompleted(completed);
-              console.log('[DEBUG] Payment completed:', completed);
-              setActivePage(completed ? 'dashboard' : 'pricing');
-            } catch (paymentError) {
-              console.error('[DEBUG] Error checking payment status:', paymentError);
+            // FIXED: Use direct metadata check instead of API call
+            const paymentConfirmed = currentUser.user_metadata?.payment_confirmed === true;
+            setPaymentCompleted(paymentConfirmed);
+            console.log('[DEBUG] Direct payment check:', paymentConfirmed);
+            
+            if (paymentConfirmed) {
+              console.log("[DEBUG] User has payment -> dashboard");
+              setActivePage('dashboard');
+            } else {
+              console.log("[DEBUG] User has NO payment -> pricing page");
               setActivePage('pricing');
             }
           }
@@ -240,17 +291,17 @@ function App() {
   };
 
   useEffect(() => {
-    // FIXED: Immediate initialization with fallback
+    // FIXED: Immediate initialization with very short fallback
     const initTimeout = setTimeout(() => {
       console.log("[DEBUG] useEffect timeout - forcing emergency reset");
       emergencyReset();
-    }, 2000);
+    }, 1000);
 
     initializeAuthState().finally(() => {
       clearTimeout(initTimeout);
     });
 
-    // FIXED: Simplified auth state change handler
+    // FIXED: Simplified auth state change handler with better session persistence
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log("[DEBUG] Auth state change:", event, session?.user?.email);
 
@@ -265,8 +316,11 @@ function App() {
             
             if (paymentResult.success && paymentResult.plan) {
               console.log("[DEBUG] Processing payment for newly signed in user");
-              try {
-                await confirmPayment(paymentResult.plan);
+              
+              // FIXED: Use retry logic for payment confirmation
+              const paymentSuccess = await confirmPaymentWithRetry(paymentResult.plan);
+              
+              if (paymentSuccess) {
                 setPaymentCompleted(true);
                 setActivePage('dashboard');
                 setPendingPaymentPlan(null);
@@ -275,13 +329,15 @@ function App() {
                 setTimeout(() => {
                   alert(`Welcome! Your ${paymentResult.plan} plan is now active. Enjoy your writing assistant!`);
                 }, 500);
-              } catch (error) {
-                console.error("[DEBUG] Error confirming payment in auth state change:", error);
+              } else {
+                console.error("[DEBUG] Payment confirmation failed in auth state change");
                 setActivePage('pricing');
               }
             } else if (pendingPaymentPlan) {
-              try {
-                await confirmPayment(pendingPaymentPlan);
+              // FIXED: Use retry logic for pending payment
+              const paymentSuccess = await confirmPaymentWithRetry(pendingPaymentPlan);
+              
+              if (paymentSuccess) {
                 setPaymentCompleted(true);
                 setActivePage('dashboard');
                 setPendingPaymentPlan(null);
@@ -290,17 +346,20 @@ function App() {
                 setTimeout(() => {
                   alert(`Welcome! Your ${pendingPaymentPlan} plan is now active. Enjoy your writing assistant!`);
                 }, 500);
-              } catch (error) {
-                console.error("[DEBUG] Error confirming payment in auth state change:", error);
+              } else {
+                console.error("[DEBUG] Pending payment confirmation failed in auth state change");
                 setActivePage('pricing');
               }
             } else {
-              try {
-                const completed = await hasCompletedPayment();
-                setPaymentCompleted(completed);
-                setActivePage(completed ? 'dashboard' : 'pricing');
-              } catch (error) {
-                console.error("[DEBUG] Error checking payment status in auth state change:", error);
+              // FIXED: Use direct metadata check for existing users
+              const paymentConfirmed = currentUser.user_metadata?.payment_confirmed === true;
+              setPaymentCompleted(paymentConfirmed);
+              
+              if (paymentConfirmed) {
+                console.log("[DEBUG] Existing user with payment -> dashboard");
+                setActivePage('dashboard');
+              } else {
+                console.log("[DEBUG] User without payment -> pricing page");
                 setActivePage('pricing');
               }
             }
