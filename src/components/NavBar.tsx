@@ -9,6 +9,7 @@ interface NavBarProps {
   user: User | null;
   onSignInClick: () => void;
   onSignUpClick: () => void;
+  onForceSignOut?: () => void;
 }
 
 export const NavBar: React.FC<NavBarProps> = ({ 
@@ -16,15 +17,20 @@ export const NavBar: React.FC<NavBarProps> = ({
   activePage, 
   user, 
   onSignInClick,
-  onSignUpClick
+  onSignUpClick,
+  onForceSignOut
 }) => {
   const { theme, toggleTheme } = React.useContext(ThemeContext);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const handleSignOut = async () => {
     try {
-      await signOut();
-      window.location.reload(); // Refresh the page to reset the app state
+      if (onForceSignOut) {
+        onForceSignOut();
+      } else {
+        await signOut();
+        window.location.reload(); // Refresh the page to reset the app state
+      }
     } catch (error) {
       console.error('Error signing out:', error);
     }
