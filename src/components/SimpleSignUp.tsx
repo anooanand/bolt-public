@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Mail, Lock, Loader } from 'lucide-react';
+import { Mail, Lock, Loader, CheckCircle } from 'lucide-react';
 import { signUp } from '../lib/supabase';
 
 interface SimpleSignUpProps {
@@ -13,45 +13,11 @@ export function SimpleSignUp({ onSignInClick, onSignUpSuccess }: SimpleSignUpPro
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [connectionStatus, setConnectionStatus] = useState<{connected: boolean, message: string} | null>(null);
+  const [isSuccess, setIsSuccess] = useState(false);
   const isMounted = useRef(false);
 
   useEffect(() => {
     isMounted.current = true;
-    const testConnection = async () => {
-      try {
-        const response = await fetch('/.netlify/functions/auth-proxy', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            action: 'ping'
-          })
-        });
-        
-        if (response.ok) {
-          setConnectionStatus({
-            connected: true,
-            message: "Connected to authentication service"
-          });
-        } else {
-          setConnectionStatus({
-            connected: false,
-            message: "Connected to server but authentication service returned an error"
-          });
-        }
-      } catch (err) {
-        console.error("Connection test failed:", err);
-        setConnectionStatus({
-          connected: false,
-          message: "Could not connect to authentication service. Please try again later."
-        });
-      }
-    };
-    
-    testConnection();
-
     return () => {
       isMounted.current = false;
     };
@@ -64,6 +30,7 @@ export function SimpleSignUp({ onSignInClick, onSignUpSuccess }: SimpleSignUpPro
       console.log("Form submitted before component mounted, ignoring.");
       return;
     }
+    
     setError('');
     
     // Validate passwords match
@@ -81,7 +48,7 @@ export function SimpleSignUp({ onSignInClick, onSignUpSuccess }: SimpleSignUpPro
     setIsLoading(true);
     
     try {
-      console.log("Starting signup process...");
+      console.log("Starting signup process for:", email);
       const result = await signUp(email, password);
       
       console.log("Signup result:", result);
@@ -89,29 +56,21 @@ export function SimpleSignUp({ onSignInClick, onSignUpSuccess }: SimpleSignUpPro
       // Store email in localStorage for later use
       localStorage.setItem('userEmail', email);
       
-      // Check if signup was successful
-      if (result && (result.user || result.access_token)) {
-        console.log("Signup successful! Calling onSignUpSuccess callback");
-        
-        // Call the success callback with the user data
-        if (onSignUpSuccess) {
+      // FIXED: Show success state first
+      setIsSuccess(true);
+      setIsLoading(false);
+      
+      // FIXED: Wait a moment to show success, then call callback
+      setTimeout(() => {
+        if (isMounted.current && onSignUpSuccess) {
+          console.log("Signup successful! Calling onSignUpSuccess callback");
           onSignUpSuccess(result.user || result);
-        } else {
-          console.warn("No onSignUpSuccess callback provided");
         }
-      } else if (result && result.emailExists) {
-        setError('This email is already registered. Please sign in instead.');
-      } else if (result && result.error) {
-        throw result.error;
-      } else {
-        // Handle case where result doesn't have expected structure
-        console.log("Unexpected result structure, but treating as success:", result);
-        if (onSignUpSuccess) {
-          onSignUpSuccess(result);
-        }
-      }
+      }, 1000); // Show success for 1 second
+      
     } catch (err: any) {
       console.error("Signup failed:", err);
+      setIsLoading(false);
       
       if (err && typeof err === 'object') {
         if (err.message?.includes('already registered') || err.message?.includes('already exists')) {
@@ -128,10 +87,28 @@ export function SimpleSignUp({ onSignInClick, onSignUpSuccess }: SimpleSignUpPro
         setError('An unexpected error occurred');
         console.error('Unknown signup error:', err);
       }
-    } finally {
-      setIsLoading(false);
     }
   };
+
+  // FIXED: Show success state
+  if (isSuccess) {
+    return (
+      <div className="w-full max-w-md">
+        <div className="bg-white dark:bg-gray-800 shadow-md rounded-lg px-8 pt-6 pb-8 mb-4">
+          <div className="text-center">
+            <CheckCircle className="mx-auto h-16 w-16 text-green-500 mb-4" />
+            <h2 className="text-2xl font-bold mb-2 text-gray-900 dark:text-white">Account Created!</h2>
+            <p className="text-gray-600 dark:text-gray-400 mb-4">
+              Welcome! Your account has been successfully created.
+            </p>
+            <div className="animate-pulse text-sm text-gray-500 dark:text-gray-400">
+              Redirecting to pricing...
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
   
   return (
     <div className="w-full max-w-md">
@@ -141,16 +118,6 @@ export function SimpleSignUp({ onSignInClick, onSignUpSuccess }: SimpleSignUpPro
         {error && (
           <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-md text-sm">
             {error}
-          </div>
-        )}
-        
-        {connectionStatus && (
-          <div className={`mb-4 p-3 rounded-md text-sm ${
-            connectionStatus.connected 
-              ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300' 
-              : 'bg-yellow-50 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300'
-          }`}>
-            {connectionStatus.message}
           </div>
         )}
         
@@ -168,6 +135,7 @@ export function SimpleSignUp({ onSignInClick, onSignUpSuccess }: SimpleSignUpPro
               className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
               placeholder="you@example.com"
               required
+              disabled={isLoading}
             />
           </div>
         </div>
@@ -186,6 +154,7 @@ export function SimpleSignUp({ onSignInClick, onSignUpSuccess }: SimpleSignUpPro
               className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
               placeholder="••••••••"
               required
+              disabled={isLoading}
             />
           </div>
         </div>
@@ -204,6 +173,7 @@ export function SimpleSignUp({ onSignInClick, onSignUpSuccess }: SimpleSignUpPro
               className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
               placeholder="••••••••"
               required
+              disabled={isLoading}
             />
           </div>
         </div>
@@ -227,7 +197,8 @@ export function SimpleSignUp({ onSignInClick, onSignUpSuccess }: SimpleSignUpPro
           <button
             type="button"
             onClick={onSignInClick}
-            className="text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-300 text-center"
+            disabled={isLoading}
+            className="text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-300 text-center disabled:opacity-50"
           >
             Already have an account? Sign in
           </button>
