@@ -26,7 +26,7 @@ function App() {
   const [sessionChecked, setSessionChecked] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
 
-  // FIXED: Added emergency reset function
+  // FIXED: Emergency reset function with immediate state reset
   const emergencyReset = () => {
     console.log("[DEBUG] Performing emergency reset");
     
@@ -39,7 +39,7 @@ function App() {
       });
     }
     
-    // Reset state
+    // Reset state immediately
     setUser(null);
     setActivePage('home');
     setShowAuthModal(false);
@@ -49,11 +49,6 @@ function App() {
     setIsLoading(false);
     setSessionChecked(true);
     setAuthError(null);
-    
-    // Force page reload
-    if (typeof window !== 'undefined') {
-      window.location.reload();
-    }
   };
 
   // FIXED: Simplified authentication success handler
@@ -62,9 +57,8 @@ function App() {
 
     try {
       setUser(user);
-      setShowAuthModal(false); // Close modal immediately
+      setShowAuthModal(false);
 
-      // FIXED: Simple navigation logic
       if (pendingPaymentPlan) {
         console.log("[DEBUG] Found pending payment plan:", pendingPaymentPlan);
         try {
@@ -74,12 +68,10 @@ function App() {
           setPendingPaymentPlan(null);
           setShowPaymentSuccess(false);
           
-          // Clear URL parameters
           if (typeof window !== 'undefined') {
             window.history.replaceState({}, document.title, window.location.pathname);
           }
           
-          // Show success message
           setTimeout(() => {
             alert(`Welcome! Your ${pendingPaymentPlan} plan is now active. Enjoy your writing assistant!`);
           }, 500);
@@ -111,43 +103,48 @@ function App() {
     setActivePage(page);
   };
 
-  // FIXED: Added force sign out button to NavBar
   const handleForceSignOut = async () => {
     try {
       await forceSignOut();
-      // The forceSignOut function will handle the page reload
     } catch (error) {
       console.error("[DEBUG] Error during force sign out:", error);
       emergencyReset();
     }
   };
 
-  // FIXED: Simplified auth state initialization
+  // FIXED: Much more aggressive timeout and immediate fallback
   const initializeAuthState = async () => {
     try {
       console.log("[DEBUG] Initializing auth state");
       setIsLoading(true);
 
-      // FIXED: Shorter timeout (3 seconds)
+      // FIXED: Very short timeout (1 second) to prevent hanging
       const timeoutId = setTimeout(() => {
-        console.log("[DEBUG] Auth initialization timed out, forcing reset");
+        console.log("[DEBUG] Auth initialization timed out after 1 second, using emergency reset");
         emergencyReset();
-      }, 3000);
+      }, 1000);
 
       try {
-        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-        
-        // Clear the timeout since we got a response
+        // FIXED: Race condition - if this takes too long, timeout wins
+        const sessionPromise = supabase.auth.getSession();
+        const result = await Promise.race([
+          sessionPromise,
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Session check timeout')), 800)
+          )
+        ]);
+
         clearTimeout(timeoutId);
+
+        const { data: sessionData, error: sessionError } = result as any;
 
         if (sessionError) {
           console.error('[DEBUG] Error getting session:', sessionError);
-          setIsLoading(false);
-          setSessionChecked(true);
+          emergencyReset();
           return;
         }
 
-        if (sessionData.session?.user) {
+        if (sessionData?.session?.user) {
           console.log('[DEBUG] Session found, setting user');
           const currentUser = sessionData.session.user;
           setUser(currentUser);
@@ -180,20 +177,26 @@ function App() {
         setSessionChecked(true);
         setIsLoading(false);
       } catch (error) {
-        // Clear the timeout if there's an error
         clearTimeout(timeoutId);
-        throw error;
+        console.error('[DEBUG] Session check failed:', error);
+        emergencyReset();
       }
     } catch (error) {
       console.error('[DEBUG] Error initializing auth state:', error);
-      setAuthError("There was an error loading your session. Please try refreshing the page.");
-      setIsLoading(false);
-      setSessionChecked(true);
+      emergencyReset();
     }
   };
 
   useEffect(() => {
-    initializeAuthState();
+    // FIXED: Immediate initialization with fallback
+    const initTimeout = setTimeout(() => {
+      console.log("[DEBUG] useEffect timeout - forcing emergency reset");
+      emergencyReset();
+    }, 2000);
+
+    initializeAuthState().finally(() => {
+      clearTimeout(initTimeout);
+    });
 
     // FIXED: Simplified auth state change handler
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
@@ -205,7 +208,6 @@ function App() {
           setUser(currentUser);
 
           if (currentUser && event === 'SIGNED_IN') {
-            // Handle payment confirmation if needed
             if (pendingPaymentPlan) {
               try {
                 await confirmPayment(pendingPaymentPlan);
@@ -226,7 +228,6 @@ function App() {
                 setActivePage('pricing');
               }
             } else {
-              // Check payment status and navigate accordingly
               try {
                 const completed = await hasCompletedPayment();
                 setPaymentCompleted(completed);
@@ -249,11 +250,12 @@ function App() {
     });
 
     return () => {
+      clearTimeout(initTimeout);
       subscription.unsubscribe();
     };
   }, [pendingPaymentPlan]);
 
-  // FIXED: Added error display and emergency reset button
+  // FIXED: Show error with immediate reset option
   if (authError) {
     return (
       <div className="flex flex-col items-center justify-center h-screen p-4">
@@ -271,20 +273,21 @@ function App() {
     );
   }
 
+  // FIXED: Much shorter loading timeout with immediate reset option
   if (isLoading || !sessionChecked) {
     return (
       <div className="flex flex-col items-center justify-center h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500 mb-4"></div>
-        <p className="text-gray-600">Loading...</p>
+        <p className="text-gray-600 mb-4">Loading...</p>
         
-        {/* FIXED: Added emergency reset button that appears after 2 seconds */}
-        <div className="mt-8">
-          <p className="text-sm text-gray-500 mb-2">Taking too long to load?</p>
+        {/* FIXED: Show reset button immediately */}
+        <div className="text-center">
+          <p className="text-sm text-gray-500 mb-2">Taking too long?</p>
           <button 
             onClick={emergencyReset}
-            className="bg-red-600 hover:bg-red-700 text-white text-sm py-1 px-3 rounded-md"
+            className="bg-red-600 hover:bg-red-700 text-white text-sm py-2 px-4 rounded-md"
           >
-            Emergency Reset
+            Skip Loading & Continue
           </button>
         </div>
       </div>
