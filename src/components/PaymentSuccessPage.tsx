@@ -18,41 +18,86 @@ export function PaymentSuccessPage({ plan, onSuccess, onSignInRequired }: Paymen
   useEffect(() => {
     const processPayment = async () => {
       try {
+        console.log("[DEBUG] PaymentSuccessPage: Processing payment for plan:", plan);
+        
         const email = localStorage.getItem('userEmail');
         setUserEmail(email);
+        console.log("[DEBUG] PaymentSuccessPage: Found email in localStorage:", email);
 
         if (!email) {
+          console.error("[DEBUG] PaymentSuccessPage: No user email found");
           setStatus('error');
           setMessage('No user email found. Please contact support.');
           return;
         }
 
-        const { data: { session } } = await supabase.auth.getSession();
+        // FIXED: Use timeout wrapper for session check
+        const sessionPromise = supabase.auth.getSession();
+        const sessionResult = await Promise.race([
+          sessionPromise,
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Session check timeout')), 3000)
+          )
+        ]);
+
+        const { data: { session }, error: sessionError } = sessionResult as any;
+
+        if (sessionError) {
+          console.error("[DEBUG] PaymentSuccessPage: Session error:", sessionError);
+          setStatus('signin_required');
+          setMessage('Please sign in to complete your subscription setup.');
+          return;
+        }
 
         if (session?.user) {
+          console.log("[DEBUG] PaymentSuccessPage: User session found, confirming payment");
           setMessage('Confirming your payment...');
-          await confirmPayment(plan);
+          
+          try {
+            await confirmPayment(plan);
+            console.log("[DEBUG] PaymentSuccessPage: Payment confirmed successfully");
 
-          setStatus('success');
-          setMessage(`Welcome! Your ${plan.replace('-', ' ')} plan is now active.`);
-          window.history.replaceState({}, document.title, window.location.pathname);
+            setStatus('success');
+            setMessage(`Welcome! Your ${plan.replace('-', ' ')} plan is now active.`);
+            
+            // FIXED: Clear URL parameters immediately
+            if (typeof window !== 'undefined') {
+              window.history.replaceState({}, document.title, window.location.pathname);
+            }
 
-          setTimeout(() => {
-            onSuccess(session.user);
-          }, 2000);
+            // FIXED: Shorter delay before redirect
+            setTimeout(() => {
+              console.log("[DEBUG] PaymentSuccessPage: Calling onSuccess callback");
+              onSuccess(session.user);
+            }, 1500);
+          } catch (paymentError) {
+            console.error("[DEBUG] PaymentSuccessPage: Error confirming payment:", paymentError);
+            setStatus('error');
+            setMessage('There was an error confirming your payment. Please contact support.');
+          }
         } else {
+          console.log("[DEBUG] PaymentSuccessPage: No user session, requiring sign in");
           setStatus('signin_required');
           setMessage('Please sign in to complete your subscription setup.');
         }
 
       } catch (error) {
-        console.error('Error processing payment:', error);
-        setStatus('error');
-        setMessage('There was an error processing your payment. Please contact support.');
+        console.error('[DEBUG] PaymentSuccessPage: Error processing payment:', error);
+        setStatus('signin_required');
+        setMessage('Please sign in to complete your subscription setup.');
       }
     };
 
-    processPayment();
+    // FIXED: Add timeout for the entire process
+    const processTimeout = setTimeout(() => {
+      console.log("[DEBUG] PaymentSuccessPage: Process timeout, requiring sign in");
+      setStatus('signin_required');
+      setMessage('Please sign in to complete your subscription setup.');
+    }, 5000);
+
+    processPayment().finally(() => {
+      clearTimeout(processTimeout);
+    });
   }, [plan, onSuccess]);
 
   const handleSignIn = async (e: React.FormEvent) => {
@@ -61,12 +106,40 @@ export function PaymentSuccessPage({ plan, onSuccess, onSignInRequired }: Paymen
 
     setIsSigningIn(true);
     try {
+      console.log("[DEBUG] PaymentSuccessPage: Attempting sign in for:", userEmail);
       const { error } = await supabase.auth.signInWithPassword({ email: userEmail, password });
-      if (error) throw error;
-      setMessage('Signing in...');
-    } catch (err) {
-      console.error('Sign-in error:', err);
-      setMessage('Sign-in failed. Please check your password or try again.');
+      
+      if (error) {
+        console.error("[DEBUG] PaymentSuccessPage: Sign in error:", error);
+        throw error;
+      }
+      
+      console.log("[DEBUG] PaymentSuccessPage: Sign in successful");
+      setMessage('Signing in and processing payment...');
+      
+      // FIXED: Process payment immediately after sign in
+      try {
+        await confirmPayment(plan);
+        console.log("[DEBUG] PaymentSuccessPage: Payment confirmed after sign in");
+        
+        setStatus('success');
+        setMessage(`Welcome! Your ${plan.replace('-', ' ')} plan is now active.`);
+        
+        // Get the current user and call success callback
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          setTimeout(() => {
+            onSuccess(user);
+          }, 1000);
+        }
+      } catch (paymentError) {
+        console.error("[DEBUG] PaymentSuccessPage: Error confirming payment after sign in:", paymentError);
+        setStatus('error');
+        setMessage('Payment confirmation failed. Please contact support.');
+      }
+    } catch (err: any) {
+      console.error('[DEBUG] PaymentSuccessPage: Sign-in error:', err);
+      setMessage(`Sign-in failed: ${err.message || 'Please check your password or try again.'}`);
     } finally {
       setIsSigningIn(false);
     }
@@ -105,11 +178,11 @@ export function PaymentSuccessPage({ plan, onSuccess, onSignInRequired }: Paymen
             Signing in...
           </>
         ) : (
-          'Sign In to Continue'
+          'Sign In to Complete Setup'
         )}
       </button>
       <p className="text-sm text-center text-gray-500 dark:text-gray-400 mt-4">
-        This will complete your subscription setup
+        This will activate your {plan.replace('-', ' ')} subscription
       </p>
     </form>
   );
@@ -141,8 +214,8 @@ export function PaymentSuccessPage({ plan, onSuccess, onSignInRequired }: Paymen
         <h1 className={`text-2xl font-bold mb-4 ${getStatusColor()}`}>
           {status === 'processing' && 'Processing Payment'}
           {status === 'success' && 'Payment Successful!'}
-          {status === 'signin_required' && 'Sign In Required'}
-          {status === 'error' && 'Payment Error'}
+          {status === 'signin_required' && 'Complete Your Setup'}
+          {status === 'error' && 'Setup Error'}
         </h1>
         <p className="text-gray-600 dark:text-gray-300 mb-6">{message}</p>
         {userEmail && (
@@ -165,7 +238,7 @@ export function PaymentSuccessPage({ plan, onSuccess, onSignInRequired }: Paymen
         {status === 'success' && (
           <div className="bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-md p-4">
             <p className="text-sm text-green-700 dark:text-green-300">
-              You'll be redirected to your dashboard shortly...
+              Redirecting to your dashboard...
             </p>
           </div>
         )}
@@ -173,3 +246,4 @@ export function PaymentSuccessPage({ plan, onSuccess, onSignInRequired }: Paymen
     </div>
   );
 }
+
