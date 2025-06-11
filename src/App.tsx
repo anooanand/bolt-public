@@ -11,7 +11,6 @@ import { ParaphrasePanel } from './components/ParaphrasePanel';
 import { BrainstormingTools } from './components/BrainstormingTools';
 import { LearningHub } from './components/LearningHub';
 import { ExamSimulator } from './components/ExamSimulator';
-import './App.css';
 
 // Additional page components
 interface PageProps {
