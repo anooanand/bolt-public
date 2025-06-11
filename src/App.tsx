@@ -10,7 +10,7 @@ import { WritingStudio } from './components/WritingStudio';
 import { ParaphrasePanel } from './components/ParaphrasePanel';
 import { BrainstormingTools } from './components/BrainstormingTools';
 import { LearningHub } from './components/LearningHub';
-import { ExamSimulator } from './components/ExamSimulator';
+import { NSWSelectiveExamSimulator as ExamSimulator } from './components/ExamSimulator';
 
 // Additional page components
 interface PageProps {
