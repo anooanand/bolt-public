@@ -17,7 +17,7 @@ import { SpecializedCoaching } from './components/text-type-templates/Specialize
 import { BrainstormingTools } from './components/BrainstormingTools';
 
 // Add simple navigation components
-import { SimpleNavBar } from './components/SimpleNavBar';
+import { NavBar } from './components/NavBar';
 import { SimpleHomePage } from './components/SimpleHomePage';
 import { Dashboard } from './components/Dashboard';
 import { AuthModal } from './components/AuthModal';
@@ -82,7 +82,7 @@ function App() {
       <ThemeProvider>
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
           {/* Simple Navigation */}
-          <SimpleNavBar 
+          <NavBar 
             currentPage={currentPage} 
             onNavigate={setCurrentPage}
             onShowAuth={() => setShowAuthModal(true)}
@@ -182,4 +182,3 @@ function App() {
 }
 
 export default App;
-
