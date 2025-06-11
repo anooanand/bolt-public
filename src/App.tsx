@@ -106,8 +106,11 @@ function App() {
           {currentPage === 'write' && (
             <div className="flex flex-col h-screen">
               <EnhancedHeader 
-                appState={appState}
-                updateAppState={updateAppState}
+                textType={textType}
+                assistanceLevel={assistanceLevel}
+                onTextTypeChange={setTextType}
+                onAssistanceLevelChange={setAssistanceLevel}
+                onTimerStart={setTimerStarted}
                 onPageChange={setCurrentPage}
                 onStartExam={handleStartExam}
                 onShowHelpCenter={() => setShowHelpCenter(true)}
