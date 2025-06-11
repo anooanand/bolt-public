@@ -1,349 +1,240 @@
-import React, { useState, useEffect } from 'react';
-import { ThemeContext } from '../lib/ThemeContext';
-import { signOut, getCurrentUser } from '../lib/supabase';
-import { User } from '@supabase/supabase-js';
+import React, { useState, useRef } from 'react';
+import { 
+  Sun, 
+  Moon, 
+  Menu, 
+  X, 
+  User, 
+  Settings, 
+  LogOut,
+  Shield,
+  ChevronDown
+} from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface NavBarProps {
+  currentPage: string;
   onNavigate: (page: string) => void;
-  activePage: string;
-  user: User | null;
-  onSignInClick: () => void;
-  onSignUpClick: () => void;
-  onForceSignOut?: () => void;
 }
 
-export const NavBar: React.FC<NavBarProps> = ({ 
-  onNavigate, 
-  activePage, 
-  user, 
-  onSignInClick,
-  onSignUpClick,
-  onForceSignOut
-}) => {
-  const { theme, toggleTheme } = React.useContext(ThemeContext);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+export const NavBar: React.FC<NavBarProps> = ({ currentPage, onNavigate }) => {
+  const { user, signOut, isPaidUser, isAdmin } = useAuth();
+  const { theme, toggleTheme } = useTheme();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
+  const [userMenuOpen, setUserMenuOpen] = useState<boolean>(false);
 
   const handleSignOut = async () => {
-    try {
-      if (onForceSignOut) {
-        onForceSignOut();
-      } else {
-        await signOut();
-        window.location.reload(); // Refresh the page to reset the app state
-      }
-    } catch (error) {
-      console.error('Error signing out:', error);
-    }
+    await signOut();
+    setUserMenuOpen(false);
+    onNavigate('home');
   };
 
-  const handleNavigation = (e: React.MouseEvent<HTMLAnchorElement>, page: string) => {
-    e.preventDefault();
-    onNavigate(page);
-    setMobileMenuOpen(false); // Close mobile menu when navigating
-  };
+  const navItems = [
+    { id: 'home', label: 'Home', public: true },
+    { id: 'write', label: 'Write', public: false },
+    { id: 'learn', label: 'Learn', public: false },
+    { id: 'practice', label: 'Practice', public: false },
+    { id: 'pricing', label: 'Pricing', public: true },
+    { id: 'about', label: 'About', public: true },
+  ];
+
+  const userMenuItems = [
+    { id: 'dashboard', label: 'Dashboard', icon: User },
+    { id: 'settings', label: 'Settings', icon: Settings },
+    ...(isAdmin ? [{ id: 'admin', label: 'Admin Panel', icon: Shield }] : []),
+  ];
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-white dark:bg-gray-900 shadow-md">
+    <nav className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16">
+        <div className="flex justify-between items-center h-16">
+          {/* Logo */}
           <div className="flex items-center">
-            <a 
-              href="#" 
-              onClick={(e) => handleNavigation(e, 'home')}
-              className="flex-shrink-0 flex items-center"
-            >
-              <div className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-600 to-pink-600 dark:from-purple-400 dark:to-pink-400">
-                Bolt Writing Assistant
-              </div>
-            </a>
-          </div>
-          
-          {/* Mobile menu button */}
-          <div className="md:hidden flex items-center">
             <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500"
+              onClick={() => onNavigate('home')}
+              className="flex items-center space-x-2"
             >
-              <span className="sr-only">{mobileMenuOpen ? 'Close menu' : 'Open menu'}</span>
-              {/* Icon when menu is closed */}
-              <svg
-                className={`${mobileMenuOpen ? 'hidden' : 'block'} h-6 w-6`}
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                aria-hidden="true"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-              {/* Icon when menu is open */}
-              <svg
-                className={`${mobileMenuOpen ? 'block' : 'hidden'} h-6 w-6`}
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                aria-hidden="true"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
+              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                <span className="text-white font-bold text-sm">WA</span>
+              </div>
+              <span className="text-xl font-bold text-gray-900 dark:text-white">
+                WritingAssistant
+              </span>
             </button>
           </div>
-          
-          <div className="hidden md:flex items-center space-x-4">
-            {/* Navigation Links */}
-            <a 
-              href="#" 
-              onClick={(e) => handleNavigation(e, 'home')}
-              className={`px-3 py-2 rounded-md text-sm font-medium ${
-                activePage === 'home' 
-                  ? 'text-indigo-600 dark:text-indigo-400' 
-                  : 'text-gray-700 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400'
-              }`}
-            >
-              Home
-            </a>
-            
-            <a 
-              href="#" 
-              onClick={(e) => handleNavigation(e, 'features')}
-              className={`px-3 py-2 rounded-md text-sm font-medium ${
-                activePage === 'features' 
-                  ? 'text-indigo-600 dark:text-indigo-400' 
-                  : 'text-gray-700 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400'
-              }`}
-            >
-              Features
-            </a>
-            
-            <a 
-              href="#" 
-              onClick={(e) => handleNavigation(e, 'about')}
-              className={`px-3 py-2 rounded-md text-sm font-medium ${
-                activePage === 'about' 
-                  ? 'text-indigo-600 dark:text-indigo-400' 
-                  : 'text-gray-700 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400'
-              }`}
-            >
-              About
-            </a>
-            
-            <a 
-              href="#" 
-              onClick={(e) => handleNavigation(e, 'pricing')}
-              className={`px-3 py-2 rounded-md text-sm font-medium ${
-                activePage === 'pricing' 
-                  ? 'text-indigo-600 dark:text-indigo-400' 
-                  : 'text-gray-700 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400'
-              }`}
-            >
-              Pricing
-            </a>
-            
-            <a 
-              href="#" 
-              onClick={(e) => handleNavigation(e, 'faq')}
-              className={`px-3 py-2 rounded-md text-sm font-medium ${
-                activePage === 'faq' 
-                  ? 'text-indigo-600 dark:text-indigo-400' 
-                  : 'text-gray-700 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400'
-              }`}
-            >
-              FAQ
-            </a>
-            
-            {user && (
-              <a 
-                href="#" 
-                onClick={(e) => handleNavigation(e, 'dashboard')}
-                className={`px-3 py-2 rounded-md text-sm font-medium ${
-                  activePage === 'dashboard' 
-                    ? 'text-indigo-600 dark:text-indigo-400' 
-                    : 'text-gray-700 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400'
-                }`}
-              >
-                Dashboard
-              </a>
-            )}
+
+          {/* Desktop Navigation */}
+          <div className="hidden md:flex items-center space-x-8">
+            {navItems.map((item) => {
+              if (!item.public && !user) return null;
+              
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => onNavigate(item.id)}
+                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                    currentPage === item.id
+                      ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300'
+                      : 'text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400'
+                  }`}
+                >
+                  {item.label}
+                </button>
+              );
+            })}
           </div>
-          
-          <div className="hidden md:flex items-center space-x-4">
-            {/* Dark/Light Mode Toggle */}
-            <button 
+
+          {/* Right side items */}
+          <div className="flex items-center space-x-4">
+            {/* Theme Toggle */}
+            <button
               onClick={toggleTheme}
-              aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
-              className="p-2 rounded-full text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none"
+              className="p-2 rounded-md text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
             >
-              {theme === 'light' ? (
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                  <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path>
-                </svg>
+              {theme === 'dark' ? (
+                <Sun className="w-5 h-5" />
               ) : (
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clipRule="evenodd"></path>
-                </svg>
+                <Moon className="w-5 h-5" />
               )}
             </button>
-            
+
+            {/* User Menu or Auth Buttons */}
             {user ? (
-              <div className="flex items-center space-x-3">
-                <span className="text-sm text-gray-700 dark:text-gray-300 hidden md:inline-block">
-                  {user.email}
-                </span>
-                <button 
-                  onClick={handleSignOut}
-                  className="px-4 py-2 rounded-md text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+              <div className="relative">
+                <button
+                  onClick={() => setUserMenuOpen(!userMenuOpen)}
+                  className="flex items-center space-x-2 p-2 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                 >
-                  Sign Out
-                </button>
-              </div>
-            ) : (
-              <div className="flex items-center space-x-3">
-                <button 
-                  onClick={onSignInClick}
-                  className="px-4 py-2 rounded-md text-sm font-medium text-indigo-600 dark:text-indigo-400 border border-indigo-600 dark:border-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                >
-                  Sign In
-                </button>
-                <button 
-                  onClick={onSignUpClick}
-                  className="px-4 py-2 rounded-md text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                >
-                  Sign Up
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-      
-      {/* Mobile menu - shown/hidden with state */}
-      <div className={`${mobileMenuOpen ? 'block' : 'hidden'} md:hidden`}>
-        <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
-          <a 
-            href="#" 
-            onClick={(e) => handleNavigation(e, 'home')}
-            className={`block px-3 py-2 rounded-md text-base font-medium ${
-              activePage === 'home' 
-                ? 'text-indigo-600 dark:text-indigo-400' 
-                : 'text-gray-700 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400'
-            }`}
-          >
-            Home
-          </a>
-          
-          <a 
-            href="#" 
-            onClick={(e) => handleNavigation(e, 'features')}
-            className={`block px-3 py-2 rounded-md text-base font-medium ${
-              activePage === 'features' 
-                ? 'text-indigo-600 dark:text-indigo-400' 
-                : 'text-gray-700 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400'
-            }`}
-          >
-            Features
-          </a>
-          
-          <a 
-            href="#" 
-            onClick={(e) => handleNavigation(e, 'about')}
-            className={`block px-3 py-2 rounded-md text-base font-medium ${
-              activePage === 'about' 
-                ? 'text-indigo-600 dark:text-indigo-400' 
-                : 'text-gray-700 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400'
-            }`}
-          >
-            About
-          </a>
-          
-          <a 
-            href="#" 
-            onClick={(e) => handleNavigation(e, 'pricing')}
-            className={`block px-3 py-2 rounded-md text-base font-medium ${
-              activePage === 'pricing' 
-                ? 'text-indigo-600 dark:text-indigo-400' 
-                : 'text-gray-700 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400'
-            }`}
-          >
-            Pricing
-          </a>
-          
-          <a 
-            href="#" 
-            onClick={(e) => handleNavigation(e, 'faq')}
-            className={`block px-3 py-2 rounded-md text-base font-medium ${
-              activePage === 'faq' 
-                ? 'text-indigo-600 dark:text-indigo-400' 
-                : 'text-gray-700 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400'
-            }`}
-          >
-            FAQ
-          </a>
-          
-          {user && (
-            <a 
-              href="#" 
-              onClick={(e) => handleNavigation(e, 'dashboard')}
-              className={`block px-3 py-2 rounded-md text-base font-medium ${
-                activePage === 'dashboard' 
-                  ? 'text-indigo-600 dark:text-indigo-400' 
-                  : 'text-gray-700 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400'
-              }`}
-            >
-              Dashboard
-            </a>
-          )}
-          
-          {/* Mobile auth buttons */}
-          <div className="pt-4 pb-3 border-t border-gray-200 dark:border-gray-700">
-            {user ? (
-              <div className="flex items-center px-3">
-                <div className="flex-shrink-0">
-                  <div className="h-10 w-10 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center">
-                    <span className="text-indigo-600 dark:text-indigo-300 font-medium">
-                      {user.email?.charAt(0).toUpperCase() || 'U'}
+                  <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
+                    <span className="text-white text-sm font-medium">
+                      {user.email?.charAt(0).toUpperCase()}
                     </span>
                   </div>
-                </div>
-                <div className="ml-3">
-                  <div className="text-base font-medium text-gray-800 dark:text-white truncate max-w-[200px]">
-                    {user.email}
+                  <ChevronDown className="w-4 h-4" />
+                </button>
+
+                {userMenuOpen && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg py-1 z-50 border border-gray-200 dark:border-gray-700">
+                    <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700">
+                      <p className="text-sm font-medium text-gray-900 dark:text-white">
+                        {user.email}
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        {isPaidUser ? 'Pro Plan' : 'Free Plan'}
+                      </p>
+                    </div>
+                    
+                    {userMenuItems.map((item) => {
+                      const Icon = item.icon;
+                      return (
+                        <button
+                          key={item.id}
+                          onClick={() => {
+                            onNavigate(item.id);
+                            setUserMenuOpen(false);
+                          }}
+                          className="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                        >
+                          <Icon className="w-4 h-4 mr-3" />
+                          {item.label}
+                        </button>
+                      );
+                    })}
+                    
+                    <button
+                      onClick={handleSignOut}
+                      className="flex items-center w-full px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700"
+                    >
+                      <LogOut className="w-4 h-4 mr-3" />
+                      Sign Out
+                    </button>
                   </div>
-                  <button 
-                    onClick={handleSignOut}
-                    className="mt-2 px-4 py-2 rounded-md text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                  >
-                    Sign Out
-                  </button>
-                </div>
+                )}
               </div>
             ) : (
-              <div className="px-3 space-y-2">
-                <button 
-                  onClick={() => {
-                    onSignInClick();
-                    setMobileMenuOpen(false);
-                  }}
-                  className="w-full px-4 py-2 rounded-md text-sm font-medium text-indigo-600 dark:text-indigo-400 border border-indigo-600 dark:border-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              <div className="hidden md:flex items-center space-x-4">
+                <button
+                  onClick={() => onNavigate('auth')}
+                  className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 px-3 py-2 rounded-md text-sm font-medium"
                 >
                   Sign In
                 </button>
-                <button 
-                  onClick={() => {
-                    onSignUpClick();
-                    setMobileMenuOpen(false);
-                  }}
-                  className="w-full px-4 py-2 rounded-md text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                <button
+                  onClick={() => onNavigate('auth')}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
                 >
-                  Sign Up
+                  Get Started
                 </button>
               </div>
             )}
+
+            {/* Mobile menu button */}
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="md:hidden p-2 rounded-md text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+            >
+              {mobileMenuOpen ? (
+                <X className="w-6 h-6" />
+              ) : (
+                <Menu className="w-6 h-6" />
+              )}
+            </button>
           </div>
         </div>
+
+        {/* Mobile Navigation */}
+        {mobileMenuOpen && (
+          <div className="md:hidden">
+            <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 border-t border-gray-200 dark:border-gray-700">
+              {navItems.map((item) => {
+                if (!item.public && !user) return null;
+                
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => {
+                      onNavigate(item.id);
+                      setMobileMenuOpen(false);
+                    }}
+                    className={`block w-full text-left px-3 py-2 rounded-md text-base font-medium ${
+                      currentPage === item.id
+                        ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300'
+                        : 'text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                );
+              })}
+              
+              {!user && (
+                <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+                  <button
+                    onClick={() => {
+                      onNavigate('auth');
+                      setMobileMenuOpen(false);
+                    }}
+                    className="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-gray-100 dark:hover:bg-gray-700"
+                  >
+                    Sign In
+                  </button>
+                  <button
+                    onClick={() => {
+                      onNavigate('auth');
+                      setMobileMenuOpen(false);
+                    }}
+                    className="block w-full text-left px-3 py-2 rounded-md text-base font-medium bg-blue-600 text-white hover:bg-blue-700 mt-2"
+                  >
+                    Get Started
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </nav>
   );
 };
 
-export default NavBar;
