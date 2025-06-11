@@ -1,210 +1,167 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Mail, Lock, Loader, CheckCircle } from 'lucide-react';
-import { signUp } from '../lib/supabase';
+import React from 'react';
+import { PenTool, BookOpen, Target, Sparkles, ArrowRight, CheckCircle } from 'lucide-react';
 
-interface SimpleSignUpProps {
-  onSignInClick: () => void;
-  onSignUpSuccess?: (user: any) => void;
+interface SimpleHomePageProps {
+  onNavigate: (page: 'home' | 'write' | 'learn' | 'dashboard') => void;
+  onStartWriting: () => void;
+  onStartLearning: () => void;
 }
 
-export function SimpleSignUp({ onSignInClick, onSignUpSuccess }: SimpleSignUpProps) {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [isSuccess, setIsSuccess] = useState(false);
-  const isMounted = useRef(false);
-
-  useEffect(() => {
-    isMounted.current = true;
-    return () => {
-      isMounted.current = false;
-    };
-  }, []);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!isMounted.current) {
-      console.log("Form submitted before component mounted, ignoring.");
-      return;
-    }
-    
-    setError('');
-    
-    // Validate passwords match
-    if (password !== confirmPassword) {
-      setError('Passwords do not match');
-      return;
-    }
-    
-    // Validate password strength
-    if (password.length < 8) {
-      setError('Password must be at least 8 characters');
-      return;
-    }
-    
-    setIsLoading(true);
-    
-    try {
-      console.log("Starting signup process for:", email);
-      const result = await signUp(email, password);
-      
-      console.log("Signup result:", result);
-      
-      // Store email in localStorage for later use
-      localStorage.setItem('userEmail', email);
-      
-      // FIXED: Show success state first
-      setIsSuccess(true);
-      setIsLoading(false);
-      
-      // FIXED: Wait a moment to show success, then call callback
-      setTimeout(() => {
-        if (isMounted.current && onSignUpSuccess) {
-          console.log("Signup successful! Calling onSignUpSuccess callback");
-          onSignUpSuccess(result.user || result);
-        }
-      }, 1000); // Show success for 1 second
-      
-    } catch (err: any) {
-      console.error("Signup failed:", err);
-      setIsLoading(false);
-      
-      if (err && typeof err === 'object') {
-        if (err.message?.includes('already registered') || err.message?.includes('already exists')) {
-          setError('This email is already registered. Please sign in instead.');
-        } else if (err.message?.includes('network') || err.message?.includes('connect')) {
-          setError('Network error: Please check your internet connection and try again.');
-        } else {
-          setError(err.message || 'An unexpected error occurred');
-        }
-        
-        // Log detailed error for debugging
-        console.error('Signup error details:', err);
-      } else {
-        setError('An unexpected error occurred');
-        console.error('Unknown signup error:', err);
-      }
-    }
-  };
-
-  // FIXED: Show success state
-  if (isSuccess) {
-    return (
-      <div className="w-full max-w-md">
-        <div className="bg-white dark:bg-gray-800 shadow-md rounded-lg px-8 pt-6 pb-8 mb-4">
-          <div className="text-center">
-            <CheckCircle className="mx-auto h-16 w-16 text-green-500 mb-4" />
-            <h2 className="text-2xl font-bold mb-2 text-gray-900 dark:text-white">Account Created!</h2>
-            <p className="text-gray-600 dark:text-gray-400 mb-4">
-              Welcome! Your account has been successfully created.
-            </p>
-            <div className="animate-pulse text-sm text-gray-500 dark:text-gray-400">
-              Redirecting to pricing...
-            </div>
+export const SimpleHomePage: React.FC<SimpleHomePageProps> = ({ 
+  onNavigate, 
+  onStartWriting, 
+  onStartLearning 
+}) => {
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
+      {/* Hero Section */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-16">
+        <div className="text-center">
+          <h1 className="text-4xl md:text-6xl font-bold text-gray-900 dark:text-white mb-6">
+            Master Your
+            <span className="text-blue-600 dark:text-blue-400"> Writing Skills</span>
+          </h1>
+          <p className="text-xl text-gray-600 dark:text-gray-300 mb-8 max-w-3xl mx-auto">
+            Advanced AI-powered writing assistant designed specifically for NSW Selective School preparation. 
+            Get real-time feedback, practice with authentic prompts, and improve your writing with expert guidance.
+          </p>
+          
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <button
+              onClick={onStartWriting}
+              className="flex items-center justify-center px-8 py-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-lg font-medium"
+            >
+              <PenTool className="w-5 h-5 mr-2" />
+              Start Writing Now
+              <ArrowRight className="w-5 h-5 ml-2" />
+            </button>
+            
+            <button
+              onClick={onStartLearning}
+              className="flex items-center justify-center px-8 py-4 bg-white dark:bg-gray-800 text-gray-900 dark:text-white border-2 border-gray-300 dark:border-gray-600 rounded-lg hover:border-blue-300 dark:hover:border-blue-500 transition-colors text-lg font-medium"
+            >
+              <BookOpen className="w-5 h-5 mr-2" />
+              Explore Lessons
+            </button>
           </div>
         </div>
       </div>
-    );
-  }
-  
-  return (
-    <div className="w-full max-w-md">
-      <form onSubmit={handleSubmit} className="bg-white dark:bg-gray-800 shadow-md rounded-lg px-8 pt-6 pb-8 mb-4">
-        <h2 className="text-2xl font-bold text-center mb-6 text-gray-900 dark:text-white">Create Account</h2>
-        
-        {error && (
-          <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-md text-sm">
-            {error}
+
+      {/* Features Section */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <div className="text-center mb-12">
+          <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
+            Everything You Need to Excel
+          </h2>
+          <p className="text-lg text-gray-600 dark:text-gray-300">
+            Comprehensive tools designed for NSW Selective School writing success
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          {/* AI Writing Coach */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg">
+            <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center mb-4">
+              <Sparkles className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+            </div>
+            <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">
+              AI Writing Coach
+            </h3>
+            <p className="text-gray-600 dark:text-gray-300 mb-4">
+              Get instant, personalized feedback on your writing with our advanced AI coach that understands NSW marking criteria.
+            </p>
+            <ul className="space-y-2">
+              <li className="flex items-center text-sm text-gray-600 dark:text-gray-300">
+                <CheckCircle className="w-4 h-4 text-green-500 mr-2" />
+                Real-time grammar and style suggestions
+              </li>
+              <li className="flex items-center text-sm text-gray-600 dark:text-gray-300">
+                <CheckCircle className="w-4 h-4 text-green-500 mr-2" />
+                Vocabulary enhancement recommendations
+              </li>
+              <li className="flex items-center text-sm text-gray-600 dark:text-gray-300">
+                <CheckCircle className="w-4 h-4 text-green-500 mr-2" />
+                Structure and flow analysis
+              </li>
+            </ul>
           </div>
-        )}
-        
-        <div className="mb-4">
-          <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2" htmlFor="email">
-            Email
-          </label>
-          <div className="relative">
-            <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
-              placeholder="you@example.com"
-              required
-              disabled={isLoading}
-            />
+
+          {/* Exam Preparation */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg">
+            <div className="w-12 h-12 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center mb-4">
+              <Target className="w-6 h-6 text-green-600 dark:text-green-400" />
+            </div>
+            <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">
+              Exam Preparation
+            </h3>
+            <p className="text-gray-600 dark:text-gray-300 mb-4">
+              Practice with authentic NSW Selective exam prompts and conditions to build confidence and skills.
+            </p>
+            <ul className="space-y-2">
+              <li className="flex items-center text-sm text-gray-600 dark:text-gray-300">
+                <CheckCircle className="w-4 h-4 text-green-500 mr-2" />
+                Timed writing practice sessions
+              </li>
+              <li className="flex items-center text-sm text-gray-600 dark:text-gray-300">
+                <CheckCircle className="w-4 h-4 text-green-500 mr-2" />
+                Authentic exam prompts and scenarios
+              </li>
+              <li className="flex items-center text-sm text-gray-600 dark:text-gray-300">
+                <CheckCircle className="w-4 h-4 text-green-500 mr-2" />
+                Performance tracking and analytics
+              </li>
+            </ul>
+          </div>
+
+          {/* Learning Resources */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg">
+            <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900 rounded-lg flex items-center justify-center mb-4">
+              <BookOpen className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+            </div>
+            <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">
+              Learning Resources
+            </h3>
+            <p className="text-gray-600 dark:text-gray-300 mb-4">
+              Comprehensive curriculum with lessons, examples, and practice exercises tailored for NSW students.
+            </p>
+            <ul className="space-y-2">
+              <li className="flex items-center text-sm text-gray-600 dark:text-gray-300">
+                <CheckCircle className="w-4 h-4 text-green-500 mr-2" />
+                24-day structured learning program
+              </li>
+              <li className="flex items-center text-sm text-gray-600 dark:text-gray-300">
+                <CheckCircle className="w-4 h-4 text-green-500 mr-2" />
+                Interactive exercises and activities
+              </li>
+              <li className="flex items-center text-sm text-gray-600 dark:text-gray-300">
+                <CheckCircle className="w-4 h-4 text-green-500 mr-2" />
+                Progress tracking and achievements
+              </li>
+            </ul>
           </div>
         </div>
-        
-        <div className="mb-4">
-          <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2" htmlFor="password">
-            Password
-          </label>
-          <div className="relative">
-            <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
-              placeholder="••••••••"
-              required
-              disabled={isLoading}
-            />
-          </div>
-        </div>
-        
-        <div className="mb-6">
-          <label className="block text-gray-700 dark:text-gray-300 text-sm font-bold mb-2" htmlFor="confirmPassword">
-            Confirm Password
-          </label>
-          <div className="relative">
-            <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
-            <input
-              id="confirmPassword"
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
-              placeholder="••••••••"
-              required
-              disabled={isLoading}
-            />
-          </div>
-        </div>
-        
-        <div className="flex flex-col gap-4">
+      </div>
+
+      {/* Call to Action */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <div className="bg-blue-600 dark:bg-blue-700 rounded-2xl p-8 text-center">
+          <h2 className="text-3xl font-bold text-white mb-4">
+            Ready to Improve Your Writing?
+          </h2>
+          <p className="text-blue-100 mb-6 text-lg">
+            Join thousands of students who have improved their writing skills with our AI-powered platform.
+          </p>
           <button
-            type="submit"
-            disabled={isLoading}
-            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+            onClick={onStartWriting}
+            className="inline-flex items-center px-8 py-4 bg-white text-blue-600 rounded-lg hover:bg-gray-50 transition-colors text-lg font-medium"
           >
-            {isLoading ? (
-              <>
-                <Loader className="animate-spin -ml-1 mr-2 h-5 w-5" />
-                Creating account...
-              </>
-            ) : (
-              'Sign Up'
-            )}
-          </button>
-          
-          <button
-            type="button"
-            onClick={onSignInClick}
-            disabled={isLoading}
-            className="text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-300 text-center disabled:opacity-50"
-          >
-            Already have an account? Sign in
+            <PenTool className="w-5 h-5 mr-2" />
+            Get Started Today
+            <ArrowRight className="w-5 h-5 ml-2" />
           </button>
         </div>
-      </form>
+      </div>
     </div>
   );
-}
+};
 

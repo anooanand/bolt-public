@@ -18,7 +18,7 @@ import { BrainstormingTools } from './components/BrainstormingTools';
 
 // Add simple navigation components
 import { NavBar } from './components/NavBar';
-import { SimpleHomePage } from './components/SimpleHomePage';
+import { HomePage } from './components/HomePage';
 import { Dashboard } from './components/Dashboard';
 import { AuthModal } from './components/AuthModal';
 
@@ -90,7 +90,7 @@ function App() {
 
           {/* Home Page */}
           {currentPage === 'home' && (
-            <SimpleHomePage 
+            <HomePage 
               onNavigate={setCurrentPage}
               onStartWriting={() => setCurrentPage('write')}
               onStartLearning={() => setCurrentPage('learn')}
