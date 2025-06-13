@@ -1,8 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { AuthProvider } from './contexts/AuthContext';
-import { ThemeProvider } from './contexts/ThemeContext';
+import { ThemeProvider } from './lib/ThemeContext';
+import { getCurrentUser, confirmPayment, hasCompletedPayment, supabase, forceSignOut } from './lib/supabase';
+import { User } from '@supabase/supabase-js';
 
-// Keep your original writing components
+import { NavBar } from './components/NavBar';
+import { HeroSection } from './components/HeroSection';
+import { FeaturesSection } from './components/FeaturesSection';
+import { ToolsSection } from './components/ToolsSection';
+import { WritingTypesSection } from './components/WritingTypesSection';
+import { Footer } from './components/Footer';
+import { PaymentSuccessPage } from './components/PaymentSuccessPage';
+import { PricingPage } from './components/PricingPage';
+import { Dashboard } from './components/Dashboard';
+import { AuthModal } from './components/AuthModal';
+import { FAQPage } from './components/FAQPage';
+import { AboutPage } from './components/AboutPage';
+
+// Writing components
 import { SplitScreen } from './components/SplitScreen';
 import { WritingArea } from './components/WritingArea';
 import { CoachPanel } from './components/CoachPanel';
@@ -16,15 +30,19 @@ import { EnhancedHeader } from './components/EnhancedHeader';
 import { SpecializedCoaching } from './components/text-type-templates/SpecializedCoaching';
 import { BrainstormingTools } from './components/BrainstormingTools';
 
-// Navigation components
-import { NavBar } from './components/NavBar';
-import { HomePage } from './components/HomePage';
-import { Dashboard } from './components/Dashboard';
-import { AuthModal } from './components/AuthModal';
-import { PricingPage } from './components/PricingPage';
-
 function App() {
-  // Your original writing state
+  const [user, setUser] = useState<User | null>(null);
+  const [activePage, setActivePage] = useState('home');
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authModalMode, setAuthModalMode] = useState<'signin' | 'signup'>('signin');
+  const [showPaymentSuccess, setShowPaymentSuccess] = useState(false);
+  const [pendingPaymentPlan, setPendingPaymentPlan] = useState<string | null>(null);
+  const [paymentCompleted, setPaymentCompleted] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [sessionChecked, setSessionChecked] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+
+  // Writing state
   const [content, setContent] = useState('');
   const [textType, setTextType] = useState('');
   const [assistanceLevel, setAssistanceLevel] = useState('detailed');
@@ -34,11 +52,131 @@ function App() {
   const [showExamMode, setShowExamMode] = useState(false);
   const [showHelpCenter, setShowHelpCenter] = useState(false);
 
-  // Navigation state
-  const [currentPage, setCurrentPage] = useState<'home' | 'write' | 'learn' | 'dashboard' | 'pricing' | 'auth' | 'demo' | 'feedback'>('home');
-  const [showAuthModal, setShowAuthModal] = useState(false);
+  // Emergency reset function
+  const emergencyReset = () => {
+    console.log("[DEBUG] Performing emergency reset");
+    
+    if (typeof window !== 'undefined') {
+      localStorage.clear();
+    }
+    
+    setUser(null);
+    setActivePage('home');
+    setShowAuthModal(false);
+    setShowPaymentSuccess(false);
+    setPendingPaymentPlan(null);
+    setPaymentCompleted(false);
+    setIsLoading(false);
+    setSessionChecked(true);
+    setAuthError(null);
+  };
 
-  // Your original text selection logic
+  // Initialize auth state
+  const initializeAuthState = async () => {
+    try {
+      setIsLoading(true);
+      
+      const timeoutId = setTimeout(() => {
+        console.log('[DEBUG] Auth initialization timeout, proceeding without auth');
+        setIsLoading(false);
+        setSessionChecked(true);
+      }, 5000);
+
+      try {
+        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+        clearTimeout(timeoutId);
+
+        if (sessionError) {
+          console.error('[DEBUG] Session error:', sessionError);
+          setUser(null);
+          setIsLoading(false);
+          setSessionChecked(true);
+          return;
+        }
+
+        if (sessionData?.session?.user) {
+          console.log('[DEBUG] Session found, getting user');
+          const currentUser = sessionData.session.user;
+          if (currentUser?.email) {
+            setUser(currentUser);
+            
+            try {
+              const completed = await hasCompletedPayment();
+              setPaymentCompleted(completed);
+              console.log('[DEBUG] Payment completed:', completed);
+              setActivePage(completed ? 'dashboard' : 'pricing');
+            } catch (paymentError) {
+              console.error('[DEBUG] Error checking payment status:', paymentError);
+              setActivePage('pricing');
+            }
+          } else {
+            console.warn('[DEBUG] Session found but user has no email');
+            setUser(null);
+          }
+        } else {
+          console.log('[DEBUG] No session found');
+          setUser(null);
+        }
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const paymentSuccess = urlParams.get('payment_success');
+        const plan = urlParams.get('plan');
+
+        if (paymentSuccess && plan) {
+          console.log(`[DEBUG] Payment success detected for plan: ${plan}`);
+          setShowPaymentSuccess(true);
+          setPendingPaymentPlan(plan);
+        }
+
+        setSessionChecked(true);
+        setIsLoading(false);
+      } catch (error) {
+        clearTimeout(timeoutId);
+        throw error;
+      }
+    } catch (error) {
+      console.error('[DEBUG] Error initializing auth state:', error);
+      setAuthError("There was an error loading your session. Please try refreshing the page.");
+      setIsLoading(false);
+      setSessionChecked(true);
+    }
+  };
+
+  useEffect(() => {
+    initializeAuthState();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('[DEBUG] Auth state changed:', event, session?.user?.email);
+      
+      if (event === 'SIGNED_IN' && session?.user) {
+        setUser(session.user);
+        setShowAuthModal(false);
+        
+        // After successful signup, redirect to pricing
+        if (authModalMode === 'signup') {
+          setActivePage('pricing');
+        } else {
+          // For signin, check payment status
+          try {
+            const completed = await hasCompletedPayment();
+            setPaymentCompleted(completed);
+            setActivePage(completed ? 'dashboard' : 'pricing');
+          } catch (error) {
+            console.error('Error checking payment status:', error);
+            setActivePage('pricing');
+          }
+        }
+      } else if (event === 'SIGNED_OUT') {
+        setUser(null);
+        setPaymentCompleted(false);
+        setActivePage('home');
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [authModalMode]);
+
+  // Text selection logic for writing area
   useEffect(() => {
     const handleSelectionChange = () => {
       const selection = window.getSelection();
@@ -54,7 +192,55 @@ function App() {
     };
   }, []);
 
-  // Your original app state management
+  const handleAuthSuccess = async (user: User) => {
+    setUser(user);
+    setShowAuthModal(false);
+    
+    // After successful signup, redirect to pricing
+    if (authModalMode === 'signup') {
+      setActivePage('pricing');
+    } else {
+      // For signin, check payment status
+      try {
+        const completed = await hasCompletedPayment();
+        setPaymentCompleted(completed);
+        setActivePage(completed ? 'dashboard' : 'pricing');
+      } catch (error) {
+        console.error('Error checking payment status:', error);
+        setActivePage('pricing');
+      }
+    }
+  };
+
+  const handleForceSignOut = async () => {
+    try {
+      await forceSignOut();
+      emergencyReset();
+    } catch (error) {
+      console.error('Error during force sign out:', error);
+      emergencyReset();
+    }
+  };
+
+  const handleNavigation = (page: string) => {
+    setActivePage(page);
+    setShowAuthModal(false);
+  };
+
+  const handleGetStarted = () => {
+    if (user) {
+      setActivePage(paymentCompleted ? 'dashboard' : 'pricing');
+    } else {
+      setAuthModalMode('signup');
+      setShowAuthModal(true);
+    }
+  };
+
+  const handleStartWriting = () => {
+    setActivePage('writing');
+  };
+
+  // Writing app state management
   const appState = {
     content,
     textType,
@@ -70,55 +256,74 @@ function App() {
   };
 
   const handleSubmit = () => {
-    setCurrentPage('feedback');
+    setActivePage('feedback');
   };
 
   const handleStartExam = () => {
     setShowExamMode(true);
-    setCurrentPage('write');
   };
 
-  const handleNavigate = (page: string) => {
-    if (page === 'auth') {
-      setShowAuthModal(true);
-    } else {
-      setCurrentPage(page as any);
-      setShowAuthModal(false);
-    }
-  };
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-400">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <AuthProvider>
-      <ThemeProvider>
-        <div className="min-h-screen">
-          {/* Navigation */}
-          <NavBar 
-            currentPage={currentPage} 
-            onNavigate={handleNavigate}
-          />
-
-          {/* Home Page - Restored Original Design */}
-          {currentPage === 'home' && (
-            <HomePage onNavigate={handleNavigate} />
-          )}
-
-          {/* Dashboard */}
-          {currentPage === 'dashboard' && (
-            <Dashboard onNavigate={handleNavigate} />
-          )}
-
-          {/* Pricing Page */}
-          {currentPage === 'pricing' && (
-            <PricingPage onNavigate={handleNavigate} />
-          )}
-
-          {/* Your Original Writing Interface */}
-          {currentPage === 'write' && (
+    <ThemeProvider>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+        <NavBar
+          onNavigate={handleNavigation}
+          activePage={activePage}
+          user={user}
+          onSignInClick={() => {
+            setAuthModalMode('signin');
+            setShowAuthModal(true);
+          }}
+          onSignUpClick={() => {
+            setAuthModalMode('signup');
+            setShowAuthModal(true);
+          }}
+          onForceSignOut={handleForceSignOut}
+        />
+        
+        <div className="mt-16">
+          {showPaymentSuccess ? (
+            <PaymentSuccessPage
+              plan={pendingPaymentPlan || 'unknown'}
+              onSuccess={handleAuthSuccess}
+              onSignInRequired={(email, plan) => {
+                localStorage.setItem('userEmail', email);
+                setPendingPaymentPlan(plan);
+                setAuthModalMode('signin');
+                setShowAuthModal(true);
+              }}
+            />
+          ) : activePage === 'pricing' ? (
+            <PricingPage />
+          ) : activePage === 'dashboard' ? (
+            <Dashboard user={user} />
+          ) : activePage === 'faq' ? (
+            <FAQPage />
+          ) : activePage === 'about' ? (
+            <AboutPage />
+          ) : activePage === 'features' ? (
+            <div>
+              <FeaturesSection />
+              <ToolsSection />
+              <WritingTypesSection />
+            </div>
+          ) : activePage === 'writing' ? (
             <div className="flex flex-col h-screen">
               <EnhancedHeader 
                 appState={appState}
                 updateAppState={updateAppState}
-                onPageChange={handleNavigate}
+                onPageChange={handleNavigation}
                 onStartExam={handleStartExam}
                 onShowHelpCenter={() => setShowHelpCenter(true)}
               />
@@ -153,56 +358,48 @@ function App() {
                 </SplitScreen>
               )}
             </div>
-          )}
-
-          {/* Your Original Learning Page */}
-          {currentPage === 'learn' && (
+          ) : activePage === 'learn' ? (
             <LearningPage 
-              onPageChange={handleNavigate}
+              onPageChange={handleNavigation}
               appState={appState}
               updateAppState={updateAppState}
             />
-          )}
-
-          {/* Feedback Page */}
-          {currentPage === 'feedback' && (
+          ) : activePage === 'feedback' ? (
             <EssayFeedbackPage 
               content={content}
               textType={textType}
-              onBack={() => setCurrentPage('write')}
+              onBack={() => setActivePage('writing')}
             />
+          ) : (
+            <>
+              <HeroSection 
+                onGetStarted={handleGetStarted}
+                onStartWriting={handleStartWriting}
+              />
+              <FeaturesSection />
+              <ToolsSection />
+              <WritingTypesSection />
+            </>
           )}
-
-          {/* Demo Page - redirect to write for now */}
-          {currentPage === 'demo' && (
-            <div className="min-h-screen flex items-center justify-center">
-              <div className="text-center">
-                <h2 className="text-2xl font-bold text-white mb-4">Demo Coming Soon</h2>
-                <button
-                  onClick={() => setCurrentPage('write')}
-                  className="gradient-button"
-                >
-                  Try Writing Tool Instead
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Help Center Modal */}
-          {showHelpCenter && (
-            <HelpCenter onClose={() => setShowHelpCenter(false)} />
-          )}
-
-          {/* Auth Modal */}
-          {showAuthModal && (
-            <AuthModal 
-              onClose={() => setShowAuthModal(false)}
-              onNavigate={handleNavigate}
-            />
+          
+          {activePage !== 'writing' && activePage !== 'feedback' && activePage !== 'learn' && (
+            <Footer />
           )}
         </div>
-      </ThemeProvider>
-    </AuthProvider>
+
+        {/* Help Center Modal */}
+        {showHelpCenter && (
+          <HelpCenter onClose={() => setShowHelpCenter(false)} />
+        )}
+
+        <AuthModal
+          isOpen={showAuthModal}
+          onClose={() => setShowAuthModal(false)}
+          onSuccess={handleAuthSuccess}
+          initialMode={authModalMode}
+        />
+      </div>
+    </ThemeProvider>
   );
 }
 
