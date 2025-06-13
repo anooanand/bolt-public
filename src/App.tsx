@@ -16,11 +16,12 @@ import { EnhancedHeader } from './components/EnhancedHeader';
 import { SpecializedCoaching } from './components/text-type-templates/SpecializedCoaching';
 import { BrainstormingTools } from './components/BrainstormingTools';
 
-// Add simple navigation components
+// Navigation components
 import { NavBar } from './components/NavBar';
 import { HomePage } from './components/HomePage';
 import { Dashboard } from './components/Dashboard';
 import { AuthModal } from './components/AuthModal';
+import { PricingPage } from './components/PricingPage';
 
 function App() {
   // Your original writing state
@@ -33,8 +34,8 @@ function App() {
   const [showExamMode, setShowExamMode] = useState(false);
   const [showHelpCenter, setShowHelpCenter] = useState(false);
 
-  // Simple navigation state
-  const [currentPage, setCurrentPage] = useState<'home' | 'write' | 'learn' | 'dashboard'>('home');
+  // Navigation state
+  const [currentPage, setCurrentPage] = useState<'home' | 'write' | 'learn' | 'dashboard' | 'pricing' | 'auth' | 'demo' | 'feedback'>('home');
   const [showAuthModal, setShowAuthModal] = useState(false);
 
   // Your original text selection logic
@@ -77,41 +78,47 @@ function App() {
     setCurrentPage('write');
   };
 
+  const handleNavigate = (page: string) => {
+    if (page === 'auth') {
+      setShowAuthModal(true);
+    } else {
+      setCurrentPage(page as any);
+      setShowAuthModal(false);
+    }
+  };
+
   return (
     <AuthProvider>
       <ThemeProvider>
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-          {/* Simple Navigation */}
+        <div className="min-h-screen">
+          {/* Navigation */}
           <NavBar 
             currentPage={currentPage} 
-            onNavigate={setCurrentPage}
-            onShowAuth={() => setShowAuthModal(true)}
+            onNavigate={handleNavigate}
           />
 
-          {/* Home Page */}
+          {/* Home Page - Restored Original Design */}
           {currentPage === 'home' && (
-            <HomePage 
-              onNavigate={setCurrentPage}
-              onStartWriting={() => setCurrentPage('write')}
-              onStartLearning={() => setCurrentPage('learn')}
-            />
+            <HomePage onNavigate={handleNavigate} />
           )}
 
           {/* Dashboard */}
           {currentPage === 'dashboard' && (
-            <Dashboard onNavigate={setCurrentPage} />
+            <Dashboard onNavigate={handleNavigate} />
+          )}
+
+          {/* Pricing Page */}
+          {currentPage === 'pricing' && (
+            <PricingPage onNavigate={handleNavigate} />
           )}
 
           {/* Your Original Writing Interface */}
           {currentPage === 'write' && (
             <div className="flex flex-col h-screen">
               <EnhancedHeader 
-                textType={textType}
-                assistanceLevel={assistanceLevel}
-                onTextTypeChange={setTextType}
-                onAssistanceLevelChange={setAssistanceLevel}
-                onTimerStart={setTimerStarted}
-                onPageChange={setCurrentPage}
+                appState={appState}
+                updateAppState={updateAppState}
+                onPageChange={handleNavigate}
                 onStartExam={handleStartExam}
                 onShowHelpCenter={() => setShowHelpCenter(true)}
               />
@@ -151,7 +158,7 @@ function App() {
           {/* Your Original Learning Page */}
           {currentPage === 'learn' && (
             <LearningPage 
-              onPageChange={setCurrentPage}
+              onPageChange={handleNavigate}
               appState={appState}
               updateAppState={updateAppState}
             />
@@ -166,6 +173,21 @@ function App() {
             />
           )}
 
+          {/* Demo Page - redirect to write for now */}
+          {currentPage === 'demo' && (
+            <div className="min-h-screen flex items-center justify-center">
+              <div className="text-center">
+                <h2 className="text-2xl font-bold text-white mb-4">Demo Coming Soon</h2>
+                <button
+                  onClick={() => setCurrentPage('write')}
+                  className="gradient-button"
+                >
+                  Try Writing Tool Instead
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Help Center Modal */}
           {showHelpCenter && (
             <HelpCenter onClose={() => setShowHelpCenter(false)} />
@@ -175,7 +197,7 @@ function App() {
           {showAuthModal && (
             <AuthModal 
               onClose={() => setShowAuthModal(false)}
-              onNavigate={setCurrentPage}
+              onNavigate={handleNavigate}
             />
           )}
         </div>
@@ -185,3 +207,4 @@ function App() {
 }
 
 export default App;
+
