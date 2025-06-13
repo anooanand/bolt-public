@@ -32,7 +32,7 @@ import { BrainstormingTools } from './components/BrainstormingTools';
 
 function App() {
   const [user, setUser] = useState<User | null>(null);
-  const [activePage, setActivePage] = useState('home');
+  const [activePage, setActivePage] = useState('home'); // Always start with home
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'signin' | 'signup'>('signin');
   const [showPaymentSuccess, setShowPaymentSuccess] = useState(false);
@@ -61,7 +61,7 @@ function App() {
     }
     
     setUser(null);
-    setActivePage('home');
+    setActivePage('home'); // Always reset to home
     setShowAuthModal(false);
     setShowPaymentSuccess(false);
     setPendingPaymentPlan(null);
@@ -71,16 +71,41 @@ function App() {
     setAuthError(null);
   };
 
-  // Initialize auth state
+  // Safe payment status check with timeout
+  const checkPaymentStatusSafely = async (user: User): Promise<boolean> => {
+    try {
+      console.log('[DEBUG] Checking payment status for user:', user.email);
+      
+      // Create a promise that times out after 3 seconds
+      const timeoutPromise = new Promise<boolean>((_, reject) => {
+        setTimeout(() => reject(new Error('Payment check timeout')), 3000);
+      });
+      
+      const paymentPromise = hasCompletedPayment();
+      
+      // Race between payment check and timeout
+      const completed = await Promise.race([paymentPromise, timeoutPromise]);
+      console.log('[DEBUG] Payment status:', completed);
+      return completed;
+    } catch (error) {
+      console.warn('[DEBUG] Payment status check failed, using fallback:', error);
+      // Fallback: assume no payment completed
+      return false;
+    }
+  };
+
+  // Initialize auth state with better error handling
   const initializeAuthState = async () => {
     try {
       setIsLoading(true);
       
+      // Shorter timeout for initial load
       const timeoutId = setTimeout(() => {
-        console.log('[DEBUG] Auth initialization timeout, proceeding without auth');
+        console.log('[DEBUG] Auth initialization timeout, staying on home page');
         setIsLoading(false);
         setSessionChecked(true);
-      }, 5000);
+        setActivePage('home'); // Ensure we stay on home page
+      }, 3000); // Reduced from 5000 to 3000
 
       try {
         const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
@@ -89,35 +114,36 @@ function App() {
         if (sessionError) {
           console.error('[DEBUG] Session error:', sessionError);
           setUser(null);
+          setActivePage('home'); // Stay on home page
           setIsLoading(false);
           setSessionChecked(true);
           return;
         }
 
         if (sessionData?.session?.user) {
-          console.log('[DEBUG] Session found, getting user');
+          console.log('[DEBUG] Session found for user:', sessionData.session.user.email);
           const currentUser = sessionData.session.user;
+          
           if (currentUser?.email) {
             setUser(currentUser);
             
-            try {
-              const completed = await hasCompletedPayment();
-              setPaymentCompleted(completed);
-              console.log('[DEBUG] Payment completed:', completed);
-              setActivePage(completed ? 'dashboard' : 'pricing');
-            } catch (paymentError) {
-              console.error('[DEBUG] Error checking payment status:', paymentError);
-              setActivePage('pricing');
-            }
+            // Only check payment status if user explicitly navigates to dashboard
+            // Don't auto-redirect on app load
+            const completed = await checkPaymentStatusSafely(currentUser);
+            setPaymentCompleted(completed);
+            
+            // Stay on home page by default, don't auto-redirect
+            console.log('[DEBUG] User authenticated, staying on home page');
           } else {
             console.warn('[DEBUG] Session found but user has no email');
             setUser(null);
           }
         } else {
-          console.log('[DEBUG] No session found');
+          console.log('[DEBUG] No session found, staying on home page');
           setUser(null);
         }
 
+        // Check for payment success URL params
         const urlParams = new URLSearchParams(window.location.search);
         const paymentSuccess = urlParams.get('payment_success');
         const plan = urlParams.get('plan');
@@ -126,17 +152,26 @@ function App() {
           console.log(`[DEBUG] Payment success detected for plan: ${plan}`);
           setShowPaymentSuccess(true);
           setPendingPaymentPlan(plan);
+          setActivePage('payment-success');
+        } else {
+          // Ensure we stay on home page if no payment success
+          setActivePage('home');
         }
 
         setSessionChecked(true);
         setIsLoading(false);
       } catch (error) {
         clearTimeout(timeoutId);
-        throw error;
+        console.error('[DEBUG] Error in auth initialization:', error);
+        // On any error, stay on home page
+        setActivePage('home');
+        setIsLoading(false);
+        setSessionChecked(true);
       }
     } catch (error) {
-      console.error('[DEBUG] Error initializing auth state:', error);
+      console.error('[DEBUG] Critical error initializing auth state:', error);
       setAuthError("There was an error loading your session. Please try refreshing the page.");
+      setActivePage('home'); // Stay on home page even with errors
       setIsLoading(false);
       setSessionChecked(true);
     }
@@ -156,20 +191,20 @@ function App() {
         if (authModalMode === 'signup') {
           setActivePage('pricing');
         } else {
-          // For signin, check payment status
+          // For signin, check payment status and redirect accordingly
           try {
-            const completed = await hasCompletedPayment();
+            const completed = await checkPaymentStatusSafely(session.user);
             setPaymentCompleted(completed);
             setActivePage(completed ? 'dashboard' : 'pricing');
           } catch (error) {
-            console.error('Error checking payment status:', error);
+            console.error('Error checking payment status after signin:', error);
             setActivePage('pricing');
           }
         }
       } else if (event === 'SIGNED_OUT') {
         setUser(null);
         setPaymentCompleted(false);
-        setActivePage('home');
+        setActivePage('home'); // Always go back to home after signout
       }
     });
 
@@ -202,7 +237,7 @@ function App() {
     } else {
       // For signin, check payment status
       try {
-        const completed = await hasCompletedPayment();
+        const completed = await checkPaymentStatusSafely(user);
         setPaymentCompleted(completed);
         setActivePage(completed ? 'dashboard' : 'pricing');
       } catch (error) {
@@ -223,13 +258,29 @@ function App() {
   };
 
   const handleNavigation = (page: string) => {
-    setActivePage(page);
+    // If navigating to dashboard, check payment status first
+    if (page === 'dashboard' && user) {
+      checkPaymentStatusSafely(user).then(completed => {
+        setPaymentCompleted(completed);
+        setActivePage(completed ? 'dashboard' : 'pricing');
+      }).catch(() => {
+        setActivePage('pricing');
+      });
+    } else {
+      setActivePage(page);
+    }
     setShowAuthModal(false);
   };
 
   const handleGetStarted = () => {
     if (user) {
-      setActivePage(paymentCompleted ? 'dashboard' : 'pricing');
+      // Check payment status when user clicks get started
+      checkPaymentStatusSafely(user).then(completed => {
+        setPaymentCompleted(completed);
+        setActivePage(completed ? 'dashboard' : 'pricing');
+      }).catch(() => {
+        setActivePage('pricing');
+      });
     } else {
       setAuthModalMode('signup');
       setShowAuthModal(true);
