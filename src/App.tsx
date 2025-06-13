@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ThemeProvider } from './lib/ThemeContext';
+import { ThemeProvider } from './contexts/ThemeContext';
 import { getCurrentUser, confirmPayment, hasCompletedPayment, supabase, forceSignOut } from './lib/supabase';
 import { User } from '@supabase/supabase-js';
 
