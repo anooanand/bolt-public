@@ -97,10 +97,10 @@ export async function hasCompletedPayment(): Promise<boolean> {
       return true;
     }
 
-    // FIXED: Only check Supabase if local storage doesn't have payment info
+    // FIXED: Increased timeout from 600ms to 3000ms to prevent timeout errors
     const { data: { session }, error } = await withTimeout(
       supabase.auth.getSession(),
-      600
+      3000
     );
     
     if (error || !session?.user) {
