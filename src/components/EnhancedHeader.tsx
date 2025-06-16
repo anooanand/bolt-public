@@ -4,27 +4,22 @@ import { PlanningTool } from './text-type-templates/PlanningTool';
 import { EnhancedTimer } from './text-type-templates/EnhancedTimer';
 import { ModelResponsesLibrary } from './text-type-templates/ModelResponsesLibrary';
 import { AlignedFeedback } from './text-type-templates/AlignedFeedback';
-import { PenTool, BookOpen, Clock, Settings, HelpCircle } from 'lucide-react';
+import { PenTool, BookOpen, Clock, Settings, HelpCircle, Lightbulb, Award } from 'lucide-react';
 
 interface EnhancedHeaderProps {
-  appState: {
-    content: string;
-    textType: string;
-    assistanceLevel: string;
-    timerStarted: boolean;
-  };
-  updateAppState: (updates: Partial<typeof EnhancedHeaderProps.prototype.appState>) => void;
-  onPageChange: (page: string) => void;
-  onStartExam: () => void;
-  onShowHelpCenter: () => void;
+  textType: string;
+  assistanceLevel: string;
+  onTextTypeChange: (textType: string) => void;
+  onAssistanceLevelChange: (level: string) => void;
+  onTimerStart: () => void;
 }
 
 export function EnhancedHeader({
-  appState,
-  updateAppState,
-  onPageChange,
-  onStartExam,
-  onShowHelpCenter
+  textType,
+  assistanceLevel,
+  onTextTypeChange,
+  onAssistanceLevelChange,
+  onTimerStart
 }: EnhancedHeaderProps) {
   const [showPlanningTool, setShowPlanningTool] = useState(false);
 
@@ -39,8 +34,8 @@ export function EnhancedHeader({
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
         <div className="flex items-center space-x-4">
           <select
-            value={appState.textType}
-            onChange={(e) => updateAppState({ textType: e.target.value })}
+            value={textType}
+            onChange={(e) => onTextTypeChange(e.target.value)}
             className="block rounded-md border-0 py-1.5 pl-3 pr-10 text-gray-900 dark:text-gray-100 dark:bg-gray-700 ring-1 ring-inset ring-gray-300 dark:ring-gray-600 focus:ring-2 focus:ring-indigo-600 sm:text-sm sm:leading-6"
           >
             <option value="">Select writing type...</option>
@@ -57,8 +52,8 @@ export function EnhancedHeader({
           </select>
 
           <select
-            value={appState.assistanceLevel}
-            onChange={(e) => updateAppState({ assistanceLevel: e.target.value })}
+            value={assistanceLevel}
+            onChange={(e) => onAssistanceLevelChange(e.target.value)}
             className="block rounded-md border-0 py-1.5 pl-3 pr-10 text-gray-900 dark:text-gray-100 dark:bg-gray-700 ring-1 ring-inset ring-gray-300 dark:ring-gray-600 focus:ring-2 focus:ring-indigo-600 sm:text-sm sm:leading-6"
           >
             <option value="detailed">Detailed Assistance</option>
@@ -76,12 +71,23 @@ export function EnhancedHeader({
             Planning Tool
           </button>
           
-          <TextTypeGuide textType={appState.textType} />
+          <button
+            className="inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600"
+          >
+            <Award className="h-4 w-4 mr-1.5" />
+            Model Responses
+          </button>
           
-          <EnhancedTimer onStart={() => updateAppState({ timerStarted: true })} />
+          <EnhancedTimer onStart={onTimerStart} />
           
           <button
-            onClick={onShowHelpCenter}
+            className="inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600"
+          >
+            <Lightbulb className="h-4 w-4 mr-1.5" />
+            Vocabulary
+          </button>
+          
+          <button
             className="inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600"
           >
             <HelpCircle className="h-4 w-4 mr-1.5" />
@@ -93,7 +99,7 @@ export function EnhancedHeader({
       {/* Planning Tool Modal */}
       {showPlanningTool && (
         <div className="mt-4">
-          <PlanningTool textType={appState.textType} onSavePlan={handleSavePlan} />
+          <PlanningTool textType={textType} onSavePlan={handleSavePlan} />
         </div>
       )}
     </div>
