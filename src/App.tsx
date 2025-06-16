@@ -370,7 +370,7 @@ function App() {
             </div>
           ) : activePage === 'writing' ? (
             <div className="flex flex-col h-screen">
-              <div className="p-4 border-b">
+              <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 border-b">
                 <EnhancedHeader 
                   textType={textType}
                   assistanceLevel={assistanceLevel}
@@ -385,8 +385,8 @@ function App() {
                   onExit={() => setShowExamMode(false)}
                 />
               ) : (
-                <div className="flex flex-col md:flex-row h-full">
-                  <div className="w-full md:w-3/5 h-1/2 md:h-full overflow-auto">
+                <div className="container mx-auto px-4 sm:px-6 lg:px-8 flex-1 flex flex-col md:flex-row">
+                  <div className="w-full md:w-3/5 h-full md:pr-4 mb-4 md:mb-0">
                     <WritingArea 
                       content={content}
                       onChange={setContent}
@@ -395,7 +395,7 @@ function App() {
                       onSubmit={handleSubmit}
                     />
                   </div>
-                  <div className="w-full md:w-2/5 h-1/2 md:h-full overflow-auto">
+                  <div className="w-full md:w-2/5 h-full md:pl-4">
                     {activePanel === 'coach' && (
                       <CoachPanel 
                         content={content}
