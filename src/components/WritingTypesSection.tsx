@@ -6,7 +6,7 @@ export function WritingTypesSection() {
     <section className="py-16 bg-white dark:bg-gray-900" id="writing-types">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-12">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-transparent bg-clip-text">
+          <h2 className="text-3xl md:text-4xl font-bold mb-4 text-gray-900 dark:text-white bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-400 dark:to-purple-400 text-transparent bg-clip-text">
             Writing Types for NSW Selective Exam
           </h2>
           <p className="text-lg text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
@@ -16,7 +16,7 @@ export function WritingTypesSection() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           <WritingTypeCard 
-            icon={<PenTool className="w-6 h-6 text-blue-500" />}
+            icon={<PenTool className="w-6 h-6 text-blue-500 dark:text-blue-400" />}
             title="Storytelling & Creative Writing"
             description="Master the art of creative storytelling and narrative techniques"
             types={[
@@ -28,7 +28,7 @@ export function WritingTypesSection() {
           />
 
           <WritingTypeCard 
-            icon={<Target className="w-6 h-6 text-purple-500" />}
+            icon={<Target className="w-6 h-6 text-purple-500 dark:text-purple-400" />}
             title="Argument & Debate Writing"
             description="Learn to craft compelling arguments and balanced discussions"
             types={[
@@ -39,7 +39,7 @@ export function WritingTypesSection() {
           />
 
           <WritingTypeCard 
-            icon={<Award className="w-6 h-6 text-green-500" />}
+            icon={<Award className="w-6 h-6 text-green-500 dark:text-green-400" />}
             title="Essay Scorer"
             description="Get detailed feedback and scores based on NSW marking criteria"
             features={[
@@ -52,7 +52,7 @@ export function WritingTypesSection() {
           />
 
           <WritingTypeCard 
-            icon={<BookOpen className="w-6 h-6 text-blue-500" />}
+            icon={<BookOpen className="w-6 h-6 text-blue-500 dark:text-blue-400" />}
             title="Informative & Reflective Writing"
             description="Develop clear explanations and thoughtful reflections"
             types={[
@@ -63,7 +63,7 @@ export function WritingTypesSection() {
           />
 
           <WritingTypeCard 
-            icon={<Sparkles className="w-6 h-6 text-orange-500" />}
+            icon={<Sparkles className="w-6 h-6 text-orange-500 dark:text-orange-400" />}
             title="Descriptive & Expressive Writing"
             description="Paint vivid pictures with words and express emotions"
             types={[
