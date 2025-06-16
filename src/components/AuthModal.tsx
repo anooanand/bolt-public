@@ -10,13 +10,7 @@ interface AuthModalProps {
   onNavigate: (page: string) => void;
 }
 
-export const AuthModal: React.FC<AuthModalProps> = ({ 
-  isOpen, 
-  onClose, 
-  onSuccess, 
-  initialMode,
-  onNavigate
-}) => {
+export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess, initialMode, onNavigate }) => {
   const [mode, setMode] = useState<'signin' | 'signup'>(initialMode);
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
@@ -25,8 +19,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
   const [success, setSuccess] = useState<boolean>(false);
-
-  if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,12 +52,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           onNavigate('dashboard');
         }
       }
-    } catch (err: any) {
+    } catch (err) {
       setError('An unexpected error occurred');
     } finally {
       setLoading(false);
     }
   };
+
+  if (!isOpen) return null;
 
   if (success) {
     return (
@@ -189,18 +183,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             ) : (
               mode === 'signin' ? 'Sign In' : 'Create Account'
             )}
-          </button>
-
-          {/* Skip Authentication Button */}
-          <button
-            type="button"
-            onClick={() => {
-              onClose();
-              onNavigate('home');
-            }}
-            className="w-full mt-3 bg-gray-200 hover:bg-gray-300 text-gray-800 py-2 px-4 rounded-md font-medium transition-colors"
-          >
-            Continue as Guest
           </button>
 
           {/* Mode Toggle */}

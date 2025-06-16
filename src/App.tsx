@@ -17,7 +17,6 @@ import { FAQPage } from './components/FAQPage';
 import { AboutPage } from './components/AboutPage';
 
 // Writing components
-import { SplitScreen } from './components/SplitScreen';
 import { WritingArea } from './components/WritingArea';
 import { CoachPanel } from './components/CoachPanel';
 import { ParaphrasePanel } from './components/ParaphrasePanel';
@@ -145,7 +144,7 @@ function App() {
 
         // Check for payment success URL params
         const urlParams = new URLSearchParams(window.location.search);
-        const paymentSuccess = urlParams.get('paymentSuccess');
+        const paymentSuccess = urlParams.get('payment_success');
         const plan = urlParams.get('plan');
 
         if (paymentSuccess && plan) {
@@ -358,10 +357,7 @@ function App() {
           ) : activePage === 'pricing' ? (
             <PricingPage />
           ) : activePage === 'dashboard' ? (
-            <Dashboard 
-              onNavigate={handleNavigation}
-              user={user} 
-            />
+            <Dashboard onNavigate={handleNavigation} />
           ) : activePage === 'faq' ? (
             <FAQPage />
           ) : activePage === 'about' ? (
@@ -374,21 +370,23 @@ function App() {
             </div>
           ) : activePage === 'writing' ? (
             <div className="flex flex-col h-screen">
-              <EnhancedHeader 
-                textType={textType}
-                assistanceLevel={assistanceLevel}
-                onTextTypeChange={(type) => setTextType(type)}
-                onAssistanceLevelChange={(level) => setAssistanceLevel(level)}
-                onTimerStart={() => setTimerStarted(true)}
-              />
+              <div className="p-4 border-b">
+                <EnhancedHeader 
+                  textType={textType}
+                  assistanceLevel={assistanceLevel}
+                  onTextTypeChange={setTextType}
+                  onAssistanceLevelChange={setAssistanceLevel}
+                  onTimerStart={() => setTimerStarted(true)}
+                />
+              </div>
               
               {showExamMode ? (
                 <ExamSimulationMode 
                   onExit={() => setShowExamMode(false)}
                 />
               ) : (
-                <SplitScreen
-                  left={
+                <div className="flex flex-col md:flex-row h-full">
+                  <div className="w-full md:w-3/5 h-full overflow-hidden">
                     <WritingArea 
                       content={content}
                       onChange={setContent}
@@ -396,24 +394,20 @@ function App() {
                       onTimerStart={setTimerStarted}
                       onSubmit={handleSubmit}
                     />
-                  }
-                  right={
-                    <div className="flex flex-col h-full">
-                      {activePanel === 'coach' && (
-                        <CoachPanel 
-                          content={content}
-                          textType={textType}
-                          assistanceLevel={assistanceLevel}
-                        />
-                      )}
-                      {activePanel === 'paraphrase' && (
-                        <ParaphrasePanel 
-                          onNavigate={handleNavigation}
-                        />
-                      )}
-                    </div>
-                  }
-                />
+                  </div>
+                  <div className="w-full md:w-2/5 h-full overflow-hidden">
+                    {activePanel === 'coach' && (
+                      <CoachPanel 
+                        content={content}
+                        textType={textType}
+                        assistanceLevel={assistanceLevel}
+                      />
+                    )}
+                    {activePanel === 'paraphrase' && (
+                      <ParaphrasePanel onNavigate={handleNavigation} />
+                    )}
+                  </div>
+                </div>
               )}
             </div>
           ) : activePage === 'learn' ? (

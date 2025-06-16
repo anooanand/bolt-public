@@ -1,22 +1,25 @@
 import React from 'react';
-import { EnhancedWritingArea } from './EnhancedWritingArea';
-import { TextToSpeech } from './TextToSpeech';
-import { NSWCriteriaTracker } from './NSWCriteriaTracker';
-import { EnhancedNSWFeedback } from './EnhancedNSWFeedback';
 
 interface SplitScreenProps {
-  left: React.ReactNode;
-  right: React.ReactNode;
+  children: React.ReactNode;
 }
 
-export function SplitScreen({ left, right }: SplitScreenProps) {
+export function SplitScreen({ children }: SplitScreenProps) {
+  // Ensure there are exactly two children
+  const childrenArray = React.Children.toArray(children);
+  
+  if (childrenArray.length !== 2) {
+    console.error('SplitScreen component requires exactly two children');
+    return <div className="h-full">{children}</div>;
+  }
+
   return (
     <div className="flex flex-col md:flex-row h-full">
-      <div className="w-full md:w-3/5 h-full overflow-hidden">
-        {left}
+      <div className="w-full md:w-3/5 h-full md:h-full overflow-hidden">
+        {childrenArray[0]}
       </div>
-      <div className="w-full md:w-2/5 h-full overflow-hidden">
-        {right}
+      <div className="w-full md:w-2/5 h-full md:h-full overflow-hidden">
+        {childrenArray[1]}
       </div>
     </div>
   );
