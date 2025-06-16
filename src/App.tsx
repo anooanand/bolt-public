@@ -30,6 +30,8 @@ import { EnhancedHeader } from './components/EnhancedHeader';
 import { SpecializedCoaching } from './components/text-type-templates/SpecializedCoaching';
 import { BrainstormingTools } from './components/BrainstormingTools';
 import { WritingAccessCheck } from './components/WritingAccessCheck';
+import { WritingToolbar } from './components/WritingToolbar';
+import { PlanningToolModal } from './components/PlanningToolModal';
 
 function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -52,6 +54,7 @@ function App() {
   const [activePanel, setActivePanel] = useState<'coach' | 'paraphrase'>('coach');
   const [showExamMode, setShowExamMode] = useState(false);
   const [showHelpCenter, setShowHelpCenter] = useState(false);
+  const [showPlanningTool, setShowPlanningTool] = useState(false);
 
   // Emergency reset function
   const emergencyReset = () => {
@@ -319,6 +322,14 @@ function App() {
     setShowExamMode(true);
   };
 
+  const handleSavePlan = (planData: any) => {
+    // Save plan data to localStorage or state
+    localStorage.setItem('writing_plan', JSON.stringify(planData));
+    setShowPlanningTool(false);
+    // Show a notification or toast
+    alert('Plan saved successfully!');
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
@@ -382,6 +393,14 @@ function App() {
                   assistanceLevel={assistanceLevel}
                   onTextTypeChange={setTextType}
                   onAssistanceLevelChange={setAssistanceLevel}
+                  onTimerStart={() => setTimerStarted(true)}
+                />
+                
+                <WritingToolbar 
+                  content={content}
+                  textType={textType}
+                  onShowHelpCenter={() => setShowHelpCenter(true)}
+                  onShowPlanningTool={() => setShowPlanningTool(true)}
                   onTimerStart={() => setTimerStarted(true)}
                 />
                 
@@ -481,6 +500,14 @@ function App() {
         <HelpCenter 
           isOpen={showHelpCenter}
           onClose={() => setShowHelpCenter(false)} 
+        />
+
+        {/* Planning Tool Modal */}
+        <PlanningToolModal
+          isOpen={showPlanningTool}
+          onClose={() => setShowPlanningTool(false)}
+          textType={textType}
+          onSavePlan={handleSavePlan}
         />
 
         <AuthModal

@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { generatePrompt, getSynonyms, rephraseSentence, evaluateEssay } from '../lib/openai';
-import { AlertCircle, Send } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
 import { InlineSuggestionPopup } from './InlineSuggestionPopup';
-import { AutoSave } from './AutoSave';
+import { WritingStatusBar } from './WritingStatusBar';
 import './responsive.css';
 
 interface WritingAreaProps {
@@ -42,6 +42,17 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
       setShowPromptButtons(false);
     }
   }, [prompt, onTimerStart]);
+
+  // Load saved prompt from localStorage
+  useEffect(() => {
+    if (textType) {
+      const savedPrompt = localStorage.getItem(`${textType}_prompt`);
+      if (savedPrompt) {
+        setPrompt(savedPrompt);
+        setShowPromptButtons(false);
+      }
+    }
+  }, [textType]);
 
   const analyzeText = useCallback((text: string) => {
     const newIssues: WritingIssue[] = [];
@@ -217,7 +228,7 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
       try {
         const text = content.slice(selectedIssue.start, selectedIssue.end);
         const alternatives = await rephraseSentence(text);
-        setSuggestions(alternatives);
+        setSuggestions(alternatives.split(',').map(s => s.trim()));
       } catch (error) {
         console.error('Error getting alternatives:', error);
       } finally {
@@ -263,6 +274,10 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
     const newPrompt = await generatePrompt(textType);
     if (newPrompt) {
       setPrompt(newPrompt);
+      // Save prompt to localStorage
+      if (textType) {
+        localStorage.setItem(`${textType}_prompt`, newPrompt);
+      }
       setShowCustomPrompt(false);
     }
     setIsGenerating(false);
@@ -272,25 +287,34 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
     e.preventDefault();
     if (customPrompt.trim()) {
       setPrompt(customPrompt);
+      // Save prompt to localStorage
+      if (textType) {
+        localStorage.setItem(`${textType}_prompt`, customPrompt);
+      }
       setShowCustomPrompt(false);
     }
   };
 
-  const handleSubmitEssay = () => {
-    onSubmit();
+  const handleRestoreContent = (restoredContent: string, restoredTextType: string) => {
+    onChange(restoredContent);
+    if (restoredTextType) {
+      // You would need to lift this state up or use a context
+      // For now, we'll just log it
+      console.log('Restored text type:', restoredTextType);
+    }
   };
 
   const noTypeSelected = !textType;
 
   return (
-    <div ref={containerRef} className="h-full flex flex-col bg-white rounded-lg shadow-sm writing-area-container">
-      <div className="p-4 border-b space-y-4 content-spacing">
+    <div ref={containerRef} className="h-full flex flex-col bg-white dark:bg-gray-800 rounded-lg shadow-sm writing-area-container">
+      <div className="p-4 border-b border-gray-200 dark:border-gray-700 space-y-4 content-spacing">
         <div className="flex flex-wrap justify-between items-center gap-2">
-          <h2 className="text-lg font-medium text-gray-900 capitalize">
+          <h2 className="text-lg font-medium text-gray-900 dark:text-white capitalize">
             {textType ? `${textType} Writing` : 'Select Writing Type'}
           </h2>
           {noTypeSelected ? (
-            <div className="flex items-center text-amber-600 text-sm">
+            <div className="flex items-center text-amber-600 dark:text-amber-400 text-sm">
               <AlertCircle className="w-4 h-4 mr-2" />
               Please select a writing type first
             </div>
@@ -320,14 +344,14 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
               value={customPrompt}
               onChange={(e) => setCustomPrompt(e.target.value)}
               placeholder="Enter your own writing prompt..."
-              className="w-full p-2 border rounded-md text-sm"
+              className="w-full p-2 border rounded-md text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
               rows={3}
             />
             <div className="flex justify-end space-x-2">
               <button
                 type="button"
                 onClick={() => setShowCustomPrompt(false)}
-                className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800"
+                className="px-3 py-1.5 text-sm text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100"
               >
                 Cancel
               </button>
@@ -343,9 +367,9 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
         )}
 
         {prompt && !showCustomPrompt && !noTypeSelected && (
-          <div className="bg-blue-50 p-4 rounded-md">
-            <h3 className="font-medium text-blue-900 mb-2">Writing Prompt:</h3>
-            <p className="text-blue-800">{prompt}</p>
+          <div className="bg-blue-50 dark:bg-blue-900/30 p-4 rounded-md">
+            <h3 className="font-medium text-blue-900 dark:text-blue-100 mb-2">Writing Prompt:</h3>
+            <p className="text-blue-800 dark:text-blue-200">{prompt}</p>
           </div>
         )}
       </div>
@@ -357,7 +381,7 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
           onChange={handleContentChange}
           onScroll={handleScroll}
           disabled={noTypeSelected || !prompt}
-          className="absolute inset-0 w-full h-full p-4 text-gray-900 resize-none focus:outline-none disabled:bg-gray-50 disabled:cursor-not-allowed overflow-y-auto writing-textarea"
+          className="absolute inset-0 w-full h-full p-4 text-gray-900 dark:text-white resize-none focus:outline-none disabled:bg-gray-100 dark:disabled:bg-gray-700 disabled:cursor-not-allowed overflow-y-auto writing-textarea"
           placeholder={noTypeSelected ? "Select a writing type to begin..." : !prompt ? "Choose or enter a prompt to start writing..." : "Begin writing here..."}
           style={{ 
             caretColor: 'black',
@@ -369,7 +393,7 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
         />
         <div 
           ref={overlayRef}
-          className="absolute inset-0 pointer-events-none p-4 text-gray-900 overflow-y-hidden"
+          className="absolute inset-0 pointer-events-none p-4 text-gray-900 dark:text-white overflow-y-hidden"
           style={{ whiteSpace: 'pre-wrap', wordWrap: 'break-word', fontSize: '16px', lineHeight: '1.6' }}
         >
           {content.split('').map((char, index) => {
@@ -403,56 +427,16 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
             start={selectedIssue.start}
             end={selectedIssue.end}
             isLoading={isLoadingSuggestions}
+            isDarkMode={document.documentElement.classList.contains('dark')}
           />
         )}
       </div>
 
-      <div className="p-4 border-t bg-gray-50 content-spacing">
-        <div className="space-y-4">
-          <div className="flex justify-between items-center">
-            <div className="text-sm text-gray-500">
-              Word count: {content.split(/\s+/).filter(Boolean).length}
-            </div>
-            <AutoSave 
-              content={content} 
-              textType={textType}
-            />
-          </div>
-
-          <div className="flex justify-between items-center">
-            <div className="flex flex-wrap gap-2 text-xs">
-              <div className="flex items-center">
-                <span className="w-3 h-3 bg-red-100 border-b-2 border-red-400 mr-1"></span>
-                <span>Spelling</span>
-              </div>
-              <div className="flex items-center">
-                <span className="w-3 h-3 bg-yellow-100 border-b-2 border-yellow-400 mr-1"></span>
-                <span>Grammar</span>
-              </div>
-              <div className="flex items-center">
-                <span className="w-3 h-3 bg-green-100 border-b-2 border-green-400 mr-1"></span>
-                <span>Vocabulary</span>
-              </div>
-              <div className="flex items-center">
-                <span className="w-3 h-3 bg-purple-100 border-b-2 border-purple-400 mr-1"></span>
-                <span>Structure</span>
-              </div>
-              <div className="flex items-center">
-                <span className="w-3 h-3 bg-orange-100 border-b-2 border-orange-400 mr-1"></span>
-                <span>Style</span>
-              </div>
-            </div>
-            
-            <button
-              onClick={handleSubmitEssay}
-              disabled={!content.trim()}
-              className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium touch-friendly-button"
-            >
-              Submit Essay
-            </button>
-          </div>
-        </div>
-      </div>
+      <WritingStatusBar 
+        content={content} 
+        textType={textType}
+        onRestore={handleRestoreContent}
+      />
     </div>
   );
 }
