@@ -15,10 +15,9 @@ import { Dashboard } from './components/Dashboard';
 import { AuthModal } from './components/AuthModal';
 import { FAQPage } from './components/FAQPage';
 import { AboutPage } from './components/AboutPage';
-import { SignupPage } from './components/SignupPage';
-import { WritingAccessCheck } from './components/WritingAccessCheck';
 
 // Writing components
+import { SplitScreen } from './components/SplitScreen';
 import { WritingArea } from './components/WritingArea';
 import { CoachPanel } from './components/CoachPanel';
 import { ParaphrasePanel } from './components/ParaphrasePanel';
@@ -267,8 +266,6 @@ function App() {
       }).catch(() => {
         setActivePage('pricing');
       });
-    } else if (page === 'signup') {
-      setActivePage('signup');
     } else {
       setActivePage(page);
     }
@@ -291,12 +288,7 @@ function App() {
   };
 
   const handleStartWriting = () => {
-    if (user) {
-      setActivePage('writing');
-    } else {
-      setAuthModalMode('signup');
-      setShowAuthModal(true);
-    }
+    setActivePage('writing');
   };
 
   // Writing app state management
@@ -337,8 +329,8 @@ function App() {
     <ThemeProvider>
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
         <NavBar
-          activePage={activePage}
           onNavigate={handleNavigation}
+          activePage={activePage}
           user={user}
           onSignInClick={() => {
             setAuthModalMode('signin');
@@ -363,12 +355,13 @@ function App() {
                 setShowAuthModal(true);
               }}
             />
-          ) : activePage === 'signup' ? (
-            <SignupPage onNavigate={handleNavigation} />
           ) : activePage === 'pricing' ? (
             <PricingPage />
           ) : activePage === 'dashboard' ? (
-            <Dashboard user={user} onNavigate={handleNavigation} />
+            <Dashboard 
+              onNavigate={handleNavigation}
+              user={user} 
+            />
           ) : activePage === 'faq' ? (
             <FAQPage />
           ) : activePage === 'about' ? (
@@ -380,68 +373,83 @@ function App() {
               <WritingTypesSection />
             </div>
           ) : activePage === 'writing' ? (
-            <WritingAccessCheck onNavigate={handleNavigation}>
-              <div className="flex flex-col h-screen">
-                <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 border-b">
-                  <EnhancedHeader 
-                    textType={textType}
-                    assistanceLevel={assistanceLevel}
-                    onTextTypeChange={setTextType}
-                    onAssistanceLevelChange={setAssistanceLevel}
-                    onTimerStart={() => setTimerStarted(true)}
-                  />
-                </div>
-                
-                {showExamMode ? (
-                  <ExamSimulationMode 
-                    onExit={() => setShowExamMode(false)}
-                  />
-                ) : (
-                  <div className="container mx-auto px-4 sm:px-6 lg:px-8 flex-1 flex flex-col md:flex-row">
-                    <div className="w-full md:w-3/5 h-full md:pr-4 mb-4 md:mb-0">
-                      <WritingArea 
-                        content={content}
-                        onChange={setContent}
-                        textType={textType}
-                        onTimerStart={setTimerStarted}
-                        onSubmit={handleSubmit}
-                      />
-                    </div>
-                    <div className="w-full md:w-2/5 h-full md:pl-4">
-                      {activePanel === 'coach' && (
-                        <CoachPanel 
-                          content={content}
-                          textType={textType}
-                          assistanceLevel={assistanceLevel}
-                        />
-                      )}
-                      {activePanel === 'paraphrase' && (
-                        <ParaphrasePanel 
-                          onNavigate={handleNavigation}
-                          selectedText={selectedText}
-                        />
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </WritingAccessCheck>
-          ) : activePage === 'learn' ? (
-            <WritingAccessCheck onNavigate={handleNavigation}>
-              <LearningPage 
-                state={appState}
-                onStateChange={updateAppState}
-                onNavigateToWriting={() => setActivePage('writing')}
-              />
-            </WritingAccessCheck>
-          ) : activePage === 'feedback' ? (
-            <WritingAccessCheck onNavigate={handleNavigation}>
-              <EssayFeedbackPage 
-                content={content}
+            <div className="flex flex-col h-screen">
+              <EnhancedHeader 
                 textType={textType}
-                onBack={() => setActivePage('writing')}
+                assistanceLevel={assistanceLevel}
+                onTextTypeChange={(type) => setTextType(type)}
+                onAssistanceLevelChange={(level) => setAssistanceLevel(level)}
+                onTimerStart={() => setTimerStarted(true)}
               />
-            </WritingAccessCheck>
+              
+              {showExamMode ? (
+                <ExamSimulationMode 
+                  onExit={() => setShowExamMode(false)}
+                />
+              ) : (
+                <SplitScreen>
+                  <WritingArea 
+                    content={content}
+                    onChange={setContent}
+                    textType={textType}
+                    onTimerStart={setTimerStarted}
+                    onSubmit={handleSubmit}
+                  />
+                  <div className="flex flex-col h-full">
+                    <div className="bg-white dark:bg-gray-800 p-2 border-b flex">
+                      <button
+                        onClick={() => setActivePanel('coach')}
+                        className={`px-3 py-1 text-sm font-medium rounded-md ${
+                          activePanel === 'coach'
+                            ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
+                            : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                        }`}
+                        data-panel="coach"
+                      >
+                        Writing Coach
+                      </button>
+                      <button
+                        onClick={() => setActivePanel('paraphrase')}
+                        className={`px-3 py-1 text-sm font-medium rounded-md ml-2 ${
+                          activePanel === 'paraphrase'
+                            ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
+                            : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                        }`}
+                        data-panel="paraphrase"
+                      >
+                        Paraphrase Tool
+                      </button>
+                    </div>
+                    
+                    {activePanel === 'coach' && (
+                      <CoachPanel 
+                        content={content}
+                        textType={textType}
+                        assistanceLevel={assistanceLevel}
+                      />
+                    )}
+                    {activePanel === 'paraphrase' && (
+                      <ParaphrasePanel 
+                        selectedText={selectedText}
+                        onNavigate={handleNavigation}
+                      />
+                    )}
+                  </div>
+                </SplitScreen>
+              )}
+            </div>
+          ) : activePage === 'learn' ? (
+            <LearningPage 
+              state={appState}
+              onStateChange={updateAppState}
+              onNavigateToWriting={() => setActivePage('writing')}
+            />
+          ) : activePage === 'feedback' ? (
+            <EssayFeedbackPage 
+              content={content}
+              textType={textType}
+              onBack={() => setActivePage('writing')}
+            />
           ) : (
             <>
               <HeroSection 

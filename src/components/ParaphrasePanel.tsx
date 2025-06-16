@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { 
   RefreshCw, 
   Copy, 
@@ -10,11 +10,10 @@ import {
   Lightbulb,
   Zap
 } from 'lucide-react';
-import { hasCompletedPayment, hasTemporaryAccess } from '../lib/supabase';
 
 interface ParaphrasePanelProps {
-  onNavigate?: (page: string) => void;
-  selectedText?: string;
+  selectedText: string;
+  onNavigate: (page: string) => void;
 }
 
 interface ParaphraseHistory {
@@ -27,37 +26,16 @@ interface ParaphraseHistory {
 
 type ParaphraseMode = 'standard' | 'formal' | 'casual' | 'creative' | 'concise' | 'expand';
 
-export function ParaphrasePanel({ onNavigate, selectedText = '' }: ParaphrasePanelProps) {
+export function ParaphrasePanel({ selectedText, onNavigate }: ParaphrasePanelProps) {
   const [inputText, setInputText] = useState<string>(selectedText || '');
   const [outputText, setOutputText] = useState<string>('');
   const [selectedMode, setSelectedMode] = useState<ParaphraseMode>('standard');
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [showHistory, setShowHistory] = useState<boolean>(false);
   const [history, setHistory] = useState<ParaphraseHistory[]>([]);
-  const [isPaidUser, setIsPaidUser] = useState<boolean>(false);
-  const [hasTempAccess, setHasTempAccess] = useState<boolean>(false);
-
-  // Check access status on component mount
-  useEffect(() => {
-    const checkAccess = async () => {
-      try {
-        // Check for temporary access
-        const tempAccess = await hasTemporaryAccess();
-        setHasTempAccess(tempAccess);
-        
-        // Check for permanent access
-        const paymentCompleted = await hasCompletedPayment();
-        setIsPaidUser(paymentCompleted);
-      } catch (error) {
-        console.error('Error checking access status:', error);
-      }
-    };
-    
-    checkAccess();
-  }, []);
 
   // Update input text when selectedText changes
-  useEffect(() => {
+  React.useEffect(() => {
     if (selectedText) {
       setInputText(selectedText);
     }
@@ -90,36 +68,27 @@ export function ParaphrasePanel({ onNavigate, selectedText = '' }: ParaphrasePan
       name: 'Creative',
       description: 'Imaginative and expressive rewriting',
       icon: Wand2,
-      color: 'bg-pink-500',
-      isPro: true
+      color: 'bg-pink-500'
     },
     {
       id: 'concise' as ParaphraseMode,
       name: 'Concise',
       description: 'Shorter, more direct version',
       icon: Zap,
-      color: 'bg-orange-500',
-      isPro: true
+      color: 'bg-orange-500'
     },
     {
       id: 'expand' as ParaphraseMode,
       name: 'Expand',
       description: 'Detailed, elaborated version',
       icon: ArrowRightLeft,
-      color: 'bg-indigo-500',
-      isPro: true
+      color: 'bg-indigo-500'
     }
   ];
 
   const handleParaphrase = async () => {
     if (!inputText.trim()) return;
     
-    const selectedModeData = paraphraseModes.find(mode => mode.id === selectedMode);
-    if (selectedModeData?.isPro && !isPaidUser && !hasTempAccess) {
-      alert('Upgrade to Pro to use this paraphrasing mode');
-      return;
-    }
-
     setIsProcessing(true);
     
     // Simulate AI paraphrasing
@@ -173,7 +142,7 @@ export function ParaphrasePanel({ onNavigate, selectedText = '' }: ParaphrasePan
       
       setHistory(prev => [newHistoryItem, ...prev.slice(0, 9)]); // Keep last 10
       setIsProcessing(false);
-    }, 2000);
+    }, 1500);
   };
 
   const handleCopy = (text: string) => {
@@ -206,165 +175,189 @@ export function ParaphrasePanel({ onNavigate, selectedText = '' }: ParaphrasePan
   };
 
   return (
-    <div className="h-full flex flex-col bg-white dark:bg-gray-800 overflow-hidden rounded-lg shadow-sm">
+    <div className="h-full flex flex-col bg-white dark:bg-gray-800 overflow-y-auto">
       <div className="p-4 border-b">
-        <h2 className="text-lg font-medium text-gray-900 dark:text-white">Paraphrase Tool</h2>
-        <p className="text-sm text-gray-500 dark:text-gray-400">Rewrite selected text in different styles</p>
+        <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
+          Paraphrase Tool
+        </h2>
+        
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-4">
+          {paraphraseModes.slice(0, 3).map((mode) => {
+            const Icon = mode.icon;
+            return (
+              <button
+                key={mode.id}
+                onClick={() => setSelectedMode(mode.id)}
+                className={`p-2 rounded-lg border-2 transition-all ${
+                  selectedMode === mode.id
+                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30'
+                    : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                }`}
+              >
+                <div className="flex items-center">
+                  <div className={`p-1.5 ${mode.color} rounded-lg mr-2`}>
+                    <Icon className="w-3 h-3 text-white" />
+                  </div>
+                  <span className="text-xs font-medium text-gray-900 dark:text-white">
+                    {mode.name}
+                  </span>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+        
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-4">
+          {paraphraseModes.slice(3).map((mode) => {
+            const Icon = mode.icon;
+            return (
+              <button
+                key={mode.id}
+                onClick={() => setSelectedMode(mode.id)}
+                className={`p-2 rounded-lg border-2 transition-all ${
+                  selectedMode === mode.id
+                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30'
+                    : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                }`}
+              >
+                <div className="flex items-center">
+                  <div className={`p-1.5 ${mode.color} rounded-lg mr-2`}>
+                    <Icon className="w-3 h-3 text-white" />
+                  </div>
+                  <span className="text-xs font-medium text-gray-900 dark:text-white">
+                    {mode.name}
+                  </span>
+                </div>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
-      <div className="p-4 space-y-4 flex-grow overflow-auto">
-        {/* Mode Selection */}
-        <div className="space-y-2">
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-            Paraphrasing Mode
-          </label>
-          <div className="grid grid-cols-2 gap-2">
-            {paraphraseModes.slice(0, 4).map((mode) => {
-              const Icon = mode.icon;
-              const isLocked = mode.isPro && !isPaidUser && !hasTempAccess;
-              
-              return (
-                <button
-                  key={mode.id}
-                  onClick={() => !isLocked && setSelectedMode(mode.id)}
-                  disabled={isLocked}
-                  className={`p-2 rounded-lg border-2 transition-all ${
-                    selectedMode === mode.id
-                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30'
-                      : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
-                  } ${isLocked ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-                >
-                  <div className="flex items-center">
-                    <div className={`p-1 ${mode.color} rounded-lg mr-2`}>
-                      <Icon className="w-3 h-3 text-white" />
-                    </div>
-                    <div className="text-left">
-                      <h3 className="text-xs font-medium text-gray-900 dark:text-white">
-                        {mode.name}
-                        {isLocked && (
-                          <span className="ml-1 text-xxs bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 px-1 rounded">
-                            Pro
-                          </span>
-                        )}
-                      </h3>
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Input */}
-        <div className="space-y-2">
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+      <div className="p-4 flex-1 overflow-y-auto">
+        <div className="mb-4">
+          <label htmlFor="inputText" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             Original Text
           </label>
           <textarea
+            id="inputText"
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
-            placeholder="Enter or paste text to paraphrase..."
-            className="w-full h-24 p-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-blue-500 focus:border-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+            placeholder="Enter text to paraphrase..."
+            className="w-full h-24 p-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
           />
         </div>
 
-        <button
-          onClick={handleParaphrase}
-          disabled={!inputText.trim() || isProcessing}
-          className="w-full flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-        >
-          {isProcessing ? (
-            <>
-              <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
-              Processing...
-            </>
-          ) : (
-            <>
-              <RefreshCw className="w-4 h-4 mr-2" />
-              Paraphrase
-            </>
-          )}
-        </button>
+        <div className="flex justify-center mb-4">
+          <button
+            onClick={handleParaphrase}
+            disabled={isProcessing || !inputText.trim()}
+            className={`px-4 py-2 rounded-md text-white text-sm font-medium flex items-center ${
+              isProcessing || !inputText.trim()
+                ? 'bg-gray-400 cursor-not-allowed'
+                : 'bg-blue-600 hover:bg-blue-700'
+            }`}
+          >
+            {isProcessing ? (
+              <>
+                <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
+                Paraphrasing...
+              </>
+            ) : (
+              <>
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Paraphrase
+              </>
+            )}
+          </button>
+        </div>
 
-        {/* Output */}
-        {outputText && (
-          <div className="space-y-2">
-            <div className="flex justify-between items-center">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Paraphrased Text
-              </label>
-              <div className="flex space-x-2">
-                <button
-                  onClick={() => handleCopy(outputText)}
-                  className="p-1 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
-                  title="Copy to clipboard"
-                >
-                  <Copy className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={handleSwap}
-                  className="p-1 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
-                  title="Use as input"
-                >
-                  <ArrowRightLeft className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-            <div className="p-3 bg-gray-50 dark:bg-gray-700 rounded-md">
-              <p className="text-gray-900 dark:text-white whitespace-pre-wrap">{outputText}</p>
+        <div className="mb-4">
+          <div className="flex justify-between items-center mb-1">
+            <label htmlFor="outputText" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              Paraphrased Text
+            </label>
+            <div className="flex space-x-1">
+              {outputText && (
+                <>
+                  <button
+                    onClick={() => handleCopy(outputText)}
+                    className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                    title="Copy to clipboard"
+                  >
+                    <Copy className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={handleSwap}
+                    className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                    title="Use as input"
+                  >
+                    <ArrowRightLeft className="h-4 w-4" />
+                  </button>
+                </>
+              )}
             </div>
           </div>
-        )}
-      </div>
+          <div className="w-full h-24 p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white overflow-y-auto">
+            {outputText || (
+              <span className="text-gray-400 dark:text-gray-500">Paraphrased text will appear here...</span>
+            )}
+          </div>
+        </div>
 
-      <div className="p-4 border-t bg-gray-50 dark:bg-gray-700">
-        <div className="flex justify-between items-center">
+        {/* History Section */}
+        <div>
           <button
             onClick={() => setShowHistory(!showHistory)}
-            className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
+            className="flex items-center text-sm text-gray-600 dark:text-gray-400 mb-2"
           >
-            <History className="w-4 h-4 inline mr-1" />
-            History ({history.length})
+            <History className="h-4 w-4 mr-1" />
+            {showHistory ? 'Hide History' : 'Show History'} ({history.length})
           </button>
           
-          {!isPaidUser && !hasTempAccess && onNavigate && (
+          {showHistory && history.length > 0 && (
+            <div className="space-y-2 max-h-40 overflow-y-auto">
+              {history.map((item) => (
+                <div
+                  key={item.id}
+                  className="p-2 bg-gray-50 dark:bg-gray-700 rounded-md cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 text-sm"
+                  onClick={() => {
+                    setInputText(item.original);
+                    setOutputText(item.paraphrased);
+                    setSelectedMode(item.mode as ParaphraseMode);
+                  }}
+                >
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="font-medium text-gray-700 dark:text-gray-300">
+                      {item.mode.charAt(0).toUpperCase() + item.mode.slice(1)}
+                    </span>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                      {item.timestamp.toLocaleTimeString()}
+                    </span>
+                  </div>
+                  <p className="text-gray-600 dark:text-gray-300 line-clamp-1">{item.original}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="p-4 border-t bg-gray-50 dark:bg-gray-800">
+        <div className="flex justify-between items-center">
+          <div className="text-xs text-gray-500 dark:text-gray-400">
+            {selectedMode.charAt(0).toUpperCase() + selectedMode.slice(1)} Mode
+          </div>
+          {outputText && (
             <button
-              onClick={() => onNavigate('pricing')}
-              className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium"
+              onClick={handleExport}
+              className="flex items-center text-xs text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
             >
-              Upgrade for Pro Features
+              <Download className="h-3 w-3 mr-1" />
+              Export
             </button>
           )}
         </div>
-        
-        {/* History Panel */}
-        {showHistory && history.length > 0 && (
-          <div className="mt-4 space-y-3 max-h-64 overflow-y-auto">
-            {history.map((item) => (
-              <div
-                key={item.id}
-                className="p-3 bg-gray-100 dark:bg-gray-600 rounded-lg cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-500"
-                onClick={() => {
-                  setInputText(item.original);
-                  setOutputText(item.paraphrased);
-                  setSelectedMode(item.mode as ParaphraseMode);
-                }}
-              >
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs font-medium text-blue-600 dark:text-blue-400 uppercase">
-                    {item.mode}
-                  </span>
-                  <span className="text-xs text-gray-500 dark:text-gray-400">
-                    {item.timestamp.toLocaleTimeString()}
-                  </span>
-                </div>
-                <p className="text-sm text-gray-700 dark:text-gray-300 line-clamp-2">
-                  {item.original.substring(0, 100)}...
-                </p>
-              </div>
-            ))}
-          </div>
-        )}
       </div>
     </div>
   );
