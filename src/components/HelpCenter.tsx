@@ -48,7 +48,7 @@ export function HelpCenter({ isOpen, onClose }: HelpCenterProps) {
   const faqs = [
     {
       question: 'How does the AI writing coach work?',
-      answer: 'Our AI writing coach analyzes your writing in real-time, providing feedback on structure, vocabulary, grammar, and style. It's designed specifically for NSW Selective School exam preparation, focusing on the criteria that matter most in these assessments.'
+      answer: 'Our AI writing coach analyzes your writing in real-time, providing feedback on structure, vocabulary, grammar, and style. It\'s designed specifically for NSW Selective School exam preparation, focusing on the criteria that matter most in these assessments.'
     },
     {
       question: 'Will the AI write essays for me?',
@@ -60,7 +60,7 @@ export function HelpCenter({ isOpen, onClose }: HelpCenterProps) {
     },
     {
       question: 'Can I use this for school assignments?',
-      answer: 'Yes! While our platform is optimized for NSW Selective School exam preparation, the writing skills you'll develop are valuable for all academic writing. Just be sure to follow your school's guidelines regarding the use of AI tools.'
+      answer: 'Yes! While our platform is optimized for NSW Selective School exam preparation, the writing skills you\'ll develop are valuable for all academic writing. Just be sure to follow your school's guidelines regarding the use of AI tools.'
     },
     {
       question: 'How do I cancel my subscription?',
