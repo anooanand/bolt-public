@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { generatePrompt, getSynonyms, rephraseSentence } from '../lib/openai';
-import { AlertCircle } from 'lucide-react';
+import { generatePrompt, getSynonyms, rephraseSentence, evaluateEssay } from '../lib/openai';
+import { AlertCircle, Send } from 'lucide-react';
 import { InlineSuggestionPopup } from './InlineSuggestionPopup';
 import { AutoSave } from './AutoSave';
 import './responsive.css';
@@ -43,7 +43,7 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
     }
   }, [prompt, onTimerStart]);
 
-  const analyzeText = useCallback((text: string) => {
+  const analyzeText = React.useCallback((text: string) => {
     const newIssues: WritingIssue[] = [];
     
     // Common spelling mistakes (only incorrect spellings)
@@ -217,7 +217,7 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
       try {
         const text = content.slice(selectedIssue.start, selectedIssue.end);
         const alternatives = await rephraseSentence(text);
-        setSuggestions(alternatives ? [alternatives] : []);
+        setSuggestions(alternatives);
       } catch (error) {
         console.error('Error getting alternatives:', error);
       } finally {
