@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { getCurrentUser, confirmPayment, hasCompletedPayment, supabase, forceSignOut } from './lib/supabase';
 import { User } from '@supabase/supabase-js';
@@ -314,6 +314,10 @@ function App() {
     setShowExamMode(true);
   };
 
+  const handlePanelChange = (panel: 'coach' | 'paraphrase') => {
+    setActivePanel(panel);
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
@@ -329,8 +333,8 @@ function App() {
     <ThemeProvider>
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
         <NavBar
-          activePage={activePage}
           onNavigate={handleNavigation}
+          activePage={activePage}
           user={user}
           onSignInClick={() => {
             setAuthModalMode('signin');
@@ -358,10 +362,7 @@ function App() {
           ) : activePage === 'pricing' ? (
             <PricingPage />
           ) : activePage === 'dashboard' ? (
-            <Dashboard 
-              onNavigate={handleNavigation}
-              user={user} 
-            />
+            <Dashboard onNavigate={handleNavigation} />
           ) : activePage === 'faq' ? (
             <FAQPage />
           ) : activePage === 'about' ? (
@@ -374,73 +375,71 @@ function App() {
             </div>
           ) : activePage === 'writing' ? (
             <div className="flex flex-col h-screen">
-              <div className="container mx-auto px-4 py-2">
-                <EnhancedHeader 
-                  textType={textType}
-                  assistanceLevel={assistanceLevel}
-                  onTextTypeChange={setTextType}
-                  onAssistanceLevelChange={setAssistanceLevel}
-                  onTimerStart={() => setTimerStarted(true)}
-                />
-              </div>
+              <EnhancedHeader 
+                appState={appState}
+                updateAppState={updateAppState}
+                onPageChange={handleNavigation}
+                onStartExam={handleStartExam}
+                onShowHelpCenter={() => setShowHelpCenter(true)}
+              />
               
               {showExamMode ? (
                 <ExamSimulationMode 
                   onExit={() => setShowExamMode(false)}
                 />
               ) : (
-                <div className="flex-1 container mx-auto">
-                  <SplitScreen>
-                    <WritingArea 
+                <SplitScreen>
+                  <WritingArea 
+                    content={content}
+                    onChange={setContent}
+                    textType={textType}
+                    onTimerStart={setTimerStarted}
+                    onSubmit={handleSubmit}
+                  />
+                  {activePanel === 'coach' ? (
+                    <CoachPanel 
                       content={content}
-                      onChange={setContent}
                       textType={textType}
-                      onTimerStart={setTimerStarted}
-                      onSubmit={handleSubmit}
+                      assistanceLevel={assistanceLevel}
                     />
-                    <div className="flex flex-col h-full">
-                      <div className="bg-white dark:bg-gray-800 p-2 border-b flex">
-                        <button
-                          onClick={() => setActivePanel('coach')}
-                          className={`px-3 py-1 text-sm font-medium rounded-md ${
-                            activePanel === 'coach'
-                              ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
-                              : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
-                          }`}
-                          data-panel="coach"
-                        >
-                          Writing Coach
-                        </button>
-                        <button
-                          onClick={() => setActivePanel('paraphrase')}
-                          className={`px-3 py-1 text-sm font-medium rounded-md ml-2 ${
-                            activePanel === 'paraphrase'
-                              ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
-                              : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
-                          }`}
-                          data-panel="paraphrase"
-                        >
-                          Paraphrase Tool
-                        </button>
-                      </div>
-                      
-                      {activePanel === 'coach' && (
-                        <CoachPanel 
-                          content={content}
-                          textType={textType}
-                          assistanceLevel={assistanceLevel}
-                        />
-                      )}
-                      {activePanel === 'paraphrase' && (
-                        <ParaphrasePanel 
-                          selectedText={selectedText}
-                          onNavigate={handleNavigation}
-                        />
-                      )}
-                    </div>
-                  </SplitScreen>
-                </div>
+                  ) : (
+                    <ParaphrasePanel 
+                      selectedText={selectedText}
+                      onNavigate={handleNavigation}
+                    />
+                  )}
+                </SplitScreen>
               )}
+              
+              {/* Panel Switcher */}
+              <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-2 flex justify-center">
+                <div className="inline-flex rounded-md shadow-sm" role="group">
+                  <button
+                    type="button"
+                    onClick={() => handlePanelChange('coach')}
+                    data-panel="coach"
+                    className={`px-4 py-2 text-sm font-medium ${
+                      activePanel === 'coach'
+                        ? 'bg-indigo-600 text-white'
+                        : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600'
+                    } border border-gray-200 dark:border-gray-600 rounded-l-lg`}
+                  >
+                    Writing Coach
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handlePanelChange('paraphrase')}
+                    data-panel="paraphrase"
+                    className={`px-4 py-2 text-sm font-medium ${
+                      activePanel === 'paraphrase'
+                        ? 'bg-indigo-600 text-white'
+                        : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600'
+                    } border border-gray-200 dark:border-gray-600 rounded-r-lg`}
+                  >
+                    Paraphrase Tool
+                  </button>
+                </div>
+              </div>
             </div>
           ) : activePage === 'learn' ? (
             <LearningPage 

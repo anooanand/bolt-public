@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   RefreshCw, 
   Copy, 
@@ -8,12 +8,13 @@ import {
   Wand2,
   FileText,
   Lightbulb,
-  Zap
+  Zap,
+  CheckCircle
 } from 'lucide-react';
 
 interface ParaphrasePanelProps {
   selectedText: string;
-  onNavigate: (page: string) => void;
+  onNavigate?: (page: string) => void;
 }
 
 interface ParaphraseHistory {
@@ -27,16 +28,17 @@ interface ParaphraseHistory {
 type ParaphraseMode = 'standard' | 'formal' | 'casual' | 'creative' | 'concise' | 'expand';
 
 export function ParaphrasePanel({ selectedText, onNavigate }: ParaphrasePanelProps) {
-  const [inputText, setInputText] = useState<string>(selectedText || '');
+  const [inputText, setInputText] = useState<string>('');
   const [outputText, setOutputText] = useState<string>('');
   const [selectedMode, setSelectedMode] = useState<ParaphraseMode>('standard');
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [showHistory, setShowHistory] = useState<boolean>(false);
   const [history, setHistory] = useState<ParaphraseHistory[]>([]);
+  const [copied, setCopied] = useState<boolean>(false);
 
   // Update input text when selectedText changes
-  React.useEffect(() => {
-    if (selectedText) {
+  useEffect(() => {
+    if (selectedText && selectedText.trim() !== '') {
       setInputText(selectedText);
     }
   }, [selectedText]);
@@ -95,14 +97,14 @@ export function ParaphrasePanel({ selectedText, onNavigate }: ParaphrasePanelPro
     setTimeout(() => {
       const mockParaphrases: Record<ParaphraseMode, string[]> = {
         standard: [
-          'This text has been rewritten using standard paraphrasing techniques to maintain clarity while changing the structure.',
-          'The content has been rephrased with a balanced approach, preserving the original meaning while improving readability.',
-          'Using conventional paraphrasing methods, this passage has been restructured for better flow and understanding.'
+          "This text has been rewritten using standard paraphrasing techniques to maintain clarity while changing the structure.",
+          "The content has been rephrased with a balanced approach, preserving the original meaning while improving readability.",
+          "Using conventional paraphrasing methods, this passage has been restructured for better flow and understanding."
         ],
         formal: [
-          'This document has been systematically restructured utilizing formal academic conventions to enhance professional presentation.',
-          'The aforementioned content has been methodically revised in accordance with scholarly writing standards.',
-          'This material has been comprehensively reformulated using established academic protocols for enhanced clarity.'
+          "This document has been systematically restructured utilizing formal academic conventions to enhance professional presentation.",
+          "The aforementioned content has been methodically revised in accordance with scholarly writing standards.",
+          "This material has been comprehensively reformulated using established academic protocols for enhanced clarity."
         ],
         casual: [
           "Here's a friendlier way to say the same thing - it's been rewritten to sound more conversational and easy-going.",
@@ -110,19 +112,19 @@ export function ParaphrasePanel({ selectedText, onNavigate }: ParaphrasePanelPro
           "This has been reworded in a more laid-back, everyday style that's easier to connect with."
         ],
         creative: [
-          'Like a master artist reshaping clay, this text has been molded into a fresh, vibrant expression of the original idea.',
-          'Imagine if words could dance - this is your text performing a beautiful waltz of meaning and style.',
-          'This content has been transformed into a tapestry of language, weaving new patterns while preserving the essence.'
+          "Like a master artist reshaping clay, this text has been molded into a fresh, vibrant expression of the original idea.",
+          "Imagine if words could dance - this is your text performing a beautiful waltz of meaning and style.",
+          "This content has been transformed into a tapestry of language, weaving new patterns while preserving the essence."
         ],
         concise: [
-          'Text rewritten for brevity and impact.',
-          'Streamlined version maintaining core message.',
-          'Condensed for maximum clarity and efficiency.'
+          "Text rewritten for brevity and impact.",
+          "Streamlined version maintaining core message.",
+          "Condensed for maximum clarity and efficiency."
         ],
         expand: [
-          'This comprehensive and thoroughly detailed rewriting provides an extensive exploration of the original concept, incorporating additional context, explanatory elements, and enriched vocabulary to create a more complete and nuanced understanding of the subject matter.',
-          'The following expanded version offers a more elaborate and comprehensive treatment of the original text, providing enhanced detail, contextual information, and sophisticated language structures to deliver a richer, more complete communication experience.',
-          'This extensively developed paraphrase presents a detailed and comprehensive reformulation that incorporates additional explanatory content, contextual background, and sophisticated linguistic elements to provide readers with a more thorough and complete understanding.'
+          "This comprehensive and thoroughly detailed rewriting provides an extensive exploration of the original concept, incorporating additional context, explanatory elements, and enriched vocabulary to create a more complete and nuanced understanding of the subject matter.",
+          "The following expanded version offers a more elaborate and comprehensive treatment of the original text, providing enhanced detail, contextual information, and sophisticated language structures to deliver a richer, more complete communication experience.",
+          "This extensively developed paraphrase presents a detailed and comprehensive reformulation that incorporates additional explanatory content, contextual background, and sophisticated linguistic elements to provide readers with a more thorough and complete understanding."
         ]
       };
 
@@ -147,7 +149,8 @@ export function ParaphrasePanel({ selectedText, onNavigate }: ParaphrasePanelPro
 
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);
-    // You could add a toast notification here
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   const handleSwap = () => {
@@ -175,132 +178,119 @@ export function ParaphrasePanel({ selectedText, onNavigate }: ParaphrasePanelPro
   };
 
   return (
-    <div className="h-full flex flex-col bg-white dark:bg-gray-800 overflow-y-auto">
-      <div className="p-4 border-b">
-        <h2 className="text-lg font-medium text-gray-900 dark:text-white mb-4">
-          Paraphrase Tool
-        </h2>
-        
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-4">
-          {paraphraseModes.slice(0, 3).map((mode) => {
-            const Icon = mode.icon;
-            return (
-              <button
-                key={mode.id}
-                onClick={() => setSelectedMode(mode.id)}
-                className={`p-2 rounded-lg border-2 transition-all ${
-                  selectedMode === mode.id
-                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30'
-                    : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
-                }`}
-              >
-                <div className="flex items-center">
-                  <div className={`p-1.5 ${mode.color} rounded-lg mr-2`}>
-                    <Icon className="w-3 h-3 text-white" />
-                  </div>
-                  <span className="text-xs font-medium text-gray-900 dark:text-white">
-                    {mode.name}
-                  </span>
-                </div>
-              </button>
-            );
-          })}
+    <div className="h-full flex flex-col bg-white dark:bg-gray-800 rounded-lg shadow-sm">
+      <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-medium text-gray-900 dark:text-white">Paraphrase Tool</h2>
+          {copied && (
+            <span className="text-sm text-green-600 flex items-center">
+              <CheckCircle className="w-4 h-4 mr-1" />
+              Copied!
+            </span>
+          )}
         </div>
-        
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-4">
-          {paraphraseModes.slice(3).map((mode) => {
+      </div>
+
+      <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          {paraphraseModes.slice(0, 6).map((mode) => {
             const Icon = mode.icon;
+            
             return (
               <button
                 key={mode.id}
                 onClick={() => setSelectedMode(mode.id)}
-                className={`p-2 rounded-lg border-2 transition-all ${
+                className={`p-2 rounded-lg border transition-all ${
                   selectedMode === mode.id
-                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30'
+                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
                     : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
                 }`}
               >
-                <div className="flex items-center">
-                  <div className={`p-1.5 ${mode.color} rounded-lg mr-2`}>
+                <div className="flex items-center mb-1">
+                  <div className={`p-1 ${mode.color} rounded-md mr-2`}>
                     <Icon className="w-3 h-3 text-white" />
                   </div>
-                  <span className="text-xs font-medium text-gray-900 dark:text-white">
-                    {mode.name}
-                  </span>
+                  <div className="text-left">
+                    <h3 className="text-xs font-medium text-gray-900 dark:text-white">
+                      {mode.name}
+                    </h3>
+                  </div>
                 </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 text-left truncate">
+                  {mode.description}
+                </p>
               </button>
             );
           })}
         </div>
       </div>
 
-      <div className="p-4 flex-1 overflow-y-auto">
-        <div className="mb-4">
-          <label htmlFor="inputText" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             Original Text
           </label>
           <textarea
-            id="inputText"
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
-            placeholder="Enter text to paraphrase..."
-            className="w-full h-24 p-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+            placeholder="Enter or paste text to paraphrase..."
+            className="w-full h-32 p-3 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
           />
         </div>
 
-        <div className="flex justify-center mb-4">
+        <div className="flex justify-center">
           <button
             onClick={handleParaphrase}
-            disabled={isProcessing || !inputText.trim()}
-            className={`px-4 py-2 rounded-md text-white text-sm font-medium flex items-center ${
-              isProcessing || !inputText.trim()
-                ? 'bg-gray-400 cursor-not-allowed'
-                : 'bg-blue-600 hover:bg-blue-700'
-            }`}
+            disabled={!inputText.trim() || isProcessing}
+            className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors text-sm"
           >
             {isProcessing ? (
               <>
-                <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
-                Paraphrasing...
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                Processing...
               </>
             ) : (
               <>
-                <RefreshCw className="h-4 w-4 mr-2" />
+                <RefreshCw className="w-4 h-4 mr-2" />
                 Paraphrase
               </>
             )}
           </button>
         </div>
 
-        <div className="mb-4">
-          <div className="flex justify-between items-center mb-1">
-            <label htmlFor="outputText" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+        <div>
+          <div className="flex justify-between items-center mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
               Paraphrased Text
             </label>
-            <div className="flex space-x-1">
-              {outputText && (
-                <>
-                  <button
-                    onClick={() => handleCopy(outputText)}
-                    className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                    title="Copy to clipboard"
-                  >
-                    <Copy className="h-4 w-4" />
-                  </button>
-                  <button
-                    onClick={handleSwap}
-                    className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                    title="Use as input"
-                  >
-                    <ArrowRightLeft className="h-4 w-4" />
-                  </button>
-                </>
-              )}
+            <div className="flex space-x-2">
+              <button
+                onClick={() => handleCopy(outputText)}
+                disabled={!outputText}
+                className="p-1 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Copy to clipboard"
+              >
+                <Copy className="w-4 h-4" />
+              </button>
+              <button
+                onClick={handleSwap}
+                disabled={!outputText}
+                className="p-1 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Use as input"
+              >
+                <ArrowRightLeft className="w-4 h-4" />
+              </button>
             </div>
           </div>
-          <div className="w-full h-24 p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white overflow-y-auto">
-            {outputText || (
-              <span className="text-gray-400 dark:text-gray-500">Paraphrased text will appear here...</span>
+          <div className="w-full h-32 p-3 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-700 overflow-y-auto">
+            {outputText ? (
+              <p className="text-gray-900 dark:text-white text-sm whitespace-pre-wrap">
+                {outputText}
+              </p>
+            ) : (
+              <p className="text-gray-500 dark:text-gray-400 text-sm italic">
+                Paraphrased text will appear here...
+              </p>
             )}
           </div>
         </div>
@@ -309,14 +299,14 @@ export function ParaphrasePanel({ selectedText, onNavigate }: ParaphrasePanelPro
         <div>
           <button
             onClick={() => setShowHistory(!showHistory)}
-            className="flex items-center text-sm text-gray-600 dark:text-gray-400 mb-2"
+            className="flex items-center text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
           >
-            <History className="h-4 w-4 mr-1" />
+            <History className="w-4 h-4 mr-1" />
             {showHistory ? 'Hide History' : 'Show History'} ({history.length})
           </button>
           
           {showHistory && history.length > 0 && (
-            <div className="space-y-2 max-h-40 overflow-y-auto">
+            <div className="mt-2 space-y-2 max-h-40 overflow-y-auto">
               {history.map((item) => (
                 <div
                   key={item.id}
@@ -327,15 +317,17 @@ export function ParaphrasePanel({ selectedText, onNavigate }: ParaphrasePanelPro
                     setSelectedMode(item.mode as ParaphraseMode);
                   }}
                 >
-                  <div className="flex justify-between items-center mb-1">
-                    <span className="font-medium text-gray-700 dark:text-gray-300">
-                      {item.mode.charAt(0).toUpperCase() + item.mode.slice(1)}
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs font-medium text-blue-600 dark:text-blue-400 uppercase">
+                      {item.mode}
                     </span>
                     <span className="text-xs text-gray-500 dark:text-gray-400">
                       {item.timestamp.toLocaleTimeString()}
                     </span>
                   </div>
-                  <p className="text-gray-600 dark:text-gray-300 line-clamp-1">{item.original}</p>
+                  <p className="text-gray-600 dark:text-gray-300 line-clamp-1">
+                    {item.original.substring(0, 50)}...
+                  </p>
                 </div>
               ))}
             </div>
@@ -343,20 +335,20 @@ export function ParaphrasePanel({ selectedText, onNavigate }: ParaphrasePanelPro
         </div>
       </div>
 
-      <div className="p-4 border-t bg-gray-50 dark:bg-gray-800">
+      <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
         <div className="flex justify-between items-center">
           <div className="text-xs text-gray-500 dark:text-gray-400">
-            {selectedMode.charAt(0).toUpperCase() + selectedMode.slice(1)} Mode
+            {inputText.length > 0 ? `${inputText.length} chars` : ''}
+            {outputText.length > 0 ? ` → ${outputText.length} chars` : ''}
           </div>
-          {outputText && (
-            <button
-              onClick={handleExport}
-              className="flex items-center text-xs text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
-            >
-              <Download className="h-3 w-3 mr-1" />
-              Export
-            </button>
-          )}
+          <button
+            onClick={handleExport}
+            disabled={!outputText}
+            className="flex items-center px-3 py-1.5 text-xs bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Download className="w-3 h-3 mr-1" />
+            Export
+          </button>
         </div>
       </div>
     </div>

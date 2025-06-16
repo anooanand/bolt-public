@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Mail, Lock, Eye, EyeOff, CheckCircle } from 'lucide-react';
-import { signIn, signUp } from '../lib/supabase';
+import { supabase } from '../lib/supabase';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -10,7 +10,13 @@ interface AuthModalProps {
   onNavigate: (page: string) => void;
 }
 
-export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess, initialMode, onNavigate }) => {
+export const AuthModal: React.FC<AuthModalProps> = ({ 
+  isOpen, 
+  onClose, 
+  onSuccess, 
+  initialMode,
+  onNavigate
+}) => {
   const [mode, setMode] = useState<'signin' | 'signup'>(initialMode);
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
@@ -19,6 +25,21 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
   const [success, setSuccess] = useState<boolean>(false);
+
+  // Reset form when modal opens or mode changes
+  useEffect(() => {
+    if (isOpen) {
+      setMode(initialMode);
+      setError('');
+      setSuccess(false);
+      
+      // Try to get email from localStorage
+      const savedEmail = localStorage.getItem('userEmail');
+      if (savedEmail) {
+        setEmail(savedEmail);
+      }
+    }
+  }, [isOpen, initialMode]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,27 +54,36 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
           return;
         }
         
-        const { error } = await signUp(email, password);
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+        });
+        
         if (error) {
           setError(error.message);
-        } else {
+        } else if (data.user) {
           setSuccess(true);
+          localStorage.setItem('userEmail', email);
           setTimeout(() => {
-            onClose();
-            onNavigate('dashboard');
-          }, 2000);
+            onSuccess(data.user);
+            onNavigate('pricing');
+          }, 1500);
         }
       } else {
-        const { error } = await signIn(email, password);
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+        
         if (error) {
           setError(error.message);
-        } else {
-          onClose();
-          onNavigate('dashboard');
+        } else if (data.user) {
+          localStorage.setItem('userEmail', email);
+          onSuccess(data.user);
         }
       }
     } catch (err: any) {
-      setError('An unexpected error occurred');
+      setError('An unexpected error occurred: ' + (err.message || 'Please try again'));
     } finally {
       setLoading(false);
     }
@@ -194,7 +224,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
                 onClick={() => {
                   setMode(mode === 'signin' ? 'signup' : 'signin');
                   setError('');
-                  setEmail('');
                   setPassword('');
                   setConfirmPassword('');
                 }}
@@ -215,4 +244,4 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
       </div>
     </div>
   );
-};
+}
