@@ -1,15 +1,23 @@
 import React, { useState } from 'react';
 import { X, Mail, Lock, Eye, EyeOff, CheckCircle } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
+import { signIn, signUp } from '../lib/supabase';
 
 interface AuthModalProps {
+  isOpen: boolean;
   onClose: () => void;
+  onSuccess: (user: any) => void;
+  initialMode: 'signin' | 'signup';
   onNavigate: (page: string) => void;
 }
 
-export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onNavigate }) => {
-  const { signIn, signUp } = useAuth();
-  const [mode, setMode] = useState<'signin' | 'signup'>('signin');
+export const AuthModal: React.FC<AuthModalProps> = ({ 
+  isOpen, 
+  onClose, 
+  onSuccess, 
+  initialMode,
+  onNavigate
+}) => {
+  const [mode, setMode] = useState<'signin' | 'signup'>(initialMode);
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [confirmPassword, setConfirmPassword] = useState<string>('');
@@ -17,6 +25,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onNavigate }) => 
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
   const [success, setSuccess] = useState<boolean>(false);
+
+  if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,7 +60,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onNavigate }) => 
           onNavigate('dashboard');
         }
       }
-    } catch (err) {
+    } catch (err: any) {
       setError('An unexpected error occurred');
     } finally {
       setLoading(false);
@@ -181,6 +191,18 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onNavigate }) => 
             )}
           </button>
 
+          {/* Skip Authentication Button */}
+          <button
+            type="button"
+            onClick={() => {
+              onClose();
+              onNavigate('home');
+            }}
+            className="w-full mt-3 bg-gray-200 hover:bg-gray-300 text-gray-800 py-2 px-4 rounded-md font-medium transition-colors"
+          >
+            Continue as Guest
+          </button>
+
           {/* Mode Toggle */}
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-600 dark:text-gray-400">
@@ -212,4 +234,3 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onNavigate }) => 
     </div>
   );
 };
-

@@ -145,7 +145,7 @@ function App() {
 
         // Check for payment success URL params
         const urlParams = new URLSearchParams(window.location.search);
-        const paymentSuccess = urlParams.get('payment_success');
+        const paymentSuccess = urlParams.get('paymentSuccess');
         const plan = urlParams.get('plan');
 
         if (paymentSuccess && plan) {
@@ -358,7 +358,10 @@ function App() {
           ) : activePage === 'pricing' ? (
             <PricingPage />
           ) : activePage === 'dashboard' ? (
-            <Dashboard user={user} />
+            <Dashboard 
+              onNavigate={handleNavigation}
+              user={user} 
+            />
           ) : activePage === 'faq' ? (
             <FAQPage />
           ) : activePage === 'about' ? (
@@ -366,54 +369,58 @@ function App() {
           ) : activePage === 'features' ? (
             <div>
               <FeaturesSection />
-              <ToolsSection />
+              <ToolsSection onOpenTool={() => {}} />
               <WritingTypesSection />
             </div>
           ) : activePage === 'writing' ? (
             <div className="flex flex-col h-screen">
               <EnhancedHeader 
-                appState={appState}
-                updateAppState={updateAppState}
-                onPageChange={handleNavigation}
-                onStartExam={handleStartExam}
-                onShowHelpCenter={() => setShowHelpCenter(true)}
+                textType={textType}
+                assistanceLevel={assistanceLevel}
+                onTextTypeChange={(type) => setTextType(type)}
+                onAssistanceLevelChange={(level) => setAssistanceLevel(level)}
+                onTimerStart={() => setTimerStarted(true)}
               />
               
               {showExamMode ? (
                 <ExamSimulationMode 
                   onExit={() => setShowExamMode(false)}
-                  appState={appState}
-                  updateAppState={updateAppState}
                 />
               ) : (
-                <SplitScreen>
-                  <WritingArea 
-                    content={content}
-                    onChange={setContent}
-                    textType={textType}
-                    onTimerStart={setTimerStarted}
-                    onSubmit={handleSubmit}
-                  />
-                  <div className="flex flex-col h-full">
-                    {activePanel === 'coach' && (
-                      <CoachPanel 
-                        content={content}
-                        textType={textType}
-                        assistanceLevel={assistanceLevel}
-                      />
-                    )}
-                    {activePanel === 'paraphrase' && (
-                      <ParaphrasePanel selectedText={selectedText} />
-                    )}
-                  </div>
-                </SplitScreen>
+                <SplitScreen
+                  left={
+                    <WritingArea 
+                      content={content}
+                      onChange={setContent}
+                      textType={textType}
+                      onTimerStart={setTimerStarted}
+                      onSubmit={handleSubmit}
+                    />
+                  }
+                  right={
+                    <div className="flex flex-col h-full">
+                      {activePanel === 'coach' && (
+                        <CoachPanel 
+                          content={content}
+                          textType={textType}
+                          assistanceLevel={assistanceLevel}
+                        />
+                      )}
+                      {activePanel === 'paraphrase' && (
+                        <ParaphrasePanel 
+                          onNavigate={handleNavigation}
+                        />
+                      )}
+                    </div>
+                  }
+                />
               )}
             </div>
           ) : activePage === 'learn' ? (
             <LearningPage 
-              onPageChange={handleNavigation}
-              appState={appState}
-              updateAppState={updateAppState}
+              state={appState}
+              onStateChange={updateAppState}
+              onNavigateToWriting={() => setActivePage('writing')}
             />
           ) : activePage === 'feedback' ? (
             <EssayFeedbackPage 
@@ -428,7 +435,7 @@ function App() {
                 onStartWriting={handleStartWriting}
               />
               <FeaturesSection />
-              <ToolsSection />
+              <ToolsSection onOpenTool={() => {}} />
               <WritingTypesSection />
             </>
           )}
@@ -448,6 +455,7 @@ function App() {
           onClose={() => setShowAuthModal(false)}
           onSuccess={handleAuthSuccess}
           initialMode={authModalMode}
+          onNavigate={handleNavigation}
         />
       </div>
     </ThemeProvider>
@@ -455,4 +463,3 @@ function App() {
 }
 
 export default App;
-
