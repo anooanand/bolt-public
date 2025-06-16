@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { generatePrompt, getSynonyms, rephraseSentence, evaluateEssay } from '../lib/openai';
 import { AlertCircle, Send } from 'lucide-react';
 import { InlineSuggestionPopup } from './InlineSuggestionPopup';
@@ -32,9 +32,9 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [showPromptButtons, setShowPromptButtons] = useState(true);
-  const textareaRef = React.useRef<HTMLTextAreaElement>(null);
-  const overlayRef = React.useRef<HTMLDivElement>(null);
-  const containerRef = React.useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const overlayRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (prompt) {
@@ -43,7 +43,7 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
     }
   }, [prompt, onTimerStart]);
 
-  const analyzeText = React.useCallback((text: string) => {
+  const analyzeText = useCallback((text: string) => {
     const newIssues: WritingIssue[] = [];
     
     // Common spelling mistakes (only incorrect spellings)

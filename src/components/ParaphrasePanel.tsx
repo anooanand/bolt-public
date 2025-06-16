@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   RefreshCw, 
   Copy, 
@@ -184,7 +184,7 @@ export const ParaphrasePanel: React.FC<ParaphrasePanelProps> = ({ onNavigate, se
   };
 
   return (
-    <div className="h-full flex flex-col bg-white dark:bg-gray-800 overflow-hidden">
+    <div className="h-full flex flex-col bg-white dark:bg-gray-800 overflow-hidden rounded-lg shadow-sm">
       <div className="p-4 border-b">
         <h2 className="text-lg font-medium text-gray-900 dark:text-white">Paraphrase Tool</h2>
         <p className="text-sm text-gray-500 dark:text-gray-400">Rewrite selected text in different styles</p>
