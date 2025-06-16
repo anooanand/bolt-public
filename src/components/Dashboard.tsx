@@ -13,7 +13,8 @@ import {
   Star,
   Calendar,
   BarChart3,
-  AlertTriangle
+  AlertTriangle,
+  CheckCircle
 } from 'lucide-react';
 import { hasCompletedPayment, hasTemporaryAccess } from '../lib/supabase';
 
