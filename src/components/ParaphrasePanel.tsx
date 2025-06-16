@@ -10,9 +10,10 @@ import {
   Lightbulb,
   Zap
 } from 'lucide-react';
+import { hasCompletedPayment, hasTemporaryAccess } from '../lib/supabase';
 
 interface ParaphrasePanelProps {
-  onNavigate: (page: string) => void;
+  onNavigate?: (page: string) => void;
   selectedText?: string;
 }
 
@@ -26,15 +27,36 @@ interface ParaphraseHistory {
 
 type ParaphraseMode = 'standard' | 'formal' | 'casual' | 'creative' | 'concise' | 'expand';
 
-export const ParaphrasePanel: React.FC<ParaphrasePanelProps> = ({ onNavigate, selectedText = '' }) => {
+export function ParaphrasePanel({ onNavigate, selectedText = '' }: ParaphrasePanelProps) {
   const [inputText, setInputText] = useState<string>(selectedText || '');
   const [outputText, setOutputText] = useState<string>('');
   const [selectedMode, setSelectedMode] = useState<ParaphraseMode>('standard');
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [showHistory, setShowHistory] = useState<boolean>(false);
   const [history, setHistory] = useState<ParaphraseHistory[]>([]);
-  const [isPaidUser, setIsPaidUser] = useState<boolean>(false); // Simplified for demo
+  const [isPaidUser, setIsPaidUser] = useState<boolean>(false);
+  const [hasTempAccess, setHasTempAccess] = useState<boolean>(false);
 
+  // Check access status on component mount
+  useEffect(() => {
+    const checkAccess = async () => {
+      try {
+        // Check for temporary access
+        const tempAccess = await hasTemporaryAccess();
+        setHasTempAccess(tempAccess);
+        
+        // Check for permanent access
+        const paymentCompleted = await hasCompletedPayment();
+        setIsPaidUser(paymentCompleted);
+      } catch (error) {
+        console.error('Error checking access status:', error);
+      }
+    };
+    
+    checkAccess();
+  }, []);
+
+  // Update input text when selectedText changes
   useEffect(() => {
     if (selectedText) {
       setInputText(selectedText);
@@ -93,7 +115,7 @@ export const ParaphrasePanel: React.FC<ParaphrasePanelProps> = ({ onNavigate, se
     if (!inputText.trim()) return;
     
     const selectedModeData = paraphraseModes.find(mode => mode.id === selectedMode);
-    if (selectedModeData?.isPro && !isPaidUser) {
+    if (selectedModeData?.isPro && !isPaidUser && !hasTempAccess) {
       alert('Upgrade to Pro to use this paraphrasing mode');
       return;
     }
@@ -199,7 +221,7 @@ export const ParaphrasePanel: React.FC<ParaphrasePanelProps> = ({ onNavigate, se
           <div className="grid grid-cols-2 gap-2">
             {paraphraseModes.slice(0, 4).map((mode) => {
               const Icon = mode.icon;
-              const isLocked = mode.isPro && !isPaidUser;
+              const isLocked = mode.isPro && !isPaidUser && !hasTempAccess;
               
               return (
                 <button
@@ -305,7 +327,7 @@ export const ParaphrasePanel: React.FC<ParaphrasePanelProps> = ({ onNavigate, se
             History ({history.length})
           </button>
           
-          {!isPaidUser && (
+          {!isPaidUser && !hasTempAccess && onNavigate && (
             <button
               onClick={() => onNavigate('pricing')}
               className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 font-medium"
@@ -314,7 +336,36 @@ export const ParaphrasePanel: React.FC<ParaphrasePanelProps> = ({ onNavigate, se
             </button>
           )}
         </div>
+        
+        {/* History Panel */}
+        {showHistory && history.length > 0 && (
+          <div className="mt-4 space-y-3 max-h-64 overflow-y-auto">
+            {history.map((item) => (
+              <div
+                key={item.id}
+                className="p-3 bg-gray-100 dark:bg-gray-600 rounded-lg cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-500"
+                onClick={() => {
+                  setInputText(item.original);
+                  setOutputText(item.paraphrased);
+                  setSelectedMode(item.mode as ParaphraseMode);
+                }}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs font-medium text-blue-600 dark:text-blue-400 uppercase">
+                    {item.mode}
+                  </span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                    {item.timestamp.toLocaleTimeString()}
+                  </span>
+                </div>
+                <p className="text-sm text-gray-700 dark:text-gray-300 line-clamp-2">
+                  {item.original.substring(0, 100)}...
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
-};
+}
