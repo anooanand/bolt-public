@@ -29,6 +29,7 @@ import { EssayFeedbackPage } from './components/EssayFeedbackPage';
 import { EnhancedHeader } from './components/EnhancedHeader';
 import { SpecializedCoaching } from './components/text-type-templates/SpecializedCoaching';
 import { BrainstormingTools } from './components/BrainstormingTools';
+import { WritingAccessCheck } from './components/WritingAccessCheck';
 
 function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -306,16 +307,16 @@ function App() {
     if ('timerStarted' in updates) setTimerStarted(updates.timerStarted || false);
   };
 
+  const handlePanelChange = (panel: 'coach' | 'paraphrase') => {
+    setActivePanel(panel);
+  };
+
   const handleSubmit = () => {
     setActivePage('feedback');
   };
 
   const handleStartExam = () => {
     setShowExamMode(true);
-  };
-
-  const handlePanelChange = (panel: 'coach' | 'paraphrase') => {
-    setActivePanel(panel);
   };
 
   if (isLoading) {
@@ -333,8 +334,8 @@ function App() {
     <ThemeProvider>
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
         <NavBar
-          onNavigate={handleNavigation}
           activePage={activePage}
+          onNavigate={handleNavigation}
           user={user}
           onSignInClick={() => {
             setAuthModalMode('signin');
@@ -362,7 +363,7 @@ function App() {
           ) : activePage === 'pricing' ? (
             <PricingPage />
           ) : activePage === 'dashboard' ? (
-            <Dashboard onNavigate={handleNavigation} />
+            <Dashboard user={user} onNavigate={handleNavigation} />
           ) : activePage === 'faq' ? (
             <FAQPage />
           ) : activePage === 'about' ? (
@@ -374,73 +375,79 @@ function App() {
               <WritingTypesSection />
             </div>
           ) : activePage === 'writing' ? (
-            <div className="flex flex-col h-screen">
-              <EnhancedHeader 
-                appState={appState}
-                updateAppState={updateAppState}
-                onPageChange={handleNavigation}
-                onStartExam={handleStartExam}
-                onShowHelpCenter={() => setShowHelpCenter(true)}
-              />
-              
-              {showExamMode ? (
-                <ExamSimulationMode 
-                  onExit={() => setShowExamMode(false)}
+            <WritingAccessCheck onNavigate={handleNavigation}>
+              <div className="flex flex-col h-screen">
+                <EnhancedHeader 
+                  textType={textType}
+                  assistanceLevel={assistanceLevel}
+                  onTextTypeChange={setTextType}
+                  onAssistanceLevelChange={setAssistanceLevel}
+                  onTimerStart={() => setTimerStarted(true)}
                 />
-              ) : (
-                <SplitScreen>
-                  <WritingArea 
-                    content={content}
-                    onChange={setContent}
-                    textType={textType}
-                    onTimerStart={setTimerStarted}
-                    onSubmit={handleSubmit}
+                
+                {showExamMode ? (
+                  <ExamSimulationMode 
+                    onExit={() => setShowExamMode(false)}
                   />
-                  {activePanel === 'coach' ? (
-                    <CoachPanel 
-                      content={content}
-                      textType={textType}
-                      assistanceLevel={assistanceLevel}
-                    />
-                  ) : (
-                    <ParaphrasePanel 
-                      selectedText={selectedText}
-                      onNavigate={handleNavigation}
-                    />
-                  )}
-                </SplitScreen>
-              )}
-              
-              {/* Panel Switcher */}
-              <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-2 flex justify-center">
-                <div className="inline-flex rounded-md shadow-sm" role="group">
-                  <button
-                    type="button"
-                    onClick={() => handlePanelChange('coach')}
-                    data-panel="coach"
-                    className={`px-4 py-2 text-sm font-medium ${
-                      activePanel === 'coach'
-                        ? 'bg-indigo-600 text-white'
-                        : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600'
-                    } border border-gray-200 dark:border-gray-600 rounded-l-lg`}
-                  >
-                    Writing Coach
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handlePanelChange('paraphrase')}
-                    data-panel="paraphrase"
-                    className={`px-4 py-2 text-sm font-medium ${
-                      activePanel === 'paraphrase'
-                        ? 'bg-indigo-600 text-white'
-                        : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600'
-                    } border border-gray-200 dark:border-gray-600 rounded-r-lg`}
-                  >
-                    Paraphrase Tool
-                  </button>
-                </div>
+                ) : (
+                  <>
+                    <div className="flex-1 container mx-auto px-4">
+                      <SplitScreen>
+                        <WritingArea 
+                          content={content}
+                          onChange={setContent}
+                          textType={textType}
+                          onTimerStart={setTimerStarted}
+                          onSubmit={handleSubmit}
+                        />
+                        {activePanel === 'coach' ? (
+                          <CoachPanel 
+                            content={content}
+                            textType={textType}
+                            assistanceLevel={assistanceLevel}
+                          />
+                        ) : (
+                          <ParaphrasePanel 
+                            selectedText={selectedText}
+                            onNavigate={handleNavigation}
+                          />
+                        )}
+                      </SplitScreen>
+                    </div>
+                    
+                    {/* Panel Switcher */}
+                    <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-2 flex justify-center">
+                      <div className="inline-flex rounded-md shadow-sm" role="group">
+                        <button
+                          type="button"
+                          onClick={() => handlePanelChange('coach')}
+                          data-panel="coach"
+                          className={`px-4 py-2 text-sm font-medium ${
+                            activePanel === 'coach'
+                              ? 'bg-indigo-600 text-white'
+                              : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600'
+                          } border border-gray-200 dark:border-gray-600 rounded-l-lg`}
+                        >
+                          Writing Coach
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handlePanelChange('paraphrase')}
+                          data-panel="paraphrase"
+                          className={`px-4 py-2 text-sm font-medium ${
+                            activePanel === 'paraphrase'
+                              ? 'bg-indigo-600 text-white'
+                              : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600'
+                          } border border-gray-200 dark:border-gray-600 rounded-r-lg`}
+                        >
+                          Paraphrase Tool
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
-            </div>
+            </WritingAccessCheck>
           ) : activePage === 'learn' ? (
             <LearningPage 
               state={appState}
@@ -471,9 +478,10 @@ function App() {
         </div>
 
         {/* Help Center Modal */}
-        {showHelpCenter && (
-          <HelpCenter onClose={() => setShowHelpCenter(false)} />
-        )}
+        <HelpCenter 
+          isOpen={showHelpCenter}
+          onClose={() => setShowHelpCenter(false)} 
+        />
 
         <AuthModal
           isOpen={showAuthModal}
