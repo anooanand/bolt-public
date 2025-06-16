@@ -33,14 +33,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
           return;
         }
         
-        const { error } = await signUp(email, password);
+        const { error, success } = await signUp(email, password);
         if (error) {
           setError(error.message);
         } else {
+          // Set temporary access flag (24 hours)
+          localStorage.setItem('temp_access_until', new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString());
+          
           setSuccess(true);
           setTimeout(() => {
             onClose();
-            onNavigate('dashboard');
+            onNavigate('pricing');
           }, 2000);
         }
       } else {
@@ -52,8 +55,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
           onNavigate('dashboard');
         }
       }
-    } catch (err) {
+    } catch (err: any) {
       setError('An unexpected error occurred');
+      console.error('Auth error:', err);
     } finally {
       setLoading(false);
     }
@@ -69,10 +73,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
             <CheckCircle className="w-8 h-8 text-green-600 dark:text-green-400" />
           </div>
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-            Welcome to Writing Assistant!
+            Welcome to InstaChat AI!
           </h2>
           <p className="text-gray-600 dark:text-gray-300 mb-4">
-            Your account has been created successfully. Redirecting to your dashboard...
+            Your account has been created successfully. Redirecting to pricing page...
           </p>
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
         </div>

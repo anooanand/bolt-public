@@ -57,8 +57,11 @@ export function PaymentSuccessPage({ plan, onSuccess, onSignInRequired }: Paymen
             await confirmPayment(plan);
             console.log("[DEBUG] PaymentSuccessPage: Payment confirmed successfully");
 
+            // Set temporary access (24 hours)
+            localStorage.setItem('temp_access_until', new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString());
+            
             setStatus('success');
-            setMessage(`Welcome! Your ${plan.replace('-', ' ')} plan is now active.`);
+            setMessage(`Welcome! Your ${plan.replace('-', ' ')} plan is now active. You have temporary access for the next 24 hours while we process your payment.`);
             
             // FIXED: Clear URL parameters immediately
             if (typeof window !== 'undefined') {
@@ -122,8 +125,11 @@ export function PaymentSuccessPage({ plan, onSuccess, onSignInRequired }: Paymen
         await confirmPayment(plan);
         console.log("[DEBUG] PaymentSuccessPage: Payment confirmed after sign in");
         
+        // Set temporary access (24 hours)
+        localStorage.setItem('temp_access_until', new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString());
+        
         setStatus('success');
-        setMessage(`Welcome! Your ${plan.replace('-', ' ')} plan is now active.`);
+        setMessage(`Welcome! Your ${plan.replace('-', ' ')} plan is now active. You have temporary access for the next 24 hours while we process your payment.`);
         
         // Get the current user and call success callback
         const { data: { user } } = await supabase.auth.getUser();
@@ -246,4 +252,3 @@ export function PaymentSuccessPage({ plan, onSuccess, onSignInRequired }: Paymen
     </div>
   );
 }
-

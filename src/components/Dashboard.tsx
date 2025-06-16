@@ -12,11 +12,13 @@ import {
   ArrowRight,
   Star,
   Calendar,
-  BarChart3
+  BarChart3,
+  AlertTriangle
 } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
+import { hasCompletedPayment, hasTemporaryAccess } from '../lib/supabase';
 
 interface DashboardProps {
+  user: any;
   onNavigate: (page: string) => void;
 }
 
@@ -25,15 +27,6 @@ interface UserStats {
   wordsWritten: number;
   timeSpent: string;
   averageScore: number;
-}
-
-interface Achievement {
-  id: string;
-  title: string;
-  description: string;
-  icon: React.ComponentType<any>;
-  unlocked: boolean;
-  progress?: number;
 }
 
 interface RecentDocument {
@@ -45,74 +38,86 @@ interface RecentDocument {
   score?: number;
 }
 
-export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
-  const { user, isPaidUser } = useAuth();
+export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
   const [userStats, setUserStats] = useState<UserStats>({
-    documentsCreated: 12,
-    wordsWritten: 8450,
-    timeSpent: '24h',
-    averageScore: 85
+    documentsCreated: 0,
+    wordsWritten: 0,
+    timeSpent: '0h',
+    averageScore: 0
   });
+  const [recentDocuments, setRecentDocuments] = useState<RecentDocument[]>([]);
+  const [isPaidUser, setIsPaidUser] = useState(false);
+  const [hasTempAccess, setHasTempAccess] = useState(false);
+  const [tempAccessExpiry, setTempAccessExpiry] = useState<Date | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const [achievements, setAchievements] = useState<Achievement[]>([
-    {
-      id: 'first-essay',
-      title: 'First Essay',
-      description: 'Completed your first essay',
-      icon: FileText,
-      unlocked: true
-    },
-    {
-      id: 'word-master',
-      title: 'Word Master',
-      description: 'Wrote over 5,000 words',
-      icon: PenTool,
-      unlocked: true
-    },
-    {
-      id: 'perfect-score',
-      title: 'Perfect Score',
-      description: 'Achieved a perfect score on an essay',
-      icon: Star,
-      unlocked: false,
-      progress: 85
-    },
-    {
-      id: 'streak-master',
-      title: 'Streak Master',
-      description: 'Wrote for 7 consecutive days',
-      icon: Calendar,
-      unlocked: false,
-      progress: 60
-    }
-  ]);
+  useEffect(() => {
+    const checkAccess = async () => {
+      setIsLoading(true);
+      
+      try {
+        // Check for temporary access first
+        const tempAccess = await hasTemporaryAccess();
+        setHasTempAccess(tempAccess);
+        
+        if (tempAccess) {
+          const expiryDate = new Date(localStorage.getItem('temp_access_until') || '');
+          setTempAccessExpiry(expiryDate);
+        }
+        
+        // Check for permanent access
+        const paymentCompleted = await hasCompletedPayment();
+        setIsPaidUser(paymentCompleted);
+        
+        // Load mock data for demo
+        setUserStats({
+          documentsCreated: 3,
+          wordsWritten: 1250,
+          timeSpent: '2h',
+          averageScore: 78
+        });
+        
+        setRecentDocuments([
+          {
+            id: '1',
+            title: 'Persuasive Essay - Climate Change',
+            type: 'Persuasive Essay',
+            wordCount: 450,
+            lastModified: '2 hours ago',
+            score: 88
+          },
+          {
+            id: '2',
+            title: 'Creative Writing - The Lost City',
+            type: 'Creative Writing',
+            wordCount: 320,
+            lastModified: '1 day ago',
+            score: 92
+          }
+        ]);
+      } catch (error) {
+        console.error('Error checking access status:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    checkAccess();
+  }, [user]);
 
-  const [recentDocuments, setRecentDocuments] = useState<RecentDocument[]>([
-    {
-      id: '1',
-      title: 'Persuasive Essay - Climate Change',
-      type: 'Persuasive Essay',
-      wordCount: 450,
-      lastModified: '2 hours ago',
-      score: 88
-    },
-    {
-      id: '2',
-      title: 'Creative Writing - The Lost City',
-      type: 'Creative Writing',
-      wordCount: 320,
-      lastModified: '1 day ago',
-      score: 92
-    },
-    {
-      id: '3',
-      title: 'NSW Practice Test Response',
-      type: 'Exam Response',
-      wordCount: 280,
-      lastModified: '3 days ago',
-      score: 85
-    }
-  ]);
+  const formatTimeRemaining = () => {
+    if (!tempAccessExpiry) return '';
+    
+    const now = new Date();
+    const diff = tempAccessExpiry.getTime() - now.getTime();
+    
+    if (diff <= 0) return 'Expired';
+    
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    
+    return `${hours}h ${minutes}m remaining`;
+  };
 
   const quickActions = [
     {
@@ -121,7 +126,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
       description: 'Create a new document with AI assistance',
       icon: PenTool,
       color: 'bg-blue-500',
-      action: () => onNavigate('write')
+      action: () => onNavigate('writing')
     },
     {
       id: 'exam',
@@ -152,6 +157,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
     }
   ];
 
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-400">Loading your dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -170,19 +186,54 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
           <div className="mb-8 bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-900 dark:to-orange-900 border border-yellow-200 dark:border-yellow-700 rounded-lg p-4">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-lg font-semibold text-yellow-800 dark:text-yellow-200">
-                  Free Plan
-                </h3>
-                <p className="text-yellow-700 dark:text-yellow-300">
-                  Upgrade to unlock all features
-                </p>
+                {hasTempAccess ? (
+                  <>
+                    <h3 className="text-lg font-semibold text-yellow-800 dark:text-yellow-200">
+                      Temporary Access Active
+                    </h3>
+                    <p className="text-yellow-700 dark:text-yellow-300">
+                      {formatTimeRemaining()} - Full access will be activated soon
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <h3 className="text-lg font-semibold text-yellow-800 dark:text-yellow-200">
+                      Free Plan
+                    </h3>
+                    <p className="text-yellow-700 dark:text-yellow-300">
+                      Upgrade to unlock all features
+                    </p>
+                  </>
+                )}
               </div>
               <button
                 onClick={() => onNavigate('pricing')}
                 className="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
               >
-                Upgrade Now
+                {hasTempAccess ? 'View Plan Details' : 'Upgrade Now'}
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* Temporary Access Banner */}
+        {hasTempAccess && (
+          <div className="mb-8 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-lg p-4">
+            <div className="flex items-start">
+              <div className="flex-shrink-0">
+                <AlertTriangle className="h-5 w-5 text-blue-400" />
+              </div>
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-blue-800 dark:text-blue-200">
+                  Payment Processing
+                </h3>
+                <div className="mt-2 text-sm text-blue-700 dark:text-blue-300">
+                  <p>
+                    Your payment is being processed. You have full access to all features for the next 24 hours.
+                    Your account will be automatically upgraded to permanent access once payment processing is complete.
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -196,7 +247,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
               </div>
               <div className="ml-4">
                 <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {userStats.documentsCreated}
+                  {userStats.documentsCreated.toLocaleString()}
                 </p>
                 <p className="text-gray-600 dark:text-gray-400">Documents</p>
               </div>
@@ -255,7 +306,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
               {quickActions.map((action) => {
                 const Icon = action.icon;
-                const isLocked = action.isPro && !isPaidUser;
+                const isLocked = action.isPro && !isPaidUser && !hasTempAccess;
                 
                 return (
                   <div
@@ -298,7 +349,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                     Recent Documents
                   </h2>
                   <button
-                    onClick={() => onNavigate('write')}
+                    onClick={() => onNavigate('writing')}
                     className="flex items-center text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
                   >
                     <Plus className="w-4 h-4 mr-1" />
@@ -307,108 +358,151 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                 </div>
               </div>
               <div className="p-6">
-                <div className="space-y-4">
-                  {recentDocuments.map((doc) => (
-                    <div
-                      key={doc.id}
-                      className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer transition-colors"
-                      onClick={() => onNavigate('write')}
-                    >
-                      <div className="flex items-center">
-                        <FileText className="w-5 h-5 text-gray-400 mr-3" />
-                        <div>
-                          <h3 className="font-medium text-gray-900 dark:text-white">
-                            {doc.title}
-                          </h3>
-                          <p className="text-sm text-gray-600 dark:text-gray-400">
-                            {doc.type} • {doc.wordCount} words • {doc.lastModified}
-                          </p>
+                {recentDocuments.length > 0 ? (
+                  <div className="space-y-4">
+                    {recentDocuments.map((doc) => (
+                      <div
+                        key={doc.id}
+                        className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer transition-colors"
+                        onClick={() => onNavigate('writing')}
+                      >
+                        <div className="flex items-center">
+                          <FileText className="w-5 h-5 text-gray-400 mr-3" />
+                          <div>
+                            <h3 className="font-medium text-gray-900 dark:text-white">
+                              {doc.title}
+                            </h3>
+                            <p className="text-sm text-gray-600 dark:text-gray-400">
+                              {doc.type} • {doc.wordCount} words • {doc.lastModified}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center">
+                          {doc.score && (
+                            <span className="text-sm font-medium text-green-600 dark:text-green-400 mr-2">
+                              {doc.score}%
+                            </span>
+                          )}
+                          <ArrowRight className="w-4 h-4 text-gray-400" />
                         </div>
                       </div>
-                      <div className="flex items-center">
-                        {doc.score && (
-                          <span className="text-sm font-medium text-green-600 dark:text-green-400 mr-2">
-                            {doc.score}%
-                          </span>
-                        )}
-                        <ArrowRight className="w-4 h-4 text-gray-400" />
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <FileText className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                    <p className="text-gray-500 dark:text-gray-400 mb-4">No documents yet</p>
+                    <button
+                      onClick={() => onNavigate('writing')}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                    >
+                      Create Your First Document
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           </div>
 
-          {/* Achievements */}
+          {/* Subscription Status */}
           <div>
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-              Achievements
-            </h2>
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-6">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+                Subscription Status
+              </h2>
+              
+              {isPaidUser ? (
+                <div className="bg-green-50 dark:bg-green-900/30 p-4 rounded-lg mb-4">
+                  <div className="flex items-center">
+                    <CheckCircle className="w-5 h-5 text-green-500 mr-2" />
+                    <span className="font-medium text-green-800 dark:text-green-200">Active Subscription</span>
+                  </div>
+                  <p className="mt-2 text-sm text-green-700 dark:text-green-300">
+                    You have full access to all premium features
+                  </p>
+                </div>
+              ) : hasTempAccess ? (
+                <div className="bg-blue-50 dark:bg-blue-900/30 p-4 rounded-lg mb-4">
+                  <div className="flex items-center">
+                    <Clock className="w-5 h-5 text-blue-500 mr-2" />
+                    <span className="font-medium text-blue-800 dark:text-blue-200">Temporary Access</span>
+                  </div>
+                  <p className="mt-2 text-sm text-blue-700 dark:text-blue-300">
+                    {formatTimeRemaining()} - Your payment is being processed
+                  </p>
+                </div>
+              ) : (
+                <div className="bg-yellow-50 dark:bg-yellow-900/30 p-4 rounded-lg mb-4">
+                  <div className="flex items-center">
+                    <AlertTriangle className="w-5 h-5 text-yellow-500 mr-2" />
+                    <span className="font-medium text-yellow-800 dark:text-yellow-200">Free Plan</span>
+                  </div>
+                  <p className="mt-2 text-sm text-yellow-700 dark:text-yellow-300">
+                    Upgrade to access premium features
+                  </p>
+                </div>
+              )}
+              
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-600 dark:text-gray-400">Plan</span>
+                  <span className="font-medium text-gray-900 dark:text-white">
+                    {isPaidUser || hasTempAccess ? 
+                      localStorage.getItem('payment_plan')?.replace('-', ' ') || 'Premium' : 
+                      'Free'}
+                  </span>
+                </div>
+                
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-600 dark:text-gray-400">Status</span>
+                  <span className={`font-medium ${
+                    isPaidUser ? 'text-green-600 dark:text-green-400' : 
+                    hasTempAccess ? 'text-blue-600 dark:text-blue-400' : 
+                    'text-yellow-600 dark:text-yellow-400'
+                  }`}>
+                    {isPaidUser ? 'Active' : hasTempAccess ? 'Processing' : 'Inactive'}
+                  </span>
+                </div>
+                
+                {(hasTempAccess || isPaidUser) && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600 dark:text-gray-400">Next Payment</span>
+                    <span className="font-medium text-gray-900 dark:text-white">
+                      {new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString()}
+                    </span>
+                  </div>
+                )}
+              </div>
+              
+              {!isPaidUser && (
+                <button
+                  onClick={() => onNavigate('pricing')}
+                  className="w-full mt-6 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                >
+                  {hasTempAccess ? 'View Plan Details' : 'Upgrade Now'}
+                </button>
+              )}
+            </div>
+
+            {/* Help & Support */}
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
-              <div className="space-y-4">
-                {achievements.map((achievement) => {
-                  const Icon = achievement.icon;
-                  return (
-                    <div
-                      key={achievement.id}
-                      className={`flex items-center p-3 rounded-lg ${
-                        achievement.unlocked
-                          ? 'bg-green-50 dark:bg-green-900 border border-green-200 dark:border-green-700'
-                          : 'bg-gray-50 dark:bg-gray-700'
-                      }`}
-                    >
-                      <div
-                        className={`p-2 rounded-lg ${
-                          achievement.unlocked
-                            ? 'bg-green-100 dark:bg-green-800'
-                            : 'bg-gray-200 dark:bg-gray-600'
-                        }`}
-                      >
-                        <Icon
-                          className={`w-5 h-5 ${
-                            achievement.unlocked
-                              ? 'text-green-600 dark:text-green-400'
-                              : 'text-gray-400'
-                          }`}
-                        />
-                      </div>
-                      <div className="ml-3 flex-1">
-                        <h3
-                          className={`font-medium ${
-                            achievement.unlocked
-                              ? 'text-green-900 dark:text-green-100'
-                              : 'text-gray-900 dark:text-white'
-                          }`}
-                        >
-                          {achievement.title}
-                        </h3>
-                        <p
-                          className={`text-sm ${
-                            achievement.unlocked
-                              ? 'text-green-700 dark:text-green-300'
-                              : 'text-gray-600 dark:text-gray-400'
-                          }`}
-                        >
-                          {achievement.description}
-                        </p>
-                        {!achievement.unlocked && achievement.progress && (
-                          <div className="mt-2">
-                            <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2">
-                              <div
-                                className="bg-blue-600 h-2 rounded-full"
-                                style={{ width: `${achievement.progress}%` }}
-                              ></div>
-                            </div>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                              {achievement.progress}% complete
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+                Help & Support
+              </h2>
+              <div className="space-y-3">
+                <button
+                  onClick={() => onNavigate('faq')}
+                  className="w-full flex items-center px-3 py-2 text-left text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                >
+                  <BookOpen className="w-4 h-4 mr-3" />
+                  View FAQ
+                </button>
+                <button
+                  className="w-full flex items-center px-3 py-2 text-left text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                >
+                  <Users className="w-4 h-4 mr-3" />
+                  Contact Support
+                </button>
               </div>
             </div>
           </div>
@@ -417,4 +511,3 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
     </div>
   );
 };
-

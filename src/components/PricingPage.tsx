@@ -1,33 +1,54 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowRight, Check, Star } from 'lucide-react';
+import { hasCompletedPayment, hasTemporaryAccess } from '../lib/supabase';
 
 export function PricingPage() {
   const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>('monthly');
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [hasTempAccess, setHasTempAccess] = useState(false);
+  const [isPaidUser, setIsPaidUser] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   
   // Get user email from localStorage on component mount
   useEffect(() => {
-    const email = localStorage.getItem('userEmail');
-    setUserEmail(email);
-    
-    // If no email is found, check if there's a session cookie
-    if (!email) {
-      // Try to get email from session if available
-      const checkSession = async () => {
-        try {
-          const { supabase } = await import('../lib/supabase');
-          const { data } = await supabase.auth.getSession();
-          if (data.session?.user?.email) {
-            localStorage.setItem('userEmail', data.session.user.email);
-            setUserEmail(data.session.user.email);
-          }
-        } catch (error) {
-          console.error('Error checking session:', error);
-        }
-      };
+    const checkAccessStatus = async () => {
+      setIsLoading(true);
       
-      checkSession();
-    }
+      // Check for temporary access
+      const tempAccess = await hasTemporaryAccess();
+      setHasTempAccess(tempAccess);
+      
+      // Check for permanent access
+      const paymentCompleted = await hasCompletedPayment();
+      setIsPaidUser(paymentCompleted);
+      
+      // Get email from localStorage
+      const email = localStorage.getItem('userEmail');
+      setUserEmail(email);
+      
+      // If no email is found, check if there's a session cookie
+      if (!email) {
+        // Try to get email from session if available
+        const checkSession = async () => {
+          try {
+            const { supabase } = await import('../lib/supabase');
+            const { data } = await supabase.auth.getSession();
+            if (data.session?.user?.email) {
+              localStorage.setItem('userEmail', data.session.user.email);
+              setUserEmail(data.session.user.email);
+            }
+          } catch (error) {
+            console.error('Error checking session:', error);
+          }
+        };
+        
+        checkSession();
+      }
+      
+      setIsLoading(false);
+    };
+    
+    checkAccessStatus();
   }, []);
   
   const plans = [
@@ -114,6 +135,9 @@ export function PricingPage() {
     localStorage.setItem('userEmail', email);
     setUserEmail(email);
     
+    // Set temporary access flag (24 hours)
+    localStorage.setItem('temp_access_until', new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString());
+    
     // Construct the URL with email and redirect parameters
     let url = plan.buttonLink;
     
@@ -121,7 +145,7 @@ export function PricingPage() {
     url = `${url}?prefilled_email=${encodeURIComponent(email)}`;
     
     // Add success redirect parameter
-    const successUrl = `${window.location.origin}?payment_success=true&plan=${plan.name.toLowerCase().replace(/\s+/g, '-')}`;
+    const successUrl = `${window.location.origin}?payment_success=true&plan=${plan.planType}`;
     url = `${url}&success_url=${encodeURIComponent(successUrl)}`;
     
     console.log('Redirecting to payment URL:', url);
@@ -155,6 +179,14 @@ export function PricingPage() {
     }
   };
 
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+      </div>
+    );
+  }
+
   return (
     <section className="py-16 bg-white dark:bg-gray-900" id="pricing">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -169,6 +201,18 @@ export function PricingPage() {
           {userEmail && (
             <div className="mt-4 p-3 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-md inline-block">
               ✅ Signed in as: {userEmail}
+            </div>
+          )}
+          
+          {hasTempAccess && (
+            <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-md inline-block">
+              ⏱️ Temporary access active - Your payment is being processed
+            </div>
+          )}
+          
+          {isPaidUser && (
+            <div className="mt-4 p-3 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-md inline-block">
+              ✅ You have an active subscription
             </div>
           )}
           
@@ -231,14 +275,17 @@ export function PricingPage() {
                 
                 <button
                   onClick={() => handleSubscribe(plan)}
+                  disabled={isPaidUser}
                   className={`w-full py-3 px-4 rounded-md ${
-                    plan.popular
-                      ? 'bg-indigo-600 hover:bg-indigo-700 text-white'
-                      : 'bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-900 dark:text-white'
+                    isPaidUser
+                      ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
+                      : plan.popular
+                        ? 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                        : 'bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-900 dark:text-white'
                   } font-medium flex items-center justify-center transition-colors duration-200`}
                 >
-                  {plan.buttonText}
-                  <ArrowRight className="ml-2 w-4 h-4" />
+                  {isPaidUser ? 'Current Plan' : hasTempAccess ? 'Processing Payment' : plan.buttonText}
+                  {!isPaidUser && !hasTempAccess && <ArrowRight className="ml-2 w-4 h-4" />}
                 </button>
               </div>
               

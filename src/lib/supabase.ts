@@ -69,9 +69,25 @@ export async function getCurrentUser() {
   }
 }
 
-// FIXED: Local storage based payment check (no API calls)
-export async function hasCompletedPayment() {
+// Check if user has temporary access
+export async function hasTemporaryAccess(): Promise<boolean> {
+  const tempAccessUntil = localStorage.getItem('temp_access_until');
+  if (!tempAccessUntil) return false;
+  
+  const expiryDate = new Date(tempAccessUntil);
+  return expiryDate > new Date();
+}
+
+// Check if user has completed payment
+export async function hasCompletedPayment(): Promise<boolean> {
   try {
+    // First check if user has temporary access
+    const hasTemp = await hasTemporaryAccess();
+    if (hasTemp) {
+      console.log('[DEBUG] User has temporary access');
+      return true;
+    }
+    
     // FIXED: Check local storage first for immediate response
     const localPaymentStatus = localStorage.getItem('payment_confirmed');
     const localUserEmail = localStorage.getItem('userEmail');
@@ -111,6 +127,12 @@ export async function hasCompletedPayment() {
     const localPaymentStatus = localStorage.getItem('payment_confirmed');
     const localUserEmail = localStorage.getItem('userEmail');
     
+    // Check temporary access as a last resort
+    const hasTemp = await hasTemporaryAccess();
+    if (hasTemp) {
+      return true;
+    }
+    
     return localPaymentStatus === 'true' && !!localUserEmail;
   }
 }
@@ -140,7 +162,7 @@ export async function signUp(email: string, password: string) {
 
     if (error) {
       console.error("Sign up failed:", error.message);
-      throw new Error(error.message);
+      throw error;
     }
 
     if (data.user) {
@@ -148,13 +170,17 @@ export async function signUp(email: string, password: string) {
       localStorage.setItem('userEmail', email);
       // FIXED: Explicitly set payment as not confirmed for new users
       localStorage.setItem('payment_confirmed', 'false');
-      return data;
+      
+      // Set temporary access flag (24 hours)
+      localStorage.setItem('temp_access_until', new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString());
+      
+      return { data, success: true, user: data.user };
     } else {
       throw new Error("Sign up failed: No user data returned");
     }
   } catch (error) {
     console.error("Sign up failed:", error);
-    throw error;
+    return { error, success: false };
   }
 }
 
@@ -177,7 +203,7 @@ export async function signIn(email: string, password: string) {
 
     if (error) {
       console.error("Sign in failed:", error.message);
-      throw new Error(error.message);
+      return { error };
     }
 
     if (data.user) {
@@ -186,6 +212,12 @@ export async function signIn(email: string, password: string) {
       // FIXED: Check and cache payment status on sign in
       const paymentConfirmed = data.user.user_metadata?.payment_confirmed === true;
       localStorage.setItem('payment_confirmed', paymentConfirmed ? 'true' : 'false');
+      
+      // Check for temporary access
+      const tempAccessUntil = data.user.user_metadata?.temp_access_until;
+      if (tempAccessUntil) {
+        localStorage.setItem('temp_access_until', tempAccessUntil);
+      }
       
       return data;
     } else {
@@ -204,6 +236,7 @@ export async function signOut() {
     if (typeof window !== 'undefined') {
       localStorage.removeItem('userEmail');
       localStorage.removeItem('payment_confirmed');
+      localStorage.removeItem('temp_access_until');
     }
 
     const { error } = await withTimeout(
@@ -269,6 +302,9 @@ export async function confirmPayment(planType: string) {
     localStorage.setItem('payment_plan', planType);
     localStorage.setItem('payment_date', new Date().toISOString());
     localStorage.setItem('subscription_status', 'active');
+    
+    // Set temporary access flag (24 hours)
+    localStorage.setItem('temp_access_until', new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString());
 
     console.log("[DEBUG] Payment confirmed locally for user:", userEmail, "plan:", planType);
 
@@ -288,7 +324,8 @@ export async function confirmPayment(planType: string) {
             payment_confirmed: true,
             plan_type: planType,
             payment_date: new Date().toISOString(),
-            subscription_status: 'active'
+            subscription_status: 'active',
+            temp_access_until: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
           }
         }).then(() => {
           console.log("[DEBUG] Payment synced with Supabase successfully");
@@ -349,4 +386,3 @@ export async function forceSignOut() {
     return { success: true };
   }
 }
-

@@ -15,6 +15,8 @@ import { Dashboard } from './components/Dashboard';
 import { AuthModal } from './components/AuthModal';
 import { FAQPage } from './components/FAQPage';
 import { AboutPage } from './components/AboutPage';
+import { SignupPage } from './components/SignupPage';
+import { WritingAccessCheck } from './components/WritingAccessCheck';
 
 // Writing components
 import { WritingArea } from './components/WritingArea';
@@ -265,6 +267,8 @@ function App() {
       }).catch(() => {
         setActivePage('pricing');
       });
+    } else if (page === 'signup') {
+      setActivePage('signup');
     } else {
       setActivePage(page);
     }
@@ -287,7 +291,12 @@ function App() {
   };
 
   const handleStartWriting = () => {
-    setActivePage('writing');
+    if (user) {
+      setActivePage('writing');
+    } else {
+      setAuthModalMode('signup');
+      setShowAuthModal(true);
+    }
   };
 
   // Writing app state management
@@ -354,10 +363,12 @@ function App() {
                 setShowAuthModal(true);
               }}
             />
+          ) : activePage === 'signup' ? (
+            <SignupPage onNavigate={handleNavigation} />
           ) : activePage === 'pricing' ? (
             <PricingPage />
           ) : activePage === 'dashboard' ? (
-            <Dashboard onNavigate={handleNavigation} />
+            <Dashboard user={user} onNavigate={handleNavigation} />
           ) : activePage === 'faq' ? (
             <FAQPage />
           ) : activePage === 'about' ? (
@@ -369,62 +380,68 @@ function App() {
               <WritingTypesSection />
             </div>
           ) : activePage === 'writing' ? (
-            <div className="flex flex-col h-screen">
-              <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 border-b">
-                <EnhancedHeader 
-                  textType={textType}
-                  assistanceLevel={assistanceLevel}
-                  onTextTypeChange={setTextType}
-                  onAssistanceLevelChange={setAssistanceLevel}
-                  onTimerStart={() => setTimerStarted(true)}
-                />
-              </div>
-              
-              {showExamMode ? (
-                <ExamSimulationMode 
-                  onExit={() => setShowExamMode(false)}
-                />
-              ) : (
-                <div className="container mx-auto px-4 sm:px-6 lg:px-8 flex-1 flex flex-col md:flex-row">
-                  <div className="w-full md:w-3/5 h-full md:pr-4 mb-4 md:mb-0">
-                    <WritingArea 
-                      content={content}
-                      onChange={setContent}
-                      textType={textType}
-                      onTimerStart={setTimerStarted}
-                      onSubmit={handleSubmit}
-                    />
-                  </div>
-                  <div className="w-full md:w-2/5 h-full md:pl-4">
-                    {activePanel === 'coach' && (
-                      <CoachPanel 
-                        content={content}
-                        textType={textType}
-                        assistanceLevel={assistanceLevel}
-                      />
-                    )}
-                    {activePanel === 'paraphrase' && (
-                      <ParaphrasePanel 
-                        onNavigate={handleNavigation}
-                        selectedText={selectedText}
-                      />
-                    )}
-                  </div>
+            <WritingAccessCheck onNavigate={handleNavigation}>
+              <div className="flex flex-col h-screen">
+                <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 border-b">
+                  <EnhancedHeader 
+                    textType={textType}
+                    assistanceLevel={assistanceLevel}
+                    onTextTypeChange={setTextType}
+                    onAssistanceLevelChange={setAssistanceLevel}
+                    onTimerStart={() => setTimerStarted(true)}
+                  />
                 </div>
-              )}
-            </div>
+                
+                {showExamMode ? (
+                  <ExamSimulationMode 
+                    onExit={() => setShowExamMode(false)}
+                  />
+                ) : (
+                  <div className="container mx-auto px-4 sm:px-6 lg:px-8 flex-1 flex flex-col md:flex-row">
+                    <div className="w-full md:w-3/5 h-full md:pr-4 mb-4 md:mb-0">
+                      <WritingArea 
+                        content={content}
+                        onChange={setContent}
+                        textType={textType}
+                        onTimerStart={setTimerStarted}
+                        onSubmit={handleSubmit}
+                      />
+                    </div>
+                    <div className="w-full md:w-2/5 h-full md:pl-4">
+                      {activePanel === 'coach' && (
+                        <CoachPanel 
+                          content={content}
+                          textType={textType}
+                          assistanceLevel={assistanceLevel}
+                        />
+                      )}
+                      {activePanel === 'paraphrase' && (
+                        <ParaphrasePanel 
+                          onNavigate={handleNavigation}
+                          selectedText={selectedText}
+                        />
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </WritingAccessCheck>
           ) : activePage === 'learn' ? (
-            <LearningPage 
-              state={appState}
-              onStateChange={updateAppState}
-              onNavigateToWriting={() => setActivePage('writing')}
-            />
+            <WritingAccessCheck onNavigate={handleNavigation}>
+              <LearningPage 
+                state={appState}
+                onStateChange={updateAppState}
+                onNavigateToWriting={() => setActivePage('writing')}
+              />
+            </WritingAccessCheck>
           ) : activePage === 'feedback' ? (
-            <EssayFeedbackPage 
-              content={content}
-              textType={textType}
-              onBack={() => setActivePage('writing')}
-            />
+            <WritingAccessCheck onNavigate={handleNavigation}>
+              <EssayFeedbackPage 
+                content={content}
+                textType={textType}
+                onBack={() => setActivePage('writing')}
+              />
+            </WritingAccessCheck>
           ) : (
             <>
               <HeroSection 
