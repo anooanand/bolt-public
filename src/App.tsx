@@ -329,8 +329,8 @@ function App() {
     <ThemeProvider>
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
         <NavBar
-          onNavigate={handleNavigation}
           activePage={activePage}
+          onNavigate={handleNavigation}
           user={user}
           onSignInClick={() => {
             setAuthModalMode('signin');
@@ -374,68 +374,72 @@ function App() {
             </div>
           ) : activePage === 'writing' ? (
             <div className="flex flex-col h-screen">
-              <EnhancedHeader 
-                textType={textType}
-                assistanceLevel={assistanceLevel}
-                onTextTypeChange={(type) => setTextType(type)}
-                onAssistanceLevelChange={(level) => setAssistanceLevel(level)}
-                onTimerStart={() => setTimerStarted(true)}
-              />
+              <div className="container mx-auto px-4 py-2">
+                <EnhancedHeader 
+                  textType={textType}
+                  assistanceLevel={assistanceLevel}
+                  onTextTypeChange={setTextType}
+                  onAssistanceLevelChange={setAssistanceLevel}
+                  onTimerStart={() => setTimerStarted(true)}
+                />
+              </div>
               
               {showExamMode ? (
                 <ExamSimulationMode 
                   onExit={() => setShowExamMode(false)}
                 />
               ) : (
-                <SplitScreen>
-                  <WritingArea 
-                    content={content}
-                    onChange={setContent}
-                    textType={textType}
-                    onTimerStart={setTimerStarted}
-                    onSubmit={handleSubmit}
-                  />
-                  <div className="flex flex-col h-full">
-                    <div className="bg-white dark:bg-gray-800 p-2 border-b flex">
-                      <button
-                        onClick={() => setActivePanel('coach')}
-                        className={`px-3 py-1 text-sm font-medium rounded-md ${
-                          activePanel === 'coach'
-                            ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
-                            : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
-                        }`}
-                        data-panel="coach"
-                      >
-                        Writing Coach
-                      </button>
-                      <button
-                        onClick={() => setActivePanel('paraphrase')}
-                        className={`px-3 py-1 text-sm font-medium rounded-md ml-2 ${
-                          activePanel === 'paraphrase'
-                            ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
-                            : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
-                        }`}
-                        data-panel="paraphrase"
-                      >
-                        Paraphrase Tool
-                      </button>
+                <div className="flex-1 container mx-auto">
+                  <SplitScreen>
+                    <WritingArea 
+                      content={content}
+                      onChange={setContent}
+                      textType={textType}
+                      onTimerStart={setTimerStarted}
+                      onSubmit={handleSubmit}
+                    />
+                    <div className="flex flex-col h-full">
+                      <div className="bg-white dark:bg-gray-800 p-2 border-b flex">
+                        <button
+                          onClick={() => setActivePanel('coach')}
+                          className={`px-3 py-1 text-sm font-medium rounded-md ${
+                            activePanel === 'coach'
+                              ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
+                              : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                          }`}
+                          data-panel="coach"
+                        >
+                          Writing Coach
+                        </button>
+                        <button
+                          onClick={() => setActivePanel('paraphrase')}
+                          className={`px-3 py-1 text-sm font-medium rounded-md ml-2 ${
+                            activePanel === 'paraphrase'
+                              ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
+                              : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                          }`}
+                          data-panel="paraphrase"
+                        >
+                          Paraphrase Tool
+                        </button>
+                      </div>
+                      
+                      {activePanel === 'coach' && (
+                        <CoachPanel 
+                          content={content}
+                          textType={textType}
+                          assistanceLevel={assistanceLevel}
+                        />
+                      )}
+                      {activePanel === 'paraphrase' && (
+                        <ParaphrasePanel 
+                          selectedText={selectedText}
+                          onNavigate={handleNavigation}
+                        />
+                      )}
                     </div>
-                    
-                    {activePanel === 'coach' && (
-                      <CoachPanel 
-                        content={content}
-                        textType={textType}
-                        assistanceLevel={assistanceLevel}
-                      />
-                    )}
-                    {activePanel === 'paraphrase' && (
-                      <ParaphrasePanel 
-                        selectedText={selectedText}
-                        onNavigate={handleNavigation}
-                      />
-                    )}
-                  </div>
-                </SplitScreen>
+                  </SplitScreen>
+                </div>
               )}
             </div>
           ) : activePage === 'learn' ? (
