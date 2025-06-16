@@ -1,8 +1,12 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { MultiStepSignUp } from './MultiStepSignUp';
 import { Check, ArrowRight } from 'lucide-react';
 
-export function SignupPage() {
+interface SignupPageProps {
+  onNavigate: (page: string) => void;
+}
+
+export function SignupPage({ onNavigate }: SignupPageProps) {
   return (
     <div className="min-h-screen bg-gradient-to-b from-white to-gray-50 dark:from-gray-900 dark:to-gray-800 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
@@ -39,12 +43,12 @@ export function SignupPage() {
         <div className="max-w-md mx-auto">
           <MultiStepSignUp 
             onSuccess={() => {
-              // Handle success - redirect to dashboard or show success message
-              console.log('Signup successful');
+              // Redirect to dashboard after successful signup
+              onNavigate('dashboard');
             }}
             onSignInClick={() => {
-              // Handle sign in click - could redirect to sign in page
-              console.log('Sign in clicked');
+              // Switch to sign in modal
+              onNavigate('signin');
             }}
           />
         </div>

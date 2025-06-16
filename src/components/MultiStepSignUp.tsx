@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { ArrowRight, Check, Star, Zap, CheckCircle, Loader } from 'lucide-react';
 import { signUp } from '../lib/supabase';
 import { z } from 'zod';
-import { Mail, Lock, Loader, Check, ArrowRight } from 'lucide-react';
 
 const signUpSchema = z.object({
   email: z.string().email('Please enter a valid email'),
@@ -12,14 +12,8 @@ const signUpSchema = z.object({
   path: ["confirmPassword"],
 });
 
-const STRIPE_URLS = {
-  tryOut: 'https://buy.stripe.com/test_14kaG7gNX1773v28wB',
-  base: 'https://buy.stripe.com/test_3cs5lNbtD5nn3v28wC',
-  premium: 'https://buy.stripe.com/test_6oE7tVdBL3fffdKbIP'
-};
-
 interface MultiStepSignUpProps {
-  onSuccess: () => void;
+  onSuccess: (user: any) => void;
   onSignInClick: () => void;
   simpleRedirect?: boolean; // if true, skip plan selection and redirect to /pricing
 }
@@ -35,20 +29,20 @@ type Plan = {
 
 const plans: Plan[] = [
   {
-    id: 'tryout',
+    id: 'try-out',
     name: 'Try Out',
     price: '$4.99',
     description: 'Perfect for students just starting their preparation',
     features: ['Access to basic writing tools', 'Limited AI feedback', 'Basic text type templates', 'Email support'],
-    stripeUrl: STRIPE_URLS.tryOut
+    stripeUrl: 'https://buy.stripe.com/test_14kaG7gNX1773v28wB'
   },
   {
-    id: 'base',
+    id: 'base-plan',
     name: 'Base Plan',
     price: '$19.99',
     description: 'Ideal for students serious about exam preparation',
     features: ['Unlimited AI feedback', 'All text type templates', 'Advanced writing analysis', 'Practice exam simulations', 'Priority support', 'Progress tracking'],
-    stripeUrl: STRIPE_URLS.base
+    stripeUrl: 'https://buy.stripe.com/test_3cs5lNbtD5nn3v28wC'
   },
   {
     id: 'premium',
@@ -56,11 +50,10 @@ const plans: Plan[] = [
     price: '$29.99',
     description: 'The ultimate preparation package',
     features: ['Everything in Base Plan', 'One-on-one coaching sessions', 'Personalized study plan', 'Mock exam reviews', 'Parent progress reports', 'Guaranteed score improvement'],
-    stripeUrl: STRIPE_URLS.premium
+    stripeUrl: 'https://buy.stripe.com/test_6oE7tVdBL3fffdKbIP'
   }
 ];
 
-// Export the MultiStepSignUp component as a named export
 export function MultiStepSignUp({ onSuccess, onSignInClick, simpleRedirect = false }: MultiStepSignUpProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const [email, setEmail] = useState('');
@@ -70,6 +63,7 @@ export function MultiStepSignUp({ onSuccess, onSignInClick, simpleRedirect = fal
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [redirectAfterSignup, setRedirectAfterSignup] = useState(false);
+  const [signupCompleted, setSignupCompleted] = useState(false);
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -83,14 +77,30 @@ export function MultiStepSignUp({ onSuccess, onSignInClick, simpleRedirect = fal
       console.log("Starting signup with validated data");
       
       // Attempt signup
-      const result = await signUp(email, password);
-      console.log("Signup result:", result);
+      const { data, error } = await signUp(email, password);
+      
+      if (error) {
+        if (error.message?.includes('already registered') || error.message?.includes('already exists')) {
+          // User already exists - store email and proceed to plan selection
+          localStorage.setItem('userEmail', email);
+          setCurrentStep(2);
+          setIsLoading(false);
+          return;
+        }
+        throw error;
+      }
+
+      console.log("Signup result:", data);
 
       // Store email in localStorage
       localStorage.setItem('userEmail', email);
       
+      // Set temporary access flag (24 hours)
+      localStorage.setItem('temp_access_until', new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString());
+      
       // Always proceed to step 2 (plan selection) after successful signup
       setCurrentStep(2);
+      setSignupCompleted(true);
       
       // Only store the redirect preference, don't redirect yet
       if (simpleRedirect) {
@@ -130,24 +140,39 @@ export function MultiStepSignUp({ onSuccess, onSignInClick, simpleRedirect = fal
 
   const handlePaymentRedirect = () => {
     if (!selectedPlan) return;
+    
+    // Store plan information in localStorage
     localStorage.setItem('selectedPlanId', selectedPlan.id);
     localStorage.setItem('userEmail', email);
+    
+    // Set temporary access flag (24 hours)
+    localStorage.setItem('temp_access_until', new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString());
+    
+    // Create success URL with plan information
     const successUrl = `${window.location.origin}?payment_success=true&plan=${selectedPlan.id}`;
     
-    // Fix: Add question mark before parameters if not already present
-    const stripeBaseUrl = selectedPlan.stripeUrl;
-    const stripeUrlWithEmail = stripeBaseUrl.includes('?') 
-      ? `${stripeBaseUrl}&prefilled_email=${encodeURIComponent(email)}`
-      : `${stripeBaseUrl}?prefilled_email=${encodeURIComponent(email)}`;
+    // Construct Stripe URL with parameters
+    let stripeUrl = selectedPlan.stripeUrl;
     
-    // Add redirect parameter
-    const finalUrl = `${stripeUrlWithEmail}&redirect_to=${encodeURIComponent(successUrl)}`;
-    window.location.href = finalUrl;
+    // Add email parameter
+    stripeUrl = `${stripeUrl}?prefilled_email=${encodeURIComponent(email)}`;
+    
+    // Add success redirect parameter
+    stripeUrl = `${stripeUrl}&success_url=${encodeURIComponent(successUrl)}`;
+    
+    // Redirect to Stripe checkout
+    window.location.href = stripeUrl;
   };
 
   // Only call onSuccess and close the modal when explicitly needed
   const completeSignup = () => {
-    onSuccess();
+    onSuccess({
+      email,
+      user_metadata: {
+        payment_status: 'pending',
+        temp_access_until: localStorage.getItem('temp_access_until')
+      }
+    });
     
     // If redirectAfterSignup is true, redirect to pricing page
     if (redirectAfterSignup) {
@@ -161,7 +186,7 @@ export function MultiStepSignUp({ onSuccess, onSignInClick, simpleRedirect = fal
         return (
           <div className="w-full">
             <form onSubmit={handleSignUp} className="space-y-6">
-              <h2 className="text-2xl font-bold text-center text-gray-900 dark:text-white">Create Your Free Account</h2>
+              <h2 className="text-2xl font-bold text-center text-gray-900 dark:text-white">Create Your Account</h2>
               
               {error && (
                 <div className="p-3 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-md text-sm">
@@ -183,13 +208,12 @@ export function MultiStepSignUp({ onSuccess, onSignInClick, simpleRedirect = fal
                   Email
                 </label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
                   <input
                     id="email"
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
+                    className="w-full pl-3 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
                     placeholder="you@example.com"
                     required
                   />
@@ -201,13 +225,12 @@ export function MultiStepSignUp({ onSuccess, onSignInClick, simpleRedirect = fal
                   Password
                 </label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
                   <input
                     id="password"
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
+                    className="w-full pl-3 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
                     placeholder="••••••••"
                     required
                   />
@@ -219,13 +242,12 @@ export function MultiStepSignUp({ onSuccess, onSignInClick, simpleRedirect = fal
                   Confirm Password
                 </label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
                   <input
                     id="confirmPassword"
                     type="password"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
+                    className="w-full pl-3 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
                     placeholder="••••••••"
                     required
                   />
@@ -292,10 +314,10 @@ export function MultiStepSignUp({ onSuccess, onSignInClick, simpleRedirect = fal
                   </ul>
                   
                   <button
-                    className="w-full py-2 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 flex items-center justify-center"
+                    className="w-full py-2 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-md flex items-center justify-center transition-colors"
                   >
                     Select Plan
-                    <ArrowRight className="ml-2 h-4 w-4" />
+                    <ArrowRight className="ml-2 w-4 h-4" />
                   </button>
                 </div>
               ))}
@@ -334,7 +356,7 @@ export function MultiStepSignUp({ onSuccess, onSignInClick, simpleRedirect = fal
             
             <button
               onClick={handlePaymentRedirect}
-              className="w-full py-3 px-6 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              className="w-full py-3 px-6 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-md"
             >
               Start Your Free Trial
             </button>
