@@ -43,17 +43,22 @@ export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelPro
     // Only process if content has meaningfully changed and meets minimum length
     if (currentContent.trim().length >= 50 && currentContent !== lastProcessedContent) {
       setIsLoading(true);
-      const response = await getWritingFeedback(currentContent, currentTextType, currentAssistanceLevel, currentFeedbackHistory);
-      if (response && response.feedbackItems) {
-        setStructuredFeedback(response);
-        setFeedbackHistory(prevHistory => [...prevHistory, ...response.feedbackItems.filter(item => 
-          !prevHistory.some(histItem => histItem.text === item.text && histItem.area === item.area)
-        )]);
-      } else if (response && response.overallComment) {
-        setStructuredFeedback(response as StructuredFeedback);
+      try {
+        const response = await getWritingFeedback(currentContent, currentTextType, currentAssistanceLevel, currentFeedbackHistory);
+        if (response && response.feedbackItems) {
+          setStructuredFeedback(response);
+          setFeedbackHistory(prevHistory => [...prevHistory, ...response.feedbackItems.filter(item => 
+            !prevHistory.some(histItem => histItem.text === item.text && histItem.area === item.area)
+          )]);
+        } else if (response && response.overallComment) {
+          setStructuredFeedback(response as StructuredFeedback);
+        }
+        setLastProcessedContent(currentContent);
+      } catch (error) {
+        console.error('Error fetching feedback:', error);
+      } finally {
+        setIsLoading(false);
       }
-      setLastProcessedContent(currentContent);
-      setIsLoading(false);
     }
   }, [lastProcessedContent]);
 
@@ -69,32 +74,36 @@ export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelPro
     e.preventDefault();
     if (question.trim()) {
       setIsLoading(true);
-      const userQueryText = `Question about my ${textType} writing: ${question}\n\nCurrent text: ${content}`;
-      const response = await getWritingFeedback(userQueryText, textType, assistanceLevel, feedbackHistory);
-      
-      if (response && response.feedbackItems) {
-        const questionFeedbackItem: FeedbackItem = {
-            type: 'question',
-            area: 'User Question',
-            text: `You asked: ${question}`
-        };
-        const answerItems = response.feedbackItems.map(item => ({...item, area: `Answer to: ${question}`}));
+      try {
+        const userQueryText = `Question about my ${textType} writing: ${question}\n\nCurrent text: ${content}`;
+        const response = await getWritingFeedback(userQueryText, textType, assistanceLevel, feedbackHistory);
         
-        setStructuredFeedback(prevFeedback => ({
-            overallComment: response.overallComment || (prevFeedback?.overallComment || ''),
-            feedbackItems: [questionFeedbackItem, ...answerItems, ...(prevFeedback?.feedbackItems || [])],
-            focusForNextTime: response.focusForNextTime || (prevFeedback?.focusForNextTime || [])
-        }));
-        setFeedbackHistory(prevHistory => [...prevHistory, questionFeedbackItem, ...answerItems.filter(item => 
-            !prevHistory.some(histItem => histItem.text === item.text && histItem.area === item.area)
-          )]);
-
-      } else if (response && response.overallComment) {
-        setStructuredFeedback(response as StructuredFeedback);
+        if (response && response.feedbackItems) {
+          const questionFeedbackItem: FeedbackItem = {
+              type: 'question',
+              area: 'User Question',
+              text: `You asked: ${question}`
+          };
+          const answerItems = response.feedbackItems.map(item => ({...item, area: `Answer to: ${question}`}));
+          
+          setStructuredFeedback(prevFeedback => ({
+              overallComment: response.overallComment || (prevFeedback?.overallComment || ''),
+              feedbackItems: [questionFeedbackItem, ...answerItems, ...(prevFeedback?.feedbackItems || [])],
+              focusForNextTime: response.focusForNextTime || (prevFeedback?.focusForNextTime || [])
+          }));
+          setFeedbackHistory(prevHistory => [...prevHistory, questionFeedbackItem, ...answerItems.filter(item => 
+              !prevHistory.some(histItem => histItem.text === item.text && histItem.area === item.area)
+            )]);
+        } else if (response && response.overallComment) {
+          setStructuredFeedback(response as StructuredFeedback);
+        }
+      } catch (error) {
+        console.error('Error submitting question:', error);
+      } finally {
+        setQuestion('');
+        setIsLoading(false);
+        setShowPrompts(false);
       }
-      setQuestion('');
-      setIsLoading(false);
-      setShowPrompts(false);
     }
   };
 
@@ -133,45 +142,55 @@ export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelPro
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {structuredFeedback?.overallComment && (
-          <div className="mb-4 p-3 bg-indigo-50 text-indigo-700 rounded-lg text-sm">
-            <p className="font-medium">A quick thought:</p>
-            <p>{structuredFeedback.overallComment}</p>
+        {!content || content.trim().length < 50 ? (
+          <div className="flex flex-col items-center justify-center h-full text-gray-400">
+            <MessageSquare className="h-12 w-12 mb-4" />
+            <p className="text-center">Start writing to get feedback from your AI writing coach</p>
+            <p className="text-sm text-center mt-2">Write at least 50 characters to activate feedback</p>
           </div>
-        )}
-
-        {structuredFeedback?.feedbackItems?.map((item, index) => {
-          const { icon, bgColor, textColor } = getFeedbackItemStyle(item.type);
-          return (
-            <div key={index} className={`rounded-lg p-3 ${bgColor} ${textColor} text-sm flex`}>
-              <div>{icon}</div>
-              <div className="flex-grow">
-                <p className="font-semibold capitalize">{item.area}</p>
-                <p className="mt-1">{item.text}</p>
-                {item.exampleFromText && (
-                  <p className="mt-1 text-xs italic border-l-2 border-current pl-2 ml-2 opacity-80">
-                    For example, in your text: "{item.exampleFromText}"
-                  </p>
-                )}
-                {item.suggestionForImprovement && (
-                  <p className="mt-1 text-xs border-l-2 border-current pl-2 ml-2 opacity-80">
-                    <span className="font-medium">Try this:</span> {item.suggestionForImprovement}
-                  </p>
-                )}
+        ) : (
+          <>
+            {structuredFeedback?.overallComment && (
+              <div className="mb-4 p-3 bg-indigo-50 text-indigo-700 rounded-lg text-sm">
+                <p className="font-medium">A quick thought:</p>
+                <p>{structuredFeedback.overallComment}</p>
               </div>
-            </div>
-          );
-        })}
+            )}
 
-        {structuredFeedback?.focusForNextTime && structuredFeedback.focusForNextTime.length > 0 && (
-          <div className="mt-4 p-3 bg-gray-100 text-gray-700 rounded-lg text-sm">
-            <p className="font-medium">Keep in mind for next time:</p>
-            <ul className="list-disc list-inside mt-1">
-              {structuredFeedback.focusForNextTime.map((focus, idx) => (
-                <li key={idx}>{focus}</li>
-              ))}
-            </ul>
-          </div>
+            {structuredFeedback?.feedbackItems?.map((item, index) => {
+              const { icon, bgColor, textColor } = getFeedbackItemStyle(item.type);
+              return (
+                <div key={index} className={`rounded-lg p-3 ${bgColor} ${textColor} text-sm flex`}>
+                  <div>{icon}</div>
+                  <div className="flex-grow">
+                    <p className="font-semibold capitalize">{item.area}</p>
+                    <p className="mt-1">{item.text}</p>
+                    {item.exampleFromText && (
+                      <p className="mt-1 text-xs italic border-l-2 border-current pl-2 ml-2 opacity-80">
+                        For example, in your text: "{item.exampleFromText}"
+                      </p>
+                    )}
+                    {item.suggestionForImprovement && (
+                      <p className="mt-1 text-xs border-l-2 border-current pl-2 ml-2 opacity-80">
+                        <span className="font-medium">Try this:</span> {item.suggestionForImprovement}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+
+            {structuredFeedback?.focusForNextTime && structuredFeedback.focusForNextTime.length > 0 && (
+              <div className="mt-4 p-3 bg-gray-100 text-gray-700 rounded-lg text-sm">
+                <p className="font-medium">Keep in mind for next time:</p>
+                <ul className="list-disc list-inside mt-1">
+                  {structuredFeedback.focusForNextTime.map((focus, idx) => (
+                    <li key={idx}>{focus}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </>
         )}
       </div>
 

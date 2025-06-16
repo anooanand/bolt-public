@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { getCurrentUser, confirmPayment, hasCompletedPayment, supabase, forceSignOut } from './lib/supabase';
 import { User } from '@supabase/supabase-js';
@@ -328,8 +328,8 @@ function App() {
     <ThemeProvider>
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
         <NavBar
-          onNavigate={handleNavigation}
           activePage={activePage}
+          onNavigate={handleNavigation}
           user={user}
           onSignInClick={() => {
             setAuthModalMode('signin');
@@ -386,7 +386,7 @@ function App() {
                 />
               ) : (
                 <div className="flex flex-col md:flex-row h-full">
-                  <div className="w-full md:w-3/5 h-full overflow-hidden">
+                  <div className="w-full md:w-3/5 h-1/2 md:h-full overflow-auto">
                     <WritingArea 
                       content={content}
                       onChange={setContent}
@@ -395,7 +395,7 @@ function App() {
                       onSubmit={handleSubmit}
                     />
                   </div>
-                  <div className="w-full md:w-2/5 h-full overflow-hidden">
+                  <div className="w-full md:w-2/5 h-1/2 md:h-full overflow-auto">
                     {activePanel === 'coach' && (
                       <CoachPanel 
                         content={content}
@@ -404,7 +404,10 @@ function App() {
                       />
                     )}
                     {activePanel === 'paraphrase' && (
-                      <ParaphrasePanel onNavigate={handleNavigation} />
+                      <ParaphrasePanel 
+                        onNavigate={handleNavigation}
+                        selectedText={selectedText}
+                      />
                     )}
                   </div>
                 </div>
