@@ -131,44 +131,72 @@ export function PricingPage() {
       return;
     }
     
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      alert('Please enter a valid email address');
+      return;
+    }
+    
     // Store email for future use
     localStorage.setItem('userEmail', email);
     setUserEmail(email);
     
-    // Set temporary access flag (24 hours)
-    localStorage.setItem('temp_access_until', new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString());
+    console.log('[DEBUG] Preparing payment for:', email, 'plan:', plan.planType);
     
-    // Construct the URL with email and redirect parameters
+    // Set temporary access flag (24 hours) - This grants immediate access
+    const expiryTime = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    localStorage.setItem('temp_access_until', expiryTime);
+    localStorage.setItem('payment_processing', 'true');
+    localStorage.setItem('payment_plan', plan.planType);
+    localStorage.setItem('payment_date', new Date().toISOString());
+    
+    console.log('[DEBUG] Temporary access granted until:', expiryTime);
+    
+    // FIXED: Use consistent parameter names that match App.tsx
+    const successUrl = `${window.location.origin}?paymentSuccess=true&planType=${plan.planType}&email=${encodeURIComponent(email)}`;
+    const cancelUrl = `${window.location.origin}?paymentSuccess=false&planType=${plan.planType}`;
+    
+    // Construct the Stripe URL with all parameters
     let url = plan.buttonLink;
     
-    // Add email parameter
+    // Add email parameter for Stripe prefill
     url = `${url}?prefilled_email=${encodeURIComponent(email)}`;
     
-    // Add success redirect parameter
-    const successUrl = `${window.location.origin}?payment_success=true&plan=${plan.planType}`;
+    // Add success and cancel URLs
     url = `${url}&success_url=${encodeURIComponent(successUrl)}`;
+    url = `${url}&cancel_url=${encodeURIComponent(cancelUrl)}`;
     
-    console.log('Redirecting to payment URL:', url);
+    // Add customer email as metadata for Stripe
+    url = `${url}&customer_email=${encodeURIComponent(email)}`;
+    
+    console.log('[DEBUG] Redirecting to Stripe with URL:', url);
+    console.log('[DEBUG] Success URL will be:', successUrl);
     
     // Add loading state feedback
     const button = document.activeElement as HTMLButtonElement;
     if (button) {
       const originalText = button.textContent;
-      button.textContent = 'Redirecting...';
+      button.textContent = 'Redirecting to Payment...';
       button.disabled = true;
       
       // Restore button after a delay in case redirect fails
       setTimeout(() => {
-        button.textContent = originalText;
-        button.disabled = false;
-      }, 5000);
+        if (button.textContent === 'Redirecting to Payment...') {
+          button.textContent = originalText;
+          button.disabled = false;
+        }
+      }, 10000); // 10 seconds timeout
     }
     
     // Redirect to Stripe
     try {
-      window.location.href = url;
+      // Small delay to ensure localStorage is written
+      setTimeout(() => {
+        window.location.href = url;
+      }, 100);
     } catch (error) {
-      console.error('Error redirecting to payment:', error);
+      console.error('[DEBUG] Error redirecting to payment:', error);
       alert('Error redirecting to payment. Please try again.');
       
       // Restore button
@@ -176,13 +204,20 @@ export function PricingPage() {
         button.textContent = plan.buttonText;
         button.disabled = false;
       }
+      
+      // Clear temporary access on error
+      localStorage.removeItem('temp_access_until');
+      localStorage.removeItem('payment_processing');
     }
   };
 
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-400">Loading pricing...</p>
+        </div>
       </div>
     );
   }
@@ -278,15 +313,26 @@ export function PricingPage() {
                   disabled={isPaidUser}
                   className={`w-full py-3 px-4 rounded-md ${
                     isPaidUser
-                      ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
+                      ? 'bg-gray-300 dark:bg-gray-600 text-gray-600 dark:text-gray-400 cursor-not-allowed'
                       : plan.popular
-                        ? 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                        ? 'bg-indigo-600 hover:bg-indigo-700 text-white hover:shadow-lg'
                         : 'bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-900 dark:text-white'
-                  } font-medium flex items-center justify-center transition-colors duration-200`}
+                  } font-medium flex items-center justify-center transition-all duration-200`}
                 >
-                  {isPaidUser ? 'Current Plan' : hasTempAccess ? 'Processing Payment' : plan.buttonText}
+                  {isPaidUser 
+                    ? 'Current Plan' 
+                    : hasTempAccess 
+                      ? 'Processing Payment...' 
+                      : plan.buttonText
+                  }
                   {!isPaidUser && !hasTempAccess && <ArrowRight className="ml-2 w-4 h-4" />}
                 </button>
+                
+                {hasTempAccess && (
+                  <p className="text-xs text-center text-blue-600 dark:text-blue-400 mt-2">
+                    You have temporary access while payment processes
+                  </p>
+                )}
               </div>
               
               <div className="p-6 bg-gray-50 dark:bg-gray-800 border-t border-gray-100 dark:border-gray-700 flex-grow">
@@ -294,8 +340,8 @@ export function PricingPage() {
                 <ul className="space-y-3">
                   {plan.features.map((feature, idx) => (
                     <li key={idx} className="flex items-start">
-                      <Check className="w-5 h-5 text-green-500 mr-2 shrink-0" />
-                      <span className="text-gray-600 dark:text-gray-300">{feature}</span>
+                      <Check className="w-5 h-5 text-green-500 mr-2 shrink-0 mt-0.5" />
+                      <span className="text-gray-600 dark:text-gray-300 text-sm">{feature}</span>
                     </li>
                   ))}
                 </ul>
@@ -320,10 +366,22 @@ export function PricingPage() {
           <p className="text-gray-600 dark:text-gray-300 mb-6 max-w-2xl mx-auto">
             We offer special pricing for schools and educational institutions. Contact us to learn more about our school plans.
           </p>
-          <button className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-md">
+          <button className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-md transition-colors">
             Contact Sales
           </button>
         </div>
+        
+        {/* Debug Information (remove in production) */}
+        {process.env.NODE_ENV === 'development' && (
+          <div className="mt-8 p-4 bg-gray-100 dark:bg-gray-800 rounded-lg text-xs">
+            <h4 className="font-bold mb-2">Debug Info:</h4>
+            <p>User Email: {userEmail || 'Not set'}</p>
+            <p>Has Temp Access: {hasTempAccess ? 'Yes' : 'No'}</p>
+            <p>Is Paid User: {isPaidUser ? 'Yes' : 'No'}</p>
+            <p>Temp Access Until: {localStorage.getItem('temp_access_until') || 'Not set'}</p>
+            <p>Payment Processing: {localStorage.getItem('payment_processing') || 'No'}</p>
+          </div>
+        )}
       </div>
     </section>
   );
