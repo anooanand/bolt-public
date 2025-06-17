@@ -118,31 +118,31 @@ export function PaymentSuccessPage({ plan, onSuccess, onSignInRequired }: Paymen
       }
       
       console.log("[DEBUG] PaymentSuccessPage: Sign in successful");
-      setMessage('Signing in and processing payment...');
+      setMessage("Signing in and processing payment...");
       
-      // FIXED: Process payment immediately after sign in
-      try {
-        await confirmPayment(plan);
-        console.log("[DEBUG] PaymentSuccessPage: Payment confirmed after sign in");
-        
-        // Set temporary access (24 hours)
-        localStorage.setItem('temp_access_until', new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString());
-        
-        setStatus('success');
-        setMessage(`Welcome! Your ${plan.replace('-', ' ')} plan is now active. You have temporary access for the next 24 hours while we process your payment.`);
-        
-        // Get the current user and call success callback
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          setTimeout(() => {
+      // Wait for user session to be fully established and user object updated
+      setTimeout(async () => {
+        try {
+          await confirmPayment(plan);
+          console.log("[DEBUG] PaymentSuccessPage: Payment confirmed after sign in");
+          
+          // Set temporary access (24 hours)
+          localStorage.setItem("temp_access_until", new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString());
+          
+          setStatus("success");
+          setMessage(`Welcome! Your ${plan.replace("-", " ")} plan is now active. You have temporary access for the next 24 hours while we process your payment.`);
+          
+          // Get the current user and call success callback
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
             onSuccess(user);
-          }, 1000);
+          }
+        } catch (paymentError) {
+          console.error("[DEBUG] PaymentSuccessPage: Error confirming payment after sign in:", paymentError);
+          setStatus("error");
+          setMessage("Payment confirmation failed. Please contact support.");
         }
-      } catch (paymentError) {
-        console.error("[DEBUG] PaymentSuccessPage: Error confirming payment after sign in:", paymentError);
-        setStatus('error');
-        setMessage('Payment confirmation failed. Please contact support.');
-      }
+      }, 2000); // Add a 2-second delay
     } catch (err: any) {
       console.error('[DEBUG] PaymentSuccessPage: Sign-in error:', err);
       setMessage(`Sign-in failed: ${err.message || 'Please check your password or try again.'}`);
@@ -158,8 +158,9 @@ export function PaymentSuccessPage({ plan, onSuccess, onSignInRequired }: Paymen
         <input
           type="email"
           value={userEmail || ''}
-          disabled
-          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400"
+          onChange={(e) => setUserEmail(e.target.value)}
+          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
+          required
         />
       </div>
       <div>
