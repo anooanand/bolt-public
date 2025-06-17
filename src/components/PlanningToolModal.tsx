@@ -5,15 +5,19 @@ import { PlanningTool } from './text-type-templates/PlanningTool';
 interface PlanningToolModalProps {
   isOpen: boolean;
   onClose: () => void;
-  textType: string;
   onSavePlan: (plan: any) => void;
+  content?: string;
+  textType: string;
+  onRestoreContent?: (content: string) => void;
 }
 
 export function PlanningToolModal({ 
   isOpen, 
   onClose, 
   textType, 
-  onSavePlan 
+  onSavePlan,
+  content,
+  onRestoreContent
 }: PlanningToolModalProps) {
   const [showTimer, setShowTimer] = useState(false);
   const [minutes, setMinutes] = useState(5);

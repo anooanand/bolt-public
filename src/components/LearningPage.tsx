@@ -4,19 +4,23 @@ import { ProgressDashboard } from './ProgressDashboard';
 import { useLearning } from '../contexts/LearningContext';
 
 interface LearningPageProps {
-  state: {
+  state?: {
     content: string;
     textType: string;
     assistanceLevel: string;
     timerStarted: boolean;
   };
-  onStateChange: (updates: Partial<typeof LearningPageProps.prototype.state>) => void;
-  onNavigateToWriting: () => void;
+  onStateChange?: (updates: Partial<typeof LearningPageProps.prototype.state>) => void;
+  onNavigateToWriting?: () => void;
 }
 
 export function LearningPage({ state, onStateChange, onNavigateToWriting }: LearningPageProps) {
   const [activeView, setActiveView] = useState<'plan' | 'progress'>('plan');
   const { progress } = useLearning();
+  
+  // Default state values if not provided
+  const textType = state?.textType || '';
+  const assistanceLevel = state?.assistanceLevel || 'detailed';
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -86,41 +90,43 @@ export function LearningPage({ state, onStateChange, onNavigateToWriting }: Lear
           </div>
 
           {/* Settings Bar */}
-          <div className="flex flex-wrap gap-4 mt-4 items-center">
-            <div className="flex items-center space-x-2">
-              <label className="text-sm font-medium text-gray-700">Writing Type:</label>
-              <select
-                value={state.textType}
-                onChange={(e) => onStateChange({ textType: e.target.value })}
-                className="rounded-md border-gray-300 py-1.5 pl-3 pr-10 text-sm focus:ring-2 focus:ring-blue-600 focus:border-blue-600"
-              >
-                <option value="">Select writing type...</option>
-                <option value="narrative">Narrative</option>
-                <option value="persuasive">Persuasive</option>
-                <option value="expository">Expository / Informative</option>
-                <option value="reflective">Reflective</option>
-                <option value="descriptive">Descriptive</option>
-                <option value="recount">Recount</option>
-                <option value="discursive">Discursive</option>
-                <option value="news">News Report</option>
-                <option value="letter">Letter</option>
-                <option value="diary">Diary Entry</option>
-              </select>
+          {onStateChange && (
+            <div className="flex flex-wrap gap-4 mt-4 items-center">
+              <div className="flex items-center space-x-2">
+                <label className="text-sm font-medium text-gray-700">Writing Type:</label>
+                <select
+                  value={textType}
+                  onChange={(e) => onStateChange({ textType: e.target.value })}
+                  className="rounded-md border-gray-300 py-1.5 pl-3 pr-10 text-sm focus:ring-2 focus:ring-blue-600 focus:border-blue-600"
+                >
+                  <option value="">Select writing type...</option>
+                  <option value="narrative">Narrative</option>
+                  <option value="persuasive">Persuasive</option>
+                  <option value="expository">Expository / Informative</option>
+                  <option value="reflective">Reflective</option>
+                  <option value="descriptive">Descriptive</option>
+                  <option value="recount">Recount</option>
+                  <option value="discursive">Discursive</option>
+                  <option value="news">News Report</option>
+                  <option value="letter">Letter</option>
+                  <option value="diary">Diary Entry</option>
+                </select>
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                <label className="text-sm font-medium text-gray-700">Assistance Level:</label>
+                <select
+                  value={assistanceLevel}
+                  onChange={(e) => onStateChange({ assistanceLevel: e.target.value })}
+                  className="rounded-md border-gray-300 py-1.5 pl-3 pr-10 text-sm focus:ring-2 focus:ring-blue-600 focus:border-blue-600"
+                >
+                  <option value="detailed">Detailed Assistance</option>
+                  <option value="moderate">Moderate Guidance</option>
+                  <option value="minimal">Minimal Support</option>
+                </select>
+              </div>
             </div>
-            
-            <div className="flex items-center space-x-2">
-              <label className="text-sm font-medium text-gray-700">Assistance Level:</label>
-              <select
-                value={state.assistanceLevel}
-                onChange={(e) => onStateChange({ assistanceLevel: e.target.value })}
-                className="rounded-md border-gray-300 py-1.5 pl-3 pr-10 text-sm focus:ring-2 focus:ring-blue-600 focus:border-blue-600"
-              >
-                <option value="detailed">Detailed Assistance</option>
-                <option value="moderate">Moderate Guidance</option>
-                <option value="minimal">Minimal Support</option>
-              </select>
-            </div>
-          </div>
+          )}
         </header>
 
         {/* Main Content */}

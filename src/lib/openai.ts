@@ -25,8 +25,42 @@ export const isOpenAIAvailable = (): boolean => {
   return openai !== null;
 };
 
+// Base URL for Netlify functions
+const NETLIFY_FUNCTIONS_URL = '/.netlify/functions';
+
+// Generic function to call Netlify functions for AI operations
+async function callAIFunction(operation: string, params: any) {
+  try {
+    const response = await fetch(`${NETLIFY_FUNCTIONS_URL}/ai-operations`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        operation,
+        ...params
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`API call failed with status: ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error(`Error calling ${operation}:`, error);
+    throw error;
+  }
+}
+
 export async function generatePrompt(textType: string): Promise<string> {
-  if (!openai) {
+  try {
+    const result = await callAIFunction('generatePrompt', { textType });
+    return result.prompt;
+  } catch (error) {
+    console.error('Error generating prompt:', error);
+    
+    // Fallback prompts if the API call fails
     const fallbackPrompts: { [key: string]: string } = {
       narrative: "Write a story about an unexpected adventure that changed someone's perspective on life.",
       persuasive: "Write an essay arguing for or against allowing students to use smartphones in school.",
@@ -38,31 +72,20 @@ export async function generatePrompt(textType: string): Promise<string> {
     
     return fallbackPrompts[textType.toLowerCase()] || fallbackPrompts.default;
   }
-
-  try {
-    const completion = await openai.chat.completions.create({
-      messages: [
-        {
-          role: "system",
-          content: `You are an expert writing teacher creating prompts for Year 5-6 students. Generate an engaging and age-appropriate ${textType} writing prompt.`
-        }
-      ],
-      model: "gpt-4",
-      temperature: 0.7,
-      max_tokens: 100
-    });
-
-    return completion.choices[0].message.content || "Write about a memorable experience.";
-  } catch (error) {
-    console.error('OpenAI prompt generation error:', error);
-    return "Write about a memorable experience that taught you something important.";
-  }
 }
 
 export async function getWritingFeedback(content: string, textType: string, assistanceLevel: string, feedbackHistory: any[]): Promise<any> {
-  if (!openai) {
+  try {
+    return await callAIFunction('getWritingFeedback', { 
+      content, 
+      textType, 
+      assistanceLevel, 
+      feedbackHistory 
+    });
+  } catch (error) {
+    console.error('Error getting writing feedback:', error);
     return {
-      overallComment: "AI feedback is not available without an OpenAI API key. Your writing shows good effort and structure. Keep practicing to improve your skills!",
+      overallComment: "AI feedback is not available at the moment. Your writing shows good effort and structure. Keep practicing to improve your skills!",
       feedbackItems: [
         {
           type: "praise",
@@ -80,72 +103,15 @@ export async function getWritingFeedback(content: string, textType: string, assi
       focusForNextTime: ["Continue practicing", "Focus on clear communication", "Review your work before submitting"]
     };
   }
-
-  try {
-    const completion = await openai.chat.completions.create({
-      messages: [
-        {
-          role: "system",
-          content: `You are an expert writing teacher providing feedback for Year 5-6 students. Analyze this ${textType} writing piece and provide constructive feedback. Consider the student's ${assistanceLevel} assistance level and previous feedback history. Return feedback in this format:
-{
-  "overallComment": "Brief, encouraging overall assessment",
-  "feedbackItems": [
-    {
-      "type": "praise/suggestion/question/challenge",
-      "area": "specific area of writing (e.g., vocabulary, structure)",
-      "text": "detailed feedback point",
-      "exampleFromText": "relevant example from student's writing (optional)",
-      "suggestionForImprovement": "specific suggestion (optional)"
-    }
-  ],
-  "focusForNextTime": ["2-3 specific points to focus on"]
-}`
-        },
-        {
-          role: "user",
-          content: `Previous feedback history:\n${JSON.stringify(feedbackHistory)}\n\nCurrent text:\n${content}`
-        }
-      ],
-      model: "gpt-4",
-      temperature: 0.7,
-      max_tokens: 1000
-    });
-
-    const responseContent = completion.choices[0].message.content;
-    if (!responseContent) {
-      throw new Error('Empty response from OpenAI');
-    }
-
-    // Parse and validate the response
-    const parsed = JSON.parse(responseContent);
-    
-    // Ensure all required fields are present
-    if (!parsed.overallComment || !Array.isArray(parsed.feedbackItems)) {
-      throw new Error('Invalid response format: missing required fields');
-    }
-
-    return parsed;
-  } catch (error) {
-    console.error('OpenAI writing feedback error:', error);
-    return {
-      overallComment: "I'm having trouble analyzing your writing right now. Your work shows good effort - please try again in a moment.",
-      feedbackItems: [
-        {
-          type: "praise",
-          area: "effort",
-          text: "You've made a good attempt at this writing task.",
-          suggestionForImprovement: "Keep practicing to improve your skills."
-        }
-      ],
-      focusForNextTime: ["Try again in a few moments", "Continue practicing", "Focus on clear expression"]
-    };
-  }
 }
 
 export async function getSpecializedTextTypeFeedback(content: string, textType: string): Promise<any> {
-  if (!openai) {
+  try {
+    return await callAIFunction('getSpecializedTextTypeFeedback', { content, textType });
+  } catch (error) {
+    console.error('Error getting specialized text type feedback:', error);
     return {
-      overallComment: "AI specialized feedback is not available without an OpenAI API key. Your writing shows understanding of the text type requirements.",
+      overallComment: "AI specialized feedback is not available at the moment. Your writing shows understanding of the text type requirements.",
       textTypeSpecificFeedback: {
         structure: "Your writing follows the basic structure expected for this text type.",
         language: "You've used appropriate language for this writing style.",
@@ -169,150 +135,13 @@ export async function getSpecializedTextTypeFeedback(content: string, textType: 
       ]
     };
   }
-
-  try {
-    const completion = await openai.chat.completions.create({
-      messages: [
-        {
-          role: "system",
-          content: `You are an expert writing teacher providing specialized feedback for Year 5-6 students on ${textType} writing. Focus specifically on how well the student has understood and applied the conventions, structure, and features of this text type. Return feedback in this exact JSON format:
-{
-  "overallComment": "Brief assessment of how well the student has handled this text type",
-  "textTypeSpecificFeedback": {
-    "structure": "Feedback on how well the student followed the expected structure for this text type",
-    "language": "Feedback on use of language features specific to this text type",
-    "purpose": "How well the student achieved the purpose of this text type",
-    "audience": "How well the student considered their audience"
-  },
-  "strengthsInTextType": [
-    "Specific strengths in handling this text type",
-    "What the student did well for this writing style"
-  ],
-  "improvementAreas": [
-    "Areas where the student can improve their understanding of this text type",
-    "Specific features they need to work on"
-  ],
-  "nextSteps": [
-    "Specific actions to improve in this text type",
-    "Resources or practice suggestions"
-  ]
-}`
-        },
-        {
-          role: "user",
-          content: `Text type: ${textType}\n\nStudent writing:\n${content}`
-        }
-      ],
-      model: "gpt-4",
-      temperature: 0.7,
-      max_tokens: 1000
-    });
-
-    const responseContent = completion.choices[0].message.content;
-    if (!responseContent) {
-      throw new Error('Empty response from OpenAI');
-    }
-
-    const parsed = JSON.parse(responseContent);
-    
-    if (!parsed.overallComment || 
-        !parsed.textTypeSpecificFeedback ||
-        !Array.isArray(parsed.strengthsInTextType) ||
-        !Array.isArray(parsed.improvementAreas) ||
-        !Array.isArray(parsed.nextSteps)) {
-      throw new Error('Invalid response format: missing required fields');
-    }
-
-    return parsed;
-  } catch (error) {
-    console.error('OpenAI specialized text type feedback error:', error);
-    return {
-      overallComment: "Unable to provide specialized feedback at this time. Your writing shows good understanding of the task.",
-      textTypeSpecificFeedback: {
-        structure: "Your writing has a clear structure appropriate for this text type.",
-        language: "You've used suitable language for this writing style.",
-        purpose: "Your writing addresses the main purpose effectively.",
-        audience: "Consider your audience when refining your writing."
-      },
-      strengthsInTextType: [
-        "Good understanding of the text type requirements",
-        "Appropriate structure and organization",
-        "Clear attempt at the required style"
-      ],
-      improvementAreas: [
-        "Continue developing text type knowledge",
-        "Practice specific language features",
-        "Strengthen understanding of conventions"
-      ],
-      nextSteps: [
-        "Review examples of this text type",
-        "Practice with guided exercises",
-        "Seek additional feedback and support"
-      ]
-    };
-  }
 }
 
 export async function identifyCommonMistakes(content: string, textType: string) {
-  if (!openai) {
-    return {
-      overallAssessment: "AI analysis is not available without an OpenAI API key. Your writing shows good effort and understanding of the task.",
-      mistakesIdentified: [],
-      patternAnalysis: "Unable to analyze patterns without AI assistance. Focus on proofreading your work carefully.",
-      priorityFixes: ["Proofread for spelling and grammar", "Check sentence structure", "Ensure ideas flow logically"],
-      positiveElements: ["Good effort in completing the task", "Appropriate length", "Clear attempt at the required text type"]
-    };
-  }
-
   try {
-    const completion = await openai.chat.completions.create({
-      messages: [
-        {
-          role: "system",
-          content: `You are an expert writing teacher analyzing a Year 5-6 student's ${textType} writing piece. Identify common mistakes and provide constructive feedback. Return the analysis in this exact JSON format:
-{
-  "overallAssessment": "Brief overall assessment of the writing",
-  "mistakesIdentified": [
-    {
-      "category": "content/structure/vocabulary/sentences/punctuation/spelling",
-      "issue": "Description of the mistake",
-      "example": "Example from the text showing the mistake",
-      "impact": "How this affects the writing",
-      "correction": "How to fix this mistake",
-      "preventionTip": "How to avoid this mistake in future"
-    }
-  ],
-  "patternAnalysis": "Analysis of any patterns in mistakes",
-  "priorityFixes": ["List", "of", "priority", "fixes"],
-  "positiveElements": ["List", "of", "things", "done", "well"]
-}`
-        },
-        {
-          role: "user",
-          content: content
-        }
-      ],
-      model: "gpt-4",
-      temperature: 0.7,
-      max_tokens: 1000
-    });
-
-    const responseContent = completion.choices[0].message.content;
-    if (!responseContent) {
-      throw new Error('Empty response from OpenAI');
-    }
-
-    // Parse and validate the response
-    const parsed = JSON.parse(responseContent);
-    
-    // Ensure all required fields are present
-    if (!parsed.overallAssessment || !Array.isArray(parsed.mistakesIdentified)) {
-      throw new Error('Invalid response format: missing required fields');
-    }
-
-    return parsed;
+    return await callAIFunction('identifyCommonMistakes', { content, textType });
   } catch (error) {
-    console.error('OpenAI mistake identification error:', error);
+    console.error('Error identifying common mistakes:', error);
     return {
       overallAssessment: "Unable to analyze the writing at this time. Your work shows good effort.",
       mistakesIdentified: [],
@@ -324,7 +153,11 @@ export async function identifyCommonMistakes(content: string, textType: string) 
 }
 
 export async function getSynonyms(word: string): Promise<string[]> {
-  if (!openai) {
+  try {
+    return await callAIFunction('getSynonyms', { content: word });
+  } catch (error) {
+    console.error('Error getting synonyms:', error);
+    
     // Basic synonym fallbacks for common words
     const commonSynonyms: { [key: string]: string[] } = {
       good: ['excellent', 'great', 'wonderful', 'fantastic', 'amazing'],
@@ -332,341 +165,55 @@ export async function getSynonyms(word: string): Promise<string[]> {
       big: ['large', 'huge', 'enormous', 'massive', 'gigantic'],
       small: ['tiny', 'little', 'miniature', 'petite', 'compact'],
       happy: ['joyful', 'cheerful', 'delighted', 'pleased', 'content'],
-      sad: ['unhappy', 'sorrowful', 'melancholy', 'dejected', 'gloomy'],
-      fast: ['quick', 'rapid', 'swift', 'speedy', 'hasty'],
-      slow: ['gradual', 'leisurely', 'sluggish', 'unhurried', 'deliberate'],
-      beautiful: ['lovely', 'gorgeous', 'stunning', 'attractive', 'pretty'],
-      ugly: ['unattractive', 'hideous', 'unsightly', 'repulsive', 'grotesque']
+      sad: ['unhappy', 'sorrowful', 'melancholy', 'dejected', 'gloomy']
     };
     
-    return commonSynonyms[word.toLowerCase()] || [`[Synonyms for "${word}" not available without API key]`];
-  }
-
-  try {
-    const completion = await openai.chat.completions.create({
-      messages: [
-        {
-          role: "system",
-          content: `Provide 5 age-appropriate synonyms for the word "${word}" suitable for Year 5-6 students. Return only the synonyms as a comma-separated list.`
-        }
-      ],
-      model: "gpt-4",
-      temperature: 0.7,
-      max_tokens: 50
-    });
-
-    const synonyms = completion.choices[0].message.content?.split(',').map(s => s.trim()) || [];
-    return synonyms.length > 0 ? synonyms : [`[No synonyms found for "${word}"]`];
-  } catch (error) {
-    console.error('OpenAI synonym generation error:', error);
-    return [`[Synonyms for "${word}" temporarily unavailable]`];
+    return commonSynonyms[word.toLowerCase()] || [`[Synonyms for "${word}" not available at the moment]`];
   }
 }
 
 export async function rephraseSentence(sentence: string): Promise<string> {
-  if (!openai) {
-    return `[Rephrasing not available without API key] Original: ${sentence}`;
-  }
-
   try {
-    const completion = await openai.chat.completions.create({
-      messages: [
-        {
-          role: "system",
-          content: `Rephrase this sentence in a way that's suitable for Year 5-6 students while maintaining its meaning: "${sentence}"`
-        }
-      ],
-      model: "gpt-4",
-      temperature: 0.7,
-      max_tokens: 100
-    });
-
-    return completion.choices[0].message.content || sentence;
+    const result = await callAIFunction('rephraseSentence', { content: sentence });
+    return result;
   } catch (error) {
-    console.error('OpenAI sentence rephrasing error:', error);
-    return `[Rephrasing temporarily unavailable] ${sentence}`;
+    console.error('Error rephrasing sentence:', error);
+    return `[Rephrasing not available at the moment] Original: ${sentence}`;
   }
 }
 
-export async function generateParaphrases(text: string): Promise<any> {
-  if (!openai) {
-    return {
-      suggestions: [{
-        original: text,
-        alternatives: [`[Paraphrasing not available without API key] ${text}`],
-        start: 0,
-        end: text.length
-      }]
-    };
-  }
-
+export async function getTextTypeVocabulary(textType: string, contentSample: string): Promise<any> {
   try {
-    const completion = await openai.chat.completions.create({
-      messages: [
+    return await callAIFunction('getTextTypeVocabulary', { textType, content: contentSample });
+  } catch (error) {
+    console.error('Error getting text type vocabulary:', error);
+    return {
+      textType: textType,
+      categories: [
         {
-          role: "system",
-          content: `You are an expert writing assistant helping Year 5-6 students improve their writing. Analyze this text and provide alternative phrasings. Return the analysis in this exact JSON format:
-{
-  "suggestions": [
-    {
-      "original": "original text segment",
-      "alternatives": ["alternative 1", "alternative 2", "alternative 3"],
-      "start": 0,
-      "end": 10
-    }
-  ]
-}`
-        },
-        {
-          role: "user",
-          content: text
+          name: "General Words",
+          words: ["interesting", "important", "different", "special", "amazing"],
+          examples: ["This is an interesting topic.", "It's important to remember."]
         }
       ],
-      model: "gpt-4",
-      temperature: 0.7,
-      max_tokens: 1000
-    });
-
-    const responseContent = completion.choices[0].message.content;
-    if (!responseContent) {
-      throw new Error('Empty response from OpenAI');
-    }
-
-    const parsed = JSON.parse(responseContent);
-    
-    if (!Array.isArray(parsed.suggestions)) {
-      throw new Error('Invalid response format: missing suggestions array');
-    }
-
-    const suggestions = parsed.suggestions.map((suggestion: any) => {
-      if (typeof suggestion.start !== 'number' || typeof suggestion.end !== 'number') {
-        return {
-          ...suggestion,
-          start: 0,
-          end: text.length
-        };
-      }
-      return suggestion;
-    });
-
-    return { suggestions };
-  } catch (error) {
-    console.error('OpenAI paraphrase generation error:', error);
-    return {
-      suggestions: [{
-        original: text,
-        alternatives: [`[Paraphrasing temporarily unavailable] ${text}`],
-        start: 0,
-        end: text.length
-      }]
-    };
-  }
-}
-
-export async function getWritingStructure(textType: string): Promise<string> {
-  if (!openai) {
-    const fallbackStructures: { [key: string]: any } = {
-      narrative: {
-        title: "Guide to Narrative Writing",
-        sections: [
-          {
-            heading: "Structure",
-            content: "A narrative should have a clear beginning (setting and characters), middle (problem and events), and end (resolution). Use the story mountain structure to plan your narrative."
-          },
-          {
-            heading: "Language Features",
-            content: "Use descriptive language, dialogue, and varied sentence structures. Include sensory details and show emotions through actions and dialogue."
-          },
-          {
-            heading: "Common Mistakes",
-            content: "Avoid rushing the story, forgetting to develop characters, and having an unclear ending."
-          },
-          {
-            heading: "Planning Tips",
-            content: "Plan your characters, setting, and main problem before writing. Use a story map or timeline to organize events."
-          }
-        ]
-      },
-      persuasive: {
-        title: "Guide to Persuasive Writing",
-        sections: [
-          {
-            heading: "Structure",
-            content: "Start with a clear position statement, provide 2-3 strong arguments with evidence, address counterarguments, and conclude by restating your position."
-          },
-          {
-            heading: "Language Features",
-            content: "Use persuasive language, rhetorical questions, facts and statistics, and emotive language to convince your audience."
-          },
-          {
-            heading: "Common Mistakes",
-            content: "Avoid weak arguments, lack of evidence, and forgetting to consider the opposing viewpoint."
-          },
-          {
-            heading: "Planning Tips",
-            content: "Research your topic, list strong arguments, gather evidence, and consider what your audience thinks."
-          }
-        ]
-      }
-    };
-
-    const structure = fallbackStructures[textType.toLowerCase()] || fallbackStructures.narrative;
-    return JSON.stringify(structure);
-  }
-
-  try {
-    const completion = await openai.chat.completions.create({
-      messages: [
-        {
-          role: "system",
-          content: `You are an expert writing teacher creating a guide for Year 5-6 students on ${textType} writing. Create a structured guide with sections covering key aspects of this writing type. Return the guide in this exact JSON format:
-{
-  "title": "Guide to ${textType} Writing",
-  "sections": [
-    {
-      "heading": "Structure",
-      "content": "Detailed explanation of the structure for this writing type"
-    },
-    {
-      "heading": "Language Features",
-      "content": "Explanation of key language features and techniques"
-    },
-    {
-      "heading": "Common Mistakes",
-      "content": "Common mistakes to avoid in this writing type"
-    },
-    {
-      "heading": "Planning Tips",
-      "content": "How to plan effectively for this writing type"
-    }
-  ]
-}`
-        }
+      phrasesAndExpressions: [
+        "In my opinion",
+        "For example",
+        "In conclusion",
+        "On the other hand"
       ],
-      model: "gpt-4",
-      temperature: 0.7,
-      max_tokens: 1000
-    });
-
-    const responseContent = completion.choices[0].message.content;
-    if (!responseContent) {
-      throw new Error('Empty response from OpenAI');
-    }
-
-    return responseContent;
-  } catch (error) {
-    console.error('OpenAI writing structure generation error:', error);
-    return JSON.stringify({
-      title: `Guide to ${textType} Writing`,
-      sections: [
-        {
-          heading: "Structure",
-          content: "Every piece of writing should have a clear beginning, middle, and end. The beginning introduces your main idea, the middle develops it with details, and the end summarizes your key points."
-        },
-        {
-          heading: "Language Features",
-          content: "Use descriptive language, varied sentence structures, and appropriate vocabulary for your topic."
-        },
-        {
-          heading: "Common Mistakes",
-          content: "Avoid rushing your writing, forgetting to proofread, and using repetitive words or phrases."
-        },
-        {
-          heading: "Planning Tips",
-          content: "Before you start writing, take time to brainstorm ideas, create a simple outline, and think about your audience."
-        }
+      transitionWords: [
+        "First", "Second", "Next", "Then", "Finally", "However", "Because", "Therefore"
       ]
-    });
+    };
   }
 }
 
 export async function evaluateEssay(content: string, textType: string): Promise<any> {
-  if (!openai) {
-    return {
-      overallScore: 7,
-      strengths: [
-        "Good effort in completing the writing task",
-        "Appropriate length for the assignment",
-        "Clear attempt at the required text type"
-      ],
-      areasForImprovement: [
-        "Configure OpenAI API key for detailed AI feedback",
-        "Continue practicing writing regularly",
-        "Review writing guidelines and examples"
-      ],
-      specificFeedback: {
-        structure: "Your writing shows a basic structure. Focus on clear organization with introduction, body, and conclusion.",
-        language: "Continue developing your vocabulary and sentence variety. Read widely to improve language skills.",
-        ideas: "Your ideas are present. Work on developing them with more details and examples.",
-        mechanics: "Proofread carefully for spelling, grammar, and punctuation errors."
-      },
-      nextSteps: [
-        "Practice writing regularly",
-        "Read examples of good writing in this style",
-        "Focus on one area for improvement at a time"
-      ]
-    };
-  }
-
   try {
-    const completion = await openai.chat.completions.create({
-      messages: [
-        {
-          role: "system",
-          content: `You are an expert writing teacher evaluating a Year 5-6 student's ${textType} essay. Provide comprehensive feedback and scoring. Return the evaluation in this exact JSON format:
-{
-  "overallScore": 7,
-  "strengths": [
-    "Clear thesis statement",
-    "Good use of transition words",
-    "Varied sentence structure"
-  ],
-  "areasForImprovement": [
-    "Needs more supporting evidence",
-    "Some spelling errors",
-    "Conclusion could be stronger"
-  ],
-  "specificFeedback": {
-    "structure": "Detailed feedback on essay structure",
-    "language": "Feedback on language use and vocabulary",
-    "ideas": "Feedback on ideas and content development",
-    "mechanics": "Feedback on grammar, spelling, and punctuation"
-  },
-  "nextSteps": [
-    "Review and correct spelling errors",
-    "Add more supporting evidence to main points",
-    "Strengthen conclusion by restating main ideas"
-  ]
-}`
-        },
-        {
-          role: "user",
-          content: content
-        }
-      ],
-      model: "gpt-4",
-      temperature: 0.7,
-      max_tokens: 1000
-    });
-
-    const responseContent = completion.choices[0].message.content;
-    if (!responseContent) {
-      throw new Error('Empty response from OpenAI');
-    }
-
-    const parsed = JSON.parse(responseContent);
-    
-    if (typeof parsed.overallScore !== 'number' || 
-        !Array.isArray(parsed.strengths) || 
-        !Array.isArray(parsed.areasForImprovement) ||
-        !parsed.specificFeedback ||
-        !Array.isArray(parsed.nextSteps)) {
-      throw new Error('Invalid response format: missing required fields');
-    }
-
-    return parsed;
+    return await callAIFunction('evaluateEssay', { content, textType });
   } catch (error) {
-    console.error('OpenAI essay evaluation error:', error);
+    console.error('Error evaluating essay:', error);
     return {
       overallScore: 6,
       strengths: [
@@ -694,149 +241,35 @@ export async function evaluateEssay(content: string, textType: string): Promise<
   }
 }
 
-export async function getTextTypeVocabulary(textType: string, contentSample: string): Promise<any> {
-  if (!openai) {
-    const fallbackVocabulary: { [key: string]: any } = {
-      narrative: {
-        textType: "narrative",
-        categories: [
-          {
-            name: "Descriptive Words",
-            words: ["vivid", "mysterious", "ancient", "gleaming", "towering"],
-            examples: ["The vivid sunset painted the sky.", "The mysterious forest beckoned."]
-          },
-          {
-            name: "Action Verbs",
-            words: ["darted", "whispered", "thundered", "crept", "soared"],
-            examples: ["She darted through the trees.", "The wind whispered secrets."]
-          }
-        ],
-        phrasesAndExpressions: [
-          "Once upon a time",
-          "In the blink of an eye",
-          "Without warning",
-          "To their amazement"
-        ],
-        transitionWords: ["First", "Then", "Next", "Suddenly", "Finally", "Meanwhile"]
-      },
-      persuasive: {
-        textType: "persuasive",
-        categories: [
-          {
-            name: "Persuasive Words",
-            words: ["essential", "crucial", "beneficial", "significant", "vital"],
-            examples: ["It is essential that we act now.", "This change would be beneficial."]
-          },
-          {
-            name: "Strong Verbs",
-            words: ["demonstrate", "prove", "establish", "confirm", "reveal"],
-            examples: ["Studies demonstrate the importance.", "Evidence proves this point."]
-          }
-        ],
-        phrasesAndExpressions: [
-          "It is clear that",
-          "Without a doubt",
-          "The evidence shows",
-          "We must consider"
-        ],
-        transitionWords: ["Furthermore", "However", "Therefore", "In addition", "Nevertheless", "Consequently"]
-      }
-    };
-
-    return fallbackVocabulary[textType.toLowerCase()] || fallbackVocabulary.narrative;
-  }
-
+export async function getWritingStructure(textType: string): Promise<string> {
   try {
-    const completion = await openai.chat.completions.create({
-      messages: [
+    const result = await callAIFunction('getWritingStructure', { textType });
+    return result;
+  } catch (error) {
+    console.error('Error getting writing structure:', error);
+    return JSON.stringify({
+      title: `Guide to ${textType} Writing`,
+      sections: [
         {
-          role: "system",
-          content: `You are an expert writing teacher providing vocabulary assistance for Year 5-6 students writing a ${textType} piece. Based on the content sample provided, suggest appropriate vocabulary. Return the suggestions in this exact JSON format:
-{
-  "textType": "${textType}",
-  "categories": [
-    {
-      "name": "Descriptive Words",
-      "words": ["vivid", "stunning", "magnificent", "gleaming", "enormous"],
-      "examples": ["The vivid sunset painted the sky with stunning colors.", "The magnificent castle stood on the gleaming hill."]
-    },
-    {
-      "name": "Action Verbs",
-      "words": ["darted", "soared", "plunged", "vanished", "erupted"],
-      "examples": ["The bird soared through the clouds.", "She darted across the busy street."]
-    }
-  ],
-  "phrasesAndExpressions": [
-    "In the blink of an eye",
-    "As quick as lightning",
-    "Without a moment's hesitation",
-    "To my surprise"
-  ],
-  "transitionWords": [
-    "First",
-    "Next",
-    "Then",
-    "After that",
-    "Finally",
-    "However",
-    "Although",
-    "Because",
-    "Therefore",
-    "In conclusion"
-  ]
-}`
+          heading: "Structure",
+          content: "Every piece of writing should have a clear beginning, middle, and end. The beginning introduces your main idea, the middle develops it with details, and the end summarizes your key points."
         },
         {
-          role: "user",
-          content: `Text type: ${textType}\n\nContent sample: ${contentSample}`
-        }
-      ],
-      model: "gpt-4",
-      temperature: 0.7,
-      max_tokens: 1000
-    });
-
-    const responseContent = completion.choices[0].message.content;
-    if (!responseContent) {
-      throw new Error('Empty response from OpenAI');
-    }
-
-    const parsed = JSON.parse(responseContent);
-    
-    if (!parsed.textType || 
-        !Array.isArray(parsed.categories) || 
-        !Array.isArray(parsed.phrasesAndExpressions) ||
-        !Array.isArray(parsed.transitionWords)) {
-      throw new Error('Invalid response format: missing required fields');
-    }
-
-    return parsed;
-  } catch (error) {
-    console.error('OpenAI vocabulary generation error:', error);
-    return {
-      textType: textType,
-      categories: [
+          heading: "Language Features",
+          content: "Use descriptive language, varied sentence structures, and appropriate vocabulary for your topic."
+        },
         {
-          name: "General Words",
-          words: ["interesting", "important", "different", "special", "amazing"],
-          examples: ["This is an interesting topic.", "It's important to remember."]
+          heading: "Common Mistakes",
+          content: "Avoid rushing your writing, forgetting to proofread, and using repetitive words or phrases."
+        },
+        {
+          heading: "Planning Tips",
+          content: "Before you start writing, take time to brainstorm ideas, create a simple outline, and think about your audience."
         }
-      ],
-      phrasesAndExpressions: [
-        "In my opinion",
-        "For example",
-        "In conclusion",
-        "On the other hand"
-      ],
-      transitionWords: [
-        "First", "Second", "Next", "Then", "Finally", "However", "Because", "Therefore"
       ]
-    };
+    });
   }
 }
-
-// Export the client for direct use (with null check)
-export { openai };
 
 export default {
   generatePrompt,
@@ -845,9 +278,8 @@ export default {
   identifyCommonMistakes,
   getSynonyms,
   rephraseSentence,
-  generateParaphrases,
-  getWritingStructure,
-  evaluateEssay,
   getTextTypeVocabulary,
+  evaluateEssay,
+  getWritingStructure,
   isOpenAIAvailable
 };

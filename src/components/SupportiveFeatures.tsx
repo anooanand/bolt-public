@@ -2,13 +2,12 @@ import React, { useState } from 'react';
 import { HelpCenter } from './HelpCenter';
 import { KeyboardAccessibility } from './KeyboardAccessibility';
 import { AutoSave } from './AutoSave';
-import { TextToSpeech } from './TextToSpeech';
 
 interface SupportiveFeaturesProps {
-  children: React.ReactNode;
+  children?: React.ReactNode;
   content: string;
   textType: string;
-  onRestoreContent?: (content: string, textType: string) => void;
+  onRestoreContent?: (content: string) => void;
 }
 
 export function SupportiveFeatures({ 
@@ -34,6 +33,3 @@ export function SupportiveFeatures({
     </KeyboardAccessibility>
   );
 }
-
-// Export all components for easy imports
-;
