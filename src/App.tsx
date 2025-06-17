@@ -103,6 +103,9 @@ function App() {
       // Always start on home page unless handling payment success
       setActivePage('home');
       
+      // Don't auto-show auth modal on page load
+      setShowAuthModal(false);
+      
     } catch (error) {
       console.error('Error initializing app:', error);
       setError('Failed to load application. Please refresh the page.');
@@ -433,80 +436,47 @@ function App() {
                     </div>
                     
                     {/* Panel Switcher */}
-                    <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-2 flex justify-center">
-                      <div className="inline-flex rounded-md shadow-sm" role="group">
-                        <button
-                          type="button"
-                          onClick={() => handlePanelChange('coach')}
-                          data-panel="coach"
-                          className={`px-4 py-2 text-sm font-medium ${
-                            activePanel === 'coach'
-                              ? 'bg-indigo-600 text-white'
-                              : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600'
-                          } border border-gray-200 dark:border-gray-600 rounded-l-lg`}
-                        >
-                          Writing Coach
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handlePanelChange('paraphrase')}
-                          data-panel="paraphrase"
-                          className={`px-4 py-2 text-sm font-medium ${
-                            activePanel === 'paraphrase'
-                              ? 'bg-indigo-600 text-white'
-                              : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600'
-                          } border border-gray-200 dark:border-gray-600 rounded-r-lg`}
-                        >
-                          Paraphrase Tool
-                        </button>
-                      </div>
+                    <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-2 flex justify-center items-center space-x-4">
+                      <button
+                        onClick={() => setActivePanel('coach')}
+                        className={`px-4 py-2 rounded-md text-sm font-medium ${activePanel === 'coach' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'}`}
+                      >
+                        Coach
+                      </button>
+                      <button
+                        onClick={() => setActivePanel('paraphrase')}
+                        className={`px-4 py-2 rounded-md text-sm font-medium ${activePanel === 'paraphrase' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'}`}
+                      >
+                        Paraphrase
+                      </button>
                     </div>
                   </>
                 )}
               </div>
             </WritingAccessCheck>
-          ) : activePage === 'learn' ? (
-            <LearningPage 
-              state={appState}
-              onStateChange={updateAppState}
-              onNavigateToWriting={() => setActivePage('writing')}
-            />
+          ) : activePage === 'learning' ? (
+            <LearningPage />
+          ) : activePage === 'supportive-features' ? (
+            <SupportiveFeatures />
+          ) : activePage === 'help-center' ? (
+            <HelpCenter onClose={() => setShowHelpCenter(false)} />
           ) : activePage === 'feedback' ? (
-            <EssayFeedbackPage 
-              content={content}
-              textType={textType}
-              onBack={() => setActivePage('writing')}
-            />
+            <EssayFeedbackPage />
+          ) : activePage === 'specialized-coaching' ? (
+            <SpecializedCoaching />
+          ) : activePage === 'brainstorming-tools' ? (
+            <BrainstormingTools />
           ) : (
             <>
-              <HeroSection 
-                onGetStarted={handleGetStarted}
-                onStartWriting={handleStartWriting}
-              />
+              <HeroSection onGetStarted={handleGetStarted} />
               <FeaturesSection />
-              <ToolsSection onOpenTool={() => {}} />
+              <ToolsSection onOpenTool={handleNavigation} />
               <WritingTypesSection />
             </>
           )}
-          
-          {activePage !== 'writing' && activePage !== 'feedback' && activePage !== 'learn' && activePage !== 'settings' && (
-            <Footer onNavigate={handleNavigation} />
-          )}
         </div>
 
-        {/* Help Center Modal */}
-        <HelpCenter 
-          isOpen={showHelpCenter}
-          onClose={() => setShowHelpCenter(false)} 
-        />
-
-        {/* Planning Tool Modal */}
-        <PlanningToolModal
-          isOpen={showPlanningTool}
-          onClose={() => setShowPlanningTool(false)}
-          textType={textType}
-          onSavePlan={handleSavePlan}
-        />
+        <Footer />
 
         <AuthModal
           isOpen={showAuthModal}
@@ -515,9 +485,16 @@ function App() {
           initialMode={authModalMode}
           onNavigate={handleNavigation}
         />
+
+        <PlanningToolModal
+          isOpen={showPlanningTool}
+          onClose={() => setShowPlanningTool(false)}
+          onSavePlan={handleSavePlan}
+        />
       </div>
     </ThemeProvider>
   );
 }
 
 export default App;
+
