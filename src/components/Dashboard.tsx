@@ -16,7 +16,7 @@ import {
   AlertTriangle,
   CheckCircle
 } from 'lucide-react';
-import { hasCompletedPayment, hasTemporaryAccess } from '../lib/supabase';
+import { hasCompletedPayment } from '../lib/supabase';
 
 interface DashboardProps {
   user: any;
@@ -48,8 +48,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
   });
   const [recentDocuments, setRecentDocuments] = useState<RecentDocument[]>([]);
   const [isPaidUser, setIsPaidUser] = useState(false);
-  const [hasTempAccess, setHasTempAccess] = useState(false);
-  const [tempAccessExpiry, setTempAccessExpiry] = useState<Date | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -57,15 +55,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
       setIsLoading(true);
       
       try {
-        // Check for temporary access first
-        const tempAccess = await hasTemporaryAccess();
-        setHasTempAccess(tempAccess);
-        
-        if (tempAccess) {
-          const expiryDate = new Date(localStorage.getItem('temp_access_until') || '');
-          setTempAccessExpiry(expiryDate);
-        }
-        
         // Check for permanent access
         const paymentCompleted = await hasCompletedPayment();
         setIsPaidUser(paymentCompleted);
@@ -105,20 +94,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
     
     checkAccess();
   }, [user]);
-
-  const formatTimeRemaining = () => {
-    if (!tempAccessExpiry) return '';
-    
-    const now = new Date();
-    const diff = tempAccessExpiry.getTime() - now.getTime();
-    
-    if (diff <= 0) return 'Expired';
-    
-    const hours = Math.floor(diff / (1000 * 60 * 60));
-    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-    
-    return `${hours}h ${minutes}m remaining`;
-  };
 
   const quickActions = [
     {
@@ -187,54 +162,19 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
           <div className="mb-8 bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-900 dark:to-orange-900 border border-yellow-200 dark:border-yellow-700 rounded-lg p-4">
             <div className="flex items-center justify-between">
               <div>
-                {hasTempAccess ? (
-                  <>
-                    <h3 className="text-lg font-semibold text-yellow-800 dark:text-yellow-200">
-                      Temporary Access Active
-                    </h3>
-                    <p className="text-yellow-700 dark:text-yellow-300">
-                      {formatTimeRemaining()} - Full access will be activated soon
-                    </p>
-                  </>
-                ) : (
-                  <>
-                    <h3 className="text-lg font-semibold text-yellow-800 dark:text-yellow-200">
-                      Free Plan
-                    </h3>
-                    <p className="text-yellow-700 dark:text-yellow-300">
-                      Upgrade to unlock all features
-                    </p>
-                  </>
-                )}
+                <h3 className="text-lg font-semibold text-yellow-800 dark:text-yellow-200">
+                  Free Plan
+                </h3>
+                <p className="text-yellow-700 dark:text-yellow-300">
+                  Upgrade to unlock all features
+                </p>
               </div>
               <button
                 onClick={() => onNavigate('pricing')}
                 className="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
               >
-                {hasTempAccess ? 'View Plan Details' : 'Upgrade Now'}
+                Upgrade Now
               </button>
-            </div>
-          </div>
-        )}
-
-        {/* Temporary Access Banner */}
-        {hasTempAccess && (
-          <div className="mb-8 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-lg p-4">
-            <div className="flex items-start">
-              <div className="flex-shrink-0">
-                <AlertTriangle className="h-5 w-5 text-blue-400" />
-              </div>
-              <div className="ml-3">
-                <h3 className="text-sm font-medium text-blue-800 dark:text-blue-200">
-                  Payment Processing
-                </h3>
-                <div className="mt-2 text-sm text-blue-700 dark:text-blue-300">
-                  <p>
-                    Your payment is being processed. You have full access to all features for the next 24 hours.
-                    Your account will be automatically upgraded to permanent access once payment processing is complete.
-                  </p>
-                </div>
-              </div>
             </div>
           </div>
         )}
@@ -307,7 +247,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
               {quickActions.map((action) => {
                 const Icon = action.icon;
-                const isLocked = action.isPro && !isPaidUser && !hasTempAccess;
+                const isLocked = action.isPro && !isPaidUser;
                 
                 return (
                   <div
@@ -422,16 +362,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
                     You have full access to all premium features
                   </p>
                 </div>
-              ) : hasTempAccess ? (
-                <div className="bg-blue-50 dark:bg-blue-900/30 p-4 rounded-lg mb-4">
-                  <div className="flex items-center">
-                    <Clock className="w-5 h-5 text-blue-500 mr-2" />
-                    <span className="font-medium text-blue-800 dark:text-blue-200">Temporary Access</span>
-                  </div>
-                  <p className="mt-2 text-sm text-blue-700 dark:text-blue-300">
-                    {formatTimeRemaining()} - Your payment is being processed
-                  </p>
-                </div>
               ) : (
                 <div className="bg-yellow-50 dark:bg-yellow-900/30 p-4 rounded-lg mb-4">
                   <div className="flex items-center">
@@ -448,7 +378,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600 dark:text-gray-400">Plan</span>
                   <span className="font-medium text-gray-900 dark:text-white">
-                    {isPaidUser || hasTempAccess ? 
+                    {isPaidUser ? 
                       localStorage.getItem('payment_plan')?.replace('-', ' ') || 'Premium' : 
                       'Free'}
                   </span>
@@ -458,14 +388,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
                   <span className="text-gray-600 dark:text-gray-400">Status</span>
                   <span className={`font-medium ${
                     isPaidUser ? 'text-green-600 dark:text-green-400' : 
-                    hasTempAccess ? 'text-blue-600 dark:text-blue-400' : 
                     'text-yellow-600 dark:text-yellow-400'
                   }`}>
-                    {isPaidUser ? 'Active' : hasTempAccess ? 'Processing' : 'Inactive'}
+                    {isPaidUser ? 'Active' : 'Inactive'}
                   </span>
                 </div>
                 
-                {(hasTempAccess || isPaidUser) && (
+                {isPaidUser && (
                   <div className="flex justify-between items-center">
                     <span className="text-gray-600 dark:text-gray-400">Next Payment</span>
                     <span className="font-medium text-gray-900 dark:text-white">
@@ -480,7 +409,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
                   onClick={() => onNavigate('pricing')}
                   className="w-full mt-6 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
                 >
-                  {hasTempAccess ? 'View Plan Details' : 'Upgrade Now'}
+                  Upgrade Now
                 </button>
               )}
             </div>
