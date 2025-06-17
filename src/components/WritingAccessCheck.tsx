@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { hasCompletedPayment, hasTemporaryAccess } from '../lib/supabase';
-import { Loader, AlertTriangle, Lock } from 'lucide-react';
+import { hasCompletedPayment } from '../lib/supabase';
+import { Loader, Lock } from 'lucide-react';
 
 interface WritingAccessCheckProps {
   children: React.ReactNode;
@@ -10,25 +10,13 @@ interface WritingAccessCheckProps {
 export function WritingAccessCheck({ children, onNavigate }: WritingAccessCheckProps) {
   const [hasAccess, setHasAccess] = useState<boolean | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [tempAccessExpiry, setTempAccessExpiry] = useState<Date | null>(null);
 
   useEffect(() => {
     const checkAccess = async () => {
       setIsLoading(true);
       
       try {
-        // First check for temporary access
-        const tempAccess = await hasTemporaryAccess();
-        
-        if (tempAccess) {
-          const expiryDate = new Date(localStorage.getItem('temp_access_until') || '');
-          setTempAccessExpiry(expiryDate);
-          setHasAccess(true);
-          setIsLoading(false);
-          return;
-        }
-        
-        // Then check for permanent access
+        // Check for permanent access
         const paymentCompleted = await hasCompletedPayment();
         setHasAccess(paymentCompleted);
       } catch (error) {
@@ -41,20 +29,6 @@ export function WritingAccessCheck({ children, onNavigate }: WritingAccessCheckP
     
     checkAccess();
   }, []);
-
-  const formatTimeRemaining = () => {
-    if (!tempAccessExpiry) return '';
-    
-    const now = new Date();
-    const diff = tempAccessExpiry.getTime() - now.getTime();
-    
-    if (diff <= 0) return 'Expired';
-    
-    const hours = Math.floor(diff / (1000 * 60 * 60));
-    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-    
-    return `${hours}h ${minutes}m remaining`;
-  };
 
   if (isLoading) {
     return (
@@ -93,30 +67,6 @@ export function WritingAccessCheck({ children, onNavigate }: WritingAccessCheckP
     );
   }
 
-  if (tempAccessExpiry) {
-    return (
-      <div>
-        <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-lg p-4 mb-4">
-          <div className="flex items-start">
-            <div className="flex-shrink-0">
-              <AlertTriangle className="h-5 w-5 text-blue-400" />
-            </div>
-            <div className="ml-3">
-              <h3 className="text-sm font-medium text-blue-800 dark:text-blue-200">
-                Temporary Access
-              </h3>
-              <div className="mt-2 text-sm text-blue-700 dark:text-blue-300">
-                <p>
-                  You have temporary access while your payment is being processed. {formatTimeRemaining()}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-        {children}
-      </div>
-    );
-  }
-
+  // User has access, render the children
   return <>{children}</>;
 }
