@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { AuthProvider } from './contexts/AuthContext';
 import { getCurrentUser, confirmPayment, hasCompletedPayment, supabase, forceSignOut } from './lib/supabase';
 import { User } from '@supabase/supabase-js';
 
@@ -15,6 +16,7 @@ import { Dashboard } from './components/Dashboard';
 import { AuthModal } from './components/AuthModal';
 import { FAQPage } from './components/FAQPage';
 import { AboutPage } from './components/AboutPage';
+import { AdminPanel } from './components/AdminPanel';
 
 // Writing components
 import { SplitScreen } from './components/SplitScreen';
@@ -90,6 +92,27 @@ function App() {
     } catch (error) {
       console.warn('[DEBUG] Payment status check failed, using fallback:', error);
       // Fallback: assume no payment completed
+      return false;
+    }
+  };
+
+  // Check if user is admin
+  const checkAdminStatus = async (user: User): Promise<boolean> => {
+    try {
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select('role')
+        .eq('user_id', user.id)
+        .single();
+
+      if (error || !data) {
+        console.log('[DEBUG] No user profile found or error:', error);
+        return false;
+      }
+
+      return data.role === 'admin';
+    } catch (error) {
+      console.error('[DEBUG] Error checking admin status:', error);
       return false;
     }
   };
@@ -257,7 +280,7 @@ function App() {
     }
   };
 
-  const handleNavigation = (page: string) => {
+  const handleNavigation = async (page: string) => {
     // If navigating to dashboard, check payment status first
     if (page === 'dashboard' && user) {
       checkPaymentStatusSafely(user).then(completed => {
@@ -266,6 +289,15 @@ function App() {
       }).catch(() => {
         setActivePage('pricing');
       });
+    } else if (page === 'admin' && user) {
+      // Check if user is admin before allowing access
+      const isAdmin = await checkAdminStatus(user);
+      if (isAdmin) {
+        setActivePage('admin');
+      } else {
+        // Redirect non-admin users to dashboard
+        setActivePage('dashboard');
+      }
     } else {
       setActivePage(page);
     }
@@ -327,134 +359,167 @@ function App() {
 
   return (
     <ThemeProvider>
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-        <NavBar
-          onNavigate={handleNavigation}
-          activePage={activePage}
-          user={user}
-          onSignInClick={() => {
-            setAuthModalMode('signin');
-            setShowAuthModal(true);
-          }}
-          onSignUpClick={() => {
-            setAuthModalMode('signup');
-            setShowAuthModal(true);
-          }}
-          onForceSignOut={handleForceSignOut}
-        />
-        
-        <div className="mt-16">
-          {showPaymentSuccess ? (
-            <PaymentSuccessPage
-              plan={pendingPaymentPlan || 'unknown'}
-              onSuccess={handleAuthSuccess}
-              onSignInRequired={(email, plan) => {
-                localStorage.setItem('userEmail', email);
-                setPendingPaymentPlan(plan);
-                setAuthModalMode('signin');
-                setShowAuthModal(true);
-              }}
-            />
-          ) : activePage === 'pricing' ? (
-            <PricingPage />
-          ) : activePage === 'dashboard' ? (
-            <Dashboard user={user} onNavigate={handleNavigation} />
-          ) : activePage === 'faq' ? (
-            <FAQPage />
-          ) : activePage === 'about' ? (
-            <AboutPage />
-          ) : activePage === 'features' ? (
-            <div>
-              <FeaturesSection />
-              <ToolsSection onOpenTool={() => {}} />
-              <WritingTypesSection />
-            </div>
-          ) : activePage === 'writing' ? (
-            <div className="flex flex-col h-screen">
-              <div className="container mx-auto px-4 py-4">
-                <EnhancedHeader 
-                  textType={textType}
-                  assistanceLevel={assistanceLevel}
-                  onTextTypeChange={setTextType}
-                  onAssistanceLevelChange={setAssistanceLevel}
-                  onTimerStart={() => setTimerStarted(true)}
-                />
-              </div>
-              
-              {showExamMode ? (
-                <ExamSimulationMode 
-                  onExit={() => setShowExamMode(false)}
-                />
-              ) : (
-                <div className="flex-1 container mx-auto">
-                  <SplitScreen>
-                    <WritingArea 
-                      content={content}
-                      onChange={setContent}
-                      textType={textType}
-                      onTimerStart={setTimerStarted}
-                      onSubmit={handleSubmit}
-                    />
-                    {activePanel === 'coach' && (
-                      <CoachPanel 
-                        content={content}
-                        textType={textType}
-                        assistanceLevel={assistanceLevel}
-                      />
-                    )}
-                    {activePanel === 'paraphrase' && (
-                      <ParaphrasePanel 
-                        onNavigate={handleNavigation}
-                      />
-                    )}
-                  </SplitScreen>
-                </div>
-              )}
-            </div>
-          ) : activePage === 'learn' ? (
-            <LearningPage 
-              state={appState}
-              onStateChange={updateAppState}
-              onNavigateToWriting={() => setActivePage('writing')}
-            />
-          ) : activePage === 'feedback' ? (
-            <EssayFeedbackPage 
-              content={content}
-              textType={textType}
-              onBack={() => setActivePage('writing')}
-            />
-          ) : (
-            <>
-              <HeroSection 
-                onGetStarted={handleGetStarted}
-                onStartWriting={handleStartWriting}
-              />
-              <FeaturesSection />
-              <ToolsSection onOpenTool={() => {}} />
-              <WritingTypesSection />
-            </>
-          )}
+      <AuthProvider>
+        <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+          <NavBar
+            onNavigate={handleNavigation}
+            activePage={activePage}
+            user={user}
+            onSignInClick={() => {
+              setAuthModalMode('signin');
+              setShowAuthModal(true);
+            }}
+            onSignUpClick={() => {
+              setAuthModalMode('signup');
+              setShowAuthModal(true);
+            }}
+            onForceSignOut={handleForceSignOut}
+          />
           
-          {activePage !== 'writing' && activePage !== 'feedback' && activePage !== 'learn' && (
-            <Footer />
+          <div className="mt-16">
+            {showPaymentSuccess ? (
+              <PaymentSuccessPage
+                plan={pendingPaymentPlan || 'unknown'}
+                onSuccess={handleAuthSuccess}
+                onSignInRequired={(email, plan) => {
+                  localStorage.setItem('userEmail', email);
+                  setPendingPaymentPlan(plan);
+                  setAuthModalMode('signin');
+                  setShowAuthModal(true);
+                }}
+              />
+            ) : activePage === 'admin' ? (
+              <AdminPanel onNavigate={handleNavigation} />
+            ) : activePage === 'pricing' ? (
+              <PricingPage />
+            ) : activePage === 'dashboard' ? (
+              <Dashboard user={user} onNavigate={handleNavigation} />
+            ) : activePage === 'faq' ? (
+              <FAQPage />
+            ) : activePage === 'about' ? (
+              <AboutPage />
+            ) : activePage === 'features' ? (
+              <div>
+                <FeaturesSection />
+                <ToolsSection onOpenTool={() => {}} />
+                <WritingTypesSection />
+              </div>
+            ) : activePage === 'writing' ? (
+              <div className="flex flex-col h-screen">
+                <div className="container mx-auto px-4 py-4">
+                  <EnhancedHeader 
+                    textType={textType}
+                    assistanceLevel={assistanceLevel}
+                    onTextTypeChange={setTextType}
+                    onAssistanceLevelChange={setAssistanceLevel}
+                    onTimerStart={() => setTimerStarted(true)}
+                  />
+                </div>
+                
+                {showExamMode ? (
+                  <ExamSimulationMode 
+                    onExit={() => setShowExamMode(false)}
+                  />
+                ) : (
+                  <div className="flex-1 container mx-auto">
+                    <SplitScreen>
+                      <WritingArea 
+                        content={content}
+                        onChange={setContent}
+                        textType={textType}
+                        onTimerStart={setTimerStarted}
+                        onSubmit={handleSubmit}
+                      />
+                      {activePanel === 'coach' && (
+                        <CoachPanel 
+                          content={content}
+                          textType={textType}
+                          assistanceLevel={assistanceLevel}
+                        />
+                      )}
+                      {activePanel === 'paraphrase' && (
+                        <ParaphrasePanel 
+                          onNavigate={handleNavigation}
+                        />
+                      )}
+                    </SplitScreen>
+                  </div>
+                )}
+              </div>
+            ) : activePage === 'learn' ? (
+              <LearningPage 
+                state={appState}
+                onStateChange={updateAppState}
+                onNavigateToWriting={() => setActivePage('writing')}
+              />
+            ) : activePage === 'feedback' ? (
+              <EssayFeedbackPage 
+                content={content}
+                textType={textType}
+                onBack={() => setActivePage('writing')}
+              />
+            ) : (
+              <>
+                <HeroSection 
+                  onGetStarted={handleGetStarted}
+                  onStartWriting={handleStartWriting}
+                />
+                <FeaturesSection />
+                <ToolsSection onOpenTool={() => {}} />
+                <WritingTypesSection />
+              </>
+            )}
+            
+            {activePage !== 'writing' && activePage !== 'feedback' && activePage !== 'learn' && activePage !== 'admin' && (
+              <Footer />
+            )}
+          </div>
+
+          {/* Help Center Modal */}
+          {showHelpCenter && (
+            <HelpCenter onClose={() => setShowHelpCenter(false)} />
+          )}
+
+          {/* Auth Modal */}
+          {showAuthModal && (
+            <AuthModal
+              mode={authModalMode}
+              onClose={() => setShowAuthModal(false)}
+              onSuccess={handleAuthSuccess}
+              onSwitchMode={(mode) => setAuthModalMode(mode)}
+            />
+          )}
+
+          {/* Supportive Features */}
+          <SupportiveFeatures 
+            onOpenHelpCenter={() => setShowHelpCenter(true)}
+            onStartExam={handleStartExam}
+          />
+
+          {/* Brainstorming Tools */}
+          <BrainstormingTools />
+
+          {/* Auth Error Display */}
+          {authError && (
+            <div className="fixed bottom-4 right-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded max-w-md">
+              <div className="flex">
+                <div className="flex-1">
+                  <p className="text-sm">{authError}</p>
+                </div>
+                <button
+                  onClick={() => setAuthError(null)}
+                  className="ml-2 text-red-700 hover:text-red-900"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
           )}
         </div>
-
-        {/* Help Center Modal */}
-        {showHelpCenter && (
-          <HelpCenter onClose={() => setShowHelpCenter(false)} />
-        )}
-
-        <AuthModal
-          isOpen={showAuthModal}
-          onClose={() => setShowAuthModal(false)}
-          onSuccess={handleAuthSuccess}
-          initialMode={authModalMode}
-          onNavigate={handleNavigation}
-        />
-      </div>
+      </AuthProvider>
     </ThemeProvider>
   );
 }
 
 export default App;
+
