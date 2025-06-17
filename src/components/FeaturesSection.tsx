@@ -3,8 +3,16 @@ import { Sparkles, BookOpen, Clock, Brain, ArrowRight, Zap, Target, BarChart } f
 
 export function FeaturesSection() {
   const handleFeatureClick = (feature: string) => {
-    // Handle feature clicks - can be expanded later
-    console.log(`Feature clicked: ${feature}`);
+    if (feature === 'pricing') {
+      // Scroll to pricing section
+      const pricingElement = document.getElementById('pricing');
+      if (pricingElement) {
+        pricingElement.scrollIntoView({ behavior: 'smooth' });
+      }
+    } else {
+      // Handle other feature clicks - can be expanded later
+      console.log(`Feature clicked: ${feature}`);
+    }
   };
 
   return (
@@ -79,13 +87,13 @@ export function FeaturesSection() {
         </div>
 
         <div className="mt-16 text-center">
-          <a 
-            href="#pricing" 
-            className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+          <button 
+            onClick={() => handleFeatureClick('pricing')}
+            className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors duration-200"
           >
             Get Started
             <ArrowRight className="ml-2 -mr-1 h-5 w-5" />
-          </a>
+          </button>
         </div>
       </div>
     </section>
@@ -155,7 +163,7 @@ function FeatureCard({ icon, title, description, tag, color, onClick }: FeatureC
       <div className="flex justify-between items-center mt-auto">
         <button 
           onClick={onClick}
-          className={`${colorClasses[color].text} ${colorClasses[color].hover} text-sm font-medium inline-flex items-center group`}
+          className={`${colorClasses[color].text} ${colorClasses[color].hover} text-sm font-medium inline-flex items-center group transition-colors duration-200`}
         >
           Learn more
           <ArrowRight className="ml-2 w-4 h-4 transition-transform group-hover:translate-x-1" />
