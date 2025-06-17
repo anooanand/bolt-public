@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { CheckCircle, AlertCircle, HelpCircle } from 'lucide-react';
-import { getNSWSelectiveFeedback } from '../lib/openai';
+import { getNSWSelectiveFeedback } from '../../lib/openai';
 
 interface AlignedFeedbackProps {
   content: string;
