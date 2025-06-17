@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowRight, Check, Star } from 'lucide-react';
-import { hasCompletedPayment, hasTemporaryAccess } from '../lib/supabase';
+import { hasCompletedPayment, supabase } from '../lib/supabase';
 
 export function PricingPage() {
   const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>('monthly');
   const [userEmail, setUserEmail] = useState<string | null>(null);
-  const [hasTempAccess, setHasTempAccess] = useState(false);
   const [isPaidUser, setIsPaidUser] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   
@@ -13,10 +12,6 @@ export function PricingPage() {
   useEffect(() => {
     const checkAccessStatus = async () => {
       setIsLoading(true);
-      
-      // Check for temporary access
-      const tempAccess = await hasTemporaryAccess();
-      setHasTempAccess(tempAccess);
       
       // Check for permanent access
       const paymentCompleted = await hasCompletedPayment();
@@ -27,22 +22,16 @@ export function PricingPage() {
       setUserEmail(email);
       
       // If no email is found, check if there's a session cookie
-      if (!email) {
-        // Try to get email from session if available
-        const checkSession = async () => {
-          try {
-            const { supabase } = await import('../lib/supabase');
-            const { data } = await supabase.auth.getSession();
-            if (data.session?.user?.email) {
-              localStorage.setItem('userEmail', data.session.user.email);
-              setUserEmail(data.session.user.email);
-            }
-          } catch (error) {
-            console.error('Error checking session:', error);
+      if (!email && supabase) {
+        try {
+          const { data } = await supabase.auth.getSession();
+          if (data.session?.user?.email) {
+            localStorage.setItem('userEmail', data.session.user.email);
+            setUserEmail(data.session.user.email);
           }
-        };
-        
-        checkSession();
+        } catch (error) {
+          console.error('Error checking session:', error);
+        }
       }
       
       setIsLoading(false);
@@ -144,14 +133,9 @@ export function PricingPage() {
     
     console.log('[DEBUG] Preparing payment for:', email, 'plan:', plan.planType);
     
-    // Set temporary access flag (24 hours) - This grants immediate access
-    const expiryTime = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-    localStorage.setItem('temp_access_until', expiryTime);
-    localStorage.setItem('payment_processing', 'true');
+    // Store payment plan info for success page
     localStorage.setItem('payment_plan', plan.planType);
     localStorage.setItem('payment_date', new Date().toISOString());
-    
-    console.log('[DEBUG] Temporary access granted until:', expiryTime);
     
     // FIXED: Use consistent parameter names that match App.tsx
     const successUrl = `${window.location.origin}?paymentSuccess=true&planType=${plan.planType}&email=${encodeURIComponent(email)}`;
@@ -204,10 +188,6 @@ export function PricingPage() {
         button.textContent = plan.buttonText;
         button.disabled = false;
       }
-      
-      // Clear temporary access on error
-      localStorage.removeItem('temp_access_until');
-      localStorage.removeItem('payment_processing');
     }
   };
 
@@ -235,19 +215,13 @@ export function PricingPage() {
           
           {userEmail && (
             <div className="mt-4 p-3 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-md inline-block">
-              ✅ Signed in as: {userEmail}
-            </div>
-          )}
-          
-          {hasTempAccess && (
-            <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-md inline-block">
-              ⏱️ Temporary access active - Your payment is being processed
+               Signed in as: {userEmail}
             </div>
           )}
           
           {isPaidUser && (
             <div className="mt-4 p-3 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-md inline-block">
-              ✅ You have an active subscription
+               You have an active subscription
             </div>
           )}
           
@@ -319,20 +293,9 @@ export function PricingPage() {
                         : 'bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-900 dark:text-white'
                   } font-medium flex items-center justify-center transition-all duration-200`}
                 >
-                  {isPaidUser 
-                    ? 'Current Plan' 
-                    : hasTempAccess 
-                      ? 'Processing Payment...' 
-                      : plan.buttonText
-                  }
-                  {!isPaidUser && !hasTempAccess && <ArrowRight className="ml-2 w-4 h-4" />}
+                  {isPaidUser ? 'Current Plan' : plan.buttonText}
+                  {!isPaidUser && <ArrowRight className="ml-2 w-4 h-4" />}
                 </button>
-                
-                {hasTempAccess && (
-                  <p className="text-xs text-center text-blue-600 dark:text-blue-400 mt-2">
-                    You have temporary access while payment processes
-                  </p>
-                )}
               </div>
               
               <div className="p-6 bg-gray-50 dark:bg-gray-800 border-t border-gray-100 dark:border-gray-700 flex-grow">
@@ -376,10 +339,8 @@ export function PricingPage() {
           <div className="mt-8 p-4 bg-gray-100 dark:bg-gray-800 rounded-lg text-xs">
             <h4 className="font-bold mb-2">Debug Info:</h4>
             <p>User Email: {userEmail || 'Not set'}</p>
-            <p>Has Temp Access: {hasTempAccess ? 'Yes' : 'No'}</p>
             <p>Is Paid User: {isPaidUser ? 'Yes' : 'No'}</p>
-            <p>Temp Access Until: {localStorage.getItem('temp_access_until') || 'Not set'}</p>
-            <p>Payment Processing: {localStorage.getItem('payment_processing') || 'No'}</p>
+            <p>Payment Plan: {localStorage.getItem('payment_plan') || 'Not set'}</p>
           </div>
         )}
       </div>
