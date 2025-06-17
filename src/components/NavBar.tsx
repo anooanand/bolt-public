@@ -1,50 +1,43 @@
-import React, { useState, useRef } from 'react';
-import { 
-  Sun, 
-  Moon, 
-  Menu, 
-  X, 
-  User, 
-  Settings, 
-  LogOut,
-  Shield,
-  ChevronDown,
-  PenTool
-} from 'lucide-react';
-import { useTheme } from '../contexts/ThemeContext';
+import React, { useState } from 'react';
+import { User } from '@supabase/supabase-js';
+import { useLearning } from '../contexts/LearningContext';
 
 interface NavBarProps {
   activePage: string;
   onNavigate: (page: string) => void;
-  user: any;
+  user: User | null;
   onSignInClick: () => void;
   onSignUpClick: () => void;
   onForceSignOut: () => void;
 }
 
-export const NavBar: React.FC<NavBarProps> = ({ 
+export function NavBar({ 
   activePage, 
   onNavigate, 
   user, 
   onSignInClick, 
-  onSignUpClick,
-  onForceSignOut
-}) => {
-  const { theme, toggleTheme } = useTheme();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
-  const [userMenuOpen, setUserMenuOpen] = useState<boolean>(false);
+  onSignUpClick, 
+  onForceSignOut 
+}: NavBarProps) {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isLearningMenuOpen, setIsLearningMenuOpen] = useState(false);
+  const { progress } = useLearning();
 
-  const navItems = [
-    { id: 'home', label: 'Home', public: true },
-    { id: 'features', label: 'Features', public: true },
-    { id: 'writing', label: 'Start Writing', public: true },
-    { id: 'pricing', label: 'Pricing', public: true },
-    { id: 'about', label: 'About', public: true },
-    { id: 'faq', label: 'FAQ', public: true },
+  const navigationItems = [
+    { id: 'home', name: 'Home', href: '#' },
+    { id: 'features', name: 'Features', href: '#' },
+    { id: 'about', name: 'About', href: '#' },
+    { id: 'faq', name: 'FAQ', href: '#' }
+  ];
+
+  const learningItems = [
+    { id: 'learn', name: '📚 Learning Plan', description: 'Structured 30-day course' },
+    { id: 'progress-dashboard', name: '📊 Progress Dashboard', description: 'Track your achievements' },
+    { id: 'quiz-demo', name: '🧩 Practice Quiz', description: 'Test your knowledge' }
   ];
 
   return (
-    <nav className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 fixed top-0 left-0 right-0 z-50">
+    <nav className="fixed top-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-b border-gray-200 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
@@ -53,173 +46,219 @@ export const NavBar: React.FC<NavBarProps> = ({
               onClick={() => onNavigate('home')}
               className="flex items-center space-x-2"
             >
-              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                <PenTool className="w-5 h-5 text-white" />
+              <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
+                <span className="text-white font-bold text-sm">AI</span>
               </div>
-              <span className="text-xl font-bold text-gray-900 dark:text-white">
-                InstaChat AI
-              </span>
+              <span className="text-xl font-bold text-gray-900">InstaChat AI</span>
             </button>
           </div>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-4">
-            {navItems.map((item) => (
+          <div className="hidden md:flex items-center space-x-8">
+            {navigationItems.map((item) => (
               <button
                 key={item.id}
                 onClick={() => onNavigate(item.id)}
-                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                className={`text-sm font-medium transition-colors ${
                   activePage === item.id
-                    ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300'
-                    : 'text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400'
+                    ? 'text-blue-600 border-b-2 border-blue-600 pb-1'
+                    : 'text-gray-700 hover:text-blue-600'
                 }`}
               >
-                {item.label}
+                {item.name}
               </button>
             ))}
-          </div>
 
-          {/* Right side items */}
-          <div className="flex items-center space-x-4">
-            {/* Theme Toggle */}
-            <button
-              onClick={toggleTheme}
-              className="p-2 rounded-md text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-            >
-              {theme === 'dark' ? (
-                <Sun className="w-5 h-5" />
-              ) : (
-                <Moon className="w-5 h-5" />
-              )}
-            </button>
-
-            {/* User Menu or Auth Buttons */}
-            {user ? (
-              <div className="relative">
-                <button
-                  onClick={() => setUserMenuOpen(!userMenuOpen)}
-                  className="flex items-center space-x-2 p-2 rounded-md text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                >
-                  <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
-                    <span className="text-white text-sm font-medium">
-                      {user.email?.charAt(0).toUpperCase() || 'U'}
-                    </span>
-                  </div>
-                  <ChevronDown className="w-4 h-4" />
-                </button>
-
-                {userMenuOpen && (
-                  <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg py-1 z-50 border border-gray-200 dark:border-gray-700">
-                    <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700">
-                      <p className="text-sm font-medium text-gray-900 dark:text-white">
-                        {user.email}
-                      </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">
-                        Free Plan
-                      </p>
-                    </div>
-                    
-                    <button
-                      onClick={() => {
-                        onNavigate('dashboard');
-                        setUserMenuOpen(false);
-                      }}
-                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                    >
-                      <User className="w-4 h-4 mr-3" />
-                      Dashboard
-                    </button>
-                    
-                    <button
-                      onClick={() => {
-                        onNavigate('settings');
-                        setUserMenuOpen(false);
-                      }}
-                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                    >
-                      <Settings className="w-4 h-4 mr-3" />
-                      Settings
-                    </button>
-                    
-                    <button
-                      onClick={onForceSignOut}
-                      className="flex items-center w-full px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700"
-                    >
-                      <LogOut className="w-4 h-4 mr-3" />
-                      Sign Out
-                    </button>
+            {/* Learning Dropdown */}
+            <div className="relative">
+              <button
+                onClick={() => setIsLearningMenuOpen(!isLearningMenuOpen)}
+                className={`flex items-center space-x-1 text-sm font-medium transition-colors ${
+                  ['learn', 'progress-dashboard', 'quiz-demo', 'lesson'].includes(activePage)
+                    ? 'text-blue-600 border-b-2 border-blue-600 pb-1'
+                    : 'text-gray-700 hover:text-blue-600'
+                }`}
+              >
+                <span>Learning</span>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+                {progress.completedLessons.length > 0 && (
+                  <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
+                    <span className="text-xs text-white font-bold">{progress.completedLessons.length}</span>
                   </div>
                 )}
+              </button>
+
+              {/* Learning Dropdown Menu */}
+              {isLearningMenuOpen && (
+                <div className="absolute top-full left-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
+                  {learningItems.map((item) => (
+                    <button
+                      key={item.id}
+                      onClick={() => {
+                        onNavigate(item.id);
+                        setIsLearningMenuOpen(false);
+                      }}
+                      className="w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors"
+                    >
+                      <div className="font-medium text-gray-900">{item.name}</div>
+                      <div className="text-sm text-gray-500">{item.description}</div>
+                    </button>
+                  ))}
+                  
+                  {/* Progress Summary */}
+                  <div className="border-t border-gray-200 mt-2 pt-2 px-4">
+                    <div className="text-xs text-gray-500 mb-1">Your Progress</div>
+                    <div className="flex justify-between text-sm">
+                      <span>Lessons: {progress.completedLessons.length}/30</span>
+                      <span>Points: {progress.totalPoints}</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-1.5 mt-1">
+                      <div 
+                        className="bg-blue-600 h-1.5 rounded-full transition-all"
+                        style={{ width: `${(progress.completedLessons.length / 30) * 100}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {user ? (
+              <div className="flex items-center space-x-4">
+                <button
+                  onClick={() => onNavigate('dashboard')}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Dashboard
+                </button>
+                <div className="flex items-center space-x-2">
+                  <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
+                    <span className="text-sm font-medium text-gray-700">
+                      {user.email?.charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                  <button
+                    onClick={onForceSignOut}
+                    className="text-sm text-gray-500 hover:text-gray-700"
+                  >
+                    Sign Out
+                  </button>
+                </div>
               </div>
             ) : (
-              <div className="hidden md:flex items-center space-x-4">
+              <div className="flex items-center space-x-4">
                 <button
                   onClick={onSignInClick}
-                  className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 px-3 py-2 rounded-md text-sm font-medium"
+                  className="text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors"
                 >
                   Sign In
                 </button>
                 <button
                   onClick={onSignUpClick}
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                 >
                   Get Started
                 </button>
               </div>
             )}
+          </div>
 
-            {/* Mobile menu button */}
+          {/* Mobile menu button */}
+          <div className="md:hidden">
             <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden p-2 rounded-md text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              className="text-gray-700 hover:text-blue-600"
             >
-              {mobileMenuOpen ? (
-                <X className="w-6 h-6" />
-              ) : (
-                <Menu className="w-6 h-6" />
-              )}
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
             </button>
           </div>
         </div>
+      </div>
 
-        {/* Mobile Navigation */}
-        {mobileMenuOpen && (
-          <div className="md:hidden">
-            <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 border-t border-gray-200 dark:border-gray-700">
-              {navItems.map((item) => (
+      {/* Mobile menu */}
+      {isMenuOpen && (
+        <div className="md:hidden bg-white border-t border-gray-200">
+          <div className="px-4 py-2 space-y-2">
+            {navigationItems.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => {
+                  onNavigate(item.id);
+                  setIsMenuOpen(false);
+                }}
+                className={`block w-full text-left px-3 py-2 rounded-md text-sm font-medium ${
+                  activePage === item.id
+                    ? 'text-blue-600 bg-blue-50'
+                    : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50'
+                }`}
+              >
+                {item.name}
+              </button>
+            ))}
+            
+            {/* Mobile Learning Items */}
+            <div className="border-t border-gray-200 pt-2 mt-2">
+              <div className="text-xs font-medium text-gray-500 px-3 py-1 uppercase tracking-wide">
+                Learning
+              </div>
+              {learningItems.map((item) => (
                 <button
                   key={item.id}
                   onClick={() => {
                     onNavigate(item.id);
-                    setMobileMenuOpen(false);
+                    setIsMenuOpen(false);
                   }}
-                  className={`block w-full text-left px-3 py-2 rounded-md text-base font-medium ${
-                    activePage === item.id
-                      ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300'
-                      : 'text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-gray-100 dark:hover:bg-gray-700'
-                  }`}
+                  className="block w-full text-left px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50"
                 >
-                  {item.label}
+                  {item.name}
                 </button>
               ))}
-              
-              {!user && (
-                <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+            </div>
+
+            {/* Mobile Auth */}
+            <div className="border-t border-gray-200 pt-2 mt-2">
+              {user ? (
+                <div className="space-y-2">
+                  <button
+                    onClick={() => {
+                      onNavigate('dashboard');
+                      setIsMenuOpen(false);
+                    }}
+                    className="block w-full text-left px-3 py-2 rounded-md text-sm font-medium bg-blue-600 text-white"
+                  >
+                    Dashboard
+                  </button>
+                  <button
+                    onClick={() => {
+                      onForceSignOut();
+                      setIsMenuOpen(false);
+                    }}
+                    className="block w-full text-left px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  >
+                    Sign Out
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-2">
                   <button
                     onClick={() => {
                       onSignInClick();
-                      setMobileMenuOpen(false);
+                      setIsMenuOpen(false);
                     }}
-                    className="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-gray-100 dark:hover:bg-gray-700"
+                    className="block w-full text-left px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
                   >
                     Sign In
                   </button>
                   <button
                     onClick={() => {
                       onSignUpClick();
-                      setMobileMenuOpen(false);
+                      setIsMenuOpen(false);
                     }}
-                    className="block w-full text-left px-3 py-2 rounded-md text-base font-medium bg-blue-600 text-white hover:bg-blue-700 mt-2"
+                    className="block w-full text-left px-3 py-2 rounded-md text-sm font-medium bg-blue-600 text-white"
                   >
                     Get Started
                   </button>
@@ -227,8 +266,19 @@ export const NavBar: React.FC<NavBarProps> = ({
               )}
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
+
+      {/* Click outside to close dropdowns */}
+      {(isLearningMenuOpen || isMenuOpen) && (
+        <div
+          className="fixed inset-0 z-10"
+          onClick={() => {
+            setIsLearningMenuOpen(false);
+            setIsMenuOpen(false);
+          }}
+        ></div>
+      )}
     </nav>
   );
-};
+}
