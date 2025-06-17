@@ -151,7 +151,7 @@ export function ProgressDashboard({ progressData }: { progressData: ProgressData
           <div className="flex items-center"><div className="w-3 h-3 bg-green-500 rounded mr-1"></div>90%+</div>
           <div className="flex items-center"><div className="w-3 h-3 bg-blue-500 rounded mr-1"></div>80-89%</div>
           <div className="flex items-center"><div className="w-3 h-3 bg-yellow-500 rounded mr-1"></div>70-79%</div>
-          <div className="flex items-center"><div className="w-3 h-3 bg-red-500 rounded mr-1"></div><70%</div>
+          <div className="flex items-center"><div className="w-3 h-3 bg-red-500 rounded mr-1"></div>&lt;70%</div>
           <div className="flex items-center"><div className="w-3 h-3 bg-gray-200 rounded mr-1"></div>Not completed</div>
         </div>
       </div>
