@@ -15,6 +15,7 @@ import { Dashboard } from './components/Dashboard';
 import { AuthModal } from './components/AuthModal';
 import { FAQPage } from './components/FAQPage';
 import { AboutPage } from './components/AboutPage';
+import { SettingsPage } from './components/SettingsPage';
 
 // Writing components
 import { SplitScreen } from './components/SplitScreen';
@@ -98,27 +99,48 @@ function App() {
     }
   };
 
-  // Initialize auth state with better error handling
+  // Initialize auth state with better error handling and emergency timeout
   const initializeAuthState = async () => {
     try {
       setIsLoading(true);
       
-      // Shorter timeout for initial load
+      // Emergency timeout to prevent infinite loading
+      const emergencyTimeoutId = setTimeout(() => {
+        console.log('[EMERGENCY] Forcing app to load after 5 seconds');
+        setIsLoading(false);
+        setSessionChecked(true);
+        setActivePage('home');
+      }, 5000);
+
+      // Regular timeout for auth initialization
       const timeoutId = setTimeout(() => {
         console.log('[DEBUG] Auth initialization timeout, staying on home page');
         setIsLoading(false);
         setSessionChecked(true);
-        setActivePage('home'); // Ensure we stay on home page
-      }, 3000); // Reduced from 5000 to 3000
+        setActivePage('home');
+        clearTimeout(emergencyTimeoutId);
+      }, 3000);
 
       try {
+        // Check if Supabase is available
+        if (!supabase) {
+          console.warn('[DEBUG] Supabase not available, proceeding without auth');
+          clearTimeout(timeoutId);
+          clearTimeout(emergencyTimeoutId);
+          setIsLoading(false);
+          setSessionChecked(true);
+          setActivePage('home');
+          return;
+        }
+
         const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
         clearTimeout(timeoutId);
+        clearTimeout(emergencyTimeoutId);
 
         if (sessionError) {
           console.error('[DEBUG] Session error:', sessionError);
           setUser(null);
-          setActivePage('home'); // Stay on home page
+          setActivePage('home');
           setIsLoading(false);
           setSessionChecked(true);
           return;
@@ -132,9 +154,13 @@ function App() {
             setUser(currentUser);
             
             // Only check payment status if user explicitly navigates to dashboard
-            // Don't auto-redirect on app load
-            const completed = await checkPaymentStatusSafely(currentUser);
-            setPaymentCompleted(completed);
+            try {
+              const completed = await checkPaymentStatusSafely(currentUser);
+              setPaymentCompleted(completed);
+            } catch (error) {
+              console.warn('[DEBUG] Payment check failed:', error);
+              setPaymentCompleted(false);
+            }
             
             // Stay on home page by default, don't auto-redirect
             console.log('[DEBUG] User authenticated, staying on home page');
@@ -166,6 +192,7 @@ function App() {
         setIsLoading(false);
       } catch (error) {
         clearTimeout(timeoutId);
+        clearTimeout(emergencyTimeoutId);
         console.error('[DEBUG] Error in auth initialization:', error);
         // On any error, stay on home page
         setActivePage('home');
@@ -175,44 +202,61 @@ function App() {
     } catch (error) {
       console.error('[DEBUG] Critical error initializing auth state:', error);
       setAuthError("There was an error loading your session. Please try refreshing the page.");
-      setActivePage('home'); // Stay on home page even with errors
+      setActivePage('home');
       setIsLoading(false);
       setSessionChecked(true);
     }
   };
 
+  // Emergency force load useEffect
+  useEffect(() => {
+    const emergencyLoad = setTimeout(() => {
+      if (isLoading) {
+        console.log('[EMERGENCY] Forcing app to load after 3 seconds');
+        setIsLoading(false);
+        setActivePage('home');
+        setSessionChecked(true);
+      }
+    }, 3000);
+
+    return () => clearTimeout(emergencyLoad);
+  }, [isLoading]);
+
   useEffect(() => {
     initializeAuthState();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('[DEBUG] Auth state changed:', event, session?.user?.email);
-      
-      if (event === 'SIGNED_IN' && session?.user) {
-        setUser(session.user);
-        setShowAuthModal(false);
+    // Only set up auth listener if supabase is available
+    if (supabase) {
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+        console.log('[DEBUG] Auth state changed:', event, session?.user?.email);
         
-        // After successful signup, redirect to pricing
-        if (authModalMode === 'signup') {
-          setActivePage('pricing');
-        } else {
-          // For signin, check payment status and redirect accordingly
-          try {
-            const completed = await checkPaymentStatusSafely(session.user);
-            setPaymentCompleted(completed);
-            setActivePage(completed ? 'dashboard' : 'pricing');
-          } catch (error) {
-            console.error('Error checking payment status after signin:', error);
+        if (event === 'SIGNED_IN' && session?.user) {
+          setUser(session.user);
+          setShowAuthModal(false);
+          
+          // After successful signup, redirect to pricing
+          if (authModalMode === 'signup') {
             setActivePage('pricing');
+          } else {
+            // For signin, check payment status and redirect accordingly
+            try {
+              const completed = await checkPaymentStatusSafely(session.user);
+              setPaymentCompleted(completed);
+              setActivePage(completed ? 'dashboard' : 'pricing');
+            } catch (error) {
+              console.error('Error checking payment status after signin:', error);
+              setActivePage('pricing');
+            }
           }
+        } else if (event === 'SIGNED_OUT') {
+          setUser(null);
+          setPaymentCompleted(false);
+          setActivePage('home');
         }
-      } else if (event === 'SIGNED_OUT') {
-        setUser(null);
-        setPaymentCompleted(false);
-        setActivePage('home'); // Always go back to home after signout
-      }
-    });
+      });
 
-    return () => subscription.unsubscribe();
+      return () => subscription.unsubscribe();
+    }
   }, [authModalMode]);
 
   // Text selection logic for writing area
@@ -330,12 +374,24 @@ function App() {
     alert('Plan saved successfully!');
   };
 
+  // Enhanced loading component with emergency skip option
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-400">Loading...</p>
+          <p className="text-gray-600 dark:text-gray-400 mb-4">Loading InstaChat AI...</p>
+          <button 
+            onClick={() => {
+              console.log('[DEBUG] User manually skipped loading');
+              setIsLoading(false);
+              setActivePage('home');
+              setSessionChecked(true);
+            }}
+            className="mt-4 text-sm text-indigo-600 hover:text-indigo-800 underline"
+          >
+            Skip loading and continue
+          </button>
         </div>
       </div>
     );
@@ -375,6 +431,8 @@ function App() {
             <PricingPage />
           ) : activePage === 'dashboard' ? (
             <Dashboard user={user} onNavigate={handleNavigation} />
+          ) : activePage === 'settings' ? (
+            <SettingsPage onBack={() => setActivePage('dashboard')} />
           ) : activePage === 'faq' ? (
             <FAQPage />
           ) : activePage === 'about' ? (
@@ -491,8 +549,8 @@ function App() {
             </>
           )}
           
-          {activePage !== 'writing' && activePage !== 'feedback' && activePage !== 'learn' && (
-            <Footer />
+          {activePage !== 'writing' && activePage !== 'feedback' && activePage !== 'learn' && activePage !== 'settings' && (
+            <Footer onNavigate={handleNavigation} />
           )}
         </div>
 
