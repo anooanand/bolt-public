@@ -104,6 +104,49 @@ function App() {
     try {
       setIsLoading(true);
       
+      // FIRST: Check for Stripe payment success before auth check
+      const urlParams = new URLSearchParams(window.location.search);
+      const paymentSuccess = urlParams.get('paymentSuccess') === 'true'; // Check both variants
+      const paymentSuccessAlt = urlParams.get('payment_success') === 'true';
+      const planType = urlParams.get('planType') || urlParams.get('plan');
+      const userEmail = urlParams.get('email') || localStorage.getItem('userEmail');
+      
+      console.log('[DEBUG] URL Parameters:', {
+        paymentSuccess,
+        paymentSuccessAlt,
+        planType,
+        userEmail,
+        fullUrl: window.location.href
+      });
+      
+      if ((paymentSuccess || paymentSuccessAlt) && planType) {
+        console.log(`[DEBUG] Payment success detected for plan: ${planType}`);
+        
+        // IMMEDIATELY grant temporary access
+        const expiryTime = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+        localStorage.setItem('temp_access_until', expiryTime);
+        localStorage.setItem('payment_plan', planType);
+        localStorage.setItem('payment_date', new Date().toISOString());
+        localStorage.setItem('payment_processing', 'true');
+        
+        // Store user email if provided
+        if (userEmail) {
+          localStorage.setItem('userEmail', userEmail);
+        }
+        
+        console.log('[DEBUG] Temporary access granted until:', expiryTime);
+        
+        // Clear URL parameters immediately
+        window.history.replaceState({}, document.title, window.location.pathname);
+        
+        setShowPaymentSuccess(true);
+        setPendingPaymentPlan(planType);
+        setActivePage('payment-success');
+        setIsLoading(false);
+        setSessionChecked(true);
+        return;
+      }
+      
       // Emergency timeout to prevent infinite loading
       const emergencyTimeoutId = setTimeout(() => {
         console.log('[EMERGENCY] Forcing app to load after 5 seconds');
@@ -173,18 +216,8 @@ function App() {
           setUser(null);
         }
 
-        // Check for payment success URL params
-        const urlParams = new URLSearchParams(window.location.search);
-        const paymentSuccess = urlParams.get('payment_success');
-        const plan = urlParams.get('plan');
-
-        if (paymentSuccess && plan) {
-          console.log(`[DEBUG] Payment success detected for plan: ${plan}`);
-          setShowPaymentSuccess(true);
-          setPendingPaymentPlan(plan);
-          setActivePage('payment-success');
-        } else {
-          // Ensure we stay on home page if no payment success
+        // Ensure we stay on home page if no payment success
+        if (!showPaymentSuccess) {
           setActivePage('home');
         }
 
