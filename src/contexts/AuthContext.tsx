@@ -9,7 +9,6 @@ interface AuthContextType {
   signUp: (email: string, password: string) => Promise<{ error?: any }>;
   signOut: () => Promise<void>;
   isPaidUser: boolean;
-  isAdmin: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -29,9 +28,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     // Get initial session
     const getInitialSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setUser(session?.user ?? null);
-      setLoading(false);
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        setUser(session?.user ?? null);
+      } catch (error) {
+        console.error('Error getting session:', error);
+      } finally {
+        setLoading(false);
+      }
     };
 
     getInitialSession();
@@ -67,29 +71,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await supabase.auth.signOut();
   };
 
-  // Check if user has paid status (from localStorage or database)
+  // Simplified payment check
   const isPaidUser = React.useMemo(() => {
     if (!user) return false;
-    
-    // Check localStorage first (for demo/testing)
-    const paymentStatus = localStorage.getItem('payment_status');
-    if (paymentStatus === 'paid') return true;
-    
-    // In production, check user metadata or database
-    return user.user_metadata?.payment_status === 'paid' || false;
-  }, [user]);
-
-  // Check if user is admin
-  const isAdmin = React.useMemo(() => {
-    if (!user) return false;
-    
-    const adminEmails = [
-      'admin@writingassistant.com',
-      'admin@example.com',
-      // Add your admin emails here
-    ];
-    
-    return adminEmails.includes(user.email || '');
+    return user.user_metadata?.payment_confirmed === true;
   }, [user]);
 
   const value = {
@@ -99,7 +84,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     signUp,
     signOut,
     isPaidUser,
-    isAdmin,
   };
 
   return (
@@ -108,4 +92,3 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     </AuthContext.Provider>
   );
 };
-
