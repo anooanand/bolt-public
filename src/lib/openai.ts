@@ -142,6 +142,117 @@ export async function getWritingFeedback(content: string, textType: string, assi
   }
 }
 
+export async function getSpecializedTextTypeFeedback(content: string, textType: string): Promise<any> {
+  if (!openai) {
+    return {
+      overallComment: "AI specialized feedback is not available without an OpenAI API key. Your writing shows understanding of the text type requirements.",
+      textTypeSpecificFeedback: {
+        structure: "Your writing follows the basic structure expected for this text type.",
+        language: "You've used appropriate language for this writing style.",
+        purpose: "Your writing addresses the main purpose of this text type.",
+        audience: "Consider your target audience when writing."
+      },
+      strengthsInTextType: [
+        "Shows understanding of the text type",
+        "Appropriate attempt at the required format",
+        "Good effort in addressing the task"
+      ],
+      improvementAreas: [
+        "Continue practicing this text type",
+        "Focus on specific features of this writing style",
+        "Review examples of excellent writing in this format"
+      ],
+      nextSteps: [
+        "Practice more examples of this text type",
+        "Study the key features and structure",
+        "Get feedback from teachers or peers"
+      ]
+    };
+  }
+
+  try {
+    const completion = await openai.chat.completions.create({
+      messages: [
+        {
+          role: "system",
+          content: `You are an expert writing teacher providing specialized feedback for Year 5-6 students on ${textType} writing. Focus specifically on how well the student has understood and applied the conventions, structure, and features of this text type. Return feedback in this exact JSON format:
+{
+  "overallComment": "Brief assessment of how well the student has handled this text type",
+  "textTypeSpecificFeedback": {
+    "structure": "Feedback on how well the student followed the expected structure for this text type",
+    "language": "Feedback on use of language features specific to this text type",
+    "purpose": "How well the student achieved the purpose of this text type",
+    "audience": "How well the student considered their audience"
+  },
+  "strengthsInTextType": [
+    "Specific strengths in handling this text type",
+    "What the student did well for this writing style"
+  ],
+  "improvementAreas": [
+    "Areas where the student can improve their understanding of this text type",
+    "Specific features they need to work on"
+  ],
+  "nextSteps": [
+    "Specific actions to improve in this text type",
+    "Resources or practice suggestions"
+  ]
+}`
+        },
+        {
+          role: "user",
+          content: `Text type: ${textType}\n\nStudent writing:\n${content}`
+        }
+      ],
+      model: "gpt-4",
+      temperature: 0.7,
+      max_tokens: 1000
+    });
+
+    const responseContent = completion.choices[0].message.content;
+    if (!responseContent) {
+      throw new Error('Empty response from OpenAI');
+    }
+
+    const parsed = JSON.parse(responseContent);
+    
+    if (!parsed.overallComment || 
+        !parsed.textTypeSpecificFeedback ||
+        !Array.isArray(parsed.strengthsInTextType) ||
+        !Array.isArray(parsed.improvementAreas) ||
+        !Array.isArray(parsed.nextSteps)) {
+      throw new Error('Invalid response format: missing required fields');
+    }
+
+    return parsed;
+  } catch (error) {
+    console.error('OpenAI specialized text type feedback error:', error);
+    return {
+      overallComment: "Unable to provide specialized feedback at this time. Your writing shows good understanding of the task.",
+      textTypeSpecificFeedback: {
+        structure: "Your writing has a clear structure appropriate for this text type.",
+        language: "You've used suitable language for this writing style.",
+        purpose: "Your writing addresses the main purpose effectively.",
+        audience: "Consider your audience when refining your writing."
+      },
+      strengthsInTextType: [
+        "Good understanding of the text type requirements",
+        "Appropriate structure and organization",
+        "Clear attempt at the required style"
+      ],
+      improvementAreas: [
+        "Continue developing text type knowledge",
+        "Practice specific language features",
+        "Strengthen understanding of conventions"
+      ],
+      nextSteps: [
+        "Review examples of this text type",
+        "Practice with guided exercises",
+        "Seek additional feedback and support"
+      ]
+    };
+  }
+}
+
 export async function identifyCommonMistakes(content: string, textType: string) {
   if (!openai) {
     return {
@@ -730,6 +841,7 @@ export { openai };
 export default {
   generatePrompt,
   getWritingFeedback,
+  getSpecializedTextTypeFeedback,
   identifyCommonMistakes,
   getSynonyms,
   rephraseSentence,
@@ -739,4 +851,3 @@ export default {
   getTextTypeVocabulary,
   isOpenAIAvailable
 };
-
