@@ -6,14 +6,14 @@ let openai: OpenAI | null = null;
 try {
   const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
   
-  if (apiKey && apiKey !== 'your-openai-api-key-here' && apiKey.trim() !== '') {
+  if (apiKey && apiKey !== 'your_openai_api_key_here' && apiKey !== 'your-openai-api-key-here' && apiKey.trim() !== '') {
     openai = new OpenAI({
       apiKey: apiKey,
       dangerouslyAllowBrowser: true
     });
     console.log('[DEBUG] OpenAI client initialized successfully with GPT-4');
   } else {
-    console.warn('[DEBUG] OpenAI API key not configured - AI features will use fallbacks');
+    console.log('[DEBUG] OpenAI API key not configured - AI features will use Netlify functions');
   }
 } catch (error) {
   console.error('[DEBUG] Failed to initialize OpenAI client:', error);
