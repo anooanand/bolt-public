@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { hasCompletedPayment } from '../lib/supabase';
+import { useAuth } from '../contexts/AuthContext';
 import { Loader, Lock } from 'lucide-react';
 
 interface WritingAccessCheckProps {
@@ -8,29 +8,35 @@ interface WritingAccessCheckProps {
 }
 
 export function WritingAccessCheck({ children, onNavigate }: WritingAccessCheckProps) {
+  const { user, paymentCompleted, isLoading } = useAuth();
   const [hasAccess, setHasAccess] = useState<boolean | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [checkingAccess, setCheckingAccess] = useState(true);
 
   useEffect(() => {
     const checkAccess = async () => {
-      setIsLoading(true);
+      setCheckingAccess(true);
       
       try {
-        // Check for permanent access
-        const paymentCompleted = await hasCompletedPayment();
-        setHasAccess(paymentCompleted);
+        // If user is logged in and has completed payment, they have access
+        if (user && paymentCompleted) {
+          setHasAccess(true);
+        } else {
+          setHasAccess(false);
+        }
       } catch (error) {
         console.error('Error checking access:', error);
         setHasAccess(false);
       } finally {
-        setIsLoading(false);
+        setCheckingAccess(false);
       }
     };
     
-    checkAccess();
-  }, []);
+    if (!isLoading) {
+      checkAccess();
+    }
+  }, [user, paymentCompleted, isLoading]);
 
-  if (isLoading) {
+  if (isLoading || checkingAccess) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
         <div className="text-center">

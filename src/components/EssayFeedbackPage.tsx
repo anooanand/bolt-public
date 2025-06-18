@@ -1,11 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { evaluateEssay } from '../lib/openai';
 import { Loader2, ArrowLeft, Award, Target, CheckCircle, AlertCircle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 interface EssayFeedbackPageProps {
-  content: string;
-  textType: string;
-  onBack: () => void;
+  content?: string;
+  textType?: string;
+  onBack?: () => void;
 }
 
 interface FeedbackData {
@@ -21,15 +22,26 @@ interface FeedbackData {
   nextSteps: string[];
 }
 
-export function EssayFeedbackPage({ content, textType, onBack }: EssayFeedbackPageProps) {
+export function EssayFeedbackPage({ content = '', textType = 'narrative', onBack }: EssayFeedbackPageProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [feedback, setFeedback] = useState<FeedbackData | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const navigate = useNavigate();
+
+  // Sample content for demo purposes if no content is provided
+  const sampleContent = `The old lighthouse stood sentinel on the jagged cliff edge, its weathered stone exterior bearing the scars of a century's worth of storms. Paint peeled from its once-pristine white surface like old skin, revealing patches of gray stone underneath that seemed to tell stories of bygone eras.
+
+As I approached along the winding cliff path, the salty breeze intensified, carrying with it the rhythmic percussion of waves crashing against the rocks below. Seagulls wheeled overhead, their mournful cries punctuating the constant whisper of wind through the coastal grasses.
+
+The heavy oak door at the lighthouse base groaned in protest as I pushed it open, releasing a waft of cool, musty air that spoke of abandonment and neglect. Dust motes danced in the shaft of sunlight that pierced the gloom, illuminating a narrow spiral staircase that twisted upward.`;
+
+  const effectiveContent = content || sampleContent;
+  const effectiveTextType = textType || 'narrative';
 
   useEffect(() => {
     const getFeedback = async () => {
       try {
-        const result = await evaluateEssay(content, textType);
+        const result = await evaluateEssay(effectiveContent, effectiveTextType);
         if (result) {
           setFeedback(result);
         } else {
@@ -43,7 +55,15 @@ export function EssayFeedbackPage({ content, textType, onBack }: EssayFeedbackPa
     };
 
     getFeedback();
-  }, [content, textType]);
+  }, [effectiveContent, effectiveTextType]);
+
+  const handleBack = () => {
+    if (onBack) {
+      onBack();
+    } else {
+      navigate(-1);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -71,7 +91,7 @@ export function EssayFeedbackPage({ content, textType, onBack }: EssayFeedbackPa
               <h2 className="text-xl font-semibold text-gray-900 mb-2">Evaluation Error</h2>
               <p className="text-gray-600 mb-4">{error}</p>
               <button
-                onClick={onBack}
+                onClick={handleBack}
                 className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
               >
                 <ArrowLeft className="h-4 w-4 mr-2" />
@@ -91,7 +111,7 @@ export function EssayFeedbackPage({ content, textType, onBack }: EssayFeedbackPa
       <div className="max-w-4xl mx-auto">
         <div className="mb-4">
           <button
-            onClick={onBack}
+            onClick={handleBack}
             className="inline-flex items-center text-gray-600 hover:text-gray-900"
           >
             <ArrowLeft className="h-4 w-4 mr-1" />
