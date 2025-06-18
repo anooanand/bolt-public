@@ -51,7 +51,7 @@ export function NavBar({
             </Link>
           </div>
 
-          {/* Desktop Navigation */}
+            {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-8">
             {navigationItems.map((item) => (
               <Link
@@ -66,6 +66,18 @@ export function NavBar({
                 {item.name}
               </Link>
             ))}
+
+            {/* Pricing Tab */}
+            <Link
+              to="/pricing"
+              className={`text-sm font-medium transition-colors ${
+                activePage === 'pricing'
+                  ? 'text-blue-600 border-b-2 border-blue-600 pb-1'
+                  : 'text-gray-700 hover:text-blue-600 dark:text-gray-300 dark:hover:text-blue-400'
+              }`}
+            >
+              Pricing
+            </Link>
 
             {/* Learning Dropdown */}
             <div className="relative">
@@ -194,6 +206,18 @@ export function NavBar({
               </Link>
             ))}
             
+            {/* Mobile Pricing Link */}
+            <Link
+              to="/pricing"
+              className={`block w-full text-left px-3 py-2 rounded-md text-sm font-medium ${
+                activePage === 'pricing'
+                  ? 'text-blue-600 bg-blue-50 dark:bg-blue-900/30 dark:text-blue-400'
+                  : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-gray-800'
+              }`}
+              onClick={() => setIsMenuOpen(false)}
+            >
+              Pricing
+            </Link>          
             {/* Mobile Learning Items */}
             <div className="border-t border-gray-200 pt-2 mt-2 dark:border-gray-700">
               <div className="text-xs font-medium text-gray-500 px-3 py-1 uppercase tracking-wide dark:text-gray-400">
