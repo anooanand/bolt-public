@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { AppProvider } from './contexts/AppContext';
 import { useAuth } from './contexts/AuthContext';
 
 import { NavBar } from './components/NavBar';
@@ -99,10 +100,12 @@ function App() {
   const handleAuthSuccess = async (user: any) => {
     setShowAuthModal(false);
     
+    // Always redirect to pricing after signup to follow the flow: Pricing -> Stripe -> Writing area
     if (authModalMode === 'signup') {
       setActivePage('pricing');
     } else {
-      setActivePage(paymentCompleted ? 'dashboard' : 'pricing');
+      // For signin, check payment status and redirect accordingly
+      setActivePage(paymentCompleted ? 'writing' : 'pricing');
     }
   };
 
@@ -120,9 +123,9 @@ function App() {
   };
 
   const handleNavigation = async (page: string) => {
-    // Special handling for dashboard - check payment status
+    // Special handling for dashboard - redirect to writing area if payment completed
     if (page === 'dashboard' && user) {
-      setActivePage(paymentCompleted ? 'dashboard' : 'pricing');
+      setActivePage(paymentCompleted ? 'writing' : 'pricing');
     } else {
       setActivePage(page);
     }
@@ -131,7 +134,7 @@ function App() {
 
   const handleGetStarted = async () => {
     if (user) {
-      setActivePage(paymentCompleted ? 'dashboard' : 'pricing');
+      setActivePage(paymentCompleted ? 'writing' : 'pricing');
     } else {
       setAuthModalMode('signup');
       setShowAuthModal(true);
@@ -193,158 +196,160 @@ function App() {
 
   return (
     <ThemeProvider>
-      <Router>
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-          <NavBar
-            activePage={activePage}
-            onNavigate={handleNavigation}
-            user={user}
-            onSignInClick={() => {
-              setAuthModalMode('signin');
-              setShowAuthModal(true);
-            }}
-            onSignUpClick={() => {
-              setAuthModalMode('signup');
-              setShowAuthModal(true);
-            }}
-            onForceSignOut={handleForceSignOut}
-          />
-          
-          <div className="mt-16">
-            <Routes>
-              <Route path="/" element={
-                <>
-                  <HeroSection onGetStarted={handleGetStarted} />
-                  <FeaturesSection />
-                  <ToolsSection onOpenTool={handleNavigation} />
-                  <WritingTypesSection />
-                </>
-              } />
-              <Route path="/demo" element={<DemoPage />} />
-              <Route path="/features" element={
-                <div>
-                  <FeaturesSection />
-                  <ToolsSection onOpenTool={() => {}} />
-                  <WritingTypesSection />
-                </div>
-              } />
-              <Route path="/pricing" element={<PricingPage />} />
-              <Route path="/faq" element={<FAQPage />} />
-              <Route path="/about" element={<AboutPage />} />
-              <Route path="/dashboard" element={
-                user && paymentCompleted ? <Dashboard user={user} onNavigate={handleNavigation} /> : <Navigate to="/pricing" />
-              } />
-              <Route path="/settings" element={
-                user ? <SettingsPage onBack={() => setActivePage('dashboard')} /> : <Navigate to="/" />
-              } />
-              <Route path="/writing" element={
-                <WritingAccessCheck onNavigate={handleNavigation}>
-                  <div className="flex flex-col h-screen">
-                    <EnhancedHeader 
-                      textType={textType}
-                      assistanceLevel={assistanceLevel}
-                      onTextTypeChange={setTextType}
-                      onAssistanceLevelChange={setAssistanceLevel}
-                      onTimerStart={() => setTimerStarted(true)}
-                    />
-                    
-                    <WritingToolbar 
-                      content={content}
-                      textType={textType}
-                      onShowHelpCenter={() => setShowHelpCenter(true)}
-                      onShowPlanningTool={() => setShowPlanningTool(true)}
-                      onTimerStart={() => setTimerStarted(true)}
-                    />
-                    
-                    {showExamMode ? (
-                      <ExamSimulationMode 
-                        onExit={() => setShowExamMode(false)}
-                      />
-                    ) : (
-                      <>
-                        <div className="flex-1 container mx-auto px-4">
-                          <SplitScreen>
-                            <WritingArea 
-                              content={content}
-                              onChange={setContent}
-                              textType={textType}
-                              onTimerStart={setTimerStarted}
-                              onSubmit={handleSubmit}
-                            />
-                            {activePanel === 'coach' ? (
-                              <CoachPanel 
-                                content={content}
-                                textType={textType}
-                                assistanceLevel={assistanceLevel}
-                              />
-                            ) : (
-                              <ParaphrasePanel 
-                                selectedText={selectedText}
-                                onNavigate={handleNavigation}
-                              />
-                            )}
-                          </SplitScreen>
-                        </div>
-                        
-                        {/* Panel Switcher */}
-                        <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-2 flex justify-center items-center space-x-4">
-                          <button
-                            onClick={() => setActivePanel('coach')}
-                            className={`px-4 py-2 rounded-md text-sm font-medium ${activePanel === 'coach' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'}`}
-                          >
-                            Coach
-                          </button>
-                          <button
-                            onClick={() => setActivePanel('paraphrase')}
-                            className={`px-4 py-2 rounded-md text-sm font-medium ${activePanel === 'paraphrase' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'}`}
-                          >
-                            Paraphrase
-                          </button>
-                        </div>
-                      </>
-                    )}
+      <AppProvider>
+        <Router>
+          <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+            <NavBar
+              activePage={activePage}
+              onNavigate={handleNavigation}
+              user={user}
+              onSignInClick={() => {
+                setAuthModalMode('signin');
+                setShowAuthModal(true);
+              }}
+              onSignUpClick={() => {
+                setAuthModalMode('signup');
+                setShowAuthModal(true);
+              }}
+              onForceSignOut={handleForceSignOut}
+            />
+            
+            <div className="mt-16">
+              <Routes>
+                <Route path="/" element={
+                  <>
+                    <HeroSection onGetStarted={handleGetStarted} />
+                    <FeaturesSection />
+                    <ToolsSection onOpenTool={handleNavigation} />
+                    <WritingTypesSection />
+                  </>
+                } />
+                <Route path="/demo" element={<DemoPage />} />
+                <Route path="/features" element={
+                  <div>
+                    <FeaturesSection />
+                    <ToolsSection onOpenTool={() => {}} />
+                    <WritingTypesSection />
                   </div>
-                </WritingAccessCheck>
-              } />
-              <Route path="/learning" element={<LearningPage />} />
-              <Route path="/feedback" element={<EssayFeedbackPage />} />
-              <Route path="/payment-success" element={
-                showPaymentSuccess ? (
-                  <PaymentSuccessPage
-                    plan={pendingPaymentPlan || 'unknown'}
-                    onSuccess={handleAuthSuccess}
-                    onSignInRequired={(email, plan) => {
-                      localStorage.setItem('userEmail', email);
-                      setPendingPaymentPlan(plan);
-                      setAuthModalMode('signin');
-                      setShowAuthModal(true);
-                    }}
-                  />
-                ) : <Navigate to="/" />
-              } />
-            </Routes>
+                } />
+                <Route path="/pricing" element={<PricingPage />} />
+                <Route path="/faq" element={<FAQPage />} />
+                <Route path="/about" element={<AboutPage />} />
+                <Route path="/dashboard" element={
+                  user && paymentCompleted ? <Navigate to="/writing" /> : <Navigate to="/pricing" />
+                } />
+                <Route path="/settings" element={
+                  user ? <SettingsPage onBack={() => setActivePage('dashboard')} /> : <Navigate to="/" />
+                } />
+                <Route path="/writing" element={
+                  <WritingAccessCheck onNavigate={handleNavigation}>
+                    <div className="flex flex-col h-screen">
+                      <EnhancedHeader 
+                        textType={textType}
+                        assistanceLevel={assistanceLevel}
+                        onTextTypeChange={setTextType}
+                        onAssistanceLevelChange={setAssistanceLevel}
+                        onTimerStart={() => setTimerStarted(true)}
+                      />
+                      
+                      <WritingToolbar 
+                        content={content}
+                        textType={textType}
+                        onShowHelpCenter={() => setShowHelpCenter(true)}
+                        onShowPlanningTool={() => setShowPlanningTool(true)}
+                        onTimerStart={() => setTimerStarted(true)}
+                      />
+                      
+                      {showExamMode ? (
+                        <ExamSimulationMode 
+                          onExit={() => setShowExamMode(false)}
+                        />
+                      ) : (
+                        <>
+                          <div className="flex-1 container mx-auto px-4">
+                            <SplitScreen>
+                              <WritingArea 
+                                content={content}
+                                onChange={setContent}
+                                textType={textType}
+                                onTimerStart={setTimerStarted}
+                                onSubmit={handleSubmit}
+                              />
+                              {activePanel === 'coach' ? (
+                                <CoachPanel 
+                                  content={content}
+                                  textType={textType}
+                                  assistanceLevel={assistanceLevel}
+                                />
+                              ) : (
+                                <ParaphrasePanel 
+                                  selectedText={selectedText}
+                                  onNavigate={handleNavigation}
+                                />
+                              )}
+                            </SplitScreen>
+                          </div>
+                          
+                          {/* Panel Switcher */}
+                          <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-2 flex justify-center items-center space-x-4">
+                            <button
+                              onClick={() => setActivePanel('coach')}
+                              className={`px-4 py-2 rounded-md text-sm font-medium ${activePanel === 'coach' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'}`}
+                            >
+                              Coach
+                            </button>
+                            <button
+                              onClick={() => setActivePanel('paraphrase')}
+                              className={`px-4 py-2 rounded-md text-sm font-medium ${activePanel === 'paraphrase' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'}`}
+                            >
+                              Paraphrase
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </WritingAccessCheck>
+                } />
+                <Route path="/learning" element={<LearningPage />} />
+                <Route path="/feedback" element={<EssayFeedbackPage />} />
+                <Route path="/payment-success" element={
+                  showPaymentSuccess ? (
+                    <PaymentSuccessPage
+                      plan={pendingPaymentPlan || 'unknown'}
+                      onSuccess={handleAuthSuccess}
+                      onSignInRequired={(email, plan) => {
+                        localStorage.setItem('userEmail', email);
+                        setPendingPaymentPlan(plan);
+                        setAuthModalMode('signin');
+                        setShowAuthModal(true);
+                      }}
+                    />
+                  ) : <Navigate to="/" />
+                } />
+              </Routes>
+            </div>
+
+            <Footer />
+
+            <AuthModal
+              isOpen={showAuthModal}
+              onClose={() => setShowAuthModal(false)}
+              onSuccess={handleAuthSuccess}
+              initialMode={authModalMode}
+              onNavigate={handleNavigation}
+            />
+
+            <PlanningToolModal
+              isOpen={showPlanningTool}
+              onClose={() => setShowPlanningTool(false)}
+              onSavePlan={handleSavePlan}
+              content={content}
+              textType={textType}
+              onRestoreContent={handleRestoreContent}
+            />
           </div>
-
-          <Footer />
-
-          <AuthModal
-            isOpen={showAuthModal}
-            onClose={() => setShowAuthModal(false)}
-            onSuccess={handleAuthSuccess}
-            initialMode={authModalMode}
-            onNavigate={handleNavigation}
-          />
-
-          <PlanningToolModal
-            isOpen={showPlanningTool}
-            onClose={() => setShowPlanningTool(false)}
-            onSavePlan={handleSavePlan}
-            content={content}
-            textType={textType}
-            onRestoreContent={handleRestoreContent}
-          />
-        </div>
-      </Router>
+        </Router>
+      </AppProvider>
     </ThemeProvider>
   );
 }
