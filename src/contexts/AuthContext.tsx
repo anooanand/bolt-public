@@ -191,18 +191,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Add timeout for admin check
       const adminCheckPromise = new Promise<void>(async (resolve, reject) => {
         try {
-          const { data, error } = await supabase
+          // First try checking with user_id
+          let { data, error } = await supabase
             .from('user_profiles')
             .select('role')
             .eq('user_id', user.id)
             .single();
           
           if (error) {
-            console.warn('Admin check database error:', error);
-            setIsAdmin(false);
-          } else {
-            setIsAdmin(data?.role === 'admin');
+            console.warn('Admin check with user_id failed:', error);
+            
+            // Try with id instead
+            const result = await supabase
+              .from('user_profiles')
+              .select('role')
+              .eq('id', user.id)
+              .single();
+              
+            data = result.data;
+            error = result.error;
+            
+            if (error) {
+              console.warn('Admin check with id failed:', error);
+              setIsAdmin(false);
+              resolve();
+              return;
+            }
           }
+          
+          setIsAdmin(data?.role === 'admin');
           resolve();
         } catch (error) {
           reject(error);
