@@ -1,18 +1,95 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Sparkles, BookOpen, Clock, Brain, ArrowRight, Zap, Target, BarChart } from 'lucide-react';
+import FeatureDetailsModal from './FeatureDetailsModal';
+
+interface Feature {
+  id: string;
+  title: string;
+  description: string;
+  details: string;
+  icon: React.ReactNode;
+  tag: string;
+  color: 'indigo' | 'purple' | 'amber' | 'blue' | 'green' | 'rose';
+}
+
+const features: Feature[] = [
+  {
+    id: 'ai-feedback',
+    title: 'AI-Powered Feedback',
+    description: 'Receive instant, detailed feedback on your writing with specific suggestions to improve content, structure, and style.',
+    details: 'Our advanced AI system analyzes your writing across multiple dimensions including grammar, vocabulary, sentence structure, coherence, and NSW selective exam criteria. Get personalized suggestions for improvement with explanations of why changes are recommended. The feedback is tailored specifically for students aged 9-11 preparing for selective school entrance exams.',
+    icon: <Brain className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />,
+    tag: 'Instant Analysis',
+    color: 'indigo'
+  },
+  {
+    id: 'templates',
+    title: 'Text Type Templates',
+    description: 'Access templates for all text types with clear structures, examples, and guided prompts for better writing.',
+    details: 'Comprehensive templates for all 11 text types commonly found in NSW selective exams: narrative, persuasive, informative, descriptive, and more. Each template includes structure guidelines, vocabulary suggestions, example paragraphs, and step-by-step writing prompts to help students understand and master different writing formats.',
+    icon: <BookOpen className="w-6 h-6 text-purple-600 dark:text-purple-400" />,
+    tag: '11 Types',
+    color: 'purple'
+  },
+  {
+    id: 'practice',
+    title: 'Timed Practice Mode',
+    description: 'Practice under real exam conditions with our timer and realistic practice prompts based on past exams.',
+    details: 'Simulate actual exam conditions with authentic prompts from past NSW selective tests. Features include customizable timers, distraction-free writing environment, automatic saving, and post-practice analysis. Students can practice with different time limits to build confidence and improve time management skills.',
+    icon: <Clock className="w-6 h-6 text-amber-600 dark:text-amber-400" />,
+    tag: 'Exam Mode',
+    color: 'amber'
+  },
+  {
+    id: 'vocabulary',
+    title: 'Vocabulary Enhancement',
+    description: 'Improve your vocabulary with smart suggestions and alternatives to elevate your writing style.',
+    details: 'Interactive vocabulary builder with age-appropriate word suggestions, synonyms, and context examples. Features include word difficulty levels, usage examples in sentences, and personalized vocabulary lists based on your writing. Helps students expand their vocabulary naturally while writing.',
+    icon: <Zap className="w-6 h-6 text-blue-600 dark:text-blue-400" />,
+    tag: 'Advanced',
+    color: 'blue'
+  },
+  {
+    id: 'learning',
+    title: 'Personalized Learning',
+    description: 'Get customized learning paths based on your strengths and areas for improvement.',
+    details: 'Adaptive learning system that identifies individual strengths and weaknesses through writing analysis. Creates personalized study plans with targeted exercises, recommends specific text types to practice, and adjusts difficulty based on progress. Includes goal setting and milestone tracking.',
+    icon: <Target className="w-6 h-6 text-green-600 dark:text-green-400" />,
+    tag: 'Adaptive',
+    color: 'green'
+  },
+  {
+    id: 'progress',
+    title: 'Progress Tracking',
+    description: 'Monitor your improvement over time with detailed analytics and performance metrics.',
+    details: 'Comprehensive progress dashboard showing writing improvement trends, skill development across different text types, time management progress, and readiness indicators for the selective exam. Includes visual charts, achievement badges, and detailed reports for parents and teachers.',
+    icon: <BarChart className="w-6 h-6 text-rose-600 dark:text-rose-400" />,
+    tag: 'Analytics',
+    color: 'rose'
+  }
+];
 
 export function FeaturesSection() {
-  const handleFeatureClick = (feature: string) => {
-    if (feature === 'pricing') {
+  const [selectedFeature, setSelectedFeature] = useState<Feature | null>(null);
+
+  const handleFeatureClick = (featureId: string) => {
+    if (featureId === 'pricing') {
       // Scroll to pricing section
       const pricingElement = document.getElementById('pricing');
       if (pricingElement) {
         pricingElement.scrollIntoView({ behavior: 'smooth' });
       }
     } else {
-      // Handle other feature clicks - can be expanded later
-      console.log(`Feature clicked: ${feature}`);
+      // Find and show feature details
+      const feature = features.find(f => f.id === featureId);
+      if (feature) {
+        setSelectedFeature(feature);
+      }
     }
+  };
+
+  const handleCloseModal = () => {
+    setSelectedFeature(null);
   };
 
   return (
@@ -26,64 +103,22 @@ export function FeaturesSection() {
             Powerful Writing Tools
           </h2>
           <p className="text-lg text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
-            Everything you need to master essay writing for exams and academic success in one place.
+            Everything you need to master essay writing for NSW selective exams and academic success in one place.
           </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          <FeatureCard 
-            icon={<Brain className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />}
-            title="AI-Powered Feedback"
-            description="Receive instant, detailed feedback on your writing with specific suggestions to improve content, structure, and style."
-            tag="Instant Analysis"
-            color="indigo"
-            onClick={() => handleFeatureClick('ai-feedback')}
-          />
-
-          <FeatureCard 
-            icon={<BookOpen className="w-6 h-6 text-purple-600 dark:text-purple-400" />}
-            title="Text Type Templates"
-            description="Access templates for all text types with clear structures, examples, and guided prompts for better writing."
-            tag="11 Types"
-            color="purple"
-            onClick={() => handleFeatureClick('templates')}
-          />
-
-          <FeatureCard 
-            icon={<Clock className="w-6 h-6 text-amber-600 dark:text-amber-400" />}
-            title="Timed Practice Mode"
-            description="Practice under real exam conditions with our timer and realistic practice prompts based on past exams."
-            tag="Exam Mode"
-            color="amber"
-            onClick={() => handleFeatureClick('practice')}
-          />
-
-          <FeatureCard 
-            icon={<Zap className="w-6 h-6 text-blue-600 dark:text-blue-400" />}
-            title="Vocabulary Enhancement"
-            description="Improve your vocabulary with smart suggestions and alternatives to elevate your writing style."
-            tag="Advanced"
-            color="blue"
-            onClick={() => handleFeatureClick('vocabulary')}
-          />
-
-          <FeatureCard 
-            icon={<Target className="w-6 h-6 text-green-600 dark:text-green-400" />}
-            title="Personalized Learning"
-            description="Get customized learning paths based on your strengths and areas for improvement."
-            tag="Adaptive"
-            color="green"
-            onClick={() => handleFeatureClick('learning')}
-          />
-
-          <FeatureCard 
-            icon={<BarChart className="w-6 h-6 text-rose-600 dark:text-rose-400" />}
-            title="Progress Tracking"
-            description="Monitor your improvement over time with detailed analytics and performance metrics."
-            tag="Analytics"
-            color="rose"
-            onClick={() => handleFeatureClick('progress')}
-          />
+          {features.map((feature) => (
+            <FeatureCard 
+              key={feature.id}
+              icon={feature.icon}
+              title={feature.title}
+              description={feature.description}
+              tag={feature.tag}
+              color={feature.color}
+              onClick={() => handleFeatureClick(feature.id)}
+            />
+          ))}
         </div>
 
         <div className="mt-16 text-center">
@@ -96,6 +131,13 @@ export function FeaturesSection() {
           </button>
         </div>
       </div>
+
+      {selectedFeature && (
+        <FeatureDetailsModal
+          feature={selectedFeature}
+          onClose={handleCloseModal}
+        />
+      )}
     </section>
   );
 }
@@ -175,3 +217,4 @@ function FeatureCard({ icon, title, description, tag, color, onClick }: FeatureC
     </div>
   );
 }
+
