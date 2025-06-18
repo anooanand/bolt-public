@@ -3,10 +3,13 @@ import { ArrowRight, Star, Zap } from 'lucide-react';
 
 interface HeroSectionProps {
   onGetStarted: () => void;
-  onStartWriting: () => void; // Added prop for Start Writing button
 }
 
-export function HeroSection({ onGetStarted, onStartWriting }: HeroSectionProps) {
+export function HeroSection({ onGetStarted }: HeroSectionProps) {
+  const handleTryDemo = () => {
+    window.location.href = '/demo';
+  };
+
   return (
     <section className="relative overflow-hidden bg-gradient-to-b from-white to-indigo-50 dark:from-gray-900 dark:to-gray-800 pt-20 pb-16 md:pt-32 md:pb-24">
       <div className="absolute inset-0 bg-grid opacity-30"></div>
@@ -35,11 +38,11 @@ export function HeroSection({ onGetStarted, onStartWriting }: HeroSectionProps) 
             </button>
             
             <button 
-              onClick={onStartWriting}
+              onClick={handleTryDemo}
               className="px-8 py-4 text-lg font-semibold rounded-md border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-800 transition-all duration-200 flex items-center justify-center"
             >
-              Start Writing
-              <ArrowRight className="ml-2 w-5 h-5" />
+              Try Demo
+              <Zap className="ml-2 w-5 h-5" />
             </button>
           </div>
           
