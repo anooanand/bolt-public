@@ -96,11 +96,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(session.user);
         
         // Check payment status
-        const paymentStatus = await checkPaymentStatus();
-        setPaymentCompleted(paymentStatus);
+        try {
+          const paymentStatus = await checkPaymentStatus();
+          setPaymentCompleted(paymentStatus);
+        } catch (error) {
+          console.error('Error checking payment status on auth change:', error);
+        }
         
         // Check admin status
-        await checkAdminStatus(session.user);
+        try {
+          await checkAdminStatus(session.user);
+        } catch (error) {
+          console.error('Error checking admin status on auth change:', error);
+        }
       } else {
         setSession(null);
         setUser(null);
@@ -120,30 +128,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (!user) return false;
       
       // First check user metadata
-      if (user.user_metadata?.payment_verified === true) {
+      if (user.user_metadata?.payment_confirmed === true) {
         return true;
       }
       
-      // Then check database with timeout
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Payment check timeout')), 5000)
-      );
-      
-      const dbPromise = supabase
-        .from('user_profiles')
-        .select('payment_verified, payment_status')
-        .eq('id', user.id)
-        .single();
-      
-      const { data, error } = await Promise.race([dbPromise, timeoutPromise]) as any;
-      
-      if (error) {
-        console.error('Error checking payment status:', error);
-        return false;
-      }
-      
-      // Also check for temporary access
-      const tempAccessUntil = user.user_metadata?.temp_access_until || data?.temp_access_until;
+      // Check localStorage for temporary access
+      const tempAccessUntil = localStorage.getItem('temp_access_until');
       if (tempAccessUntil) {
         const expiryDate = new Date(tempAccessUntil);
         if (expiryDate > new Date()) {
@@ -151,9 +141,46 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
       
-      return data?.payment_verified === true || data?.payment_status === 'verified';
+      // Then check database with timeout
+      try {
+        const timeoutPromise = new Promise<{data: null, error: Error}>((_, reject) => 
+          setTimeout(() => reject(new Error('Payment check timeout')), 5000)
+        );
+        
+        const dbPromise = supabase
+          .from('user_profiles')
+          .select('payment_verified, payment_status, temp_access_until')
+          .eq('user_id', user.id)
+          .single();
+        
+        const { data, error } = await Promise.race([dbPromise, timeoutPromise]) as any;
+        
+        if (error) {
+          console.warn('Database payment check error:', error);
+          
+          // Fallback to localStorage
+          const paymentStatus = localStorage.getItem('payment_status');
+          return paymentStatus === 'paid' || paymentStatus === 'verified';
+        }
+        
+        // Check for temporary access
+        if (data?.temp_access_until) {
+          const expiryDate = new Date(data.temp_access_until);
+          if (expiryDate > new Date()) {
+            return true;
+          }
+        }
+        
+        return data?.payment_verified === true || data?.payment_status === 'verified';
+      } catch (error) {
+        console.warn('Payment status check failed, using fallback:', error);
+        
+        // Fallback to localStorage
+        const paymentStatus = localStorage.getItem('payment_status');
+        return paymentStatus === 'paid' || paymentStatus === 'verified';
+      }
     } catch (error) {
-      console.error('Error checking payment status:', error);
+      console.error('Error in checkPaymentStatus:', error);
       return false;
     }
   };
@@ -162,25 +189,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const checkAdminStatus = async (user: User): Promise<void> => {
     try {
       // Add timeout for admin check
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Admin check timeout')), 5000)
-      );
+      const adminCheckPromise = new Promise<void>(async (resolve, reject) => {
+        try {
+          const { data, error } = await supabase
+            .from('user_profiles')
+            .select('role')
+            .eq('user_id', user.id)
+            .single();
+          
+          if (error) {
+            console.warn('Admin check database error:', error);
+            setIsAdmin(false);
+          } else {
+            setIsAdmin(data?.role === 'admin');
+          }
+          resolve();
+        } catch (error) {
+          reject(error);
+        }
+      });
       
-      const dbPromise = supabase
-        .from('user_profiles')
-        .select('role')
-        .eq('id', user.id)
-        .single();
+      const timeoutPromise = new Promise<void>((_, reject) => {
+        setTimeout(() => reject(new Error('Admin check timeout')), 5000);
+      });
       
-      const { data, error } = await Promise.race([dbPromise, timeoutPromise]) as any;
-      
-      if (error) {
-        console.error('Error checking admin status:', error);
-        setIsAdmin(false);
-        return;
-      }
-      
-      setIsAdmin(data?.role === 'admin');
+      await Promise.race([adminCheckPromise, timeoutPromise]);
     } catch (error) {
       console.error('Error checking admin status:', error);
       setIsAdmin(false);
@@ -208,14 +241,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signUp = async (email: string, password: string) => {
     try {
       // First check if email already exists
-      const { data: existingUsers } = await supabase
-        .from('user_profiles')
-        .select('email')
-        .eq('email', email)
-        .limit(1);
-      
-      if (existingUsers && existingUsers.length > 0) {
-        return { emailExists: true };
+      try {
+        const { data: existingUsers, error: queryError } = await supabase
+          .from('user_profiles')
+          .select('email')
+          .eq('email', email)
+          .limit(1);
+        
+        if (queryError) {
+          console.warn('Error checking existing users:', queryError);
+          // Continue with signup even if check fails
+        } else if (existingUsers && existingUsers.length > 0) {
+          return { emailExists: true };
+        }
+      } catch (checkError) {
+        console.warn('Error checking existing users:', checkError);
+        // Continue with signup even if check fails
       }
       
       const { data, error } = await supabase.auth.signUp({
@@ -230,6 +271,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
       
       if (error) throw error;
+      
+      // Store email in localStorage for payment flow
+      localStorage.setItem('userEmail', email);
       
       return { user: data.user };
     } catch (error) {
