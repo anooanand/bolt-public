@@ -1,5 +1,7 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { generatePrompt, getSynonyms, rephraseSentence, evaluateEssay } from '../lib/openai';
+import { dbOperations } from '../lib/database';
+import { useApp } from '../contexts/AppContext';
 import { AlertCircle } from 'lucide-react';
 import { InlineSuggestionPopup } from './InlineSuggestionPopup';
 import { WritingStatusBar } from './WritingStatusBar';
@@ -22,10 +24,13 @@ interface WritingIssue {
 }
 
 export function WritingArea({ content, onChange, textType, onTimerStart, onSubmit }: WritingAreaProps) {
+  const { state, addWriting } = useApp();
   const [prompt, setPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [showCustomPrompt, setShowCustomPrompt] = useState(false);
   const [customPrompt, setCustomPrompt] = useState('');
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
   const [issues, setIssues] = useState<WritingIssue[]>([]);
   const [selectedIssue, setSelectedIssue] = useState<WritingIssue | null>(null);
   const [popupPosition, setPopupPosition] = useState({ x: 0, y: 0 });
@@ -175,6 +180,37 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
 
     setIssues(newIssues);
   }, []);
+
+  // Auto-save functionality
+  useEffect(() => {
+    if (content.trim() && textType && state.user) {
+      const saveTimer = setTimeout(async () => {
+        setIsSaving(true);
+        try {
+          const wordCount = content.split(' ').filter(word => word.trim()).length;
+          const title = content.split('\n')[0].substring(0, 50) || `${textType} Writing`;
+          
+          const { data, error } = await dbOperations.writings.createWriting({
+            title,
+            content,
+            text_type: textType,
+            word_count: wordCount
+          });
+          
+          if (data && !error) {
+            addWriting(data);
+            setLastSaved(new Date());
+          }
+        } catch (error) {
+          console.error('Auto-save failed:', error);
+        } finally {
+          setIsSaving(false);
+        }
+      }, 30000); // Auto-save every 30 seconds
+
+      return () => clearTimeout(saveTimer);
+    }
+  }, [content, textType, state.user, addWriting]);
 
   useEffect(() => {
     if (content.trim()) {
