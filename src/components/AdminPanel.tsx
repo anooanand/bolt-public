@@ -239,7 +239,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onNavigate }) => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm">
             <div className="flex items-center">
-              <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
+              <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg mr-3">
                 <Users className="w-6 h-6 text-blue-600 dark:text-blue-400" />
               </div>
               <div className="ml-4">
@@ -253,7 +253,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onNavigate }) => {
 
           <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm">
             <div className="flex items-center">
-              <div className="p-2 bg-green-100 dark:bg-green-900 rounded-lg">
+              <div className="p-2 bg-green-100 dark:bg-green-900 rounded-lg mr-3">
                 <UserCheck className="w-6 h-6 text-green-600 dark:text-green-400" />
               </div>
               <div className="ml-4">
@@ -267,7 +267,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onNavigate }) => {
 
           <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm">
             <div className="flex items-center">
-              <div className="p-2 bg-purple-100 dark:bg-purple-900 rounded-lg">
+              <div className="p-2 bg-purple-100 dark:bg-purple-900 rounded-lg mr-3">
                 <DollarSign className="w-6 h-6 text-purple-600 dark:text-purple-400" />
               </div>
               <div className="ml-4">
@@ -281,7 +281,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onNavigate }) => {
 
           <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm">
             <div className="flex items-center">
-              <div className="p-2 bg-orange-100 dark:bg-orange-900 rounded-lg">
+              <div className="p-2 bg-orange-100 dark:bg-orange-900 rounded-lg mr-3">
                 <TrendingUp className="w-6 h-6 text-orange-600 dark:text-orange-400" />
               </div>
               <div className="ml-4">
