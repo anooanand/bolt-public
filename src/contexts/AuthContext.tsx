@@ -37,11 +37,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         setIsLoading(true);
         
+        // Set a timeout to prevent infinite loading
+        const timeoutId = setTimeout(() => {
+          console.warn('Auth initialization timeout - proceeding without auth');
+          setIsLoading(false);
+        }, 10000); // 10 second timeout
+        
         // Get current session
         const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
         
+        // Clear timeout if we get a response
+        clearTimeout(timeoutId);
+        
         if (sessionError) {
           console.error('Error getting session:', sessionError);
+          // Don't block the app if Supabase is unavailable
+          setIsLoading(false);
           return;
         }
         
@@ -50,14 +61,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setUser(sessionData.session.user);
           
           // Check payment status
-          const paymentStatus = await checkPaymentStatus();
-          setPaymentCompleted(paymentStatus);
+          try {
+            const paymentStatus = await checkPaymentStatus();
+            setPaymentCompleted(paymentStatus);
+          } catch (error) {
+            console.error('Error checking payment status:', error);
+            // Continue without payment verification if service is down
+          }
           
           // Check admin status
-          await checkAdminStatus(sessionData.session.user);
+          try {
+            await checkAdminStatus(sessionData.session.user);
+          } catch (error) {
+            console.error('Error checking admin status:', error);
+            // Continue without admin verification if service is down
+          }
         }
       } catch (error) {
         console.error('Error initializing auth:', error);
+        // Don't block the app if there are network issues
       } finally {
         setIsLoading(false);
       }
@@ -102,12 +124,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return true;
       }
       
-      // Then check database
-      const { data, error } = await supabase
+      // Then check database with timeout
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Payment check timeout')), 5000)
+      );
+      
+      const dbPromise = supabase
         .from('user_profiles')
         .select('payment_verified, payment_status')
         .eq('id', user.id)
         .single();
+      
+      const { data, error } = await Promise.race([dbPromise, timeoutPromise]) as any;
       
       if (error) {
         console.error('Error checking payment status:', error);
@@ -133,11 +161,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Check if user is admin
   const checkAdminStatus = async (user: User): Promise<void> => {
     try {
-      const { data, error } = await supabase
+      // Add timeout for admin check
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Admin check timeout')), 5000)
+      );
+      
+      const dbPromise = supabase
         .from('user_profiles')
         .select('role')
         .eq('id', user.id)
         .single();
+      
+      const { data, error } = await Promise.race([dbPromise, timeoutPromise]) as any;
       
       if (error) {
         console.error('Error checking admin status:', error);
