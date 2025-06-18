@@ -50,6 +50,33 @@ export async function signUp(email: string, password: string) {
       throw error;
     }
     
+    // After successful signup, create a user profile manually
+    // This is a fallback in case the database trigger doesn't work
+    try {
+      if (data.user) {
+        const { error: profileError } = await supabase
+          .from('user_profiles')
+          .upsert({
+            id: data.user.id,
+            user_id: data.user.id,
+            email: email,
+            role: 'user',
+            payment_status: 'pending',
+            subscription_status: 'free',
+            temp_access_until: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          });
+          
+        if (profileError) {
+          console.warn('Error creating user profile:', profileError);
+        }
+      }
+    } catch (profileError) {
+      console.warn('Error in profile creation fallback:', profileError);
+      // Continue even if profile creation fails
+    }
+    
     return { data, success: true, user: data.user };
   } catch (error) {
     console.error('Sign up error:', error);
@@ -63,7 +90,9 @@ export async function signIn(email: string, password: string) {
       email,
       password,
     });
+    
     if (error) throw error;
+    
     return data;
   } catch (error) {
     console.error('Sign in error:', error);
@@ -131,6 +160,29 @@ export async function hasCompletedPayment(): Promise<boolean> {
       if (error) {
         console.warn('Database query error:', error);
         
+        // Try with id instead of user_id
+        try {
+          const { data: idData, error: idError } = await supabase
+            .from('user_profiles')
+            .select('payment_verified, payment_status, temp_access_until')
+            .eq('id', user.id)
+            .single();
+            
+          if (!idError && idData) {
+            // Check for temporary access
+            if (idData.temp_access_until) {
+              const expiryDate = new Date(idData.temp_access_until);
+              if (expiryDate > new Date()) {
+                return true;
+              }
+            }
+            
+            return idData.payment_verified === true || idData.payment_status === 'verified';
+          }
+        } catch (idCheckError) {
+          console.warn('ID-based profile check failed:', idCheckError);
+        }
+        
         // Fallback to localStorage if database query fails
         const paymentStatus = localStorage.getItem('payment_status');
         if (paymentStatus === 'paid' || paymentStatus === 'verified') {
@@ -183,13 +235,28 @@ export async function hasTemporaryAccess(): Promise<boolean> {
     
     // Check database
     try {
-      const { data, error } = await supabase
+      // First try with user_id
+      let { data, error } = await supabase
         .from('user_profiles')
         .select('temp_access_until')
         .eq('user_id', user.id)
         .single();
       
-      if (error) throw error;
+      if (error) {
+        // Try with id instead
+        const result = await supabase
+          .from('user_profiles')
+          .select('temp_access_until')
+          .eq('id', user.id)
+          .single();
+          
+        data = result.data;
+        error = result.error;
+        
+        if (error) {
+          throw error;
+        }
+      }
       
       if (data?.temp_access_until) {
         const expiryDate = new Date(data.temp_access_until);
@@ -232,7 +299,8 @@ export async function confirmPayment(planType: string) {
     
     // Also update user_profiles table
     try {
-      await supabase
+      // First try with user_id
+      let { error: profileError } = await supabase
         .from('user_profiles')
         .update({
           payment_verified: true,
@@ -242,6 +310,20 @@ export async function confirmPayment(planType: string) {
           updated_at: new Date().toISOString()
         })
         .eq('user_id', data.user.id);
+        
+      if (profileError) {
+        // Try with id instead
+        await supabase
+          .from('user_profiles')
+          .update({
+            payment_verified: true,
+            payment_status: 'verified',
+            subscription_status: 'paid',
+            subscription_plan: planType,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', data.user.id);
+      }
     } catch (profileError) {
       console.warn('Error updating user profile:', profileError);
       // Continue even if profile update fails
@@ -258,6 +340,18 @@ export async function confirmPayment(planType: string) {
   }
 }
 
+export async function forceSignOut() {
+  try {
+    await supabase.auth.signOut();
+    localStorage.clear();
+    return true;
+  } catch (error) {
+    console.error('Force sign out error:', error);
+    localStorage.clear();
+    return true;
+  }
+}
+
 export default {
   supabase,
   getCurrentUser,
@@ -267,5 +361,6 @@ export default {
   requestPasswordReset,
   hasCompletedPayment,
   hasTemporaryAccess,
-  confirmPayment
+  confirmPayment,
+  forceSignOut
 };

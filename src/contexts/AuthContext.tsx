@@ -147,20 +147,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setTimeout(() => reject(new Error('Payment check timeout')), 5000)
         );
         
-        const dbPromise = supabase
+        // First try with user_id
+        let dbPromise = supabase
           .from('user_profiles')
           .select('payment_verified, payment_status, temp_access_until')
           .eq('user_id', user.id)
           .single();
         
-        const { data, error } = await Promise.race([dbPromise, timeoutPromise]) as any;
+        let { data, error } = await Promise.race([dbPromise, timeoutPromise]) as any;
         
         if (error) {
-          console.warn('Database payment check error:', error);
+          console.warn('Payment check with user_id failed:', error);
           
-          // Fallback to localStorage
-          const paymentStatus = localStorage.getItem('payment_status');
-          return paymentStatus === 'paid' || paymentStatus === 'verified';
+          // Try with id instead
+          dbPromise = supabase
+            .from('user_profiles')
+            .select('payment_verified, payment_status, temp_access_until')
+            .eq('id', user.id)
+            .single();
+            
+          const result = await Promise.race([dbPromise, timeoutPromise]) as any;
+          data = result.data;
+          error = result.error;
+          
+          if (error) {
+            console.warn('Payment check with id failed:', error);
+            
+            // Fallback to localStorage
+            const paymentStatus = localStorage.getItem('payment_status');
+            return paymentStatus === 'paid' || paymentStatus === 'verified';
+          }
         }
         
         // Check for temporary access
@@ -291,6 +307,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       // Store email in localStorage for payment flow
       localStorage.setItem('userEmail', email);
+      
+      // Manually create user profile as a fallback
+      try {
+        if (data.user) {
+          const { error: profileError } = await supabase
+            .from('user_profiles')
+            .upsert({
+              id: data.user.id,
+              user_id: data.user.id,
+              email: email,
+              role: 'user',
+              payment_status: 'pending',
+              subscription_status: 'free',
+              temp_access_until: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            });
+            
+          if (profileError) {
+            console.warn('Error creating user profile:', profileError);
+          }
+        }
+      } catch (profileError) {
+        console.warn('Error in profile creation fallback:', profileError);
+        // Continue even if profile creation fails
+      }
       
       return { user: data.user };
     } catch (error) {
