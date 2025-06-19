@@ -203,14 +203,7 @@ export async function hasCompletedPayment(): Promise<boolean> {
             .single();
             
           if (!idError && idData) {
-            // Check for temporary access
-            if (idData.temp_access_until) {
-              const expiryDate = new Date(idData.temp_access_until);
-              if (expiryDate > new Date()) {
-                return true;
-              }
-            }
-            
+            // Only check for actual payment verification, not temporary access
             return idData.payment_verified === true || idData.payment_status === 'verified';
           }
         } catch (idCheckError) {
@@ -226,14 +219,8 @@ export async function hasCompletedPayment(): Promise<boolean> {
         return false;
       }
       
-      // Check for temporary access
-      const tempAccessUntil = user.user_metadata?.temp_access_until || data?.temp_access_until;
-      if (tempAccessUntil) {
-        const expiryDate = new Date(tempAccessUntil);
-        if (expiryDate > new Date()) {
-          return true;
-        }
-      }
+      // Note: Temporary access is handled separately by hasTemporaryAccess()
+      // Do not treat temporary access as completed payment
       
       return data?.payment_verified === true || data?.payment_status === 'verified';
     } catch (error) {
