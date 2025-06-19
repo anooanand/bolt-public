@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { handleEmailVerificationCallback } from '../lib/supabase';
+import { handleEmailVerificationCallback, supabase } from '../lib/supabase'; // Import supabase
 import { CheckCircle, XCircle, Loader } from 'lucide-react';
 
 export function EmailVerificationHandler() {
@@ -19,6 +19,8 @@ export function EmailVerificationHandler() {
         const result = await handleEmailVerificationCallback(fullUrl);
         
         if (result.success) {
+          // Force session refresh after successful verification
+          await supabase.auth.refreshSession();
           setStatus('success');
           // Redirect to pricing page after a short delay
           setTimeout(() => {
@@ -94,3 +96,4 @@ export function EmailVerificationHandler() {
     </div>
   );
 }
+
