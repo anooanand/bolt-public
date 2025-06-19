@@ -1,51 +1,43 @@
-import { Handler, HandlerEvent, HandlerContext } from "@netlify/functions";
-import Stripe from "stripe";
+import { Handler } from '@netlify/functions';
+import Stripe from 'stripe';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
-  apiVersion: '2024-06-20', // Use your desired API version
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: '2022-11-15',
 });
 
-const handler: Handler = async (event: HandlerEvent, context: HandlerContext) => {
-  if (event.httpMethod !== "POST" ) {
-    return {
-      statusCode: 405,
-      body: "Method Not Allowed",
-    };
-  }
+const handler: Handler = async (event) => {
+  const sig = event.headers['stripe-signature'] || '';
 
-  const sig = event.headers["stripe-signature"];
-  let stripeEvent: Stripe.Event;
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
+  let stripeEvent;
 
   try {
-    stripeEvent = stripe.webhooks.constructEvent(
-      event.body || "",
-      sig || "",
-      process.env.STRIPE_WEBHOOK_SECRET as string
-    );
+    const rawBody = Buffer.from(event.body || '', 'utf8');
+
+    stripeEvent = stripe.webhooks.constructEvent(rawBody, sig, webhookSecret);
   } catch (err: any) {
-    console.error(`Webhook Error: ${err.message}`);
+    console.error('❌ Webhook signature verification failed:', err.message);
     return {
       statusCode: 400,
       body: `Webhook Error: ${err.message}`,
     };
   }
 
-  // Handle the event
   switch (stripeEvent.type) {
-    case "checkout.session.completed":
+    case 'checkout.session.completed':
       const session = stripeEvent.data.object as Stripe.Checkout.Session;
-      console.log("Checkout session completed:", session.id);
-      // TODO: Implement logic to update Supabase database
-      // Example: Update user_profiles table, create payment_logs entry
+      console.log('✅ Checkout session completed:', session.id);
       break;
-    // ... handle other event types
+
+    // Handle other events as needed
+
     default:
-      console.log(`Unhandled event type ${stripeEvent.type}`);
+      console.log(`Unhandled event type: ${stripeEvent.type}`);
   }
 
   return {
     statusCode: 200,
-    body: "Webhook received",
+    body: 'Webhook received successfully!',
   };
 };
 
