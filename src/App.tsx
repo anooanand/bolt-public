@@ -35,9 +35,12 @@ import { BrainstormingTools } from './components/BrainstormingTools';
 import { WritingAccessCheck } from './components/WritingAccessCheck';
 import { WritingToolbar } from './components/WritingToolbar';
 import { PlanningToolModal } from './components/PlanningToolModal';
+import { EmailVerificationReminder } from './components/EmailVerificationReminder';
+import { EmailVerificationHandler } from './components/EmailVerificationHandler';
+import { CheckCircle } from 'lucide-react';
 
 function App() {
-  const { user, isLoading, paymentCompleted, authSignOut } = useAuth();
+  const { user, isLoading, paymentCompleted, emailVerified, authSignOut } = useAuth();
   const [activePage, setActivePage] = useState('home');
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'signin' | 'signup'>('signin');
@@ -100,12 +103,18 @@ function App() {
   const handleAuthSuccess = async (user: any) => {
     setShowAuthModal(false);
     
-    // Always redirect to pricing after signup to follow the flow: Pricing -> Stripe -> Writing area
+    // After successful signup, redirect to dashboard to show email verification message
     if (authModalMode === 'signup') {
-      setActivePage('pricing');
+      setActivePage('dashboard');
     } else {
-      // For signin, check payment status and redirect accordingly
-      setActivePage(paymentCompleted ? 'writing' : 'pricing');
+      // For signin, check email verification and payment status
+      if (!emailVerified) {
+        setActivePage('dashboard'); // Show email verification reminder
+      } else if (paymentCompleted) {
+        setActivePage('writing'); // Full access
+      } else {
+        setActivePage('pricing'); // Need to complete payment
+      }
     }
   };
 
@@ -123,9 +132,15 @@ function App() {
   };
 
   const handleNavigation = async (page: string) => {
-    // Special handling for dashboard - redirect to writing area if payment completed
+    // Special handling for dashboard - redirect based on verification and payment status
     if (page === 'dashboard' && user) {
-      setActivePage(paymentCompleted ? 'writing' : 'pricing');
+      if (!emailVerified) {
+        setActivePage('dashboard'); // Show email verification reminder
+      } else if (paymentCompleted) {
+        setActivePage('writing'); // Full access
+      } else {
+        setActivePage('pricing'); // Need to complete payment
+      }
     } else {
       setActivePage(page);
     }
@@ -134,7 +149,13 @@ function App() {
 
   const handleGetStarted = async () => {
     if (user) {
-      setActivePage(paymentCompleted ? 'writing' : 'pricing');
+      if (!emailVerified) {
+        setActivePage('dashboard'); // Show email verification reminder
+      } else if (paymentCompleted) {
+        setActivePage('writing'); // Full access
+      } else {
+        setActivePage('pricing'); // Need to complete payment
+      }
     } else {
       setAuthModalMode('signup');
       setShowAuthModal(true);
@@ -236,7 +257,16 @@ function App() {
                 <Route path="/faq" element={<FAQPage />} />
                 <Route path="/about" element={<AboutPage />} />
                 <Route path="/dashboard" element={
-                  user && paymentCompleted ? <Navigate to="/writing" /> : <Navigate to="/pricing" />
+                  user ? (
+                    <Dashboard 
+                      user={user} 
+                      onNavigate={handleNavigation} 
+                      emailVerified={emailVerified}
+                      paymentCompleted={paymentCompleted}
+                    />
+                  ) : (
+                    <Navigate to="/" />
+                  )
                 } />
                 <Route path="/settings" element={
                   user ? <SettingsPage onBack={() => setActivePage('dashboard')} /> : <Navigate to="/" />
@@ -294,13 +324,17 @@ function App() {
                           <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-2 flex justify-center items-center space-x-4">
                             <button
                               onClick={() => setActivePanel('coach')}
-                              className={`px-4 py-2 rounded-md text-sm font-medium ${activePanel === 'coach' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'}`}
+                              className={`px-4 py-2 rounded-md text-sm font-medium ${
+                                activePanel === 'coach' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
+                              }`}
                             >
                               Coach
                             </button>
                             <button
                               onClick={() => setActivePanel('paraphrase')}
-                              className={`px-4 py-2 rounded-md text-sm font-medium ${activePanel === 'paraphrase' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'}`}
+                              className={`px-4 py-2 rounded-md text-sm font-medium ${
+                                activePanel === 'paraphrase' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
+                              }`}
                             >
                               Paraphrase
                             </button>
@@ -326,6 +360,7 @@ function App() {
                     />
                   ) : <Navigate to="/" />
                 } />
+                <Route path="/auth/callback" element={<EmailVerificationHandler />} />
               </Routes>
             </div>
 
