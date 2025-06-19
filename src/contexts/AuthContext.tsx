@@ -304,7 +304,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log('Signing out...');
       
       // Use the signOut function from supabase.ts
-      const { success } = await signOut();
+      const { success } = await forceSignOut();
       
       if (success) {
         // Reset state
