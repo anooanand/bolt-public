@@ -4,6 +4,7 @@ import { hasCompletedPayment, isEmailVerified, supabase } from '../lib/supabase'
 import { createCheckoutSession } from '../lib/stripe';
 import { products } from '../stripe-config';
 import { useAuth } from '../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom'; // Import useNavigate
 
 export function PricingPage() {
   const { user, emailVerified } = useAuth();
@@ -12,6 +13,8 @@ export function PricingPage() {
   const [isPaidUser, setIsPaidUser] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null); // New state for error messages
+  const navigate = useNavigate(); // Initialize useNavigate
   
   // Get user email from localStorage on component mount
   useEffect(() => {
@@ -46,16 +49,17 @@ export function PricingPage() {
   }, []);
   
   const handleSubscribe = async (product: typeof products[0]) => {
+    setErrorMessage(null); // Clear previous errors
     try {
       // Check if user is logged in
       if (!user) {
-        alert('Please sign in to subscribe');
+        navigate('/signin'); // Redirect to sign-in page
         return;
       }
       
       // Check if email is verified
       if (!emailVerified) {
-        alert('Please verify your email address before subscribing');
+        setErrorMessage('Please verify your email address before subscribing.'); // Display error message
         return;
       }
       
@@ -69,10 +73,14 @@ export function PricingPage() {
       window.location.href = checkoutUrl;
     } catch (error: any) {
       console.error('Error creating checkout session:', error);
-      alert(`Error: ${error.message || 'Failed to create checkout session'}`);
+      setErrorMessage(error.message || 'Failed to create checkout session. Please try again.'); // Display error message
     } finally {
       setIsProcessing(null);
     }
+  };
+
+  const handleContactSales = () => {
+    navigate('/contact'); // Assuming a contact page exists or will be created
   };
 
   if (isLoading) {
@@ -112,6 +120,12 @@ export function PricingPage() {
           {!emailVerified && user && (
             <div className="mt-4 p-3 bg-yellow-50 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 rounded-md inline-block">
                Please verify your email before subscribing
+            </div>
+          )}
+
+          {errorMessage && ( // Display error message if present
+            <div className="mt-4 p-3 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-md inline-block">
+              {errorMessage}
             </div>
           )}
           
@@ -176,8 +190,10 @@ export function PricingPage() {
                       ? 'bg-gray-300 dark:bg-gray-600 text-gray-600 dark:text-gray-400 cursor-not-allowed'
                       : isProcessing === product.id
                       ? 'bg-indigo-400 text-white cursor-wait'
-                      : !user || !emailVerified
-                      ? 'bg-gray-300 dark:bg-gray-600 text-gray-600 dark:text-gray-400 cursor-not-allowed'
+                      : !user 
+                      ? 'bg-gray-300 dark:bg-gray-600 text-gray-600 dark:text-gray-400 cursor-not-allowed' // Grey out if not logged in
+                      : !emailVerified
+                      ? 'bg-gray-300 dark:bg-gray-600 text-gray-600 dark:text-gray-400 cursor-not-allowed' // Grey out if email not verified
                       : product.popular
                         ? 'bg-indigo-600 hover:bg-indigo-700 text-white hover:shadow-lg'
                         : 'bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-900 dark:text-white'
@@ -223,7 +239,10 @@ export function PricingPage() {
           <p className="text-gray-600 dark:text-gray-300 mb-6 max-w-2xl mx-auto">
             We offer special pricing for schools and educational institutions. Contact us to learn more about our school plans.
           </p>
-          <button className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-md transition-colors">
+          <button 
+            onClick={handleContactSales} // Add onClick handler
+            className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-md transition-colors"
+          >
             Contact Sales
           </button>
         </div>
