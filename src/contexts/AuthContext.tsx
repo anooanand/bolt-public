@@ -301,18 +301,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Sign out
   const authSignOut = async () => {
     try {
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
+      console.log('Signing out...');
       
-      // Clear local storage
+      // First clear local storage
       localStorage.removeItem('payment_plan');
       localStorage.removeItem('payment_date');
       localStorage.removeItem('temp_access_until');
+      localStorage.removeItem('userEmail');
       
+      // Then sign out from Supabase
+      const { error } = await supabase.auth.signOut();
+      
+      if (error) {
+        console.error('Sign out error from Supabase:', error);
+        // Continue with state reset even if API call fails
+      }
+      
+      // Reset state
       setUser(null);
       setPaymentCompleted(false);
       setEmailVerified(false);
       setIsAdmin(false);
+      
+      console.log('Sign out complete');
+      
+      // Force page reload to clear any cached state
+      window.location.href = '/';
+      
+      return;
     } catch (error) {
       console.error('Sign out error:', error);
       // Force reset state even if API call fails
@@ -320,6 +336,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setPaymentCompleted(false);
       setEmailVerified(false);
       setIsAdmin(false);
+      
+      // Force page reload to clear any cached state
+      window.location.href = '/';
     }
   };
 

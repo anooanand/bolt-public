@@ -104,12 +104,19 @@ export async function signIn(email: string, password: string) {
 
 export async function signOut() {
   try {
-    const { error } = await supabase.auth.signOut();
-    if (error) throw error;
+    // First clear local storage
+    localStorage.removeItem('payment_plan');
+    localStorage.removeItem('payment_date');
+    localStorage.removeItem('temp_access_until');
+    localStorage.removeItem('userEmail');
     
-    // Clear payment-related data
-    localStorage.removeItem('payment_status');
-    localStorage.removeItem('user_plan');
+    // Then sign out from Supabase
+    const { error } = await supabase.auth.signOut();
+    
+    if (error) {
+      console.error('Sign out error from Supabase:', error);
+      // Continue even if API call fails
+    }
     
     return { success: true };
   } catch (error) {
@@ -374,12 +381,27 @@ export async function confirmPayment(planType: string) {
 
 export async function forceSignOut() {
   try {
-    await supabase.auth.signOut();
+    // First clear local storage
+    localStorage.removeItem('payment_plan');
+    localStorage.removeItem('payment_date');
+    localStorage.removeItem('temp_access_until');
+    localStorage.removeItem('userEmail');
     localStorage.clear();
+    
+    // Then sign out from Supabase
+    await supabase.auth.signOut();
+    
+    // Force page reload to clear any cached state
+    window.location.href = '/';
+    
     return true;
   } catch (error) {
     console.error('Force sign out error:', error);
     localStorage.clear();
+    
+    // Force page reload to clear any cached state
+    window.location.href = '/';
+    
     return true;
   }
 }

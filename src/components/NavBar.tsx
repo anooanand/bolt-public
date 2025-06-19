@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { User } from '@supabase/supabase-js';
 import { useLearning } from '../contexts/LearningContext';
 import { Link } from 'react-router-dom';
+import { LogOut, Menu, X } from 'lucide-react';
 
 interface NavBarProps {
   activePage: string;
@@ -22,6 +23,7 @@ export function NavBar({
 }: NavBarProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isLearningMenuOpen, setIsLearningMenuOpen] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const { progress } = useLearning();
 
   const navigationItems = [
@@ -37,6 +39,20 @@ export function NavBar({
     { id: 'quiz-demo', name: '🧩 Practice Quiz', description: 'Test your knowledge' }
   ];
 
+  const handleSignOut = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    try {
+      console.log('NavBar: Sign out clicked');
+      await onForceSignOut();
+      setIsUserMenuOpen(false);
+      setIsMenuOpen(false);
+    } catch (error) {
+      console.error('Error during sign out:', error);
+    }
+  };
+
   return (
     <nav className="fixed top-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-b border-gray-200 z-50 dark:bg-gray-900/95 dark:border-gray-700">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -51,7 +67,7 @@ export function NavBar({
             </Link>
           </div>
 
-            {/* Desktop Navigation */}
+          {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-8">
             {navigationItems.map((item) => (
               <Link
@@ -134,25 +150,57 @@ export function NavBar({
             </div>
 
             {user ? (
-              <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-4 relative">
                 <Link
                   to="/dashboard"
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                 >
                   Dashboard
                 </Link>
-                <div className="flex items-center space-x-2">
-                  <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center dark:bg-gray-700">
-                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                      {user.email?.charAt(0).toUpperCase()}
-                    </span>
-                  </div>
+                <div className="relative">
                   <button
-                    onClick={onForceSignOut}
-                    className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+                    onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                    className="flex items-center space-x-2"
                   >
-                    Sign Out
+                    <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center dark:bg-gray-700">
+                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        {user.email?.charAt(0).toUpperCase()}
+                      </span>
+                    </div>
                   </button>
+                  
+                  {isUserMenuOpen && (
+                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50 dark:bg-gray-800 dark:border-gray-700">
+                      <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700">
+                        <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                          {user.email}
+                        </p>
+                      </div>
+                      <Link
+                        to="/dashboard"
+                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
+                        onClick={() => setIsUserMenuOpen(false)}
+                      >
+                        Dashboard
+                      </Link>
+                      <Link
+                        to="/settings"
+                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
+                        onClick={() => setIsUserMenuOpen(false)}
+                      >
+                        Settings
+                      </Link>
+                      <button
+                        onClick={handleSignOut}
+                        className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100 dark:text-red-400 dark:hover:bg-gray-700"
+                      >
+                        <div className="flex items-center">
+                          <LogOut className="w-4 h-4 mr-2" />
+                          Sign Out
+                        </div>
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             ) : (
@@ -179,9 +227,11 @@ export function NavBar({
               onClick={() => setIsMenuOpen(!isMenuOpen)}
               className="text-gray-700 hover:text-blue-600 dark:text-gray-300 dark:hover:text-blue-400"
             >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
+              {isMenuOpen ? (
+                <X className="w-6 h-6" />
+              ) : (
+                <Menu className="w-6 h-6" />
+              )}
             </button>
           </div>
         </div>
@@ -239,6 +289,11 @@ export function NavBar({
             <div className="border-t border-gray-200 pt-2 mt-2 dark:border-gray-700">
               {user ? (
                 <div className="space-y-2">
+                  <div className="px-3 py-2">
+                    <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                      {user.email}
+                    </p>
+                  </div>
                   <Link
                     to="/dashboard"
                     className="block w-full text-left px-3 py-2 rounded-md text-sm font-medium bg-blue-600 text-white"
@@ -246,14 +301,21 @@ export function NavBar({
                   >
                     Dashboard
                   </Link>
-                  <button
-                    onClick={() => {
-                      onForceSignOut();
-                      setIsMenuOpen(false);
-                    }}
+                  <Link
+                    to="/settings"
                     className="block w-full text-left px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800"
+                    onClick={() => setIsMenuOpen(false)}
                   >
-                    Sign Out
+                    Settings
+                  </Link>
+                  <button
+                    onClick={handleSignOut}
+                    className="block w-full text-left px-3 py-2 rounded-md text-sm font-medium text-red-600 hover:bg-gray-50 dark:text-red-400 dark:hover:bg-gray-800"
+                  >
+                    <div className="flex items-center">
+                      <LogOut className="w-4 h-4 mr-2" />
+                      Sign Out
+                    </div>
                   </button>
                 </div>
               ) : (
@@ -284,12 +346,13 @@ export function NavBar({
       )}
 
       {/* Click outside to close dropdowns */}
-      {(isLearningMenuOpen || isMenuOpen) && (
+      {(isLearningMenuOpen || isMenuOpen || isUserMenuOpen) && (
         <div
           className="fixed inset-0 z-10"
           onClick={() => {
             setIsLearningMenuOpen(false);
             setIsMenuOpen(false);
+            setIsUserMenuOpen(false);
           }}
         ></div>
       )}
