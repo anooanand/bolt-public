@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { ThemeProvider } from '../contexts/ThemeContext';
 import { AppProvider } from '../contexts/AppContext';
 import { useAuth } from '../contexts/AuthContext';
+import { CheckCircle } from 'lucide-react';
 
 import { NavBar } from './NavBar';
 import { HeroSection } from './HeroSection';
@@ -37,7 +38,7 @@ import { WritingToolbar } from './WritingToolbar';
 import { PlanningToolModal } from './PlanningToolModal';
 import { EmailVerificationReminder } from './EmailVerificationReminder';
 
-function App() {
+function AppLayout() {
   const { user, isLoading, paymentCompleted, emailVerified, authSignOut } = useAuth();
   const [activePage, setActivePage] = useState('home');
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -421,4 +422,4 @@ function EmailVerificationSuccess({ onContinue }: { onContinue: () => void }) {
   );
 }
 
-export default App;
+export default AppLayout;
