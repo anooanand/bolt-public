@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User } from '@supabase/supabase-js';
-import { supabase, hasCompletedPayment, isEmailVerified } from '../lib/supabase';
+import { supabase, hasCompletedPayment, isEmailVerified, signOut } from '../lib/supabase';
 
 interface AuthContextType {
   user: User | null;
@@ -303,32 +303,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       console.log('Signing out...');
       
-      // First clear local storage
-      localStorage.removeItem('payment_plan');
-      localStorage.removeItem('payment_date');
-      localStorage.removeItem('temp_access_until');
-      localStorage.removeItem('userEmail');
+      // Use the signOut function from supabase.ts
+      const { success } = await signOut();
       
-      // Then sign out from Supabase
-      const { error } = await supabase.auth.signOut();
-      
-      if (error) {
-        console.error('Sign out error from Supabase:', error);
-        // Continue with state reset even if API call fails
+      if (success) {
+        // Reset state
+        setUser(null);
+        setPaymentCompleted(false);
+        setEmailVerified(false);
+        setIsAdmin(false);
+        
+        console.log('Sign out complete');
+      } else {
+        throw new Error('Sign out failed');
       }
-      
-      // Reset state
-      setUser(null);
-      setPaymentCompleted(false);
-      setEmailVerified(false);
-      setIsAdmin(false);
-      
-      console.log('Sign out complete');
-      
-      // Force page reload to clear any cached state
-      window.location.href = '/';
-      
-      return;
     } catch (error) {
       console.error('Sign out error:', error);
       // Force reset state even if API call fails

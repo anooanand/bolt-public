@@ -104,11 +104,15 @@ export async function signIn(email: string, password: string) {
 
 export async function signOut() {
   try {
+    console.log('Executing signOut function...');
+    
     // First clear local storage
     localStorage.removeItem('payment_plan');
     localStorage.removeItem('payment_date');
     localStorage.removeItem('temp_access_until');
     localStorage.removeItem('userEmail');
+    localStorage.removeItem('payment_status');
+    localStorage.removeItem('user_plan');
     
     // Then sign out from Supabase
     const { error } = await supabase.auth.signOut();
@@ -117,6 +121,8 @@ export async function signOut() {
       console.error('Sign out error from Supabase:', error);
       // Continue even if API call fails
     }
+    
+    console.log('Sign out completed successfully');
     
     return { success: true };
   } catch (error) {
@@ -381,15 +387,25 @@ export async function confirmPayment(planType: string) {
 
 export async function forceSignOut() {
   try {
+    console.log('Executing forceSignOut function...');
+    
     // First clear local storage
     localStorage.removeItem('payment_plan');
     localStorage.removeItem('payment_date');
     localStorage.removeItem('temp_access_until');
     localStorage.removeItem('userEmail');
+    localStorage.removeItem('payment_status');
+    localStorage.removeItem('user_plan');
     localStorage.clear();
     
     // Then sign out from Supabase
-    await supabase.auth.signOut();
+    const { error } = await supabase.auth.signOut();
+    
+    if (error) {
+      console.error('Force sign out error from Supabase:', error);
+    }
+    
+    console.log('Force sign out completed');
     
     // Force page reload to clear any cached state
     window.location.href = '/';
