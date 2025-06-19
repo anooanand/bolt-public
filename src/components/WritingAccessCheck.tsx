@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../contexts/AuthContext';
+import { hasCompletedPayment, hasTemporaryAccess } from '../lib/supabase';
 import { Loader, Lock } from 'lucide-react';
 
 interface WritingAccessCheckProps {
@@ -8,67 +8,75 @@ interface WritingAccessCheckProps {
 }
 
 export function WritingAccessCheck({ children, onNavigate }: WritingAccessCheckProps) {
-  const { user, paymentCompleted, isLoading } = useAuth();
   const [hasAccess, setHasAccess] = useState<boolean | null>(null);
-  const [checkingAccess, setCheckingAccess] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
+  const [emailVerified, setEmailVerified] = useState(false);
 
   useEffect(() => {
     const checkAccess = async () => {
-      setCheckingAccess(true);
+      setIsLoading(true);
       
       try {
-        // If user is logged in and has completed payment, they have access
-        if (user && paymentCompleted) {
-          setHasAccess(true);
-        } else {
+        // Check if email is verified
+        const { data: { user } } = await supabase.auth.getUser();
+        const isEmailVerified = user?.email_confirmed_at != null;
+        setEmailVerified(isEmailVerified);
+        
+        if (!isEmailVerified) {
           setHasAccess(false);
+          setIsLoading(false);
+          return;
         }
+        
+        // First check for temporary access
+        const tempAccess = await hasTemporaryAccess();
+        
+        if (tempAccess) {
+          setHasAccess(true);
+          setIsLoading(false);
+          return;
+        }
+        
+        // Then check for permanent access
+        const paymentCompleted = await hasCompletedPayment();
+        setHasAccess(paymentCompleted);
       } catch (error) {
         console.error('Error checking access:', error);
         setHasAccess(false);
       } finally {
-        setCheckingAccess(false);
+        setIsLoading(false);
       }
     };
     
-    if (!isLoading) {
-      checkAccess();
-    }
-  }, [user, paymentCompleted, isLoading]);
+    checkAccess();
+  }, []);
 
-  if (isLoading || checkingAccess) {
+  if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
-        <div className="text-center">
-          <Loader className="h-12 w-12 text-blue-600 animate-spin mx-auto mb-4" />
-          <p className="text-gray-600 dark:text-gray-400">Checking access...</p>
-        </div>
+      <div className="flex items-center justify-center p-4 h-full">
+        <Loader className="h-6 w-6 text-blue-600 animate-spin" />
       </div>
     );
   }
 
   if (hasAccess === false) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
-        <div className="max-w-md w-full bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8 text-center">
-          <div className="mb-6 flex justify-center">
-            <div className="rounded-full bg-red-100 dark:bg-red-900 p-3">
-              <Lock className="h-8 w-8 text-red-600 dark:text-red-400" />
-            </div>
-          </div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-            Premium Feature
-          </h2>
-          <p className="text-gray-600 dark:text-gray-300 mb-6">
-            This feature requires a subscription. Please upgrade your plan to access all writing features.
-          </p>
-          <button
-            onClick={() => onNavigate('pricing')}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-md transition-colors"
-          >
-            View Pricing Plans
-          </button>
-        </div>
+      <div className="flex flex-col items-center justify-center p-4 h-full bg-gray-50 dark:bg-gray-800 rounded-lg">
+        <Lock className="h-8 w-8 text-gray-400 mb-2" />
+        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-1">
+          {!emailVerified ? 'Email Verification Required' : 'Premium Feature'}
+        </h3>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 text-center">
+          {!emailVerified 
+            ? 'Please verify your email address to access this feature'
+            : 'This feature requires a subscription'}
+        </p>
+        <button
+          onClick={() => onNavigate(!emailVerified ? 'dashboard' : 'pricing')}
+          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm"
+        >
+          {!emailVerified ? 'Go to Dashboard' : 'View Plans'}
+        </button>
       </div>
     );
   }

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { CheckCircle, AlertCircle, Loader } from 'lucide-react';
-import { confirmPayment, getCurrentUser, supabase } from '../lib/supabase';
+import { confirmPayment, getCurrentUser, supabase, isEmailVerified } from '../lib/supabase';
 
 interface PaymentSuccessPageProps {
   plan: string;
@@ -9,7 +9,7 @@ interface PaymentSuccessPageProps {
 }
 
 export function PaymentSuccessPage({ plan, onSuccess, onSignInRequired }: PaymentSuccessPageProps) {
-  const [status, setStatus] = useState<'processing' | 'success' | 'signin_required' | 'error'>('processing');
+  const [status, setStatus] = useState<'processing' | 'success' | 'signin_required' | 'verification_required' | 'error'>('processing');
   const [message, setMessage] = useState('Processing your payment...');
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [password, setPassword] = useState('');
@@ -50,7 +50,19 @@ export function PaymentSuccessPage({ plan, onSuccess, onSignInRequired }: Paymen
         }
 
         if (session?.user) {
-          console.log("[DEBUG] PaymentSuccessPage: User session found, confirming payment");
+          console.log("[DEBUG] PaymentSuccessPage: User session found, checking email verification");
+          
+          // Check if email is verified
+          const verified = await isEmailVerified();
+          
+          if (!verified) {
+            console.log("[DEBUG] PaymentSuccessPage: Email not verified");
+            setStatus('verification_required');
+            setMessage('Please verify your email address to complete your subscription setup.');
+            return;
+          }
+          
+          console.log("[DEBUG] PaymentSuccessPage: Email verified, confirming payment");
           setMessage('Confirming your payment...');
           
           try {
@@ -118,6 +130,17 @@ export function PaymentSuccessPage({ plan, onSuccess, onSignInRequired }: Paymen
       }
       
       console.log("[DEBUG] PaymentSuccessPage: Sign in successful");
+      
+      // Check if email is verified
+      const verified = await isEmailVerified();
+      
+      if (!verified) {
+        setStatus('verification_required');
+        setMessage('Please verify your email address to complete your subscription setup.');
+        setIsSigningIn(false);
+        return;
+      }
+      
       setMessage("Signing in and processing payment...");
       
       // Wait for user session to be fully established and user object updated
@@ -146,7 +169,6 @@ export function PaymentSuccessPage({ plan, onSuccess, onSignInRequired }: Paymen
     } catch (err: any) {
       console.error('[DEBUG] PaymentSuccessPage: Sign-in error:', err);
       setMessage(`Sign-in failed: ${err.message || 'Please check your password or try again.'}`);
-    } finally {
       setIsSigningIn(false);
     }
   };
@@ -199,6 +221,7 @@ export function PaymentSuccessPage({ plan, onSuccess, onSignInRequired }: Paymen
       case 'processing': return <Loader className="w-16 h-16 text-blue-500 animate-spin" />;
       case 'success': return <CheckCircle className="w-16 h-16 text-green-500" />;
       case 'signin_required': return <AlertCircle className="w-16 h-16 text-yellow-500" />;
+      case 'verification_required': return <AlertCircle className="w-16 h-16 text-orange-500" />;
       case 'error': return <AlertCircle className="w-16 h-16 text-red-500" />;
       default: return <Loader className="w-16 h-16 text-blue-500 animate-spin" />;
     }
@@ -209,6 +232,7 @@ export function PaymentSuccessPage({ plan, onSuccess, onSignInRequired }: Paymen
       case 'processing': return 'text-blue-600';
       case 'success': return 'text-green-600';
       case 'signin_required': return 'text-yellow-600';
+      case 'verification_required': return 'text-orange-600';
       case 'error': return 'text-red-600';
       default: return 'text-blue-600';
     }
@@ -222,6 +246,7 @@ export function PaymentSuccessPage({ plan, onSuccess, onSignInRequired }: Paymen
           {status === 'processing' && 'Processing Payment'}
           {status === 'success' && 'Payment Successful!'}
           {status === 'signin_required' && 'Complete Your Setup'}
+          {status === 'verification_required' && 'Email Verification Required'}
           {status === 'error' && 'Setup Error'}
         </h1>
         <p className="text-gray-600 dark:text-gray-300 mb-6">{message}</p>
@@ -229,6 +254,19 @@ export function PaymentSuccessPage({ plan, onSuccess, onSignInRequired }: Paymen
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">Account: {userEmail}</p>
         )}
         {status === 'signin_required' && renderSignInForm()}
+        {status === 'verification_required' && (
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Please check your email inbox and click the verification link. After verifying your email, return here to complete your subscription setup.
+            </p>
+            <button
+              onClick={() => window.location.reload()}
+              className="w-full bg-orange-600 hover:bg-orange-700 text-white font-medium py-3 px-4 rounded-md transition-colors"
+            >
+              I've Verified My Email
+            </button>
+          </div>
+        )}
         {status === 'error' && (
           <div className="space-y-3">
             <button

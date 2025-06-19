@@ -35,8 +35,10 @@ export async function signUp(email: string, password: string) {
       email,
       password,
       options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
         data: {
           payment_status: 'pending',
+          email_confirmed: false,
           temp_access_until: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24 hours temp access
         }
       }
@@ -132,11 +134,30 @@ export async function requestPasswordReset(email: string) {
   }
 }
 
+// Check if email is verified
+export async function isEmailVerified(): Promise<boolean> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return false;
+    
+    // Check if email_confirmed_at exists and is not null
+    return user.email_confirmed_at != null;
+  } catch (error) {
+    console.error('Error checking email verification:', error);
+    return false;
+  }
+}
+
 // Simplified payment status check with better error handling
 export async function hasCompletedPayment(): Promise<boolean> {
   try {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return false;
+    
+    // First check if email is verified
+    if (user.email_confirmed_at == null) {
+      return false;
+    }
     
     // Check user metadata for payment status
     if (user.user_metadata?.payment_confirmed === true) {
@@ -224,6 +245,11 @@ export async function hasTemporaryAccess(): Promise<boolean> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return false;
     
+    // First check if email is verified
+    if (user.email_confirmed_at == null) {
+      return false;
+    }
+    
     // Check user metadata for temporary access
     const tempAccessUntil = user.user_metadata?.temp_access_until;
     if (tempAccessUntil) {
@@ -286,6 +312,12 @@ export async function hasTemporaryAccess(): Promise<boolean> {
 
 export async function confirmPayment(planType: string) {
   try {
+    // First check if email is verified
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user || user.email_confirmed_at == null) {
+      throw new Error('Email not verified');
+    }
+    
     // Update user metadata
     const { data, error } = await supabase.auth.updateUser({
       data: {
@@ -362,5 +394,6 @@ export default {
   hasCompletedPayment,
   hasTemporaryAccess,
   confirmPayment,
-  forceSignOut
+  forceSignOut,
+  isEmailVerified
 };

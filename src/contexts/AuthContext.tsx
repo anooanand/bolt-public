@@ -1,17 +1,19 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User, Session } from '@supabase/supabase-js';
-import { supabase } from '../lib/supabase';
+import { User } from '@supabase/supabase-js';
+import { supabase, hasCompletedPayment, isEmailVerified } from '../lib/supabase';
 
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   paymentCompleted: boolean;
+  emailVerified: boolean;
   isAdmin: boolean;
   signIn: (email: string, password: string) => Promise<{ user?: User; error?: any }>;
   signUp: (email: string, password: string) => Promise<{ user?: User; error?: any; emailExists?: boolean }>;
   authSignOut: () => Promise<void>;
   refreshSession: () => Promise<void>;
   checkPaymentStatus: () => Promise<boolean>;
+  checkEmailVerification: () => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -26,9 +28,9 @@ export const useAuth = () => {
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [paymentCompleted, setPaymentCompleted] = useState(false);
+  const [emailVerified, setEmailVerified] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
 
   // Initialize auth state
@@ -57,16 +59,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         
         if (sessionData?.session) {
-          setSession(sessionData.session);
           setUser(sessionData.session.user);
           
-          // Check payment status
-          try {
-            const paymentStatus = await checkPaymentStatus();
-            setPaymentCompleted(paymentStatus);
-          } catch (error) {
-            console.error('Error checking payment status:', error);
-            // Continue without payment verification if service is down
+          // Check email verification status
+          const verified = await checkEmailVerification();
+          setEmailVerified(verified);
+          
+          // Only check payment status if email is verified
+          if (verified) {
+            // Check payment status
+            try {
+              const paymentStatus = await checkPaymentStatus();
+              setPaymentCompleted(paymentStatus);
+            } catch (error) {
+              console.error('Error checking payment status:', error);
+              // Continue without payment verification if service is down
+            }
           }
           
           // Check admin status
@@ -92,15 +100,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log('Auth state changed:', event);
       
       if (session) {
-        setSession(session);
         setUser(session.user);
         
-        // Check payment status
-        try {
-          const paymentStatus = await checkPaymentStatus();
-          setPaymentCompleted(paymentStatus);
-        } catch (error) {
-          console.error('Error checking payment status on auth change:', error);
+        // Check email verification status
+        const verified = await checkEmailVerification();
+        setEmailVerified(verified);
+        
+        // Only check payment status if email is verified
+        if (verified) {
+          // Check payment status
+          try {
+            const paymentStatus = await checkPaymentStatus();
+            setPaymentCompleted(paymentStatus);
+          } catch (error) {
+            console.error('Error checking payment status on auth change:', error);
+          }
         }
         
         // Check admin status
@@ -110,9 +124,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           console.error('Error checking admin status on auth change:', error);
         }
       } else {
-        setSession(null);
         setUser(null);
         setPaymentCompleted(false);
+        setEmailVerified(false);
         setIsAdmin(false);
       }
     });
@@ -122,81 +136,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
 
+  // Check if email is verified
+  const checkEmailVerification = async (): Promise<boolean> => {
+    try {
+      return await isEmailVerified();
+    } catch (error) {
+      console.error('Error checking email verification:', error);
+      return false;
+    }
+  };
+
   // Check if user has completed payment
   const checkPaymentStatus = async (): Promise<boolean> => {
     try {
-      if (!user) return false;
-      
-      // First check user metadata
-      if (user.user_metadata?.payment_confirmed === true) {
-        return true;
-      }
-      
-      // Check localStorage for temporary access
-      const tempAccessUntil = localStorage.getItem('temp_access_until');
-      if (tempAccessUntil) {
-        const expiryDate = new Date(tempAccessUntil);
-        if (expiryDate > new Date()) {
-          return true;
-        }
-      }
-      
-      // Then check database with timeout
-      try {
-        const timeoutPromise = new Promise<{data: null, error: Error}>((_, reject) => 
-          setTimeout(() => reject(new Error('Payment check timeout')), 5000)
-        );
-        
-        // First try with user_id
-        let dbPromise = supabase
-          .from('user_profiles')
-          .select('payment_verified, payment_status, temp_access_until')
-          .eq('user_id', user.id)
-          .single();
-        
-        let { data, error } = await Promise.race([dbPromise, timeoutPromise]) as any;
-        
-        if (error) {
-          console.warn('Payment check with user_id failed:', error);
-          
-          // Try with id instead
-          dbPromise = supabase
-            .from('user_profiles')
-            .select('payment_verified, payment_status, temp_access_until')
-            .eq('id', user.id)
-            .single();
-            
-          const result = await Promise.race([dbPromise, timeoutPromise]) as any;
-          data = result.data;
-          error = result.error;
-          
-          if (error) {
-            console.warn('Payment check with id failed:', error);
-            
-            // Fallback to localStorage
-            const paymentStatus = localStorage.getItem('payment_status');
-            return paymentStatus === 'paid' || paymentStatus === 'verified';
-          }
-        }
-        
-        // Check for temporary access
-        if (data?.temp_access_until) {
-          const expiryDate = new Date(data.temp_access_until);
-          if (expiryDate > new Date()) {
-            return true;
-          }
-        }
-        
-        return data?.payment_verified === true || data?.payment_status === 'verified';
-      } catch (error) {
-        console.warn('Payment status check failed, using fallback:', error);
-        
-        // Fallback to localStorage
-        const paymentStatus = localStorage.getItem('payment_status');
-        return paymentStatus === 'paid' || paymentStatus === 'verified';
-      }
+      return await hasCompletedPayment();
     } catch (error) {
-      console.error('Error in checkPaymentStatus:', error);
+      console.error('Error checking payment status:', error);
       return false;
     }
   };
@@ -296,8 +251,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         email,
         password,
         options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
           data: {
             payment_status: 'pending',
+            email_confirmed: false,
             temp_access_until: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24 hours temp access
           }
         }
@@ -353,15 +310,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.removeItem('temp_access_until');
       
       setUser(null);
-      setSession(null);
       setPaymentCompleted(false);
+      setEmailVerified(false);
       setIsAdmin(false);
     } catch (error) {
       console.error('Sign out error:', error);
       // Force reset state even if API call fails
       setUser(null);
-      setSession(null);
       setPaymentCompleted(false);
+      setEmailVerified(false);
       setIsAdmin(false);
     }
   };
@@ -373,12 +330,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (error) throw error;
       
       if (data.session) {
-        setSession(data.session);
         setUser(data.session.user);
         
-        // Re-check payment status
-        const paymentStatus = await checkPaymentStatus();
-        setPaymentCompleted(paymentStatus);
+        // Re-check email verification status
+        const verified = await checkEmailVerification();
+        setEmailVerified(verified);
+        
+        // Only re-check payment status if email is verified
+        if (verified) {
+          // Re-check payment status
+          const paymentStatus = await checkPaymentStatus();
+          setPaymentCompleted(paymentStatus);
+        }
       }
     } catch (error) {
       console.error('Session refresh error:', error);
@@ -389,12 +352,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     user,
     isLoading,
     paymentCompleted,
+    emailVerified,
     isAdmin,
     signIn,
     signUp,
     authSignOut,
     refreshSession,
-    checkPaymentStatus
+    checkPaymentStatus,
+    checkEmailVerification
   };
 
   return (

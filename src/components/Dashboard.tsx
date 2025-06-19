@@ -14,51 +14,39 @@ import {
   Calendar,
   BarChart3,
   AlertTriangle,
-  CheckCircle
+  CheckCircle,
+  Mail
 } from 'lucide-react';
 import { hasCompletedPayment } from '../lib/supabase';
+import { EmailVerificationReminder } from './EmailVerificationReminder';
 
 interface DashboardProps {
   user: any;
   onNavigate: (page: string) => void;
+  emailVerified: boolean;
+  paymentCompleted: boolean;
 }
 
-interface UserStats {
-  documentsCreated: number;
-  wordsWritten: number;
-  timeSpent: string;
-  averageScore: number;
-}
-
-interface RecentDocument {
-  id: string;
-  title: string;
-  type: string;
-  wordCount: number;
-  lastModified: string;
-  score?: number;
-}
-
-export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
-  const [userStats, setUserStats] = useState<UserStats>({
+export const Dashboard: React.FC<DashboardProps> = ({ 
+  user, 
+  onNavigate, 
+  emailVerified,
+  paymentCompleted
+}) => {
+  const [userStats, setUserStats] = useState({
     documentsCreated: 0,
     wordsWritten: 0,
     timeSpent: '0h',
     averageScore: 0
   });
-  const [recentDocuments, setRecentDocuments] = useState<RecentDocument[]>([]);
-  const [isPaidUser, setIsPaidUser] = useState(false);
+  const [recentDocuments, setRecentDocuments] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const checkAccess = async () => {
+    const loadDashboardData = async () => {
       setIsLoading(true);
       
       try {
-        // Check for permanent access
-        const paymentCompleted = await hasCompletedPayment();
-        setIsPaidUser(paymentCompleted);
-        
         // Load mock data for demo
         setUserStats({
           documentsCreated: 3,
@@ -86,13 +74,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
           }
         ]);
       } catch (error) {
-        console.error('Error checking access status:', error);
+        console.error('Error loading dashboard data:', error);
       } finally {
         setIsLoading(false);
       }
     };
     
-    checkAccess();
+    loadDashboardData();
   }, [user]);
 
   const quickActions = [
@@ -102,7 +90,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
       description: 'Create a new document with AI assistance',
       icon: PenTool,
       color: 'bg-blue-500',
-      action: () => onNavigate('writing')
+      action: () => onNavigate('writing'),
+      requiresVerification: true,
+      requiresPayment: true
     },
     {
       id: 'exam',
@@ -111,7 +101,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
       icon: Target,
       color: 'bg-green-500',
       action: () => onNavigate('exam'),
-      isPro: true
+      requiresVerification: true,
+      requiresPayment: true
     },
     {
       id: 'learn',
@@ -120,7 +111,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
       icon: BookOpen,
       color: 'bg-purple-500',
       action: () => onNavigate('learn'),
-      isPro: true
+      requiresVerification: true,
+      requiresPayment: true
     },
     {
       id: 'collaborate',
@@ -129,7 +121,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
       icon: Users,
       color: 'bg-orange-500',
       action: () => onNavigate('collaborate'),
-      isPro: true
+      requiresVerification: true,
+      requiresPayment: true
     }
   ];
 
@@ -149,31 +142,39 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
             Welcome back, {user?.email?.split('@')[0] || 'Writer'}!
           </h1>
-          <p className="text-gray-600 dark:text-gray-300 mt-2">
+          <p className="text-gray-600 dark:text-gray-300">
             Ready to continue your writing journey?
           </p>
         </div>
 
+        {/* Email Verification Reminder */}
+        {user && !emailVerified && (
+          <EmailVerificationReminder 
+            email={user.email || ''} 
+            onVerified={() => window.location.reload()}
+          />
+        )}
+
         {/* Payment Status Banner */}
-        {!isPaidUser && (
+        {emailVerified && !paymentCompleted && (
           <div className="mb-8 bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-900 dark:to-orange-900 border border-yellow-200 dark:border-yellow-700 rounded-lg p-4">
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-lg font-semibold text-yellow-800 dark:text-yellow-200">
-                  Free Plan
+                  Complete Your Subscription
                 </h3>
                 <p className="text-yellow-700 dark:text-yellow-300">
-                  Upgrade to unlock all features
+                  Your email is verified! Complete payment to unlock all premium features.
                 </p>
               </div>
               <button
                 onClick={() => onNavigate('pricing')}
                 className="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
               >
-                Upgrade Now
+                Subscribe Now
               </button>
             </div>
           </div>
@@ -247,36 +248,65 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
               {quickActions.map((action) => {
                 const Icon = action.icon;
-                const isLocked = action.isPro && !isPaidUser;
+                const isLocked = (action.requiresVerification && !emailVerified) || 
+                                (action.requiresPayment && !paymentCompleted);
                 
                 return (
                   <div
                     key={action.id}
-                    className={`bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border-2 border-transparent hover:border-blue-200 dark:hover:border-blue-700 transition-colors ${
-                      isLocked ? 'opacity-60' : 'cursor-pointer'
+                    className={`bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border ${
+                      isLocked ? 'opacity-75' : 'hover:shadow-md transition-shadow cursor-pointer'
                     }`}
                     onClick={isLocked ? undefined : action.action}
                   >
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center">
-                        <div className={`p-3 ${action.color} rounded-lg`}>
-                          <Icon className="w-6 h-6 text-white" />
-                        </div>
-                        <div className="ml-4">
-                          <h3 className="font-semibold text-gray-900 dark:text-white">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex-1">
+                        <div className="flex items-center">
+                          <div className={`p-3 ${action.color} rounded-lg mr-3`}>
+                            <Icon className="w-6 h-6 text-white" />
+                          </div>
+                          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
                             {action.title}
                           </h3>
-                          <p className="text-sm text-gray-600 dark:text-gray-400">
-                            {action.description}
-                          </p>
                         </div>
+                        <p className="text-gray-600 dark:text-gray-300 mt-2">
+                          {action.description}
+                        </p>
                       </div>
                       {isLocked && (
-                        <span className="bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 text-xs px-2 py-1 rounded">
-                          Pro
-                        </span>
+                        <div className="ml-4">
+                          {!emailVerified ? (
+                            <span className="bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 text-xs px-2 py-1 rounded flex items-center">
+                              <Mail className="w-3 h-3 mr-1" />
+                              Verify Email
+                            </span>
+                          ) : (
+                            <span className="bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 text-xs px-2 py-1 rounded">
+                              Subscribe
+                            </span>
+                          )}
+                        </div>
                       )}
                     </div>
+                    
+                    {isLocked ? (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onNavigate(!emailVerified ? 'dashboard' : 'pricing');
+                        }}
+                        className="w-full py-2 px-4 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 text-sm font-medium"
+                      >
+                        {!emailVerified ? 'Verify Email First' : 'Subscribe to Access'}
+                      </button>
+                    ) : (
+                      <button
+                        onClick={action.action}
+                        className="w-full py-2 px-4 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium"
+                      >
+                        Get Started
+                      </button>
+                    )}
                   </div>
                 );
               })}
@@ -292,6 +322,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
                   <button
                     onClick={() => onNavigate('writing')}
                     className="flex items-center text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
+                    disabled={!emailVerified || !paymentCompleted}
                   >
                     <Plus className="w-4 h-4 mr-1" />
                     New
@@ -305,7 +336,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
                       <div
                         key={doc.id}
                         className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer transition-colors"
-                        onClick={() => onNavigate('writing')}
+                        onClick={() => emailVerified && paymentCompleted ? onNavigate('writing') : null}
                       >
                         <div className="flex items-center">
                           <FileText className="w-5 h-5 text-gray-400 mr-3" />
@@ -336,6 +367,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
                     <button
                       onClick={() => onNavigate('writing')}
                       className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                      disabled={!emailVerified || !paymentCompleted}
                     >
                       Create Your First Document
                     </button>
@@ -345,40 +377,65 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
             </div>
           </div>
 
-          {/* Subscription Status */}
+          {/* Account Status */}
           <div>
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-6">
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-                Subscription Status
+                Account Status
               </h2>
               
-              {isPaidUser ? (
-                <div className="bg-green-50 dark:bg-green-900/30 p-4 rounded-lg mb-4">
-                  <div className="flex items-center">
+              {/* Email Verification Status */}
+              <div className={`bg-${emailVerified ? 'green' : 'yellow'}-50 dark:bg-${emailVerified ? 'green' : 'yellow'}-900/30 p-4 rounded-lg mb-4`}>
+                <div className="flex items-center">
+                  {emailVerified ? (
                     <CheckCircle className="w-5 h-5 text-green-500 mr-2" />
-                    <span className="font-medium text-green-800 dark:text-green-200">Active Subscription</span>
-                  </div>
-                  <p className="mt-2 text-sm text-green-700 dark:text-green-300">
-                    You have full access to all premium features
-                  </p>
+                  ) : (
+                    <Mail className="w-5 h-5 text-yellow-500 mr-2" />
+                  )}
+                  <span className={`font-medium text-${emailVerified ? 'green' : 'yellow'}-800 dark:text-${emailVerified ? 'green' : 'yellow'}-200`}>
+                    {emailVerified ? 'Email Verified' : 'Email Verification Required'}
+                  </span>
                 </div>
-              ) : (
-                <div className="bg-yellow-50 dark:bg-yellow-900/30 p-4 rounded-lg mb-4">
-                  <div className="flex items-center">
-                    <AlertTriangle className="w-5 h-5 text-yellow-500 mr-2" />
-                    <span className="font-medium text-yellow-800 dark:text-yellow-200">Free Plan</span>
-                  </div>
-                  <p className="mt-2 text-sm text-yellow-700 dark:text-yellow-300">
-                    Upgrade to access premium features
-                  </p>
+                <p className={`mt-2 text-sm text-${emailVerified ? 'green' : 'yellow'}-700 dark:text-${emailVerified ? 'green' : 'yellow'}-300`}>
+                  {emailVerified 
+                    ? 'Your email has been verified successfully.' 
+                    : 'Please check your inbox and verify your email address.'}
+                </p>
+              </div>
+              
+              {/* Payment Status */}
+              <div className={`bg-${paymentCompleted ? 'green' : 'purple'}-50 dark:bg-${paymentCompleted ? 'green' : 'purple'}-900/30 p-4 rounded-lg mb-4`}>
+                <div className="flex items-center">
+                  {paymentCompleted ? (
+                    <CheckCircle className="w-5 h-5 text-green-500 mr-2" />
+                  ) : (
+                    <AlertTriangle className="w-5 h-5 text-purple-500 mr-2" />
+                  )}
+                  <span className={`font-medium text-${paymentCompleted ? 'green' : 'purple'}-800 dark:text-${paymentCompleted ? 'green' : 'purple'}-200`}>
+                    {paymentCompleted ? 'Payment Complete' : 'Payment Required'}
+                  </span>
                 </div>
-              )}
+                <p className={`mt-2 text-sm text-${paymentCompleted ? 'green' : 'purple'}-700 dark:text-${paymentCompleted ? 'green' : 'purple'}-300`}>
+                  {paymentCompleted 
+                    ? 'You have full access to all premium features.' 
+                    : emailVerified 
+                      ? 'Complete payment to unlock all premium features.' 
+                      : 'Verify your email first, then complete payment.'}
+                </p>
+              </div>
               
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
+                  <span className="text-gray-600 dark:text-gray-400">Email</span>
+                  <span className="font-medium text-gray-900 dark:text-white">
+                    {user?.email}
+                  </span>
+                </div>
+                
+                <div className="flex justify-between items-center">
                   <span className="text-gray-600 dark:text-gray-400">Plan</span>
                   <span className="font-medium text-gray-900 dark:text-white">
-                    {isPaidUser ? 
+                    {paymentCompleted ? 
                       localStorage.getItem('payment_plan')?.replace('-', ' ') || 'Premium' : 
                       'Free'}
                   </span>
@@ -387,14 +444,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600 dark:text-gray-400">Status</span>
                   <span className={`font-medium ${
-                    isPaidUser ? 'text-green-600 dark:text-green-400' : 
+                    paymentCompleted ? 'text-green-600 dark:text-green-400' : 
                     'text-yellow-600 dark:text-yellow-400'
                   }`}>
-                    {isPaidUser ? 'Active' : 'Inactive'}
+                    {paymentCompleted ? 'Active' : 'Inactive'}
                   </span>
                 </div>
                 
-                {isPaidUser && (
+                {paymentCompleted && (
                   <div className="flex justify-between items-center">
                     <span className="text-gray-600 dark:text-gray-400">Next Payment</span>
                     <span className="font-medium text-gray-900 dark:text-white">
@@ -404,12 +461,21 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
                 )}
               </div>
               
-              {!isPaidUser && (
+              {!paymentCompleted && emailVerified && (
                 <button
                   onClick={() => onNavigate('pricing')}
                   className="w-full mt-6 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
                 >
-                  Upgrade Now
+                  Subscribe Now
+                </button>
+              )}
+              
+              {!emailVerified && (
+                <button
+                  onClick={() => window.location.reload()}
+                  className="w-full mt-6 px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700"
+                >
+                  Check Verification Status
                 </button>
               )}
             </div>

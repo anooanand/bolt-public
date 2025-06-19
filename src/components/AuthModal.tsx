@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Mail, Lock, Eye, EyeOff, CheckCircle } from 'lucide-react';
+import { X, Mail, Lock, Eye, EyeOff, CheckCircle, AlertCircle, Loader } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
 interface AuthModalProps {
@@ -17,7 +17,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   initialMode,
   onNavigate
 }) => {
-  const [mode, setMode] = useState<'signin' | 'signup'>(initialMode);
+  const [mode, setMode] = useState<'signin' | 'signup' | 'confirmation'>('signin');
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [confirmPassword, setConfirmPassword] = useState<string>('');
@@ -25,6 +25,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
   const [success, setSuccess] = useState<boolean>(false);
+  const [confirmationEmail, setConfirmationEmail] = useState<string>('');
 
   // Reset form when modal opens or mode changes
   useEffect(() => {
@@ -37,6 +38,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       const savedEmail = localStorage.getItem('userEmail');
       if (savedEmail) {
         setEmail(savedEmail);
+        setConfirmationEmail(savedEmail);
       }
     } else {
       // Reset form when modal closes
@@ -64,17 +66,18 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
+          options: {
+            emailRedirectTo: window.location.origin
+          }
         });
         
         if (error) {
           setError(error.message);
         } else if (data.user) {
-          setSuccess(true);
           localStorage.setItem('userEmail', email);
-          setTimeout(() => {
-            onSuccess(data.user);
-            onNavigate('pricing');
-          }, 1500);
+          setConfirmationEmail(email);
+          setMode('confirmation');
+          setSuccess(true);
         }
       } else {
         const { data, error } = await supabase.auth.signInWithPassword({
@@ -86,7 +89,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           setError(error.message);
         } else if (data.user) {
           localStorage.setItem('userEmail', email);
-          onSuccess(data.user);
+          setSuccess(true);
+          
+          // Short delay to show success message
+          setTimeout(() => {
+            onSuccess(data.user);
+          }, 1500);
         }
       }
     } catch (err: any) {
@@ -96,9 +104,95 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     }
   };
 
+  const handleResendConfirmation = async () => {
+    setLoading(true);
+    setError('');
+    
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: confirmationEmail,
+        options: {
+          emailRedirectTo: window.location.origin
+        }
+      });
+      
+      if (error) {
+        setError(error.message);
+      } else {
+        setSuccess(true);
+        // Show temporary success message
+        setTimeout(() => setSuccess(false), 3000);
+      }
+    } catch (err: any) {
+      setError('Failed to resend confirmation email: ' + (err.message || 'Please try again'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (!isOpen) return null;
 
-  if (success) {
+  if (mode === 'confirmation') {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={onClose}>
+        <div className="bg-white dark:bg-gray-800 rounded-lg p-8 max-w-md w-full text-center" onClick={e => e.stopPropagation()}>
+          <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Mail className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+            Check Your Email
+          </h2>
+          <p className="text-gray-600 dark:text-gray-300 mb-6">
+            We've sent a confirmation link to <strong>{confirmationEmail}</strong>. 
+            Please check your email and click the link to verify your account.
+          </p>
+          
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-md">
+              <p className="text-sm">{error}</p>
+            </div>
+          )}
+          
+          {success && (
+            <div className="mb-4 p-3 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-md">
+              <p className="text-sm">Confirmation email sent successfully!</p>
+            </div>
+          )}
+          
+          <div className="flex flex-col space-y-3">
+            <button
+              onClick={handleResendConfirmation}
+              disabled={loading}
+              className="w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+            >
+              {loading ? (
+                <>
+                  <Loader className="animate-spin -ml-1 mr-2 h-5 w-5" />
+                  Sending...
+                </>
+              ) : (
+                'Resend Confirmation Email'
+              )}
+            </button>
+            
+            <button
+              onClick={() => setMode('signin')}
+              className="w-full py-2 px-4 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600"
+            >
+              Back to Sign In
+            </button>
+          </div>
+          
+          <p className="mt-6 text-sm text-gray-500 dark:text-gray-400">
+            After confirming your email, you'll need to complete payment to access all features.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (success && mode === 'signin') {
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={onClose}>
         <div className="bg-white dark:bg-gray-800 rounded-lg p-8 max-w-md w-full text-center">
@@ -109,7 +203,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             Welcome to Writing Assistant!
           </h2>
           <p className="text-gray-600 dark:text-gray-300 mb-4">
-            Your account has been created successfully. Redirecting to your dashboard...
+            You've successfully signed in. Redirecting to your dashboard...
           </p>
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
         </div>
@@ -138,8 +232,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         {/* Form */}
         <form onSubmit={handleSubmit} className="p-6">
           {error && (
-            <div className="mb-4 p-3 bg-red-100 dark:bg-red-900 border border-red-300 dark:border-red-700 rounded-md">
-              <p className="text-red-700 dark:text-red-300 text-sm">{error}</p>
+            <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/30 border border-red-300 dark:border-red-700 rounded-md">
+              <div className="flex">
+                <AlertCircle className="h-5 w-5 text-red-500 mr-2 flex-shrink-0" />
+                <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
+              </div>
             </div>
           )}
 
@@ -243,15 +340,30 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             </p>
           </div>
 
-          {/* Demo Account Info */}
-          <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900 rounded-md">
-            <p className="text-xs text-blue-700 dark:text-blue-300">
-              <strong>Demo:</strong> Use any email and password to create a test account
-            </p>
+          {/* Info Box */}
+          <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/30 rounded-md">
+            <div className="flex">
+              <Mail className="h-5 w-5 text-blue-500 mr-2 flex-shrink-0" />
+              <div>
+                <p className="text-xs text-blue-700 dark:text-blue-300">
+                  <strong>{mode === 'signin' ? 'Sign In' : 'Sign Up'} Process:</strong>
+                </p>
+                {mode === 'signin' ? (
+                  <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                    Sign in with your email and password to access your account.
+                  </p>
+                ) : (
+                  <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                    1. Create your account<br />
+                    2. Verify your email address<br />
+                    3. Complete payment to unlock all features
+                  </p>
+                )}
+              </div>
+            </div>
           </div>
         </form>
       </div>
     </div>
   );
 }
-
