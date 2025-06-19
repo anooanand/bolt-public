@@ -422,6 +422,35 @@ export async function forceSignOut() {
   }
 }
 
+// Handle email verification callback
+export async function handleEmailVerificationCallback(url: string) {
+  try {
+    // Extract hash parameters from URL
+    const hashParams = new URLSearchParams(url.split('#')[1]);
+    const accessToken = hashParams.get('access_token');
+    const refreshToken = hashParams.get('refresh_token');
+    const expiresIn = hashParams.get('expires_in');
+    const tokenType = hashParams.get('token_type');
+    
+    if (!accessToken || !refreshToken) {
+      throw new Error('Invalid verification URL');
+    }
+    
+    // Set the session manually
+    const { data, error } = await supabase.auth.setSession({
+      access_token: accessToken,
+      refresh_token: refreshToken
+    });
+    
+    if (error) throw error;
+    
+    return { success: true, user: data.user };
+  } catch (error) {
+    console.error('Error handling email verification:', error);
+    return { success: false, error };
+  }
+}
+
 export default {
   supabase,
   getCurrentUser,
@@ -433,5 +462,6 @@ export default {
   hasTemporaryAccess,
   confirmPayment,
   forceSignOut,
-  isEmailVerified
+  isEmailVerified,
+  handleEmailVerificationCallback
 };
