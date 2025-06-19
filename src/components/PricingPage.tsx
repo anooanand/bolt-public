@@ -1,12 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowRight, Check, Star } from 'lucide-react';
-import { hasCompletedPayment, supabase } from '../lib/supabase';
+import { hasCompletedPayment, isEmailVerified, supabase } from '../lib/supabase';
+import { createCheckoutSession } from '../lib/stripe';
+import { products } from '../stripe-config';
+import { useAuth } from '../contexts/AuthContext';
 
 export function PricingPage() {
+  const { user, emailVerified } = useAuth();
   const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>('monthly');
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [isPaidUser, setIsPaidUser] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isProcessing, setIsProcessing] = useState<string | null>(null);
   
   // Get user email from localStorage on component mount
   useEffect(() => {
@@ -40,154 +45,33 @@ export function PricingPage() {
     checkAccessStatus();
   }, []);
   
-  const plans = [
-    {
-      name: 'Try Out',
-      description: 'Perfect for students just starting their preparation',
-      monthlyPrice: '$4.99',
-      yearlyPrice: '$49.90',
-      yearlyDiscount: 'Save $9.98',
-      features: [
-        'Access to basic writing tools',
-        'Limited AI feedback',
-        'Basic text type templates',
-        'Email support'
-      ],
-      buttonText: 'Start Free Trial',
-      buttonLink: 'https://buy.stripe.com/test_14kaG7gNX1773v28wB',
-      popular: false,
-      planType: 'try-out'
-    },
-    {
-      name: 'Base Plan',
-      description: 'Ideal for students serious about exam preparation',
-      monthlyPrice: '$19.99',
-      yearlyPrice: '$199.90',
-      yearlyDiscount: 'Save $39.98',
-      features: [
-        'Unlimited AI feedback',
-        'All text type templates',
-        'Advanced writing analysis',
-        'Practice exam simulations',
-        'Priority support',
-        'Progress tracking'
-      ],
-      buttonText: 'Start Free Trial',
-      buttonLink: 'https://buy.stripe.com/test_3cs5lNbtD5nn3v28wC',
-      popular: true,
-      planType: 'base-plan'
-    },
-    {
-      name: 'Premium',
-      description: 'The ultimate preparation package',
-      monthlyPrice: '$29.99',
-      yearlyPrice: '$299.90',
-      yearlyDiscount: 'Save $59.98',
-      features: [
-        'Everything in Base Plan',
-        'One-on-one coaching sessions',
-        'Personalized study plan',
-        'Mock exam reviews',
-        'Parent progress reports',
-        'Guaranteed score improvement'
-      ],
-      buttonText: 'Start Free Trial',
-      buttonLink: 'https://buy.stripe.com/test_6oE7tVdBL3fffdKbIP',
-      popular: false,
-      planType: 'premium'
-    }
-  ];
-
-  const handleSubscribe = (plan: typeof plans[0]) => {
-    console.log("Payment button clicked for plan:", plan.name);
-    console.log("Current user email:", userEmail);
-    
-    // Get email from state or prompt user if not available
-    let email = userEmail;
-    
-    if (!email) {
-      // Try to get from localStorage again
-      email = localStorage.getItem('userEmail');
-    }
-    
-    if (!email) {
-      // Prompt user for email if still not available
-      email = prompt('Please enter your email to continue:');
-    }
-    
-    if (!email) {
-      alert('Email is required to continue with subscription');
-      return;
-    }
-    
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      alert('Please enter a valid email address');
-      return;
-    }
-    
-    // Store email for future use
-    localStorage.setItem('userEmail', email);
-    setUserEmail(email);
-    
-    console.log('[DEBUG] Preparing payment for:', email, 'plan:', plan.planType);
-    
-    // Store payment plan info for success page
-    localStorage.setItem('payment_plan', plan.planType);
-    localStorage.setItem('payment_date', new Date().toISOString());
-    
-    // FIXED: Use consistent parameter names that match App.tsx
-    const successUrl = `${window.location.origin}?paymentSuccess=true&planType=${plan.planType}&email=${encodeURIComponent(email)}`;
-    const cancelUrl = `${window.location.origin}?paymentSuccess=false&planType=${plan.planType}`;
-    
-    // Construct the Stripe URL with all parameters
-    let url = plan.buttonLink;
-    
-    // Add email parameter for Stripe prefill
-    url = `${url}?prefilled_email=${encodeURIComponent(email)}`;
-    
-    // Add success and cancel URLs
-    url = `${url}&success_url=${encodeURIComponent(successUrl)}`;
-    url = `${url}&cancel_url=${encodeURIComponent(cancelUrl)}`;
-    
-    // Add customer email as metadata for Stripe
-    url = `${url}&customer_email=${encodeURIComponent(email)}`;
-    
-    console.log('[DEBUG] Redirecting to Stripe with URL:', url);
-    console.log('[DEBUG] Success URL will be:', successUrl);
-    
-    // Add loading state feedback
-    const button = document.activeElement as HTMLButtonElement;
-    if (button) {
-      const originalText = button.textContent;
-      button.textContent = 'Redirecting to Payment...';
-      button.disabled = true;
-      
-      // Restore button after a delay in case redirect fails
-      setTimeout(() => {
-        if (button.textContent === 'Redirecting to Payment...') {
-          button.textContent = originalText;
-          button.disabled = false;
-        }
-      }, 10000); // 10 seconds timeout
-    }
-    
-    // Redirect to Stripe
+  const handleSubscribe = async (product: typeof products[0]) => {
     try {
-      // Small delay to ensure localStorage is written
-      setTimeout(() => {
-        window.location.href = url;
-      }, 100);
-    } catch (error) {
-      console.error('[DEBUG] Error redirecting to payment:', error);
-      alert('Error redirecting to payment. Please try again.');
-      
-      // Restore button
-      if (button) {
-        button.textContent = plan.buttonText;
-        button.disabled = false;
+      // Check if user is logged in
+      if (!user) {
+        alert('Please sign in to subscribe');
+        return;
       }
+      
+      // Check if email is verified
+      if (!emailVerified) {
+        alert('Please verify your email address before subscribing');
+        return;
+      }
+      
+      // Set processing state for this product
+      setIsProcessing(product.id);
+      
+      // Create checkout session
+      const checkoutUrl = await createCheckoutSession(product.priceId, product.mode);
+      
+      // Redirect to checkout
+      window.location.href = checkoutUrl;
+    } catch (error: any) {
+      console.error('Error creating checkout session:', error);
+      alert(`Error: ${error.message || 'Failed to create checkout session'}`);
+    } finally {
+      setIsProcessing(null);
     }
   };
 
@@ -225,6 +109,12 @@ export function PricingPage() {
             </div>
           )}
           
+          {!emailVerified && user && (
+            <div className="mt-4 p-3 bg-yellow-50 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 rounded-md inline-block">
+               Please verify your email before subscribing
+            </div>
+          )}
+          
           <div className="mt-8 inline-flex items-center p-1 bg-gray-100 dark:bg-gray-800 rounded-lg">
             <button
               onClick={() => setBillingPeriod('monthly')}
@@ -250,58 +140,62 @@ export function PricingPage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {plans.map((plan, index) => (
+          {products.map((product, index) => (
             <div 
-              key={index}
+              key={product.id}
               className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm border ${
-                plan.popular 
+                product.popular 
                   ? 'border-indigo-200 dark:border-indigo-800 ring-2 ring-indigo-500 dark:ring-indigo-400' 
                   : 'border-gray-200 dark:border-gray-700'
               } overflow-hidden h-full flex flex-col`}
             >
-              {plan.popular && (
+              {product.popular && (
                 <div className="bg-indigo-500 text-white text-center py-1.5 text-sm font-medium">
                   Most Popular
                 </div>
               )}
               
               <div className="p-6">
-                <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">{plan.name}</h3>
-                <p className="text-gray-500 dark:text-gray-400 mb-4">{plan.description}</p>
+                <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">{product.name}</h3>
+                <p className="text-gray-500 dark:text-gray-400 mb-4">{product.description}</p>
                 
                 <div className="mb-6">
                   <span className="text-4xl font-bold text-gray-900 dark:text-white">
-                    {billingPeriod === 'monthly' ? plan.monthlyPrice : plan.yearlyPrice}
+                    {product.price}
                   </span>
                   <span className="text-gray-500 dark:text-gray-400 ml-2">
-                    /{billingPeriod === 'monthly' ? 'month' : 'year'}
+                    /month
                   </span>
-                  
-                  {billingPeriod === 'yearly' && (
-                    <p className="mt-1 text-green-500 text-sm font-medium">{plan.yearlyDiscount}</p>
-                  )}
                 </div>
                 
                 <button
-                  onClick={() => handleSubscribe(plan)}
-                  disabled={isPaidUser}
+                  onClick={() => handleSubscribe(product)}
+                  disabled={isPaidUser || isProcessing !== null || !user || !emailVerified}
                   className={`w-full py-3 px-4 rounded-md ${
                     isPaidUser
                       ? 'bg-gray-300 dark:bg-gray-600 text-gray-600 dark:text-gray-400 cursor-not-allowed'
-                      : plan.popular
+                      : isProcessing === product.id
+                      ? 'bg-indigo-400 text-white cursor-wait'
+                      : !user || !emailVerified
+                      ? 'bg-gray-300 dark:bg-gray-600 text-gray-600 dark:text-gray-400 cursor-not-allowed'
+                      : product.popular
                         ? 'bg-indigo-600 hover:bg-indigo-700 text-white hover:shadow-lg'
                         : 'bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-900 dark:text-white'
                   } font-medium flex items-center justify-center transition-all duration-200`}
                 >
-                  {isPaidUser ? 'Current Plan' : plan.buttonText}
-                  {!isPaidUser && <ArrowRight className="ml-2 w-4 h-4" />}
+                  {isPaidUser ? 'Current Plan' : 
+                   isProcessing === product.id ? 'Processing...' :
+                   !user ? 'Sign In to Subscribe' :
+                   !emailVerified ? 'Verify Email First' :
+                   'Subscribe Now'}
+                  {!isPaidUser && isProcessing !== product.id && user && emailVerified && <ArrowRight className="ml-2 w-4 h-4" />}
                 </button>
               </div>
               
               <div className="p-6 bg-gray-50 dark:bg-gray-800 border-t border-gray-100 dark:border-gray-700 flex-grow">
                 <h4 className="font-medium text-gray-900 dark:text-white mb-4">What's included:</h4>
                 <ul className="space-y-3">
-                  {plan.features.map((feature, idx) => (
+                  {product.features.map((feature, idx) => (
                     <li key={idx} className="flex items-start">
                       <Check className="w-5 h-5 text-green-500 mr-2 shrink-0 mt-0.5" />
                       <span className="text-gray-600 dark:text-gray-300 text-sm">{feature}</span>
@@ -333,16 +227,6 @@ export function PricingPage() {
             Contact Sales
           </button>
         </div>
-        
-        {/* Debug Information (remove in production) */}
-        {process.env.NODE_ENV === 'development' && (
-          <div className="mt-8 p-4 bg-gray-100 dark:bg-gray-800 rounded-lg text-xs">
-            <h4 className="font-bold mb-2">Debug Info:</h4>
-            <p>User Email: {userEmail || 'Not set'}</p>
-            <p>Is Paid User: {isPaidUser ? 'Yes' : 'No'}</p>
-            <p>Payment Plan: {localStorage.getItem('payment_plan') || 'Not set'}</p>
-          </div>
-        )}
       </div>
     </section>
   );
