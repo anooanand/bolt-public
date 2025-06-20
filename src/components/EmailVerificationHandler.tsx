@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { CheckCircle, XCircle, Loader } from 'lucide-react';
 
@@ -8,6 +8,7 @@ export function EmailVerificationHandler() {
   const [errorMessage, setErrorMessage] = useState('');
   const [userEmail, setUserEmail] = useState('');
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     let mounted = true;
@@ -18,7 +19,50 @@ export function EmailVerificationHandler() {
         console.log('=== EMAIL VERIFICATION HANDLER STARTED ===');
         console.log('Current URL:', window.location.href);
         
-        // Method 1: Listen for auth state changes (most reliable)
+        // Parse error parameters from URL if present
+        const searchParams = new URLSearchParams(location.search);
+        const errorCode = searchParams.get('error_code');
+        const errorDescription = searchParams.get('error_description');
+        
+        if (errorCode) {
+          console.error(`Error in verification: ${errorCode} - ${errorDescription}`);
+          setStatus('error');
+          setErrorMessage(errorDescription || 'Verification link is invalid or has expired');
+          return;
+        }
+        
+        // Method 1: Process the URL directly
+        // This is the most reliable method for handling OTP expiration issues
+        try {
+          // Extract the token from the URL if present
+          const hash = window.location.hash;
+          if (hash && hash.includes('access_token')) {
+            console.log('Found access token in URL hash, attempting to set session...');
+            
+            // Set the session manually from the URL
+            const { data, error } = await supabase.auth.getSession();
+            
+            if (error) {
+              console.error('Error getting session after hash detected:', error);
+            } else if (data.session) {
+              console.log('✅ Session established from URL hash');
+              setUserEmail(data.session.user.email || '');
+              setStatus('success');
+              
+              // Redirect after 2 seconds
+              setTimeout(() => {
+                if (mounted) {
+                  navigate('/pricing');
+                }
+              }, 2000);
+              return;
+            }
+          }
+        } catch (urlError) {
+          console.error('Error processing URL:', urlError);
+        }
+
+        // Method 2: Listen for auth state changes
         authSubscription = supabase.auth.onAuthStateChange(async (event, session) => {
           if (!mounted) return;
           
@@ -40,7 +84,7 @@ export function EmailVerificationHandler() {
           }
         });
 
-        // Method 2: Check current session (backup)
+        // Method 3: Check current session (backup)
         setTimeout(async () => {
           if (!mounted || status !== 'loading') return;
           
@@ -69,7 +113,7 @@ export function EmailVerificationHandler() {
           }
         }, 1000);
 
-        // Method 3: Timeout fallback
+        // Method 4: Timeout fallback
         setTimeout(() => {
           if (!mounted || status !== 'loading') return;
           
@@ -112,7 +156,7 @@ export function EmailVerificationHandler() {
         authSubscription.data.subscription.unsubscribe();
       }
     };
-  }, [navigate, status]);
+  }, [navigate, status, location.search]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">

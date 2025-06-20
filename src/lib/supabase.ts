@@ -548,44 +548,6 @@ export async function manuallyVerifyUser(email: string) {
   }
 }
 
-// Enhanced auth state listener with automatic email verification detection
-supabase.auth.onAuthStateChange(async (event, session) => {
-  console.log('🔄 Auth state change:', event, session?.user?.email);
-  
-  if (event === 'SIGNED_IN' && session?.user) {
-    console.log('✅ User signed in successfully:', session.user.email);
-    
-    // If this is a sign-in from email verification, ensure email is marked as verified
-    const currentUrl = window.location.href;
-    if (currentUrl.includes('/auth/callback')) {
-      console.log('🔄 Sign-in detected from verification callback, ensuring email is verified...');
-      
-      try {
-        const { error: updateError } = await supabase
-          .from('user_profiles')
-          .upsert({
-            id: session.user.id,
-            user_id: session.user.id,
-            email: session.user.email,
-            email_verified: true,
-            email_verified_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          });
-        
-        if (!updateError) {
-          console.log('✅ Email verification status updated automatically');
-        }
-      } catch (error) {
-        console.warn('⚠️ Error auto-updating email verification:', error);
-      }
-    }
-  } else if (event === 'SIGNED_OUT') {
-    console.log('👋 User signed out');
-  } else if (event === 'TOKEN_REFRESHED') {
-    console.log('🔄 Token refreshed');
-  }
-});
-
 export default {
   supabase,
   getCurrentUser,
@@ -601,4 +563,3 @@ export default {
   handleEmailVerificationCallback,
   manuallyVerifyUser
 };
-
