@@ -19,33 +19,69 @@ export async function createCheckoutSession(priceId: string, mode: 'subscription
     const successUrl = `${window.location.origin}?paymentSuccess=true&planType=${priceId}`;
     const cancelUrl = `${window.location.origin}/pricing?paymentSuccess=false`;
     
-    // Call the Supabase Edge Function
-    const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stripe-checkout`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${session.access_token}`,
-      },
-      body: JSON.stringify({
-        price_id: priceId,
-        success_url: successUrl,
-        cancel_url: cancelUrl,
-        mode: mode,
-      }),
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Failed to create checkout session');
+    // Try the Supabase Edge Function first
+    try {
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stripe-checkout`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          price_id: priceId,
+          success_url: successUrl,
+          cancel_url: cancelUrl,
+          mode: mode,
+        }),
+      });
+      
+      if (response.ok) {
+        const { url } = await response.json();
+        if (url) {
+          return url;
+        }
+      }
+      
+      // If Supabase Edge Function fails, log the error and try Netlify function
+      console.warn('Supabase Edge Function failed, trying Netlify function...');
+      const errorData = await response.json().catch(() => ({}));
+      console.warn('Supabase error:', errorData);
+    } catch (supabaseError) {
+      console.warn('Supabase Edge Function error:', supabaseError);
     }
     
-    const { url } = await response.json();
-    
-    if (!url) {
-      throw new Error('No checkout URL returned');
+    // Fallback to Netlify function
+    try {
+      const netlifyResponse = await fetch('/.netlify/functions/create-checkout-session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          priceId: priceId,
+          planType: priceId,
+          userId: session.user.id,
+          userEmail: session.user.email,
+          mode: mode,
+        }),
+      });
+      
+      if (!netlifyResponse.ok) {
+        const errorData = await netlifyResponse.json();
+        throw new Error(errorData.error || 'Failed to create checkout session via Netlify');
+      }
+      
+      const { url } = await netlifyResponse.json();
+      
+      if (!url) {
+        throw new Error('No checkout URL returned from Netlify function');
+      }
+      
+      return url;
+    } catch (netlifyError) {
+      console.error('Netlify function error:', netlifyError);
+      throw netlifyError;
     }
-    
-    return url;
   } catch (error: any) {
     console.error('Error creating checkout session:', error);
     throw error;
