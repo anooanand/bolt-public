@@ -13,7 +13,8 @@ export const supabase = createClient(supabaseUrl || '', supabaseAnonKey || '', {
     storage: localStorage,
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: true
+    detectSessionInUrl: true,
+    flowType: 'pkce'  // ← ADD THIS LINE
   }
 });
 
