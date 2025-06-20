@@ -1,45 +1,51 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { handleEmailVerificationCallback, supabase } from '../lib/supabase';
+import { useNavigate } from 'react-router-dom';
+import { supabase } from '../lib/supabase';
 import { CheckCircle, XCircle, Loader } from 'lucide-react';
 
 export function EmailVerificationHandler() {
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [errorMessage, setErrorMessage] = useState('');
   const navigate = useNavigate();
-  const location = useLocation();
 
   useEffect(() => {
     const processVerification = async () => {
       try {
-        // Get the full URL including hash
-        const fullUrl = window.location.href;
-        console.log('Processing verification URL:', fullUrl);
+        console.log('Starting email verification process...');
+        console.log('Current URL:', window.location.href);
         
-        // Process the verification
-        const result = await handleEmailVerificationCallback(fullUrl);
+        // Let Supabase handle the auth callback automatically
+        const { data, error } = await supabase.auth.getSession();
         
-        if (result.success) {
-          // Force session refresh after successful verification
-          await supabase.auth.refreshSession();
+        if (error) {
+          console.error('Auth callback error:', error);
+          setStatus('error');
+          setErrorMessage('Verification failed. Please try signing in manually.');
+          return;
+        }
+
+        if (data.session) {
+          console.log('Session found:', data.session.user.email);
           setStatus('success');
-          // Redirect to pricing page after a short delay
+          
+          // Redirect to pricing page after successful verification
           setTimeout(() => {
             navigate('/pricing');
           }, 3000);
         } else {
+          console.log('No session found');
           setStatus('error');
-          setErrorMessage(result.error?.message || 'Verification failed');
+          setErrorMessage('No session found. Please try signing in manually.');
         }
       } catch (error: any) {
-        console.error('Error processing verification:', error);
+        console.error('Unexpected error:', error);
         setStatus('error');
-        setErrorMessage(error.message || 'An unexpected error occurred');
+        setErrorMessage('An unexpected error occurred.');
       }
     };
 
     processVerification();
-  }, [navigate, location]);
+  }, [navigate]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
