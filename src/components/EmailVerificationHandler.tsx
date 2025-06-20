@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { handleEmailVerificationCallback, supabase } from '../lib/supabase'; // Import supabase
+import { handleEmailVerificationCallback, supabase } from '../lib/supabase';
 import { CheckCircle, XCircle, Loader } from 'lucide-react';
 
 export function EmailVerificationHandler() {
@@ -96,4 +96,3 @@ export function EmailVerificationHandler() {
     </div>
   );
 }
-
