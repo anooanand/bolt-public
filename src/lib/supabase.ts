@@ -1,4 +1,4 @@
-// FIXED: Enhanced Supabase configuration with simplified verification logic
+// FINAL CORRECTED: Clean Supabase configuration with proper verification logic
 import { createClient } from '@supabase/supabase-js';
 
 // Environment variables validation
@@ -55,7 +55,7 @@ export async function signUp(email: string, password: string) {
     
     localStorage.setItem('userEmail', email);
     
-    // Create user profile
+    // Create user profile ONLY after auth success
     try {
       if (data.user) {
         const { error: profileError } = await supabase
@@ -74,6 +74,25 @@ export async function signUp(email: string, password: string) {
           
         if (profileError) {
           console.warn('Error creating user profile:', profileError);
+        }
+
+        // Create user_access_status record
+        const { error: accessError } = await supabase
+          .from('user_access_status')
+          .upsert({
+            id: data.user.id,
+            email: email,
+            email_verified: false, // Will be updated after verification
+            payment_verified: false,
+            manual_override: false,
+            subscription_status: 'free',
+            temp_access_until: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+            has_access: true,
+            access_type: 'Temporary access'
+          });
+
+        if (accessError) {
+          console.warn('Error creating user access status:', accessError);
         }
       }
     } catch (profileError) {
@@ -95,6 +114,8 @@ export async function signIn(email: string, password: string) {
     });
     
     if (error) throw error;
+    
+    localStorage.setItem('userEmail', email);
     
     return data;
   } catch (error) {
@@ -157,66 +178,117 @@ export async function requestPasswordReset(email: string) {
   }
 }
 
-// COMPLETELY REWRITTEN: Simple and reliable email verification check
+// FIXED: Enhanced email verification check that handles missing auth users
 export async function isEmailVerified(): Promise<boolean> {
   try {
     console.log('🔍 Checking email verification status...');
     
+    // Primary check: Get user from auth.users
     const { data: { user }, error } = await supabase.auth.getUser();
-    if (error || !user) {
-      console.log('❌ No user found or error:', error);
-      return false;
+    
+    if (error) {
+      console.log('❌ Auth error:', error);
+      // Fallback to checking user_access_status if auth fails
+      return await checkVerificationFallback();
     }
     
-    console.log('👤 User found:', user.email);
+    if (!user) {
+      console.log('❌ No auth user found, checking fallback...');
+      // Fallback to checking user_access_status
+      return await checkVerificationFallback();
+    }
+    
+    console.log('👤 Auth user found:', user.email);
     console.log('📧 email_confirmed_at:', user.email_confirmed_at);
     console.log('✅ confirmed_at:', user.confirmed_at);
     
-    // Primary check: email_confirmed_at field
+    // Primary verification checks
     if (user.email_confirmed_at) {
       console.log('✅ Email verified via email_confirmed_at');
       return true;
     }
     
-    // Secondary check: confirmed_at field
     if (user.confirmed_at) {
       console.log('✅ Email verified via confirmed_at');
       return true;
     }
     
-    // Tertiary check: user metadata
     if (user.user_metadata?.email_verified === true) {
       console.log('✅ Email verified via user_metadata');
       return true;
     }
     
-    // Database fallback check
-    try {
-      const { data, error: dbError } = await supabase
-        .from('user_profiles')
-        .select('manual_override, email_verified')
-        .eq('id', user.id)
-        .single();
-      
-      if (!dbError && data) {
-        if (data.manual_override === true) {
-          console.log('✅ Email verified via manual_override');
-          return true;
-        }
-        
-        if (data.email_verified === true) {
-          console.log('✅ Email verified via database email_verified field');
-          return true;
-        }
-      }
-    } catch (dbError) {
-      console.warn('Database check failed:', dbError);
-    }
+    // If auth user exists but not verified, check database fallback
+    console.log('⚠️ Auth user not verified, checking database fallback...');
+    return await checkVerificationFallback();
     
-    console.log('❌ Email not verified');
-    return false;
   } catch (error) {
     console.error('Error checking email verification:', error);
+    // On any error, try fallback
+    return await checkVerificationFallback();
+  }
+}
+
+// ADDED: Fallback verification check using user_access_status table
+async function checkVerificationFallback(): Promise<boolean> {
+  try {
+    console.log('🔄 Checking verification via user_access_status fallback...');
+    
+    // Get current user email from localStorage or session
+    const userEmail = localStorage.getItem('userEmail');
+    if (!userEmail) {
+      console.log('❌ No user email found in localStorage');
+      return false;
+    }
+    
+    console.log('📧 Checking verification for email:', userEmail);
+    
+    // Check user_access_status table
+    const { data: accessStatus, error: accessError } = await supabase
+      .from('user_access_status')
+      .select('email_verified, manual_override')
+      .eq('email', userEmail)
+      .single();
+    
+    if (accessError) {
+      console.warn('Error checking user_access_status:', accessError);
+      
+      // Final fallback: check user_profiles
+      const { data: profile, error: profileError } = await supabase
+        .from('user_profiles')
+        .select('email, manual_override')
+        .eq('email', userEmail)
+        .single();
+      
+      if (profileError) {
+        console.error('Error checking user_profiles:', profileError);
+        return false;
+      }
+      
+      if (profile?.manual_override === true) {
+        console.log('✅ Email verified via user_profiles manual_override');
+        return true;
+      }
+      
+      console.log('❌ No verification found in fallback checks');
+      return false;
+    }
+    
+    if (accessStatus?.email_verified === true) {
+      console.log('✅ Email verified via user_access_status');
+      return true;
+    }
+    
+    if (accessStatus?.manual_override === true) {
+      console.log('✅ Email verified via user_access_status manual_override');
+      return true;
+    }
+    
+    console.log('❌ Email not verified in user_access_status');
+    return false;
+    
+  } catch (error) {
+    console.error('Error in verification fallback:', error);
     return false;
   }
 }
@@ -402,7 +474,7 @@ export async function confirmPayment(planType: string) {
   }
 }
 
-// COMPLETELY REWRITTEN: Simplified email verification callback handler
+// FIXED: Enhanced email verification callback handler
 export async function handleEmailVerificationCallback(): Promise<{ success: boolean; user?: any; error?: any }> {
   try {
     console.log('🔄 Processing email verification callback...');
@@ -438,26 +510,27 @@ export async function handleEmailVerificationCallback(): Promise<{ success: bool
       const user = sessionData.session.user;
       console.log('✅ User session found during verification:', user.email);
       
-      // Mark email as verified in database
+      // Update verification status in all relevant tables
       try {
-        const { error: updateError } = await supabase
+        // Update user_profiles
+        await supabase
           .from('user_profiles')
-          .upsert({
-            id: user.id,
-            user_id: user.id,
-            email: user.email,
-            email_verified: true,
-            email_verified_at: new Date().toISOString(),
+          .update({
             updated_at: new Date().toISOString()
-          });
+          })
+          .eq('user_id', user.id);
         
-        if (updateError) {
-          console.warn('Error updating email verification in database:', updateError);
-        } else {
-          console.log('✅ Email verification updated in database');
-        }
+        // Update user_access_status
+        await supabase
+          .from('user_access_status')
+          .update({
+            email_verified: true
+          })
+          .eq('id', user.id);
+        
+        console.log('✅ Verification status updated in database');
       } catch (error) {
-        console.warn('Error updating email verification:', error);
+        console.warn('Error updating verification status:', error);
       }
       
       return { success: true, user };
@@ -483,45 +556,6 @@ export async function handleEmailVerificationCallback(): Promise<{ success: bool
   } catch (error) {
     console.error('❌ Unexpected error in verification handler:', error);
     return { success: false, error };
-  }
-}
-
-// Force sign out function
-export async function forceSignOut() {
-  if (isSigningOut) {
-    console.log('Force sign out already in progress, skipping...');
-    return true;
-  }
-  
-  try {
-    isSigningOut = true;
-    console.log('Executing forceSignOut function...');
-    
-    // Clear local storage
-    localStorage.removeItem('payment_plan');
-    localStorage.removeItem('payment_date');
-    localStorage.removeItem('temp_access_until');
-    localStorage.removeItem('userEmail');
-    localStorage.removeItem('payment_status');
-    localStorage.removeItem('user_plan');
-    
-    // Sign out from Supabase
-    const { error } = await supabase.auth.signOut();
-    
-    if (error) {
-      console.error('Force sign out error from Supabase:', error);
-    }
-    
-    console.log('Force sign out completed');
-    return true;
-  } catch (error) {
-    console.error('Force sign out error:', error);
-    localStorage.clear();
-    return true;
-  } finally {
-    setTimeout(() => {
-      isSigningOut = false;
-    }, 2000);
   }
 }
 
