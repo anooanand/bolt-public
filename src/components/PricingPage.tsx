@@ -4,7 +4,7 @@ import { hasCompletedPayment, isEmailVerified, supabase } from '../lib/supabase'
 import { createCheckoutSession } from '../lib/stripe';
 import { products } from '../stripe-config';
 import { useAuth } from '../contexts/AuthContext';
-import { useNavigate } from 'react-router-dom'; // Import useNavigate
+import { useNavigate } from 'react-router-dom';
 
 export function PricingPage() {
   const { user, emailVerified } = useAuth();
@@ -13,8 +13,8 @@ export function PricingPage() {
   const [isPaidUser, setIsPaidUser] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState<string | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null); // New state for error messages
-  const navigate = useNavigate(); // Initialize useNavigate
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const navigate = useNavigate();
   
   // Get user email from localStorage on component mount
   useEffect(() => {
@@ -53,27 +53,31 @@ export function PricingPage() {
     try {
       // Check if user is logged in
       if (!user) {
-        navigate('/signin'); // Redirect to sign-in page
+        navigate('/'); // Redirect to home page to sign in
         return;
       }
       
       // Check if email is verified
       if (!emailVerified) {
-        setErrorMessage('Please verify your email address before subscribing.'); // Display error message
+        setErrorMessage('Please verify your email address before subscribing.');
         return;
       }
       
       // Set processing state for this product
       setIsProcessing(product.id);
       
+      console.log('Creating checkout session for product:', product);
+      
       // Create checkout session
-      const checkoutUrl = await createCheckoutSession(product.priceId, product.mode);
+      const checkoutUrl = await createCheckoutSession(product.priceId, product.mode as 'subscription' | 'payment');
+      
+      console.log('Checkout URL:', checkoutUrl);
       
       // Redirect to checkout
       window.location.href = checkoutUrl;
     } catch (error: any) {
       console.error('Error creating checkout session:', error);
-      setErrorMessage(error.message || 'Failed to create checkout session. Please try again.'); // Display error message
+      setErrorMessage(error.message || 'Failed to create checkout session. Please try again.');
     } finally {
       setIsProcessing(null);
     }
@@ -123,7 +127,7 @@ export function PricingPage() {
             </div>
           )}
 
-          {errorMessage && ( // Display error message if present
+          {errorMessage && (
             <div className="mt-4 p-3 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-md inline-block">
               {errorMessage}
             </div>
@@ -191,9 +195,9 @@ export function PricingPage() {
                       : isProcessing === product.id
                       ? 'bg-indigo-400 text-white cursor-wait'
                       : !user 
-                      ? 'bg-gray-300 dark:bg-gray-600 text-gray-600 dark:text-gray-400 cursor-not-allowed' // Grey out if not logged in
+                      ? 'bg-gray-300 dark:bg-gray-600 text-gray-600 dark:text-gray-400 cursor-not-allowed'
                       : !emailVerified
-                      ? 'bg-gray-300 dark:bg-gray-600 text-gray-600 dark:text-gray-400 cursor-not-allowed' // Grey out if email not verified
+                      ? 'bg-gray-300 dark:bg-gray-600 text-gray-600 dark:text-gray-400 cursor-not-allowed'
                       : product.popular
                         ? 'bg-indigo-600 hover:bg-indigo-700 text-white hover:shadow-lg'
                         : 'bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-900 dark:text-white'
@@ -240,7 +244,7 @@ export function PricingPage() {
             We offer special pricing for schools and educational institutions. Contact us to learn more about our school plans.
           </p>
           <button 
-            onClick={handleContactSales} // Add onClick handler
+            onClick={handleContactSales}
             className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-md transition-colors"
           >
             Contact Sales
