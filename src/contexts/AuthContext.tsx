@@ -36,9 +36,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Use refs to prevent multiple simultaneous auth checks
   const isCheckingAuth = useRef(false);
   const isSigningOut = useRef(false);
-  const initializationComplete = useRef(false);
-
-  // Initialize auth state
+  const initializationComplete = useRef(false);    // Initialize auth state
   useEffect(() => {
     const initializeAuth = async () => {
       if (isCheckingAuth.current || initializationComplete.current) {
@@ -57,7 +55,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setIsLoading(false);
           initializationComplete.current = true;
           isCheckingAuth.current = false;
-        }, 8000); // Reduced timeout to 8 seconds
+        }, 12000); // Increased timeout to 12 seconds for email verification
         
         // Get current session
         const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
