@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase, handleEmailVerificationCallback } from '../lib/supabase';
-import { CheckCircle, XCircle, Loader } from 'lucide-react';
+import { CheckCircle, XCircle, Loader, AlertTriangle } from 'lucide-react';
 
 export function EmailVerificationHandler() {
-  const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
+  const [status, setStatus] = useState<'loading' | 'success' | 'error' | 'expired'>('loading');
   const [errorMessage, setErrorMessage] = useState('');
   const [userEmail, setUserEmail] = useState('');
   const navigate = useNavigate();
@@ -21,13 +21,23 @@ export function EmailVerificationHandler() {
         
         // Parse error parameters from URL if present
         const searchParams = new URLSearchParams(location.search);
-        const errorCode = searchParams.get('error_code');
-        const errorDescription = searchParams.get('error_description');
+        const hashParams = new URLSearchParams(location.hash.substring(1));
         
-        if (errorCode) {
-          console.error(`Error in verification: ${errorCode} - ${errorDescription}`);
-          setStatus('error');
-          setErrorMessage(errorDescription || 'Verification link is invalid or has expired');
+        // Check both search params and hash params for errors
+        const errorCode = searchParams.get('error_code') || hashParams.get('error_code');
+        const errorDescription = searchParams.get('error_description') || hashParams.get('error_description');
+        const error = searchParams.get('error') || hashParams.get('error');
+        
+        if (errorCode || error) {
+          console.error(`Error in verification: ${errorCode || error} - ${errorDescription}`);
+          
+          if (errorCode === 'otp_expired' || error === 'access_denied') {
+            setStatus('expired');
+            setErrorMessage('Your verification link has expired. Please request a new verification email.');
+          } else {
+            setStatus('error');
+            setErrorMessage(errorDescription || 'Verification link is invalid or has expired');
+          }
           return;
         }
 
@@ -39,16 +49,22 @@ export function EmailVerificationHandler() {
           setUserEmail(result.user.email || '');
           setStatus('success');
           
-          // Redirect after 2 seconds
+          // Redirect after 3 seconds
           setTimeout(() => {
             if (mounted) {
               navigate('/pricing');
             }
-          }, 2000);
+          }, 3000);
         } else {
           console.error('❌ Email verification failed:', result.error);
-          setStatus('error');
-          setErrorMessage(result.error?.message || 'Verification failed. Please try signing in manually.');
+          
+          if (result.error?.code === 'otp_expired') {
+            setStatus('expired');
+            setErrorMessage('Your verification link has expired. Please request a new verification email.');
+          } else {
+            setStatus('error');
+            setErrorMessage(result.error?.message || 'Verification failed. Please try signing in manually.');
+          }
         }
       } catch (error: any) {
         console.error('❌ Unexpected error in verification handler:', error);
@@ -68,7 +84,36 @@ export function EmailVerificationHandler() {
         authSubscription.data.subscription.unsubscribe();
       }
     };
-  }, [navigate, location.search]);
+  }, [navigate, location.search, location.hash]);
+
+  const handleResendVerification = async () => {
+    try {
+      const email = localStorage.getItem('userEmail');
+      if (!email) {
+        alert('No email found. Please sign up again.');
+        navigate('/');
+        return;
+      }
+
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: email,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`
+        }
+      });
+
+      if (error) {
+        console.error('Error resending verification:', error);
+        alert('Failed to resend verification email. Please try again.');
+      } else {
+        alert('Verification email sent! Please check your inbox.');
+      }
+    } catch (error) {
+      console.error('Error resending verification:', error);
+      alert('Failed to resend verification email. Please try again.');
+    }
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
@@ -109,6 +154,34 @@ export function EmailVerificationHandler() {
           </>
         )}
 
+        {status === 'expired' && (
+          <>
+            <div className="w-16 h-16 bg-yellow-100 dark:bg-yellow-900 rounded-full flex items-center justify-center mx-auto mb-4">
+              <AlertTriangle className="h-8 w-8 text-yellow-600 dark:text-yellow-400" />
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+              Verification Link Expired
+            </h2>
+            <p className="text-gray-600 dark:text-gray-300 mb-6">
+              {errorMessage}
+            </p>
+            <div className="space-y-3">
+              <button
+                onClick={handleResendVerification}
+                className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              >
+                Resend Verification Email
+              </button>
+              <button
+                onClick={() => navigate('/')}
+                className="w-full px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700"
+              >
+                Back to Home
+              </button>
+            </div>
+          </>
+        )}
+
         {status === 'error' && (
           <>
             <div className="w-16 h-16 bg-red-100 dark:bg-red-900 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -122,14 +195,20 @@ export function EmailVerificationHandler() {
             </p>
             <div className="space-y-3">
               <button
-                onClick={() => navigate('/pricing')}
+                onClick={handleResendVerification}
                 className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              >
+                Resend Verification Email
+              </button>
+              <button
+                onClick={() => navigate('/pricing')}
+                className="w-full px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700"
               >
                 Continue to Pricing
               </button>
               <button
                 onClick={() => navigate('/dashboard')}
-                className="w-full px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700"
+                className="w-full px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600"
               >
                 Go to Dashboard
               </button>
@@ -140,3 +219,4 @@ export function EmailVerificationHandler() {
     </div>
   );
 }
+
