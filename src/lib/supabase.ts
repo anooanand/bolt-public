@@ -52,8 +52,10 @@ export async function signUp(email: string, password: string) {
       throw error;
     }
     
-    // After successful signup, create a user profile manually
-    // This is a fallback in case the database trigger doesn't work
+    // Store email in localStorage for payment flow
+    localStorage.setItem('userEmail', email);
+    
+    // Manually create user profile as a fallback
     try {
       if (data.user) {
         const { error: profileError } = await supabase
@@ -185,7 +187,7 @@ export async function hasCompletedPayment(): Promise<boolean> {
     try {
       const dbPromise = supabase
         .from('user_profiles')
-        .select('payment_verified, payment_status, temp_access_until')
+        .select('payment_verified, payment_status, temp_access_until, manual_override')
         .eq('user_id', user.id)
         .single();
       
@@ -198,11 +200,16 @@ export async function hasCompletedPayment(): Promise<boolean> {
         try {
           const { data: idData, error: idError } = await supabase
             .from('user_profiles')
-            .select('payment_verified, payment_status, temp_access_until')
+            .select('payment_verified, payment_status, temp_access_until, manual_override')
             .eq('id', user.id)
             .single();
             
           if (!idError && idData) {
+            // Check for manual override first
+            if (idData.manual_override === true) {
+              return true;
+            }
+            
             // Only check for actual payment verification, not temporary access
             return idData.payment_verified === true || idData.payment_status === 'verified';
           }
@@ -217,6 +224,11 @@ export async function hasCompletedPayment(): Promise<boolean> {
         }
         
         return false;
+      }
+      
+      // Check for manual override first
+      if (data?.manual_override === true) {
+        return true;
       }
       
       // Note: Temporary access is handled separately by hasTemporaryAccess()
@@ -264,7 +276,7 @@ export async function hasTemporaryAccess(): Promise<boolean> {
       // First try with user_id
       let { data, error } = await supabase
         .from('user_profiles')
-        .select('temp_access_until')
+        .select('temp_access_until, temporary_access_expires')
         .eq('user_id', user.id)
         .single();
       
@@ -272,7 +284,7 @@ export async function hasTemporaryAccess(): Promise<boolean> {
         // Try with id instead
         const result = await supabase
           .from('user_profiles')
-          .select('temp_access_until')
+          .select('temp_access_until, temporary_access_expires')
           .eq('id', user.id)
           .single();
           
@@ -284,8 +296,16 @@ export async function hasTemporaryAccess(): Promise<boolean> {
         }
       }
       
+      // Check both temp_access_until and temporary_access_expires fields
       if (data?.temp_access_until) {
         const expiryDate = new Date(data.temp_access_until);
+        if (expiryDate > new Date()) {
+          return true;
+        }
+      }
+      
+      if (data?.temporary_access_expires) {
+        const expiryDate = new Date(data.temporary_access_expires);
         if (expiryDate > new Date()) {
           return true;
         }
@@ -337,7 +357,7 @@ export async function confirmPayment(planType: string) {
         .update({
           payment_verified: true,
           payment_status: 'verified',
-          subscription_status: 'paid',
+          subscription_status: 'active',
           subscription_plan: planType,
           updated_at: new Date().toISOString()
         })
@@ -350,7 +370,7 @@ export async function confirmPayment(planType: string) {
           .update({
             payment_verified: true,
             payment_status: 'verified',
-            subscription_status: 'paid',
+            subscription_status: 'active',
             subscription_plan: planType,
             updated_at: new Date().toISOString()
           })
@@ -412,6 +432,8 @@ export async function forceSignOut() {
 // Handle email verification callback
 export async function handleEmailVerificationCallback(url: string) {
   try {
+    console.log('Processing verification URL:', url);
+    
     // Extract hash parameters from URL
     const hashParams = new URLSearchParams(url.split('#')[1]);
     const accessToken = hashParams.get('access_token');
@@ -419,8 +441,13 @@ export async function handleEmailVerificationCallback(url: string) {
     const expiresIn = hashParams.get('expires_in');
     const tokenType = hashParams.get('token_type');
     
+    console.log('Extracted tokens:', { 
+      accessToken: accessToken ? 'present' : 'missing', 
+      refreshToken: refreshToken ? 'present' : 'missing' 
+    });
+    
     if (!accessToken || !refreshToken) {
-      throw new Error('Invalid verification URL');
+      throw new Error('Invalid verification URL - missing tokens');
     }
     
     // Set the session manually
@@ -429,11 +456,41 @@ export async function handleEmailVerificationCallback(url: string) {
       refresh_token: refreshToken
     });
     
-    if (error) throw error;
+    if (error) {
+      console.error('Error setting session:', error);
+      throw error;
+    }
+    
+    console.log('Session set successfully, user:', data.user?.email);
+    
+    // Verify the session was set correctly
+    const { data: sessionData } = await supabase.auth.getSession();
+    console.log('Session verification:', { 
+      hasSession: !!sessionData.session,
+      email: sessionData.session?.user?.email,
+      emailVerified: !!sessionData.session?.user?.email_confirmed_at
+    });
     
     return { success: true, user: data.user };
   } catch (error) {
     console.error('Error handling email verification:', error);
+    return { success: false, error };
+  }
+}
+
+// Manual verification function for admin use
+export async function manuallyVerifyUser(email: string) {
+  try {
+    const { data, error } = await supabase.rpc('manually_verify_user', {
+      p_email: email,
+      p_admin_notes: 'Manual verification via admin tool'
+    });
+    
+    if (error) throw error;
+    
+    return { success: true, data };
+  } catch (error) {
+    console.error('Error manually verifying user:', error);
     return { success: false, error };
   }
 }
@@ -450,5 +507,6 @@ export default {
   confirmPayment,
   forceSignOut,
   isEmailVerified,
-  handleEmailVerificationCallback
+  handleEmailVerificationCallback,
+  manuallyVerifyUser
 };

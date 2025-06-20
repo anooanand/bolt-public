@@ -11,6 +11,7 @@ export function EmailVerificationReminder({ email, onVerified }: EmailVerificati
   const [isResending, setIsResending] = useState(false);
   const [resendSuccess, setResendSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isChecking, setIsChecking] = useState(false);
 
   const handleResendVerification = async () => {
     setIsResending(true);
@@ -41,12 +42,16 @@ export function EmailVerificationReminder({ email, onVerified }: EmailVerificati
   };
 
   const handleCheckVerification = async () => {
+    setIsChecking(true);
+    setError(null);
+    
     try {
       // Refresh the session to check if email has been verified
       const { data, error } = await supabase.auth.refreshSession();
       
       if (error) {
         setError(error.message);
+        setIsChecking(false);
         return;
       }
       
@@ -57,9 +62,11 @@ export function EmailVerificationReminder({ email, onVerified }: EmailVerificati
         }
       } else {
         setError('Email not yet verified. Please check your inbox and click the verification link.');
+        setIsChecking(false);
       }
     } catch (err: any) {
       setError(err.message || 'Failed to check verification status');
+      setIsChecking(false);
     }
   };
 
@@ -121,10 +128,20 @@ export function EmailVerificationReminder({ email, onVerified }: EmailVerificati
               
               <button
                 onClick={handleCheckVerification}
-                className="inline-flex items-center px-4 py-2 border border-blue-300 text-sm font-medium rounded-md shadow-sm text-blue-700 bg-white hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                disabled={isChecking}
+                className="inline-flex items-center px-4 py-2 border border-blue-300 text-sm font-medium rounded-md shadow-sm text-blue-700 bg-white hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
               >
-                <RefreshCw className="mr-2 h-4 w-4" />
-                I've Verified My Email
+                {isChecking ? (
+                  <>
+                    <RefreshCw className="animate-spin -ml-1 mr-2 h-4 w-4" />
+                    Checking...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                    I've Verified My Email
+                  </>
+                )}
               </button>
             </div>
           </div>

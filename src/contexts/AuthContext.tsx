@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User } from '@supabase/supabase-js';
-import { supabase, hasCompletedPayment, isEmailVerified, signOut } from '../lib/supabase';
+import { supabase, hasCompletedPayment, isEmailVerified, signOut, forceSignOut } from '../lib/supabase';
 
 interface AuthContextType {
   user: User | null;
@@ -139,7 +139,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Check if email is verified
   const checkEmailVerification = async (): Promise<boolean> => {
     try {
-      return await isEmailVerified();
+      const verified = await isEmailVerified();
+      console.log('Email verification status:', verified);
+      return verified;
     } catch (error) {
       console.error('Error checking email verification:', error);
       return false;
@@ -149,7 +151,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Check if user has completed payment
   const checkPaymentStatus = async (): Promise<boolean> => {
     try {
-      return await hasCompletedPayment();
+      const completed = await hasCompletedPayment();
+      console.log('Payment status:', completed);
+      return completed;
     } catch (error) {
       console.error('Error checking payment status:', error);
       return false;
@@ -302,21 +306,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const authSignOut = async () => {
     try {
       console.log('Signing out...');
+      await forceSignOut();
       
-      // Use the signOut function from supabase.ts
-      const { success } = await forceSignOut();
+      // Reset state
+      setUser(null);
+      setPaymentCompleted(false);
+      setEmailVerified(false);
+      setIsAdmin(false);
       
-      if (success) {
-        // Reset state
-        setUser(null);
-        setPaymentCompleted(false);
-        setEmailVerified(false);
-        setIsAdmin(false);
-        
-        console.log('Sign out complete');
-      } else {
-        throw new Error('Sign out failed');
-      }
+      console.log('Sign out complete');
     } catch (error) {
       console.error('Sign out error:', error);
       // Force reset state even if API call fails

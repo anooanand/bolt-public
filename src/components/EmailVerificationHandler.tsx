@@ -14,6 +14,7 @@ export function EmailVerificationHandler() {
       try {
         // Get the full URL including hash
         const fullUrl = window.location.href;
+        console.log('Processing verification URL:', fullUrl);
         
         // Process the verification
         const result = await handleEmailVerificationCallback(fullUrl);
