@@ -52,6 +52,13 @@ export async function createCheckoutSession(priceId: string, mode: 'subscription
     
     // Fallback to Netlify function
     try {
+      console.log('Calling Netlify function with:', {
+        priceId,
+        planType: priceId,
+        userId: session.user.id,
+        userEmail: session.user.email
+      });
+      
       const netlifyResponse = await fetch('/.netlify/functions/create-checkout-session', {
         method: 'POST',
         headers: {
@@ -62,16 +69,27 @@ export async function createCheckoutSession(priceId: string, mode: 'subscription
           planType: priceId,
           userId: session.user.id,
           userEmail: session.user.email,
-          mode: mode,
         }),
       });
       
       if (!netlifyResponse.ok) {
-        const errorData = await netlifyResponse.json();
-        throw new Error(errorData.error || 'Failed to create checkout session via Netlify');
+        const errorText = await netlifyResponse.text();
+        console.error('Netlify function error response:', errorText);
+        
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch (e) {
+          errorData = { error: errorText || 'Unknown error' };
+        }
+        
+        throw new Error(errorData.error || errorData.message || 'Failed to create checkout session via Netlify');
       }
       
-      const { url } = await netlifyResponse.json();
+      const responseData = await netlifyResponse.json();
+      console.log('Netlify function response:', responseData);
+      
+      const { url } = responseData;
       
       if (!url) {
         throw new Error('No checkout URL returned from Netlify function');
