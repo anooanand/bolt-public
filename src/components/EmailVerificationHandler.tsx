@@ -9,12 +9,30 @@ export function EmailVerificationHandler() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+    let authListener: any;
+
     const processVerification = async () => {
       try {
         console.log('Starting email verification process...');
         console.log('Current URL:', window.location.href);
         
-        // Let Supabase handle the auth callback automatically
+        // Set up auth state listener to catch the sign-in event
+        authListener = supabase.auth.onAuthStateChange(async (event, session) => {
+          console.log('Auth state change in verification handler:', event, session?.user?.email);
+          
+          if (event === 'SIGNED_IN' && session?.user) {
+            console.log('User successfully signed in during verification:', session.user.email);
+            setStatus('success');
+            
+            // Redirect to pricing page after successful verification
+            timeoutId = setTimeout(() => {
+              navigate('/pricing');
+            }, 3000);
+          }
+        });
+
+        // Also check current session immediately
         const { data, error } = await supabase.auth.getSession();
         
         if (error) {
@@ -25,17 +43,22 @@ export function EmailVerificationHandler() {
         }
 
         if (data.session) {
-          console.log('Session found:', data.session.user.email);
+          console.log('Session already exists:', data.session.user.email);
           setStatus('success');
           
           // Redirect to pricing page after successful verification
-          setTimeout(() => {
+          timeoutId = setTimeout(() => {
             navigate('/pricing');
           }, 3000);
         } else {
-          console.log('No session found');
-          setStatus('error');
-          setErrorMessage('No session found. Please try signing in manually.');
+          // If no session yet, wait for the auth state change
+          console.log('No session yet, waiting for auth state change...');
+          
+          // Set a timeout to show error if nothing happens in 10 seconds
+          timeoutId = setTimeout(() => {
+            setStatus('error');
+            setErrorMessage('Verification timeout. Please try signing in manually.');
+          }, 10000);
         }
       } catch (error: any) {
         console.error('Unexpected error:', error);
@@ -45,6 +68,16 @@ export function EmailVerificationHandler() {
     };
 
     processVerification();
+
+    // Cleanup function
+    return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+      if (authListener) {
+        authListener.data?.subscription?.unsubscribe();
+      }
+    };
   }, [navigate]);
 
   return (
@@ -58,6 +91,9 @@ export function EmailVerificationHandler() {
             </h2>
             <p className="text-gray-600 dark:text-gray-300">
               Please wait while we verify your email address...
+            </p>
+            <p className="text-xs text-gray-500 mt-2">
+              This may take a few moments
             </p>
           </>
         )}
