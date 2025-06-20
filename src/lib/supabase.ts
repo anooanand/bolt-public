@@ -478,6 +478,22 @@ export async function handleEmailVerificationCallback(): Promise<{ success: bool
   try {
     console.log('🔄 Processing email verification callback...');
     
+    // Parse URL parameters to check for errors first
+    const urlParams = new URLSearchParams(window.location.search);
+    const errorCode = urlParams.get('error_code');
+    const errorDescription = urlParams.get('error_description');
+    
+    if (errorCode) {
+      console.error('❌ Error in verification URL:', errorCode, errorDescription);
+      return { 
+        success: false, 
+        error: { 
+          code: errorCode, 
+          message: errorDescription || 'Verification link is invalid or has expired' 
+        } 
+      };
+    }
+    
     // Let Supabase handle the PKCE flow automatically
     const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
     
