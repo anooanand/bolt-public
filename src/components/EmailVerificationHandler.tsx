@@ -6,79 +6,113 @@ import { CheckCircle, XCircle, Loader } from 'lucide-react';
 export function EmailVerificationHandler() {
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [errorMessage, setErrorMessage] = useState('');
+  const [userEmail, setUserEmail] = useState('');
   const navigate = useNavigate();
 
   useEffect(() => {
-    let timeoutId: NodeJS.Timeout;
-    let authListener: any;
+    let mounted = true;
+    let authSubscription: any;
 
     const processVerification = async () => {
       try {
-        console.log('Starting email verification process...');
+        console.log('=== EMAIL VERIFICATION HANDLER STARTED ===');
         console.log('Current URL:', window.location.href);
         
-        // Set up auth state listener to catch the sign-in event
-        authListener = supabase.auth.onAuthStateChange(async (event, session) => {
-          console.log('Auth state change in verification handler:', event, session?.user?.email);
+        // Method 1: Listen for auth state changes (most reliable)
+        authSubscription = supabase.auth.onAuthStateChange(async (event, session) => {
+          if (!mounted) return;
+          
+          console.log('🔄 Auth state change in verification handler:', event);
+          console.log('📧 Session user:', session?.user?.email);
           
           if (event === 'SIGNED_IN' && session?.user) {
-            console.log('User successfully signed in during verification:', session.user.email);
+            console.log('✅ SUCCESS: User signed in during verification:', session.user.email);
+            setUserEmail(session.user.email || '');
             setStatus('success');
             
-            // Redirect to pricing page after successful verification
-            timeoutId = setTimeout(() => {
-              navigate('/pricing');
-            }, 3000);
+            // Redirect after 2 seconds
+            setTimeout(() => {
+              if (mounted) {
+                console.log('🚀 Redirecting to pricing...');
+                navigate('/pricing');
+              }
+            }, 2000);
           }
         });
 
-        // Also check current session immediately
-        const { data, error } = await supabase.auth.getSession();
-        
-        if (error) {
-          console.error('Auth callback error:', error);
-          setStatus('error');
-          setErrorMessage('Verification failed. Please try signing in manually.');
-          return;
-        }
+        // Method 2: Check current session (backup)
+        setTimeout(async () => {
+          if (!mounted || status !== 'loading') return;
+          
+          try {
+            const { data, error } = await supabase.auth.getSession();
+            console.log('🔍 Session check result:', { 
+              hasSession: !!data.session, 
+              email: data.session?.user?.email,
+              error: error?.message 
+            });
+            
+            if (data.session?.user && mounted) {
+              console.log('✅ SUCCESS: Found existing session:', data.session.user.email);
+              setUserEmail(data.session.user.email || '');
+              setStatus('success');
+              
+              setTimeout(() => {
+                if (mounted) {
+                  console.log('🚀 Redirecting to pricing...');
+                  navigate('/pricing');
+                }
+              }, 2000);
+            }
+          } catch (err) {
+            console.error('❌ Session check error:', err);
+          }
+        }, 1000);
 
-        if (data.session) {
-          console.log('Session already exists:', data.session.user.email);
-          setStatus('success');
+        // Method 3: Timeout fallback
+        setTimeout(() => {
+          if (!mounted || status !== 'loading') return;
           
-          // Redirect to pricing page after successful verification
-          timeoutId = setTimeout(() => {
-            navigate('/pricing');
-          }, 3000);
-        } else {
-          // If no session yet, wait for the auth state change
-          console.log('No session yet, waiting for auth state change...');
+          console.log('⏰ Verification timeout - checking one more time...');
           
-          // Set a timeout to show error if nothing happens in 10 seconds
-          timeoutId = setTimeout(() => {
-            setStatus('error');
-            setErrorMessage('Verification timeout. Please try signing in manually.');
-          }, 10000);
-        }
+          supabase.auth.getSession().then(({ data, error }) => {
+            if (data.session?.user && mounted) {
+              console.log('✅ LATE SUCCESS: Found session on timeout check:', data.session.user.email);
+              setUserEmail(data.session.user.email || '');
+              setStatus('success');
+              
+              setTimeout(() => {
+                if (mounted) {
+                  navigate('/pricing');
+                }
+              }, 1000);
+            } else if (mounted) {
+              console.log('❌ TIMEOUT: No session found after 8 seconds');
+              setStatus('error');
+              setErrorMessage('Verification timeout. Please try signing in manually.');
+            }
+          });
+        }, 8000);
+
       } catch (error: any) {
-        console.error('Unexpected error:', error);
-        setStatus('error');
-        setErrorMessage('An unexpected error occurred.');
+        console.error('❌ Unexpected error in verification handler:', error);
+        if (mounted) {
+          setStatus('error');
+          setErrorMessage('An unexpected error occurred.');
+        }
       }
     };
 
     processVerification();
 
-    // Cleanup function
+    // Cleanup
     return () => {
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-      }
-      if (authListener) {
-        authListener.data?.subscription?.unsubscribe();
+      mounted = false;
+      if (authSubscription?.data?.subscription) {
+        authSubscription.data.subscription.unsubscribe();
       }
     };
-  }, [navigate]);
+  }, [navigate, status]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
@@ -104,10 +138,13 @@ export function EmailVerificationHandler() {
               <CheckCircle className="h-8 w-8 text-green-600 dark:text-green-400" />
             </div>
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-              Email Verified!
+              Email Verified Successfully! 🎉
             </h2>
+            <p className="text-gray-600 dark:text-gray-300 mb-2">
+              Welcome, {userEmail}!
+            </p>
             <p className="text-gray-600 dark:text-gray-300 mb-6">
-              Your email has been successfully verified. You're now ready to complete your subscription setup.
+              Your email has been verified. You're now ready to complete your subscription setup.
             </p>
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
             <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -122,17 +159,25 @@ export function EmailVerificationHandler() {
               <XCircle className="h-8 w-8 text-red-600 dark:text-red-400" />
             </div>
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-              Verification Failed
+              Verification Issue
             </h2>
             <p className="text-gray-600 dark:text-gray-300 mb-6">
-              {errorMessage || 'We could not verify your email address. Please try again.'}
+              {errorMessage || 'There was an issue with verification. You may already be signed in.'}
             </p>
-            <button
-              onClick={() => navigate('/dashboard')}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-            >
-              Go to Dashboard
-            </button>
+            <div className="space-y-3">
+              <button
+                onClick={() => navigate('/pricing')}
+                className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              >
+                Continue to Pricing
+              </button>
+              <button
+                onClick={() => navigate('/dashboard')}
+                className="w-full px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700"
+              >
+                Go to Dashboard
+              </button>
+            </div>
           </>
         )}
       </div>
