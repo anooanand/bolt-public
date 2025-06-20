@@ -26,9 +26,6 @@ export const useAuth = () => {
   return context;
 };
 
-// Type alias for operation function
-type OperationFunction<T> = () => Promise<T>;
-
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -63,12 +60,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // ENHANCED: Network-aware retry mechanism
-  const networkAwareRetry = async <T>(
-    operation: OperationFunction<T>,
-    maxRetries = 5,
-    operationName = 'operation'
-  ): Promise<T | null> => {
+  // FIXED: Simplified retry mechanism without generics
+  const retryOperation = async (
+    operation: () => Promise<any>,
+    maxRetries: number = 5,
+    operationName: string = 'operation'
+  ): Promise<any> => {
     let lastError;
     
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -101,15 +98,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return null;
   };
 
-  // ENHANCED: Auth state checker with multiple verification points
+  // Auth state checker with multiple verification points
   const checkAuthState = async (retryCount = 0) => {
     const maxRetries = 5;
     
     try {
       console.log(`🔍 Checking auth state (attempt ${retryCount + 1}/${maxRetries + 1})`);
       
-      // ENHANCED: Get session with timeout protection
-      const sessionResult = await networkAwareRetry(
+      // Get session with timeout protection
+      const sessionResult = await retryOperation(
         () => supabase.auth.getSession(),
         3,
         'getSession'
@@ -143,8 +140,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       if (session?.user) {
-        // ENHANCED: Double-check with fresh user data
-        const userResult = await networkAwareRetry(
+        // Double-check with fresh user data
+        const userResult = await retryOperation(
           () => supabase.auth.getUser(),
           3,
           'getUser'
@@ -153,7 +150,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (userResult && !userResult.error) {
           const freshUser = userResult.data.user;
           
-          // ENHANCED: Check verification status
+          // Check verification status
           if (freshUser?.email_confirmed_at) {
             console.log('✅ User email verified:', freshUser.email);
             setUser(freshUser);
@@ -201,7 +198,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // ENHANCED: Manual auth refresh function
+  // Manual auth refresh function
   const refreshAuth = async () => {
     console.log('🔄 Manual auth refresh triggered');
     setLoading(true);
@@ -221,7 +218,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     initializeAuth();
 
-    // ENHANCED: Auth state change listener with improved handling
+    // Auth state change listener with improved handling
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (!mounted) return;
@@ -233,7 +230,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         });
         
         if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-          // ENHANCED: Add delay to allow for potential state propagation
+          // Add delay to allow for potential state propagation
           setTimeout(async () => {
             if (!mounted) return;
             
@@ -302,7 +299,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
 
-  // ENHANCED: Debug logging for development
+  // Debug logging for development
   useEffect(() => {
     if (process.env.NODE_ENV === 'development') {
       console.log('👤 Auth State:', {
@@ -329,3 +326,4 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     </AuthContext.Provider>
   );
 };
+
