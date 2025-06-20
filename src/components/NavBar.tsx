@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { User } from '@supabase/supabase-js';
 import { useLearning } from '../contexts/LearningContext';
 import { Link } from 'react-router-dom';
@@ -25,6 +25,9 @@ export function NavBar({
   const [isLearningMenuOpen, setIsLearningMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const { progress } = useLearning();
+  
+  // Use ref to prevent multiple simultaneous sign out attempts
+  const isSigningOut = useRef(false);
 
   const navigationItems = [
     { id: 'home', name: 'Home', href: '/' },
@@ -43,13 +46,31 @@ export function NavBar({
     e.preventDefault();
     e.stopPropagation();
     
+    // Prevent multiple simultaneous sign out attempts
+    if (isSigningOut.current) {
+      console.log('Sign out already in progress, ignoring click...');
+      return;
+    }
+    
     try {
+      isSigningOut.current = true;
       console.log('NavBar: Sign out clicked');
-      await onForceSignOut();
+      
+      // Close all menus immediately
       setIsUserMenuOpen(false);
       setIsMenuOpen(false);
+      setIsLearningMenuOpen(false);
+      
+      // Call the sign out function
+      await onForceSignOut();
+      
     } catch (error) {
       console.error('Error during sign out:', error);
+    } finally {
+      // Reset the flag after a delay to prevent rapid clicks
+      setTimeout(() => {
+        isSigningOut.current = false;
+      }, 2000);
     }
   };
 
@@ -192,11 +213,14 @@ export function NavBar({
                       </Link>
                       <button
                         onClick={handleSignOut}
-                        className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100 dark:text-red-400 dark:hover:bg-gray-700"
+                        disabled={isSigningOut.current}
+                        className={`block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100 dark:text-red-400 dark:hover:bg-gray-700 ${
+                          isSigningOut.current ? 'opacity-50 cursor-not-allowed' : ''
+                        }`}
                       >
                         <div className="flex items-center">
                           <LogOut className="w-4 h-4 mr-2" />
-                          Sign Out
+                          {isSigningOut.current ? 'Signing out...' : 'Sign Out'}
                         </div>
                       </button>
                     </div>
@@ -310,11 +334,14 @@ export function NavBar({
                   </Link>
                   <button
                     onClick={handleSignOut}
-                    className="block w-full text-left px-3 py-2 rounded-md text-sm font-medium text-red-600 hover:bg-gray-50 dark:text-red-400 dark:hover:bg-gray-800"
+                    disabled={isSigningOut.current}
+                    className={`block w-full text-left px-3 py-2 rounded-md text-sm font-medium text-red-600 hover:bg-gray-50 dark:text-red-400 dark:hover:bg-gray-800 ${
+                      isSigningOut.current ? 'opacity-50 cursor-not-allowed' : ''
+                    }`}
                   >
                     <div className="flex items-center">
                       <LogOut className="w-4 h-4 mr-2" />
-                      Sign Out
+                      {isSigningOut.current ? 'Signing out...' : 'Sign Out'}
                     </div>
                   </button>
                 </div>
@@ -359,3 +386,4 @@ export function NavBar({
     </nav>
   );
 }
+
