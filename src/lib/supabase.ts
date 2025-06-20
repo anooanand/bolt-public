@@ -438,6 +438,8 @@ export async function confirmPayment(planType: string) {
 }
 
 // Fixed force sign out function
+let isSigningOut = false;
+
 export async function forceSignOut() {
   if (isSigningOut) {
     console.log('Force sign out already in progress, skipping...');
