@@ -165,7 +165,7 @@ export async function requestPasswordReset(email: string) {
 }
 
 // FIXED: Enhanced email verification check with automatic verification detection
-export async function isEmailVerified(): Promise<boolean> {
+export async function isEmailVerified(retries = 3): Promise<boolean> {
   try {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return false;
@@ -232,6 +232,13 @@ export async function isEmailVerified(): Promise<boolean> {
       }
     }
     
+    // Retry if email_confirmed_at is still null and retries are left
+    if (retries > 0) {
+      console.log(`Retrying isEmailVerified (${retries} attempts left)...`);
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Wait for 1 second
+      return isEmailVerified(retries - 1);
+    }
+
     console.log('❌ Email not verified');
     return false;
   } catch (error) {
@@ -440,7 +447,7 @@ export async function forceSignOut() {
   }
   
   try {
-    isForceSigningOut = true;
+    isSigningOut = true;
     console.log('Executing forceSignOut function...');
     
     // First clear local storage
@@ -468,7 +475,7 @@ export async function forceSignOut() {
   } finally {
     // Reset the flag after a delay
     setTimeout(() => {
-      isForceSigningOut = false;
+      isSigningOut = false;
     }, 2000);
   }
 }
@@ -518,64 +525,31 @@ export async function handleEmailVerificationCallback(): Promise<{ success: bool
             email_verified_at: new Date().toISOString(),
             role: 'user',
             payment_status: 'pending',
-            subscription_status: 'free',
-            temp_access_until: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-            created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
-          });
+          }, { onConflict: 'id' }); // Use onConflict to update existing row
         
         if (updateError) {
-          console.warn('⚠️ Error updating user profile during verification:', updateError);
-          // Continue anyway - the main verification succeeded
+          console.warn('Error updating user_profiles table after verification:', updateError);
         } else {
-          console.log('✅ User profile updated with email verification');
+          console.log('✅ user_profiles table updated with email_verified status.');
         }
-      } catch (profileError) {
-        console.warn('⚠️ Error in profile update during verification:', profileError);
-        // Continue anyway - the main verification succeeded
+      } catch (dbError) {
+        console.error('❌ Database update error during verification:', dbError);
       }
-      
-      return { success: true, user };
+
+      // Refresh the user object to get the latest email_confirmed_at from Supabase
+      const { data: { user: refreshedUser }, error: refreshError } = await supabase.auth.getUser();
+      if (refreshError) {
+        console.warn('Error refreshing user data after verification:', refreshError);
+      }
+
+      return { success: true, user: refreshedUser || user };
+    } else {
+      console.warn('No user session found after verification callback.');
+      return { success: false, error: { message: 'No user session found after verification.' } };
     }
-    
-    console.log('❌ No session found during verification callback');
-    return { success: false, error: 'No session found' };
-    
   } catch (error) {
-    console.error('❌ Unexpected error in email verification callback:', error);
+    console.error('❌ Unexpected error in handleEmailVerificationCallback:', error);
     return { success: false, error };
   }
 }
-
-// Manual verification function for admin use
-export async function manuallyVerifyUser(email: string) {
-  try {
-    const { data, error } = await supabase.rpc('manually_verify_user', {
-      p_email: email,
-      p_admin_notes: 'Manual verification via admin tool'
-    });
-    
-    if (error) throw error;
-    
-    return { success: true, data };
-  } catch (error) {
-    console.error('Error manually verifying user:', error);
-    return { success: false, error };
-  }
-}
-
-export default {
-  supabase,
-  getCurrentUser,
-  signUp,
-  signIn,
-  signOut,
-  requestPasswordReset,
-  hasCompletedPayment,
-  hasTemporaryAccess,
-  confirmPayment,
-  forceSignOut,
-  isEmailVerified,
-  handleEmailVerificationCallback,
-  manuallyVerifyUser
-};
