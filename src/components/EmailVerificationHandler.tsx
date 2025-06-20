@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
+import { supabase, handleEmailVerificationCallback } from '../lib/supabase';
 import { CheckCircle, XCircle, Loader } from 'lucide-react';
 
 export function EmailVerificationHandler() {
@@ -30,119 +30,31 @@ export function EmailVerificationHandler() {
           setErrorMessage(errorDescription || 'Verification link is invalid or has expired');
           return;
         }
+
+        // Call the dedicated verification handler function
+        const result = await handleEmailVerificationCallback();
         
-        // Method 1: Process the URL directly
-        // This is the most reliable method for handling OTP expiration issues
-        try {
-          // Extract the token from the URL if present
-          const hash = window.location.hash;
-          if (hash && hash.includes('access_token')) {
-            console.log('Found access token in URL hash, attempting to set session...');
-            
-            // Set the session manually from the URL
-            const { data, error } = await supabase.auth.getSession();
-            
-            if (error) {
-              console.error('Error getting session after hash detected:', error);
-            } else if (data.session) {
-              console.log('✅ Session established from URL hash');
-              setUserEmail(data.session.user.email || '');
-              setStatus('success');
-              
-              // Redirect after 2 seconds
-              setTimeout(() => {
-                if (mounted) {
-                  navigate('/pricing');
-                }
-              }, 2000);
-              return;
+        if (result.success && result.user) {
+          console.log('✅ Email verification successful:', result.user.email);
+          setUserEmail(result.user.email || '');
+          setStatus('success');
+          
+          // Redirect after 2 seconds
+          setTimeout(() => {
+            if (mounted) {
+              navigate('/pricing');
             }
-          }
-        } catch (urlError) {
-          console.error('Error processing URL:', urlError);
+          }, 2000);
+        } else {
+          console.error('❌ Email verification failed:', result.error);
+          setStatus('error');
+          setErrorMessage(result.error?.message || 'Verification failed. Please try signing in manually.');
         }
-
-        // Method 2: Listen for auth state changes
-        authSubscription = supabase.auth.onAuthStateChange(async (event, session) => {
-          if (!mounted) return;
-          
-          console.log('🔄 Auth state change in verification handler:', event);
-          console.log('📧 Session user:', session?.user?.email);
-          
-          if (event === 'SIGNED_IN' && session?.user) {
-            console.log('✅ SUCCESS: User signed in during verification:', session.user.email);
-            setUserEmail(session.user.email || '');
-            setStatus('success');
-            
-            // Redirect after 2 seconds
-            setTimeout(() => {
-              if (mounted) {
-                console.log('🚀 Redirecting to pricing...');
-                navigate('/pricing');
-              }
-            }, 2000);
-          }
-        });
-
-        // Method 3: Check current session (backup)
-        setTimeout(async () => {
-          if (!mounted || status !== 'loading') return;
-          
-          try {
-            const { data, error } = await supabase.auth.getSession();
-            console.log('🔍 Session check result:', { 
-              hasSession: !!data.session, 
-              email: data.session?.user?.email,
-              error: error?.message 
-            });
-            
-            if (data.session?.user && mounted) {
-              console.log('✅ SUCCESS: Found existing session:', data.session.user.email);
-              setUserEmail(data.session.user.email || '');
-              setStatus('success');
-              
-              setTimeout(() => {
-                if (mounted) {
-                  console.log('🚀 Redirecting to pricing...');
-                  navigate('/pricing');
-                }
-              }, 2000);
-            }
-          } catch (err) {
-            console.error('❌ Session check error:', err);
-          }
-        }, 1000);
-
-        // Method 4: Timeout fallback
-        setTimeout(() => {
-          if (!mounted || status !== 'loading') return;
-          
-          console.log('⏰ Verification timeout - checking one more time...');
-          
-          supabase.auth.getSession().then(({ data, error }) => {
-            if (data.session?.user && mounted) {
-              console.log('✅ LATE SUCCESS: Found session on timeout check:', data.session.user.email);
-              setUserEmail(data.session.user.email || '');
-              setStatus('success');
-              
-              setTimeout(() => {
-                if (mounted) {
-                  navigate('/pricing');
-                }
-              }, 1000);
-            } else if (mounted) {
-              console.log('❌ TIMEOUT: No session found after 8 seconds');
-              setStatus('error');
-              setErrorMessage('Verification timeout. Please try signing in manually.');
-            }
-          });
-        }, 8000);
-
       } catch (error: any) {
         console.error('❌ Unexpected error in verification handler:', error);
         if (mounted) {
           setStatus('error');
-          setErrorMessage('An unexpected error occurred.');
+          setErrorMessage('An unexpected error occurred during verification.');
         }
       }
     };
@@ -156,7 +68,7 @@ export function EmailVerificationHandler() {
         authSubscription.data.subscription.unsubscribe();
       }
     };
-  }, [navigate, status, location.search]);
+  }, [navigate, location.search]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">

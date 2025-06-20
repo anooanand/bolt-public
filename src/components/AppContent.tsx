@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
 import { NavBar } from './NavBar';
@@ -33,7 +33,6 @@ import { BrainstormingTools } from './BrainstormingTools';
 import { WritingAccessCheck } from './WritingAccessCheck';
 import { WritingToolbar } from './WritingToolbar';
 import { PlanningToolModal } from './PlanningToolModal';
-import { EmailVerificationReminder } from './EmailVerificationReminder';
 import { EmailVerificationHandler } from './EmailVerificationHandler';
 import { CheckCircle } from 'lucide-react';
 import { AdminButton } from './AdminButton';
@@ -45,6 +44,7 @@ export function AppContent() {
   const [authModalMode, setAuthModalMode] = useState<'signin' | 'signup'>('signin');
   const [showPaymentSuccess, setShowPaymentSuccess] = useState(false);
   const [pendingPaymentPlan, setPendingPaymentPlan] = useState<string | null>(null);
+  const location = useLocation();
 
   // Writing state
   const [content, setContent] = useState('');
@@ -82,6 +82,14 @@ export function AppContent() {
       setActivePage('payment-success');
     }
   }, []);
+
+  // Set active page based on current path
+  useEffect(() => {
+    const path = location.pathname.substring(1) || 'home';
+    if (path !== 'auth/callback') { // Don't change active page during auth callback
+      setActivePage(path);
+    }
+  }, [location.pathname]);
 
   // Text selection logic for writing area
   useEffect(() => {
