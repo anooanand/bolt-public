@@ -26,6 +26,9 @@ export const useAuth = () => {
   return context;
 };
 
+// Type alias for operation function
+type OperationFunction<T> = () => Promise<T>;
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -62,7 +65,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // ENHANCED: Network-aware retry mechanism
   const networkAwareRetry = async <T>(
-    operation: () => Promise<T>,
+    operation: OperationFunction<T>,
     maxRetries = 5,
     operationName = 'operation'
   ): Promise<T | null> => {
