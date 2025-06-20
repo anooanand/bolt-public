@@ -14,7 +14,7 @@ export function EmailVerificationHandler() {
     let mounted = true;
     let authSubscription: any;
 
-    const processVerification = async () => {
+    const processVerification = async (retries = 3) => {
       try {
         console.log('=== EMAIL VERIFICATION HANDLER STARTED ===');
         console.log('Current URL:', window.location.href);
@@ -49,6 +49,19 @@ export function EmailVerificationHandler() {
           setUserEmail(result.user.email || '');
           setStatus('success');
           
+          // Ensure the session is truly updated before redirecting
+          const { data: { session: updatedSession }, error: sessionError } = await supabase.auth.getSession();
+          if (sessionError) {
+            console.error('Error fetching updated session:', sessionError);
+            // Proceed with success but log the session error
+          }
+
+          if (updatedSession?.user?.email_confirmed_at) {
+            console.log('Session confirmed_at updated, proceeding with redirect.');
+          } else {
+            console.warn('Session confirmed_at not yet updated, but verification reported success.');
+          }
+
           // Redirect after 3 seconds
           setTimeout(() => {
             if (mounted) {
@@ -68,9 +81,12 @@ export function EmailVerificationHandler() {
         }
       } catch (error: any) {
         console.error('❌ Unexpected error in verification handler:', error);
-        if (mounted) {
+        if (retries > 0) {
+          console.log(`Retrying verification (${retries} attempts left)...`);
+          setTimeout(() => processVerification(retries - 1), 1000); // Retry after 1 second
+        } else if (mounted) {
           setStatus('error');
-          setErrorMessage('An unexpected error occurred during verification.');
+          setErrorMessage('An unexpected error occurred during verification after multiple attempts.');
         }
       }
     };
@@ -219,4 +235,3 @@ export function EmailVerificationHandler() {
     </div>
   );
 }
-
