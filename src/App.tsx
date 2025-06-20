@@ -361,7 +361,7 @@ function App() {
                     />
                   ) : <Navigate to="/" />
                 } />
-                <Route path="/auth/callback" element={<EmailVerificationHandler />} />
+            <Route path="/auth/callback" element={<EmailVerificationHandler />} />
               </Routes>
             </div>
 
