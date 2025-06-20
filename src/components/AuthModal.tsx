@@ -26,6 +26,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [error, setError] = useState<string>('');
   const [success, setSuccess] = useState<boolean>(false);
   const [confirmationEmail, setConfirmationEmail] = useState<string>('');
+  const [verificationChecking, setVerificationChecking] = useState(false);
 
   // Reset form when modal opens or mode changes
   useEffect(() => {
@@ -67,7 +68,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           email,
           password,
           options: {
-            emailRedirectTo: window.location.origin
+            emailRedirectTo: `${window.location.origin}/auth/callback`
           }
         });
         
@@ -91,10 +92,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           localStorage.setItem('userEmail', email);
           setSuccess(true);
           
-          // Short delay to show success message
-          setTimeout(() => {
-            onSuccess(data.user);
-          }, 1500);
+          // Check if email is verified
+          if (data.user.email_confirmed_at) {
+            // Email is verified, proceed normally
+            setTimeout(() => {
+              onSuccess(data.user);
+            }, 1500);
+          } else {
+            // Email is not verified, show confirmation screen
+            setConfirmationEmail(email);
+            setMode('confirmation');
+          }
         }
       }
     } catch (err: any) {
@@ -113,7 +121,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         type: 'signup',
         email: confirmationEmail,
         options: {
-          emailRedirectTo: window.location.origin
+          emailRedirectTo: `${window.location.origin}/auth/callback`
         }
       });
       
@@ -131,6 +139,54 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     }
   };
 
+  const handleVerificationCheck = async () => {
+    setVerificationChecking(true);
+    setError('');
+    
+    try {
+      // Refresh the session to check if email has been verified
+      const { data, error } = await supabase.auth.refreshSession();
+      
+      if (error) {
+        setError(error.message);
+        setVerificationChecking(false);
+        return;
+      }
+      
+      if (data.session?.user?.email_confirmed_at) {
+        // Email has been verified
+        setSuccess(true);
+        setTimeout(() => {
+          onSuccess(data.session!.user);
+        }, 1500);
+      } else {
+        // Try to sign out and sign in again to refresh the session completely
+        await supabase.auth.signOut();
+        
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+          email: confirmationEmail,
+          password,
+        });
+        
+        if (signInError) {
+          setError('Failed to refresh session. Please try signing in again.');
+        } else if (signInData.user?.email_confirmed_at) {
+          // Email is now verified
+          setSuccess(true);
+          setTimeout(() => {
+            onSuccess(signInData.user);
+          }, 1500);
+        } else {
+          setError('Email not yet verified. Please check your inbox and click the verification link.');
+        }
+      }
+    } catch (err: any) {
+      setError('Failed to check verification status: ' + (err.message || 'Please try again'));
+    } finally {
+      setVerificationChecking(false);
+    }
+  };
+
   if (!isOpen) return null;
 
   if (mode === 'confirmation') {
@@ -145,18 +201,24 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           </h2>
           <p className="text-gray-600 dark:text-gray-300 mb-6">
             We've sent a confirmation link to <strong>{confirmationEmail}</strong>. 
-            Please check your email and click the link to verify your account.
+            Please check your inbox and click the verification link to activate your account.
           </p>
           
           {error && (
             <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-md">
-              <p className="text-sm">{error}</p>
+              <div className="flex">
+                <AlertCircle className="h-5 w-5 text-red-500 mr-2 flex-shrink-0" />
+                <p className="text-sm">{error}</p>
+              </div>
             </div>
           )}
           
           {success && (
             <div className="mb-4 p-3 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded-md">
-              <p className="text-sm">Confirmation email sent successfully!</p>
+              <div className="flex">
+                <CheckCircle className="h-5 w-5 text-green-500 mr-2 flex-shrink-0" />
+                <p className="text-sm">Confirmation email sent successfully!</p>
+              </div>
             </div>
           )}
           
@@ -173,6 +235,21 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 </>
               ) : (
                 'Resend Confirmation Email'
+              )}
+            </button>
+            
+            <button
+              onClick={handleVerificationCheck}
+              disabled={verificationChecking || !password}
+              className="w-full py-2 px-4 bg-green-600 hover:bg-green-700 text-white rounded-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+            >
+              {verificationChecking ? (
+                <>
+                  <Loader className="animate-spin -ml-1 mr-2 h-5 w-5" />
+                  Checking...
+                </>
+              ) : (
+                "I've Verified My Email"
               )}
             </button>
             

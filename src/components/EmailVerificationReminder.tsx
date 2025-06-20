@@ -61,8 +61,21 @@ export function EmailVerificationReminder({ email, onVerified }: EmailVerificati
           onVerified();
         }
       } else {
-        setError('Email not yet verified. Please check your inbox and click the verification link.');
-        setIsChecking(false);
+        // Try to manually verify the user's email
+        try {
+          // Force a sign out and sign in to refresh the session completely
+          await supabase.auth.signOut();
+          
+          // Show a message to the user
+          alert("Please sign in again to complete the verification process.");
+          
+          // Reload the page to force a new sign in
+          window.location.reload();
+        } catch (signOutError) {
+          console.error('Error during sign out:', signOutError);
+          setError('Email not yet verified. Please try signing out and signing in again.');
+          setIsChecking(false);
+        }
       }
     } catch (err: any) {
       setError(err.message || 'Failed to check verification status');
