@@ -258,7 +258,7 @@ export function Dashboard() {
           </div>
           <div className="p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="border border-gray-200 rounded-lg p-6 hover:border-blue-300 transition-colors cursor-pointer">
+              <div className="border border-gray-200 rounded-lg p-6 hover:border-blue-300 transition-colors cursor-pointer" onClick={() => onNavigate('writing')}>
                 <div className="flex items-center mb-4">
                   <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
                     <PenTool className="h-6 w-6 text-blue-600" />
