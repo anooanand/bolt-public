@@ -1,293 +1,118 @@
-import React, { useState, useEffect } from 'react';
-import { CheckCircle, AlertCircle, Loader } from 'lucide-react';
-import { confirmPayment, getCurrentUser, supabase, isEmailVerified } from '../lib/supabase';
+// COMPLETE FILE: src/components/PaymentSuccessPage.tsx
+// Copy-paste this entire file into bolt.new (NEW FILE)
 
-interface PaymentSuccessPageProps {
-  plan: string;
-  onSuccess: (user: any) => void;
-  onSignInRequired: (email: string, plan: string) => void;
-}
+import React, { useEffect, useState } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
+import { grantTemporaryAccess } from '../lib/supabase';
 
-export function PaymentSuccessPage({ plan, onSuccess, onSignInRequired }: PaymentSuccessPageProps) {
-  const [status, setStatus] = useState<'processing' | 'success' | 'signin_required' | 'verification_required' | 'error'>('processing');
+export function PaymentSuccessPage() {
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const [status, setStatus] = useState<'processing' | 'success' | 'error'>('processing');
   const [message, setMessage] = useState('Processing your payment...');
-  const [userEmail, setUserEmail] = useState<string | null>(null);
-  const [password, setPassword] = useState('');
-  const [isSigningIn, setIsSigningIn] = useState(false);
 
   useEffect(() => {
-    const processPayment = async () => {
+    const processPaymentSuccess = async () => {
       try {
-        console.log("[DEBUG] PaymentSuccessPage: Processing payment for plan:", plan);
-        
-        const email = localStorage.getItem('userEmail');
-        setUserEmail(email);
-        console.log("[DEBUG] PaymentSuccessPage: Found email in localStorage:", email);
-
-        if (!email) {
-          console.error("[DEBUG] PaymentSuccessPage: No user email found");
+        if (!user) {
           setStatus('error');
-          setMessage('No user email found. Please contact support.');
+          setMessage('User not found. Please sign in again.');
           return;
         }
 
-        // FIXED: Use timeout wrapper for session check
-        const sessionPromise = supabase.auth.getSession();
-        const sessionResult = await Promise.race([
-          sessionPromise,
-          new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Session check timeout')), 3000)
-          )
-        ]);
-
-        const { data: { session }, error: sessionError } = sessionResult as any;
-
-        if (sessionError) {
-          console.error("[DEBUG] PaymentSuccessPage: Session error:", sessionError);
-          setStatus('signin_required');
-          setMessage('Please sign in to complete your subscription setup.');
-          return;
-        }
-
-        if (session?.user) {
-          console.log("[DEBUG] PaymentSuccessPage: User session found, checking email verification");
+        // Get payment details from URL parameters
+        const sessionId = searchParams.get('session_id');
+        const planType = searchParams.get('plan') || 'base_plan';
+        
+        console.log('🎉 Payment success detected, granting temporary access...');
+        console.log('Session ID:', sessionId);
+        console.log('Plan Type:', planType);
+        
+        // Grant immediate 24-hour temporary access
+        const result = await grantTemporaryAccess(user.id, planType);
+        
+        if (result.success) {
+          setStatus('success');
+          setMessage('Payment successful! You now have full access for 24 hours while we confirm your payment.');
           
-          // Check if email is verified
-          const verified = await isEmailVerified();
-          
-          if (!verified) {
-            console.log("[DEBUG] PaymentSuccessPage: Email not verified");
-            setStatus('verification_required');
-            setMessage('Please verify your email address to complete your subscription setup.');
-            return;
-          }
-          
-          console.log("[DEBUG] PaymentSuccessPage: Email verified, confirming payment");
-          setMessage('Confirming your payment...');
-          
-          try {
-            await confirmPayment(plan);
-            console.log("[DEBUG] PaymentSuccessPage: Payment confirmed successfully");
-
-            // Set temporary access (24 hours)
-            localStorage.setItem('temp_access_until', new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString());
-            
-            setStatus('success');
-            setMessage(`Welcome! Your ${plan.replace('-', ' ')} plan is now active. You have temporary access for the next 24 hours while we process your payment.`);
-            
-            // FIXED: Clear URL parameters immediately
-            if (typeof window !== 'undefined') {
-              window.history.replaceState({}, document.title, window.location.pathname);
-            }
-
-            // FIXED: Shorter delay before redirect
-            setTimeout(() => {
-              console.log("[DEBUG] PaymentSuccessPage: Calling onSuccess callback");
-              onSuccess(session.user);
-            }, 1500);
-          } catch (paymentError) {
-            console.error("[DEBUG] PaymentSuccessPage: Error confirming payment:", paymentError);
-            setStatus('error');
-            setMessage('There was an error confirming your payment. Please contact support.');
-          }
+          // Redirect to dashboard after 3 seconds
+          setTimeout(() => {
+            navigate('/dashboard');
+          }, 3000);
         } else {
-          console.log("[DEBUG] PaymentSuccessPage: No user session, requiring sign in");
-          setStatus('signin_required');
-          setMessage('Please sign in to complete your subscription setup.');
+          setStatus('error');
+          setMessage('Payment received but there was an issue granting access. Please contact support.');
         }
-
+        
       } catch (error) {
-        console.error('[DEBUG] PaymentSuccessPage: Error processing payment:', error);
-        setStatus('signin_required');
-        setMessage('Please sign in to complete your subscription setup.');
+        console.error('❌ Error processing payment success:', error);
+        setStatus('error');
+        setMessage('There was an error processing your payment. Please contact support.');
       }
     };
 
-    // FIXED: Add timeout for the entire process
-    const processTimeout = setTimeout(() => {
-      console.log("[DEBUG] PaymentSuccessPage: Process timeout, requiring sign in");
-      setStatus('signin_required');
-      setMessage('Please sign in to complete your subscription setup.');
-    }, 5000);
-
-    processPayment().finally(() => {
-      clearTimeout(processTimeout);
-    });
-  }, [plan, onSuccess]);
-
-  const handleSignIn = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!userEmail || !password) return;
-
-    setIsSigningIn(true);
-    try {
-      console.log("[DEBUG] PaymentSuccessPage: Attempting sign in for:", userEmail);
-      const { error } = await supabase.auth.signInWithPassword({ email: userEmail, password });
-      
-      if (error) {
-        console.error("[DEBUG] PaymentSuccessPage: Sign in error:", error);
-        throw error;
-      }
-      
-      console.log("[DEBUG] PaymentSuccessPage: Sign in successful");
-      
-      // Check if email is verified
-      const verified = await isEmailVerified();
-      
-      if (!verified) {
-        setStatus('verification_required');
-        setMessage('Please verify your email address to complete your subscription setup.');
-        setIsSigningIn(false);
-        return;
-      }
-      
-      setMessage("Signing in and processing payment...");
-      
-      // Wait for user session to be fully established and user object updated
-      setTimeout(async () => {
-        try {
-          await confirmPayment(plan);
-          console.log("[DEBUG] PaymentSuccessPage: Payment confirmed after sign in");
-          
-          // Set temporary access (24 hours)
-          localStorage.setItem("temp_access_until", new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString());
-          
-          setStatus("success");
-          setMessage(`Welcome! Your ${plan.replace("-", " ")} plan is now active. You have temporary access for the next 24 hours while we process your payment.`);
-          
-          // Get the current user and call success callback
-          const { data: { user } } = await supabase.auth.getUser();
-          if (user) {
-            onSuccess(user);
-          }
-        } catch (paymentError) {
-          console.error("[DEBUG] PaymentSuccessPage: Error confirming payment after sign in:", paymentError);
-          setStatus("error");
-          setMessage("Payment confirmation failed. Please contact support.");
-        }
-      }, 2000); // Add a 2-second delay
-    } catch (err: any) {
-      console.error('[DEBUG] PaymentSuccessPage: Sign-in error:', err);
-      setMessage(`Sign-in failed: ${err.message || 'Please check your password or try again.'}`);
-      setIsSigningIn(false);
-    }
-  };
-
-  const renderSignInForm = () => (
-    <form onSubmit={handleSignIn} className="mt-6 space-y-4">
-      <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email</label>
-        <input
-          type="email"
-          value={userEmail || ''}
-          onChange={(e) => setUserEmail(e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
-          required
-        />
-      </div>
-      <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Password</label>
-        <input
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white"
-          placeholder="Enter your password"
-          required
-        />
-      </div>
-      <button
-        type="submit"
-        disabled={isSigningIn}
-        className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-3 px-4 rounded-md transition-colors flex items-center justify-center"
-      >
-        {isSigningIn ? (
-          <>
-            <Loader className="animate-spin -ml-1 mr-2 h-5 w-5" />
-            Signing in...
-          </>
-        ) : (
-          'Sign In to Complete Setup'
-        )}
-      </button>
-      <p className="text-sm text-center text-gray-500 dark:text-gray-400 mt-4">
-        This will activate your {plan.replace('-', ' ')} subscription
-      </p>
-    </form>
-  );
-
-  const getStatusIcon = () => {
-    switch (status) {
-      case 'processing': return <Loader className="w-16 h-16 text-blue-500 animate-spin" />;
-      case 'success': return <CheckCircle className="w-16 h-16 text-green-500" />;
-      case 'signin_required': return <AlertCircle className="w-16 h-16 text-yellow-500" />;
-      case 'verification_required': return <AlertCircle className="w-16 h-16 text-orange-500" />;
-      case 'error': return <AlertCircle className="w-16 h-16 text-red-500" />;
-      default: return <Loader className="w-16 h-16 text-blue-500 animate-spin" />;
-    }
-  };
-
-  const getStatusColor = () => {
-    switch (status) {
-      case 'processing': return 'text-blue-600';
-      case 'success': return 'text-green-600';
-      case 'signin_required': return 'text-yellow-600';
-      case 'verification_required': return 'text-orange-600';
-      case 'error': return 'text-red-600';
-      default: return 'text-blue-600';
-    }
-  };
+    processPaymentSuccess();
+  }, [user, searchParams, navigate]);
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-900 flex items-center justify-center p-4">
-      <div className="max-w-md w-full bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8 text-center">
-        <div className="mb-6 flex justify-center">{getStatusIcon()}</div>
-        <h1 className={`text-2xl font-bold mb-4 ${getStatusColor()}`}>
-          {status === 'processing' && 'Processing Payment'}
-          {status === 'success' && 'Payment Successful!'}
-          {status === 'signin_required' && 'Complete Your Setup'}
-          {status === 'verification_required' && 'Email Verification Required'}
-          {status === 'error' && 'Setup Error'}
-        </h1>
-        <p className="text-gray-600 dark:text-gray-300 mb-6">{message}</p>
-        {userEmail && (
-          <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">Account: {userEmail}</p>
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8 text-center">
+        {status === 'processing' && (
+          <>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">Processing Payment</h2>
+            <p className="text-gray-600">{message}</p>
+          </>
         )}
-        {status === 'signin_required' && renderSignInForm()}
-        {status === 'verification_required' && (
-          <div className="space-y-4">
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Please check your email inbox and click the verification link. After verifying your email, return here to complete your subscription setup.
-            </p>
-            <button
-              onClick={() => window.location.reload()}
-              className="w-full bg-orange-600 hover:bg-orange-700 text-white font-medium py-3 px-4 rounded-md transition-colors"
-            >
-              I've Verified My Email
-            </button>
-          </div>
-        )}
-        {status === 'error' && (
-          <div className="space-y-3">
-            <button
-              onClick={() => window.location.reload()}
-              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-3 px-4 rounded-md transition-colors"
-            >
-              Try Again
-            </button>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              If the problem persists, please contact support with your payment details.
-            </p>
-          </div>
-        )}
+        
         {status === 'success' && (
-          <div className="bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-md p-4">
-            <p className="text-sm text-green-700 dark:text-green-300">
-              Redirecting to your dashboard...
-            </p>
-          </div>
+          <>
+            <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <h2 className="text-xl font-semibold text-green-900 mb-2">Payment Successful!</h2>
+            <p className="text-green-700 mb-4">{message}</p>
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+              <p className="text-sm text-yellow-800">
+                <strong>24-Hour Access Granted!</strong><br />
+                Your payment is being processed in the background. You have immediate access to all features.
+              </p>
+            </div>
+            <p className="text-sm text-gray-600">Redirecting to dashboard...</p>
+          </>
+        )}
+        
+        {status === 'error' && (
+          <>
+            <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </div>
+            <h2 className="text-xl font-semibold text-red-900 mb-2">Payment Issue</h2>
+            <p className="text-red-700 mb-4">{message}</p>
+            <div className="space-y-2">
+              <button 
+                onClick={() => navigate('/dashboard')}
+                className="w-full bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors"
+              >
+                Go to Dashboard
+              </button>
+              <button 
+                onClick={() => navigate('/pricing')}
+                className="w-full bg-gray-200 text-gray-800 px-4 py-2 rounded hover:bg-gray-300 transition-colors"
+              >
+                Try Payment Again
+              </button>
+            </div>
+          </>
         )}
       </div>
     </div>
   );
 }
+
