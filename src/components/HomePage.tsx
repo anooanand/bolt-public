@@ -46,11 +46,11 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
             ) : (
               <>
                 <button 
-                  onClick={() => onNavigate('write')}
+                  onClick={() => onNavigate('auth')}
                   className="gradient-button"
                 >
                   <span className="flex items-center gap-2">
-                    Start Writing Now <ArrowRight className="w-5 h-5" />
+                    Sign In to Start <ArrowRight className="w-5 h-5" />
                   </span>
                 </button>
                 
@@ -226,7 +226,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
                     onClick={() => onNavigate('auth')}
                     className="gradient-button"
                   >
-                    Start Free Trial
+                    Sign In to Start
                   </button>
                   <button 
                     onClick={() => onNavigate('pricing')}
