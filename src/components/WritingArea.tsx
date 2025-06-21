@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { generatePrompt, getSynonyms, rephraseSentence, evaluateEssay } from '../lib/openai';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { generatePrompt, getSynonyms, rephraseSentence, evaluateEssay, getWritingFeedback, identifyCommonMistakes, getTextTypeVocabulary, getSpecializedTextTypeFeedback, getWritingStructure } from '../lib/openai';
 import { dbOperations } from '../lib/database';
 import { useApp } from '../contexts/AppContext';
 import { AlertCircle } from 'lucide-react';
@@ -37,6 +37,11 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [showPromptButtons, setShowPromptButtons] = useState(true);
+  const [writingFeedback, setWritingFeedback] = useState<any>(null);
+  const [commonMistakes, setCommonMistakes] = useState<any>(null);
+  const [vocabularySuggestions, setVocabularySuggestions] = useState<any>(null);
+  const [specializedFeedback, setSpecializedFeedback] = useState<any>(null);
+  const [writingStructure, setWritingStructure] = useState<any>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -155,7 +160,7 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
     });
 
     // Check for repeated words
-    const words = text.toLowerCase().match(/\b\w+\b/g) || [];
+    const words = text.toLowerCase().match(/\\b\\w+\\b/g) || [];
     const wordCounts: { [key: string]: number } = {};
     words.forEach((word, index) => {
       if (word.length > 3) { // Only check words longer than 3 letters
@@ -340,6 +345,71 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
     }
   };
 
+  const handleGetWritingFeedback = async () => {
+    if (!content.trim() || !textType) return;
+    setIsLoadingSuggestions(true);
+    try {
+      const feedback = await getWritingFeedback(content, textType, 'Year 5-6', []); // Assuming Year 5-6 and no feedback history for simplicity
+      setWritingFeedback(feedback);
+    } catch (error) {
+      console.error('Error getting writing feedback:', error);
+    } finally {
+      setIsLoadingSuggestions(false);
+    }
+  };
+
+  const handleIdentifyCommonMistakes = async () => {
+    if (!content.trim() || !textType) return;
+    setIsLoadingSuggestions(true);
+    try {
+      const mistakes = await identifyCommonMistakes(content, textType);
+      setCommonMistakes(mistakes);
+    } catch (error) {
+      console.error('Error identifying common mistakes:', error);
+    } finally {
+      setIsLoadingSuggestions(false);
+    }
+  };
+
+  const handleGetTextTypeVocabulary = async () => {
+    if (!textType) return;
+    setIsLoadingSuggestions(true);
+    try {
+      const vocabulary = await getTextTypeVocabulary(textType, content.substring(0, 500));
+      setVocabularySuggestions(vocabulary);
+    } catch (error) {
+      console.error('Error getting text type vocabulary:', error);
+    } finally {
+      setIsLoadingSuggestions(false);
+    }
+  };
+
+  const handleGetSpecializedTextTypeFeedback = async () => {
+    if (!content.trim() || !textType) return;
+    setIsLoadingSuggestions(true);
+    try {
+      const feedback = await getSpecializedTextTypeFeedback(content, textType);
+      setSpecializedFeedback(feedback);
+    } catch (error) {
+      console.error('Error getting specialized text type feedback:', error);
+    } finally {
+      setIsLoadingSuggestions(false);
+    }
+  };
+
+  const handleGetWritingStructure = async () => {
+    if (!textType) return;
+    setIsLoadingSuggestions(true);
+    try {
+      const structure = await getWritingStructure(textType);
+      setWritingStructure(JSON.parse(structure)); // Assuming the response is a JSON string
+    } catch (error) {
+      console.error('Error getting writing structure:', error);
+    } finally {
+      setIsLoadingSuggestions(false);
+    }
+  };
+
   const noTypeSelected = !textType;
 
   return (
@@ -467,6 +537,124 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
           />
         )}
       </div>
+
+      <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex flex-wrap gap-2 justify-end">
+        <button
+          onClick={handleGetWritingFeedback}
+          disabled={!content.trim() || !textType || isLoadingSuggestions}
+          className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium touch-friendly-button"
+        >
+          Get Writing Feedback
+        </button>
+        <button
+          onClick={handleIdentifyCommonMistakes}
+          disabled={!content.trim() || !textType || isLoadingSuggestions}
+          className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium touch-friendly-button"
+        >
+          Identify Common Mistakes
+        </button>
+        <button
+          onClick={handleGetTextTypeVocabulary}
+          disabled={!textType || isLoadingSuggestions}
+          className="px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium touch-friendly-button"
+        >
+          Get Vocabulary Suggestions
+        </button>
+        <button
+          onClick={handleGetSpecializedTextTypeFeedback}
+          disabled={!content.trim() || !textType || isLoadingSuggestions}
+          className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium touch-friendly-button"
+        >
+          Get Specialized Feedback
+        </button>
+        <button
+          onClick={handleGetWritingStructure}
+          disabled={!textType || isLoadingSuggestions}
+          className="px-4 py-2 bg-teal-600 text-white rounded-md hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium touch-friendly-button"
+        >
+          Get Writing Structure
+        </button>
+      </div>
+
+      {writingFeedback && (
+        <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700">
+          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Writing Feedback</h3>
+          <p className="text-gray-700 dark:text-gray-300">{writingFeedback.overallComment}</p>
+          <ul className="list-disc list-inside text-gray-700 dark:text-gray-300 mt-2">
+            {writingFeedback.feedbackItems.map((item: any, index: number) => (
+              <li key={index}><strong>{item.type} ({item.area}):</strong> {item.text} {item.exampleFromText && `(Example: "${item.exampleFromText}")`} {item.suggestionForImprovement && `(Suggestion: ${item.suggestionForImprovement})`}</li>
+            ))}
+          </ul>
+          <p className="text-gray-700 dark:text-gray-300 mt-2"><strong>Focus for Next Time:</strong> {writingFeedback.focusForNextTime.join(', ')}</p>
+        </div>
+      )}
+
+      {commonMistakes && (
+        <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700">
+          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Common Mistakes Identified</h3>
+          <p className="text-gray-700 dark:text-gray-300">{commonMistakes.overallAssessment}</p>
+          <ul className="list-disc list-inside text-gray-700 dark:text-gray-300 mt-2">
+            {commonMistakes.mistakesIdentified.map((mistake: any, index: number) => (
+              <li key={index}>
+                <strong>{mistake.category}:</strong> {mistake.issue} (Example: "{mistake.example}")<br/>
+                Impact: {mistake.impact}<br/>
+                Correction: {mistake.correction}<br/>
+                Prevention: {mistake.preventionTip}
+              </li>
+            ))}
+          </ul>
+          <p className="text-gray-700 dark:text-gray-300 mt-2"><strong>Pattern Analysis:</strong> {commonMistakes.patternAnalysis}</p>
+          <p className="text-gray-700 dark:text-gray-300"><strong>Priority Fixes:</strong> {commonMistakes.priorityFixes.join(', ')}</p>
+          <p className="text-gray-700 dark:text-gray-300"><strong>Positive Elements:</strong> {commonMistakes.positiveElements.join(', ')}</p>
+        </div>
+      )}
+
+      {vocabularySuggestions && (
+        <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700">
+          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Vocabulary Suggestions for {vocabularySuggestions.textType}</h3>
+          {vocabularySuggestions.categories.map((category: any, catIndex: number) => (
+            <div key={catIndex} className="mb-4">
+              <h4 className="font-semibold text-gray-800 dark:text-gray-200">{category.name}</h4>
+              <p className="text-gray-700 dark:text-gray-300">Words: {category.words.join(', ')}</p>
+              <ul className="list-disc list-inside text-gray-700 dark:text-gray-300">
+                {category.examples.map((example: string, exIndex: number) => (
+                  <li key={exIndex}>{example}</li>
+                ))}
+              </ul>
+            </div>
+          ))}
+          <p className="text-gray-700 dark:text-gray-300"><strong>Phrases and Expressions:</strong> {vocabularySuggestions.phrasesAndExpressions.join(', ')}</p>
+          <p className="text-gray-700 dark:text-gray-300"><strong>Transition Words:</strong> {vocabularySuggestions.transitionWords.join(', ')}</p>
+        </div>
+      )}
+
+      {specializedFeedback && (
+        <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700">
+          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Specialized Text Type Feedback</h3>
+          <p className="text-gray-700 dark:text-gray-300">{specializedFeedback.overallComment}</p>
+          <div className="mt-2 text-gray-700 dark:text-gray-300">
+            <p><strong>Structure:</strong> {specializedFeedback.textTypeSpecificFeedback.structure}</p>
+            <p><strong>Language:</strong> {specializedFeedback.textTypeSpecificFeedback.language}</p>
+            <p><strong>Purpose:</strong> {specializedFeedback.textTypeSpecificFeedback.purpose}</p>
+            <p><strong>Audience:</strong> {specializedFeedback.textTypeSpecificFeedback.audience}</p>
+          </div>
+          <p className="text-gray-700 dark:text-gray-300 mt-2"><strong>Strengths:</strong> {specializedFeedback.strengthsInTextType.join(', ')}</p>
+          <p className="text-gray-700 dark:text-gray-300"><strong>Improvement Areas:</strong> {specializedFeedback.improvementAreas.join(', ')}</p>
+          <p className="text-gray-700 dark:text-gray-300"><strong>Next Steps:</strong> {specializedFeedback.nextSteps.join(', ')}</p>
+        </div>
+      )}
+
+      {writingStructure && (
+        <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700">
+          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">{writingStructure.title}</h3>
+          {writingStructure.sections.map((section: any, secIndex: number) => (
+            <div key={secIndex} className="mb-4">
+              <h4 className="font-semibold text-gray-800 dark:text-gray-200">{section.heading}</h4>
+              <p className="text-gray-700 dark:text-gray-300">{section.content}</p>
+            </div>
+          ))}
+        </div>
+      )}
 
       <WritingStatusBar 
         content={content} 
