@@ -159,6 +159,8 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
         plan_type: planType,
         last_payment_date: new Date().toISOString(),
         payment_verified: true,
+        current_period_start: currentPeriodStart, // Add this line
+        current_period_end: currentPeriodEnd,   // Add this line
         updated_at: new Date().toISOString()
       });
 
@@ -258,6 +260,8 @@ async function handleSubscriptionChange(subscription: Stripe.Subscription) {
     .from('user_profiles')
     .update({
       subscription_status: subscription.status,
+      current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
+      current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
       updated_at: new Date().toISOString()
     })
     .eq('user_id', userId);
