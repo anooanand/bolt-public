@@ -3,11 +3,13 @@ import { supabase } from './supabase';
 /**
  * Creates a Stripe checkout session for the specified product
  * @param priceId The Stripe price ID
- * @param mode The checkout mode ('subscription' or 'payment')
+ * @param userId The user ID (optional)
  * @returns The checkout session URL
  */
-export async function createCheckoutSession(priceId: string, mode: 'subscription' | 'payment' = 'subscription') {
+export async function createCheckoutSession(priceId: string, userId?: string) {
   try {
+    console.log('🚀 Creating checkout session for price:', priceId);
+    
     // Get the current user's auth token
     const { data: { session } } = await supabase.auth.getSession();
     
@@ -15,94 +17,71 @@ export async function createCheckoutSession(priceId: string, mode: 'subscription
       throw new Error('User not authenticated');
     }
     
-    // Prepare success and cancel URLs
-    const successUrl = `${window.location.origin}?paymentSuccess=true&planType=${priceId}`;
-    const cancelUrl = `${window.location.origin}/pricing?paymentSuccess=false`;
+    const user = session.user;
+    console.log('✅ User authenticated:', user.email);
     
-    // Try the Supabase Edge Function first
-    try {
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stripe-checkout`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({
-          price_id: priceId,
-          success_url: successUrl,
-          cancel_url: cancelUrl,
-          mode: mode,
-        }),
-      });
+    // Prepare the request data
+    const requestData = {
+      priceId: priceId,
+      planType: priceId,
+      userId: userId || user.id,
+      userEmail: user.email,
+    };
+    
+    console.log('📤 Sending request to Netlify function:', requestData);
+    
+    // Call the Netlify function directly
+    const response = await fetch('/.netlify/functions/create-checkout-session', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify(requestData),
+    });
+    
+    console.log('📥 Response status:', response.status);
+    console.log('📥 Response headers:', Object.fromEntries(response.headers.entries()));
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ Netlify function error response:', errorText);
       
-      if (response.ok) {
-        const { url } = await response.json();
-        if (url) {
-          return url;
-        }
+      let errorData;
+      try {
+        errorData = JSON.parse(errorText);
+      } catch (e) {
+        errorData = { error: errorText || 'Unknown error' };
       }
       
-      // If Supabase Edge Function fails, log the error and try Netlify function
-      console.warn('Supabase Edge Function failed, trying Netlify function...');
-      const errorData = await response.json().catch(() => ({}));
-      console.warn('Supabase error:', errorData);
-    } catch (supabaseError) {
-      console.warn('Supabase Edge Function error:', supabaseError);
+      throw new Error(errorData.error || errorData.message || `HTTP ${response.status}: Failed to create checkout session`);
     }
     
-    // Fallback to Netlify function
-    try {
-      console.log('Calling Netlify function with:', {
-        priceId,
-        planType: priceId,
-        userId: session.user.id,
-        userEmail: session.user.email
-      });
-      
-      const netlifyResponse = await fetch('/.netlify/functions/create-checkout-session', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          priceId: priceId,
-          planType: priceId,
-          userId: session.user.id,
-          userEmail: session.user.email,
-        }),
-      });
-      
-      if (!netlifyResponse.ok) {
-        const errorText = await netlifyResponse.text();
-        console.error('Netlify function error response:', errorText);
-        
-        let errorData;
-        try {
-          errorData = JSON.parse(errorText);
-        } catch (e) {
-          errorData = { error: errorText || 'Unknown error' };
-        }
-        
-        throw new Error(errorData.error || errorData.message || 'Failed to create checkout session via Netlify');
-      }
-      
-      const responseData = await netlifyResponse.json();
-      console.log('Netlify function response:', responseData);
-      
-      const { url } = responseData;
-      
-      if (!url) {
-        throw new Error('No checkout URL returned from Netlify function');
-      }
-      
-      return url;
-    } catch (netlifyError) {
-      console.error('Netlify function error:', netlifyError);
-      throw netlifyError;
+    const responseData = await response.json();
+    console.log('✅ Netlify function success response:', responseData);
+    
+    const { url, sessionId } = responseData;
+    
+    if (!url) {
+      throw new Error('No checkout URL returned from server');
     }
+    
+    console.log('🎯 Checkout URL created:', url);
+    return { url, sessionId };
+    
   } catch (error: any) {
-    console.error('Error creating checkout session:', error);
-    throw error;
+    console.error('❌ Error creating checkout session:', error);
+    
+    // Provide more helpful error messages
+    if (error.message.includes('CORS')) {
+      throw new Error('Payment system configuration error. Please contact support.');
+    } else if (error.message.includes('fetch')) {
+      throw new Error('Network error. Please check your connection and try again.');
+    } else if (error.message.includes('not authenticated')) {
+      throw new Error('Please sign in to continue with payment.');
+    } else {
+      throw new Error(error.message || 'Failed to create checkout session. Please try again.');
+    }
   }
 }
 
@@ -155,3 +134,4 @@ export default {
   getSubscriptionStatus,
   getOrderHistory,
 };
+
