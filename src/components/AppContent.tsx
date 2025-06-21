@@ -9,7 +9,7 @@ import { ToolsSection } from './ToolsSection';
 import { WritingTypesSection } from './WritingTypesSection';
 import { Footer } from './Footer';
 import { PaymentSuccessPage } from './PaymentSuccessPage';
-import { PricingPage } from './PricingPage';
+import { PricingPageWithFixedVerification as PricingPage } from './PricingPage';
 import { Dashboard } from './Dashboard';
 import { AuthModal } from './AuthModal';
 import { FAQPage } from './FAQPage';
