@@ -1,142 +1,96 @@
-// COMPLETE FIXED WEBHOOK: netlify/functions/stripe-webhook.ts
-// This webhook will properly update Supabase when Stripe payments are completed
+// FIXED WEBHOOK: netlify/functions/stripe-webhook.ts
+// This version works with your REAL TABLES instead of the view
 
 import { Handler } from '@netlify/functions';
 import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
 
-// Initialize Stripe
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2022-11-15',
+  apiVersion: '2024-06-20',
 });
 
-// Initialize Supabase with service role key for server-side operations
-const supabaseUrl = process.env.VITE_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+const supabase = createClient(
+  process.env.VITE_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
-// Webhook endpoint secret for signature verification
-const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
-
-const handler: Handler = async (event) => {
+export const handler: Handler = async (event) => {
   console.log('🔔 Stripe Webhook received:', event.httpMethod);
-  
-  // Enhanced CORS headers
-  const headers = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type, Stripe-Signature',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Content-Type': 'application/json'
-  };
 
-  // Handle preflight requests
+  // Handle CORS preflight
   if (event.httpMethod === 'OPTIONS') {
     return {
       statusCode: 200,
-      headers,
-      body: ''
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type, stripe-signature',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      },
+      body: '',
     };
   }
 
-  // Only allow POST requests
   if (event.httpMethod !== 'POST') {
-    return {
-      statusCode: 405,
-      headers,
-      body: JSON.stringify({ error: 'Method Not Allowed' }),
-    };
+    return { statusCode: 405, body: 'Method Not Allowed' };
   }
 
-  const body = event.body;
-  const signature = event.headers['stripe-signature'];
+  const sig = event.headers['stripe-signature'];
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
-  if (!body || !signature) {
-    console.error('❌ Missing body or signature');
-    return {
-      statusCode: 400,
-      headers,
-      body: JSON.stringify({ error: 'Missing body or signature' }),
-    };
+  if (!sig || !webhookSecret) {
+    console.error('❌ Missing signature or webhook secret');
+    return { statusCode: 400, body: 'Missing signature or webhook secret' };
   }
 
   let stripeEvent: Stripe.Event;
 
   try {
-    // Verify the webhook signature
-    stripeEvent = stripe.webhooks.constructEvent(body, signature, webhookSecret);
-    console.log('✅ Webhook signature verified for event:', stripeEvent.type, 'ID:', stripeEvent.id);
-  } catch (error: any) {
-    console.error('❌ Webhook signature verification failed:', error.message);
-    return {
-      statusCode: 400,
-      headers,
-      body: JSON.stringify({ error: 'Webhook signature verification failed' }),
-    };
+    stripeEvent = stripe.webhooks.constructEvent(event.body!, sig, webhookSecret);
+    console.log(`✅ Webhook signature verified for event: ${stripeEvent.type} ID: ${stripeEvent.id}`);
+  } catch (err) {
+    console.error('❌ Webhook signature verification failed:', err);
+    return { statusCode: 400, body: 'Webhook signature verification failed' };
   }
 
   try {
-    console.log('🔄 Processing event:', stripeEvent.type);
-    
-    // Handle different event types
+    console.log(`🔄 Processing event: ${stripeEvent.type}`);
+
     switch (stripeEvent.type) {
       case 'checkout.session.completed':
         await handleCheckoutSessionCompleted(stripeEvent.data.object as Stripe.Checkout.Session);
         break;
-      
-      case 'customer.subscription.created':
       case 'customer.subscription.updated':
+      case 'customer.subscription.created':
         await handleSubscriptionChange(stripeEvent.data.object as Stripe.Subscription);
         break;
-      
-      case 'customer.subscription.deleted':
-        await handleSubscriptionDeleted(stripeEvent.data.object as Stripe.Subscription);
-        break;
-      
       case 'invoice.payment_succeeded':
         await handleInvoicePaymentSucceeded(stripeEvent.data.object as Stripe.Invoice);
         break;
-      
-      case 'invoice.payment_failed':
-        await handleInvoicePaymentFailed(stripeEvent.data.object as Stripe.Invoice);
-        break;
-      
       default:
         console.log(`ℹ️ Unhandled event type: ${stripeEvent.type}`);
     }
 
-    // Log successful processing
-    await logWebhookEvent(stripeEvent, 'success');
-
     return {
       statusCode: 200,
-      headers,
-      body: JSON.stringify({ 
-        received: true, 
-        event_type: stripeEvent.type,
-        event_id: stripeEvent.id,
-        processed_at: new Date().toISOString()
-      }),
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ received: true, eventType: stripeEvent.type }),
     };
-  } catch (error: any) {
+  } catch (error) {
     console.error('❌ Error processing webhook:', error);
-    
-    // Log the error
-    await logWebhookEvent(stripeEvent, 'error', error);
-    
     return {
       statusCode: 500,
-      headers,
-      body: JSON.stringify({ 
-        error: 'Internal server error',
-        event_type: stripeEvent.type,
-        event_id: stripeEvent.id,
-        message: error.message
-      }),
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ error: 'Webhook processing failed' }),
     };
   }
 };
 
-// MAIN FUNCTION: Handle successful checkout session completion
 async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) {
   console.log('🎉 Processing checkout session completed:', session.id);
   console.log('Session details:', {
@@ -147,313 +101,203 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
     payment_status: session.payment_status,
     subscription: session.subscription
   });
-  
+
+  const customerEmail = session.customer_email;
+  if (!customerEmail) {
+    console.error('❌ No customer email in session');
+    return;
+  }
+
+  console.log('👤 Processing payment for email:', customerEmail);
+
+  // Find user by email in auth.users
+  const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
+  if (authError) {
+    console.error('❌ Error fetching auth users:', authError);
+    throw new Error(`Failed to fetch users: ${authError.message}`);
+  }
+
+  const user = authUsers.users.find(u => u.email === customerEmail);
+  if (!user) {
+    console.error(`❌ No user found with email: ${customerEmail}`);
+    throw new Error(`No user found with email: ${customerEmail}`);
+  }
+
+  console.log('✅ Found user ID:', user.id);
+
+  const userId = user.id;
+  const stripeCustomerId = session.customer as string;
+  const subscriptionId = session.subscription as string;
+
+  console.log('📋 Subscription ID:', subscriptionId);
+
+  // Get subscription details for plan type
+  let planType = 'base_plan';
+  if (subscriptionId) {
+    try {
+      const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+      const priceId = subscription.items.data[0]?.price.id;
+      console.log('💰 Price ID:', priceId);
+      planType = getPlanTypeFromPriceId(priceId);
+      console.log('📋 Plan type:', planType);
+    } catch (error) {
+      console.error('⚠️ Error fetching subscription:', error);
+    }
+  }
+
+  // 1. UPDATE USER_PROFILES TABLE (instead of user_access_status view)
   try {
-    // Get customer email - this is our primary identifier
-    const customerEmail = session.customer_email;
-    const customerId = session.customer as string;
-    
-    if (!customerEmail) {
-      throw new Error('No customer email found in checkout session');
-    }
-
-    console.log('👤 Processing payment for email:', customerEmail);
-
-    // Find user by email in auth.users
-    const { data: authUser, error: authError } = await supabase.auth.admin.listUsers();
-    
-    if (authError) {
-      throw new Error(`Error fetching users: ${authError.message}`);
-    }
-
-    const user = authUser.users.find(u => u.email === customerEmail);
-    
-    if (!user) {
-      throw new Error(`No user found with email: ${customerEmail}`);
-    }
-
-    const userId = user.id;
-    console.log('✅ Found user ID:', userId);
-
-    // Determine plan type and subscription details
-    let subscriptionId = null;
-    let planType = 'base_plan';
-    let amount = session.amount_total || 0;
-
-    if (session.mode === 'subscription' && session.subscription) {
-      subscriptionId = session.subscription as string;
-      console.log('📋 Subscription ID:', subscriptionId);
-      
-      // Get subscription details from Stripe
-      try {
-        const subscription = await stripe.subscriptions.retrieve(subscriptionId);
-        if (subscription.items.data.length > 0) {
-          const priceId = subscription.items.data[0].price.id;
-          console.log('💰 Price ID:', priceId);
-          
-          // Map price ID to plan type
-          planType = mapPriceIdToPlanType(priceId);
-          console.log('📋 Plan type:', planType);
-        }
-      } catch (subError) {
-        console.warn('⚠️ Error fetching subscription details:', subError);
-      }
-    }
-
-    // Update user_access_status directly
-    const { error: accessError } = await supabase
-      .from('user_access_status')
-      .upsert({
-        user_id: userId,
-        email_verified: true,
-        payment_status: 'completed',
-        payment_verified: true,
-        subscription_status: 'active',
-        has_access: true,
-        temp_access_until: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(), // 1 year
-        stripe_customer_id: customerId,
-        plan_type: planType,
-        updated_at: new Date().toISOString()
-      }, {
-        onConflict: 'user_id'
-      });
-
-    if (accessError) {
-      console.error('❌ Error updating user_access_status:', accessError);
-      throw accessError;
-    }
-
-    console.log('✅ Updated user_access_status for user:', userId);
-
-    // Update user_profiles
     const { error: profileError } = await supabase
       .from('user_profiles')
       .upsert({
         user_id: userId,
-        stripe_customer_id: customerId,
+        email: customerEmail,
+        stripe_customer_id: stripeCustomerId,
         subscription_status: 'active',
         payment_status: 'verified',
         plan_type: planType,
         last_payment_date: new Date().toISOString(),
+        payment_verified: true,
         updated_at: new Date().toISOString()
-      }, {
-        onConflict: 'user_id'
       });
 
     if (profileError) {
-      console.warn('⚠️ Error updating user_profiles:', profileError);
-    } else {
-      console.log('✅ Updated user_profiles for user:', userId);
+      console.error('❌ Error updating user_profiles:', profileError);
+      throw profileError;
     }
+    console.log('✅ Updated user_profiles successfully');
+  } catch (error) {
+    console.error('❌ Error updating user_profiles:', error);
+    throw error;
+  }
 
-    // Log the successful payment
+  // 2. INSERT INTO USER_PAYMENTS TABLE
+  try {
+    const { error: paymentError } = await supabase
+      .from('user_payments')
+      .insert({
+        user_id: userId,
+        stripe_customer_id: stripeCustomerId,
+        stripe_subscription_id: subscriptionId,
+        payment_status: 'completed',
+        plan_type: planType,
+        amount: session.amount_total || 0,
+        currency: session.currency || 'usd',
+        payment_date: new Date().toISOString(),
+        created_at: new Date().toISOString()
+      });
+
+    if (paymentError) {
+      console.error('❌ Error inserting user_payments:', paymentError);
+      // Don't throw - this is not critical
+    } else {
+      console.log('✅ Inserted user_payments successfully');
+    }
+  } catch (error) {
+    console.error('❌ Error with user_payments:', error);
+    // Don't throw - this is not critical
+  }
+
+  // 3. LOG TO PAYMENT_LOGS TABLE
+  try {
     const { error: logError } = await supabase
       .from('payment_logs')
       .insert({
         user_id: userId,
-        stripe_customer_id: customerId,
-        stripe_session_id: session.id,
+        stripe_customer_id: stripeCustomerId,
         stripe_subscription_id: subscriptionId,
+        event_type: 'checkout.session.completed',
         payment_status: 'completed',
-        amount: amount,
+        amount: session.amount_total || 0,
         currency: session.currency || 'usd',
         processed_at: new Date().toISOString(),
         webhook_verified: true,
         metadata: {
+          session_id: session.id,
           plan_type: planType,
-          session_mode: session.mode,
-          customer_email: customerEmail
+          payment_method: session.payment_method_types?.[0] || 'unknown'
         }
       });
 
     if (logError) {
-      console.warn('⚠️ Error logging payment:', logError);
+      console.error('❌ Error logging to payment_logs:', logError);
+      // Don't throw - this is not critical
     } else {
-      console.log('✅ Logged payment for user:', userId);
+      console.log('✅ Logged to payment_logs successfully');
     }
-
-    console.log('🎊 Checkout session completed successfully for user:', userId);
-
   } catch (error) {
-    console.error('❌ Error handling checkout session completed:', error);
-    throw error;
+    console.error('❌ Error with payment_logs:', error);
+    // Don't throw - this is not critical
   }
+
+  console.log('🎊 Checkout session processing completed successfully!');
 }
 
-// Handle subscription changes
 async function handleSubscriptionChange(subscription: Stripe.Subscription) {
   console.log('🔄 Processing subscription change:', subscription.id, 'status:', subscription.status);
+
+  const customerId = subscription.customer as string;
   
-  try {
-    const customerId = subscription.customer as string;
-    
-    // Find user by stripe customer ID
-    const { data: userProfile, error: profileError } = await supabase
-      .from('user_profiles')
-      .select('user_id')
-      .eq('stripe_customer_id', customerId)
-      .single();
+  // Find user by stripe customer ID in user_profiles
+  const { data: profiles, error: profileError } = await supabase
+    .from('user_profiles')
+    .select('user_id, email')
+    .eq('stripe_customer_id', customerId)
+    .limit(1);
 
-    if (profileError || !userProfile) {
-      console.warn('⚠️ User not found for customer ID:', customerId);
-      return;
-    }
+  if (profileError || !profiles || profiles.length === 0) {
+    console.warn('⚠️ User not found for customer ID:', customerId);
+    return;
+  }
 
-    const userId = userProfile.user_id;
-    const isActive = ['active', 'trialing'].includes(subscription.status);
+  const userId = profiles[0].user_id;
 
-    // Update user_access_status
-    const { error: accessError } = await supabase
-      .from('user_access_status')
-      .update({
-        subscription_status: subscription.status,
-        has_access: isActive,
-        payment_verified: isActive,
-        updated_at: new Date().toISOString()
-      })
-      .eq('user_id', userId);
+  // Update subscription status in user_profiles
+  const { error: updateError } = await supabase
+    .from('user_profiles')
+    .update({
+      subscription_status: subscription.status,
+      updated_at: new Date().toISOString()
+    })
+    .eq('user_id', userId);
 
-    if (accessError) {
-      console.error('❌ Error updating access status:', accessError);
-    }
-
-    // Update user_profiles
-    const { error: updateError } = await supabase
-      .from('user_profiles')
-      .update({
-        subscription_status: subscription.status,
-        updated_at: new Date().toISOString()
-      })
-      .eq('user_id', userId);
-
-    if (updateError) {
-      console.error('❌ Error updating user profile:', updateError);
-    }
-
-    console.log('✅ Subscription change processed for user:', userId);
-  } catch (error) {
-    console.error('❌ Error handling subscription change:', error);
-    throw error;
+  if (updateError) {
+    console.error('❌ Error updating subscription status:', updateError);
+  } else {
+    console.log('✅ Updated subscription status successfully');
   }
 }
 
-// Handle subscription deletion
-async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
-  console.log('🗑️ Processing subscription deleted:', subscription.id);
-  await handleSubscriptionChange(subscription); // Same logic, just different status
-}
-
-// Handle successful invoice payment
 async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
   console.log('💰 Processing invoice payment succeeded:', invoice.id);
-  
-  try {
-    const customerId = invoice.customer as string;
-    
-    // Update last payment date
-    const { error } = await supabase
-      .from('user_profiles')
-      .update({
-        last_payment_date: new Date().toISOString(),
-        payment_status: 'verified',
-        updated_at: new Date().toISOString()
-      })
-      .eq('stripe_customer_id', customerId);
 
-    if (error) {
-      console.error('❌ Error updating payment date:', error);
-    } else {
-      console.log('✅ Updated payment date for customer:', customerId);
-    }
-  } catch (error) {
-    console.error('❌ Error handling invoice payment succeeded:', error);
+  const customerId = invoice.customer as string;
+
+  // Update last payment date in user_profiles
+  const { error: updateError } = await supabase
+    .from('user_profiles')
+    .update({
+      last_payment_date: new Date().toISOString(),
+      payment_status: 'verified',
+      updated_at: new Date().toISOString()
+    })
+    .eq('stripe_customer_id', customerId);
+
+  if (updateError) {
+    console.error('❌ Error updating payment date:', updateError);
+  } else {
+    console.log('✅ Updated payment date for customer:', customerId);
   }
 }
 
-// Handle failed invoice payment
-async function handleInvoicePaymentFailed(invoice: Stripe.Invoice) {
-  console.log('❌ Processing invoice payment failed:', invoice.id);
-  
-  try {
-    const customerId = invoice.customer as string;
-    
-    // Log the failed payment
-    const { error } = await supabase
-      .from('payment_logs')
-      .insert({
-        stripe_customer_id: customerId,
-        payment_status: 'failed',
-        error_message: 'Invoice payment failed',
-        processed_at: new Date().toISOString(),
-        webhook_verified: true,
-        metadata: {
-          invoice_id: invoice.id,
-          amount_due: invoice.amount_due,
-          currency: invoice.currency
-        }
-      });
-
-    if (error) {
-      console.error('❌ Error logging failed payment:', error);
-    }
-  } catch (error) {
-    console.error('❌ Error handling invoice payment failed:', error);
-  }
-}
-
-// Helper function to map Stripe price IDs to plan types
-function mapPriceIdToPlanType(priceId: string): string {
-  // Update these with your actual Stripe price IDs
-  const priceMapping: { [key: string]: string } = {
+function getPlanTypeFromPriceId(priceId: string): string {
+  // Map your actual Stripe price IDs to plan types
+  const priceMap: { [key: string]: string } = {
     'price_1QexWRtCrOpCXM5InfpatS': 'try_out_plan',
-    'price_1QexXRtCrOpCXM5InfpatS': 'base_plan',
+    'price_1RXEqERtcrDpOK7ME3QH9uzu': 'base_plan',
     // Add more price IDs as needed
   };
-  
-  return priceMapping[priceId] || 'base_plan';
+
+  return priceMap[priceId] || 'base_plan';
 }
-
-// Helper function to log webhook events
-async function logWebhookEvent(event: Stripe.Event, status: 'success' | 'error', error?: any) {
-  try {
-    const logData: any = {
-      event_type: event.type,
-      payment_status: status === 'success' ? 'processed' : 'error',
-      processed_at: new Date().toISOString(),
-      webhook_verified: true,
-      metadata: {
-        event_id: event.id,
-        created: new Date(event.created * 1000).toISOString(),
-        livemode: event.livemode
-      }
-    };
-
-    if (error) {
-      logData.error_message = error.message;
-      logData.metadata.error_stack = error.stack;
-    }
-
-    // Add session ID if it's a checkout event
-    if (event.type === 'checkout.session.completed') {
-      logData.stripe_session_id = (event.data.object as any).id;
-    }
-
-    // Add customer ID if available
-    if (event.data.object && 'customer' in event.data.object) {
-      logData.stripe_customer_id = event.data.object.customer;
-    }
-
-    const { error: dbError } = await supabase
-      .from('payment_logs')
-      .insert(logData);
-
-    if (dbError) {
-      console.error('❌ Error logging webhook event:', dbError);
-    }
-  } catch (logError) {
-    console.error('❌ Error in logWebhookEvent:', logError);
-  }
-}
-
-export { handler };
 
