@@ -116,6 +116,98 @@ export const hasAnyAccess = async (userId: string): Promise<boolean> => {
   }
 };
 
+// NEW: Check if user has temporary access specifically
+export const hasTemporaryAccess = async (): Promise<boolean> => {
+  try {
+    // Check localStorage first for immediate response
+    const tempAccess = localStorage.getItem('temp_access_granted');
+    const tempUntil = localStorage.getItem('temp_access_until');
+    
+    if (tempAccess === 'true' && tempUntil) {
+      const tempDate = new Date(tempUntil);
+      if (tempDate > new Date()) {
+        console.log('✅ 24-hour temporary access valid until:', tempDate);
+        return true;
+      } else {
+        // Temporary access expired, clean up
+        localStorage.removeItem('temp_access_granted');
+        localStorage.removeItem('temp_access_until');
+        localStorage.removeItem('temp_access_plan');
+        console.log('⏰ Temporary access expired');
+      }
+    }
+    
+    // Check database for temporary access
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return false;
+    
+    const { data: accessData } = await supabase
+      .from('user_access_status')
+      .select('temp_access_until')
+      .eq('id', user.id)
+      .single();
+    
+    if (accessData?.temp_access_until) {
+      const tempDate = new Date(accessData.temp_access_until);
+      if (tempDate > new Date()) {
+        console.log('✅ Database temporary access valid until:', tempDate);
+        return true;
+      }
+    }
+    
+    return false;
+  } catch (error) {
+    console.error('❌ Error checking temporary access:', error);
+    return false;
+  }
+};
+
+// NEW: Check if user has completed payment (permanent or temporary)
+export const hasCompletedPayment = async (): Promise<boolean> => {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return false;
+    
+    // Check for temporary access first (immediate after payment)
+    const tempAccess = await hasTemporaryAccess();
+    if (tempAccess) {
+      console.log('✅ User has 24-hour temporary access (payment completed)');
+      return true;
+    }
+    
+    // Check user_profiles for payment verification
+    const { data: profile } = await supabase
+      .from('user_profiles')
+      .select('payment_verified, subscription_status, manual_override')
+      .eq('user_id', user.id)
+      .single();
+    
+    if (profile?.payment_verified === true || 
+        profile?.subscription_status === 'active' ||
+        profile?.manual_override === true) {
+      console.log('✅ Payment verified or manual override');
+      return true;
+    }
+    
+    // Check user_access_status for access
+    const { data: accessData } = await supabase
+      .from('user_access_status')
+      .select('has_access, payment_verified')
+      .eq('id', user.id)
+      .single();
+    
+    if (accessData?.has_access === true || accessData?.payment_verified === true) {
+      console.log('✅ Access confirmed via user_access_status');
+      return true;
+    }
+    
+    return false;
+  } catch (error) {
+    console.error('❌ Error checking payment completion:', error);
+    return false;
+  }
+};
+
 // ENHANCED: Email verification with temporary access support
 export const isEmailVerified = async (userId?: string): Promise<boolean> => {
   try {
