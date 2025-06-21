@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowRight, Check, Star } from 'lucide-react';
-import { hasCompletedPayment, isEmailVerified, supabase } from '../lib/supabase';
+import { isEmailVerified, supabase } from '../lib/supabase';
+import { hasCompletedPayment } from '../lib/supabase';
 import { createCheckoutSession } from '../lib/stripe';
 import { products } from '../stripe-config';
 import { useAuth } from '../contexts/AuthContext';
