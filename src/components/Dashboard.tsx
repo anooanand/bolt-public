@@ -1,262 +1,207 @@
-// FIXED: Dashboard component with proper verification logic
+// COMPLETE FILE: src/components/Dashboard.tsx
+// Copy-paste this entire file into bolt.new (REPLACE existing)
+
 import React, { useState, useEffect } from 'react';
-import { 
-  FileText, 
-  PenTool, 
-  Clock, 
-  TrendingUp, 
-  Award, 
-  Target,
-  BookOpen,
-  Users,
-  Plus,
-  ArrowRight,
-  Star,
-  Calendar,
-  BarChart3,
-  AlertTriangle,
-  CheckCircle,
-  Mail
-} from 'lucide-react';
-import { hasCompletedPayment, isEmailVerified } from '../lib/supabase';
-import { EmailVerificationReminder } from './EmailVerificationReminder';
+import { useAuth } from '../contexts/AuthContext';
+import { isEmailVerified, hasAnyAccess } from '../lib/supabase';
+import { Mail, CheckCircle, Clock, FileText, PenTool, BarChart3, Settings } from 'lucide-react';
 
-interface DashboardProps {
-  user: any;
-  onNavigate: (page: string) => void;
-}
-
-export const Dashboard: React.FC<DashboardProps> = ({ 
-  user, 
-  onNavigate
-}) => {
-  const [userStats, setUserStats] = useState({
-    documentsCreated: 0,
-    wordsWritten: 0,
-    timeSpent: '0h',
-    averageScore: 0
-  });
-  const [recentDocuments, setRecentDocuments] = useState<any[]>([]);
+export function Dashboard() {
+  const { user } = useAuth();
+  const [isVerified, setIsVerified] = useState(false);
+  const [accessType, setAccessType] = useState<'none' | 'temporary' | 'permanent'>('none');
+  const [tempAccessUntil, setTempAccessUntil] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [emailVerified, setEmailVerified] = useState(false);
-  const [paymentCompleted, setPaymentCompleted] = useState(false);
-  const [verificationLoading, setVerificationLoading] = useState(true);
-
-  // Enhanced verification check
-  const checkVerificationStatus = async () => {
-    try {
-      setVerificationLoading(true);
-      console.log('🔍 Dashboard: Checking verification status...');
-      
-      // Check email verification using enhanced function
-      const emailVerifiedResult = await isEmailVerified();
-      console.log('📧 Dashboard: Email verification result:', emailVerifiedResult);
-      setEmailVerified(emailVerifiedResult);
-      
-      // Check payment status
-      const paymentResult = await hasCompletedPayment();
-      console.log('💳 Dashboard: Payment verification result:', paymentResult);
-      setPaymentCompleted(paymentResult);
-      
-    } catch (error) {
-      console.error('Error checking verification status:', error);
-      setEmailVerified(false);
-      setPaymentCompleted(false);
-    } finally {
-      setVerificationLoading(false);
-    }
-  };
 
   useEffect(() => {
-    const loadDashboardData = async () => {
-      setIsLoading(true);
-      
-      try {
-        // Check verification status first
-        await checkVerificationStatus();
+    const checkVerificationStatus = async () => {
+      if (user) {
+        console.log('🔍 Dashboard: Checking verification status...');
+        setIsLoading(true);
         
-        // Load mock data for demo
-        setUserStats({
-          documentsCreated: 3,
-          wordsWritten: 1250,
-          timeSpent: '2h',
-          averageScore: 78
-        });
-        
-        setRecentDocuments([
-          {
-            id: '1',
-            title: 'Persuasive Essay - Climate Change',
-            type: 'Persuasive Essay',
-            wordCount: 450,
-            lastModified: '2 hours ago',
-            score: 88
-          },
-          {
-            id: '2',
-            title: 'Creative Writing - The Lost City',
-            type: 'Creative Writing',
-            wordCount: 320,
-            lastModified: '1 day ago',
-            score: 92
+        try {
+          // Check for temporary access first
+          const tempAccess = localStorage.getItem('temp_access_granted');
+          const tempUntil = localStorage.getItem('temp_access_until');
+          
+          if (tempAccess === 'true' && tempUntil) {
+            const tempDate = new Date(tempUntil);
+            if (tempDate > new Date()) {
+              setIsVerified(true);
+              setAccessType('temporary');
+              setTempAccessUntil(tempUntil);
+              console.log('✅ Dashboard: Temporary access valid until:', tempDate);
+              setIsLoading(false);
+              return;
+            } else {
+              // Clean up expired temporary access
+              localStorage.removeItem('temp_access_granted');
+              localStorage.removeItem('temp_access_until');
+              localStorage.removeItem('temp_access_plan');
+            }
           }
-        ]);
-      } catch (error) {
-        console.error('Error loading dashboard data:', error);
-      } finally {
+          
+          // Check for any access (temporary or permanent)
+          const hasAccess = await hasAnyAccess(user.id);
+          if (hasAccess) {
+            setIsVerified(true);
+            setAccessType('permanent');
+            console.log('✅ Dashboard: Permanent access confirmed');
+          } else {
+            // Check basic email verification
+            const verified = await isEmailVerified(user.id);
+            setIsVerified(verified);
+            setAccessType(verified ? 'permanent' : 'none');
+            console.log('📊 Dashboard: Basic verification result:', verified);
+          }
+        } catch (error) {
+          console.error('❌ Error checking verification status:', error);
+          setIsVerified(false);
+          setAccessType('none');
+        }
+        
         setIsLoading(false);
       }
     };
-    
-    if (user) {
-      loadDashboardData();
-    }
+
+    checkVerificationStatus();
   }, [user]);
 
-  const handleManualVerificationCheck = async () => {
-    console.log('🔄 Manual verification check triggered from dashboard');
-    await checkVerificationStatus();
+  const handleManualRefresh = async () => {
+    if (user) {
+      setIsLoading(true);
+      try {
+        const hasAccess = await hasAnyAccess(user.id);
+        const verified = await isEmailVerified(user.id);
+        
+        if (hasAccess) {
+          setIsVerified(true);
+          setAccessType('permanent');
+        } else if (verified) {
+          setIsVerified(true);
+          setAccessType('permanent');
+        } else {
+          setIsVerified(false);
+          setAccessType('none');
+        }
+      } catch (error) {
+        console.error('❌ Error refreshing status:', error);
+      }
+      setIsLoading(false);
+    }
   };
 
-  const quickActions = [
-    {
-      id: 'write',
-      title: 'Start Writing',
-      description: 'Create a new document with AI assistance',
-      icon: PenTool,
-      color: 'bg-blue-500',
-      action: () => onNavigate('writing'),
-      requiresVerification: true,
-      requiresPayment: true
-    },
-    {
-      id: 'exam',
-      title: 'Practice Exam',
-      description: 'Take a NSW Selective practice test',
-      icon: Target,
-      color: 'bg-green-500',
-      action: () => onNavigate('exam'),
-      requiresVerification: true,
-      requiresPayment: true
-    },
-    {
-      id: 'learn',
-      title: 'Learning Modules',
-      description: 'Continue your writing education',
-      icon: BookOpen,
-      color: 'bg-purple-500',
-      action: () => onNavigate('learn'),
-      requiresVerification: true,
-      requiresPayment: true
-    },
-    {
-      id: 'collaborate',
-      title: 'Collaborate',
-      description: 'Share work and get feedback',
-      icon: Users,
-      color: 'bg-orange-500',
-      action: () => onNavigate('collaborate'),
-      requiresVerification: true,
-      requiresPayment: true
-    }
-  ];
+  const formatDateTime = (dateString: string) => {
+    return new Date(dateString).toLocaleString();
+  };
 
-  if (isLoading || verificationLoading) {
+  const getTimeRemaining = (dateString: string) => {
+    const now = new Date();
+    const target = new Date(dateString);
+    const diff = target.getTime() - now.getTime();
+    
+    if (diff <= 0) return 'Expired';
+    
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    
+    if (hours > 0) {
+      return `${hours}h ${minutes}m remaining`;
+    } else {
+      return `${minutes}m remaining`;
+    }
+  };
+
+  if (!user) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-400">Loading your dashboard...</p>
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">Please sign in</h2>
+          <p className="text-gray-600">You need to be signed in to access the dashboard.</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-            Welcome back, {user?.email?.split('@')[0] || 'Writer'}!
+          <h1 className="text-3xl font-bold text-gray-900">
+            Welcome back, {user.email?.split('@')[0]}!
           </h1>
-          <p className="text-gray-600 dark:text-gray-300">
-            Ready to continue your writing journey?
-          </p>
+          <p className="text-gray-600 mt-2">Ready to continue your writing journey?</p>
         </div>
 
-        {/* Enhanced Email Verification Status */}
-        {user && !emailVerified && (
-          <div className="mb-8 bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-700 rounded-lg p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <Mail className="w-5 h-5 text-yellow-600 dark:text-yellow-400 mr-3" />
-                <div>
-                  <h3 className="text-lg font-semibold text-yellow-800 dark:text-yellow-200">
-                    Verify Your Email Address
-                  </h3>
-                  <p className="text-yellow-700 dark:text-yellow-300">
-                    We've sent a verification email to {user.email}. Please check your inbox and click the verification link to activate your account.
-                  </p>
-                  <p className="text-sm text-yellow-600 dark:text-yellow-400 mt-1">
-                    After verifying your email, you'll need to complete payment to access all premium features.
-                  </p>
-                </div>
-              </div>
-              <div className="flex flex-col gap-2">
-                <button
-                  onClick={handleManualVerificationCheck}
-                  className="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg font-medium transition-colors text-sm"
-                >
-                  I've Verified My Email
-                </button>
-                <button
-                  onClick={() => {/* Add resend email logic */}}
-                  className="bg-transparent border border-yellow-600 text-yellow-600 hover:bg-yellow-600 hover:text-white px-4 py-2 rounded-lg font-medium transition-colors text-sm"
-                >
-                  Resend Email
-                </button>
+        {/* Verification Status */}
+        {isLoading ? (
+          <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 mb-8">
+            <div className="flex items-center">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mr-3"></div>
+              <div>
+                <h3 className="text-lg font-medium text-gray-900">Checking access status...</h3>
+                <p className="text-gray-600 mt-1">Please wait while we verify your account.</p>
               </div>
             </div>
           </div>
-        )}
-
-        {/* Enhanced Payment Status Banner */}
-        {emailVerified && !paymentCompleted && (
-          <div className="mb-8 bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-900 dark:to-blue-900 border border-green-200 dark:border-green-700 rounded-lg p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400 mr-3" />
-                <div>
-                  <h3 className="text-lg font-semibold text-green-800 dark:text-green-200">
-                    Email Verified! Complete Your Subscription
-                  </h3>
-                  <p className="text-green-700 dark:text-green-300">
-                    Great! Your email is verified. Complete payment to unlock all premium features and start your writing journey.
-                  </p>
-                </div>
+        ) : !isVerified ? (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-8">
+            <div className="flex items-center">
+              <Mail className="h-6 w-6 text-blue-600 mr-3" />
+              <div className="flex-1">
+                <h3 className="text-lg font-medium text-blue-900">Verify Your Email Address</h3>
+                <p className="text-blue-700 mt-1">
+                  We've sent a verification email to {user?.email}. Please check your inbox and click the verification link to activate your account.
+                </p>
+                <p className="text-sm text-blue-600 mt-2">
+                  After verifying your email, you'll need to complete payment to access all premium features.
+                </p>
               </div>
-              <button
-                onClick={() => onNavigate('pricing')}
-                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+            </div>
+            <div className="mt-4 flex space-x-3">
+              <button 
+                onClick={handleManualRefresh}
+                className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
               >
-                Subscribe Now
+                I've Verified My Email
+              </button>
+              <button className="bg-gray-200 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-300 transition-colors">
+                Resend Verification Email
               </button>
             </div>
           </div>
-        )}
-
-        {/* Success Banner for Fully Verified Users */}
-        {emailVerified && paymentCompleted && (
-          <div className="mb-8 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900 dark:to-purple-900 border border-blue-200 dark:border-blue-700 rounded-lg p-4">
+        ) : accessType === 'temporary' ? (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mb-8">
             <div className="flex items-center">
-              <CheckCircle className="w-5 h-5 text-blue-600 dark:text-blue-400 mr-3" />
-              <div>
-                <h3 className="text-lg font-semibold text-blue-800 dark:text-blue-200">
-                  All Set! Welcome to Premium
-                </h3>
-                <p className="text-blue-700 dark:text-blue-300">
-                  Your account is fully verified and your subscription is active. Enjoy all premium features!
+              <Clock className="h-6 w-6 text-yellow-600 mr-3" />
+              <div className="flex-1">
+                <h3 className="text-lg font-medium text-yellow-900">24-Hour Temporary Access Granted!</h3>
+                <p className="text-yellow-700 mt-1">
+                  Your payment is being processed. You have full access until {formatDateTime(tempAccessUntil!)} while we confirm your payment.
+                </p>
+                <p className="text-sm text-yellow-600 mt-2">
+                  <strong>{getTimeRemaining(tempAccessUntil!)}</strong> - Your access will automatically become permanent once payment is confirmed.
+                </p>
+              </div>
+            </div>
+            <div className="mt-4">
+              <button 
+                onClick={handleManualRefresh}
+                className="bg-yellow-600 text-white px-4 py-2 rounded-md hover:bg-yellow-700 transition-colors"
+              >
+                Check Payment Status
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="bg-green-50 border border-green-200 rounded-lg p-6 mb-8">
+            <div className="flex items-center">
+              <CheckCircle className="h-6 w-6 text-green-600 mr-3" />
+              <div className="flex-1">
+                <h3 className="text-lg font-medium text-green-900">All Set! Welcome to Premium</h3>
+                <p className="text-green-700 mt-1">
+                  Great! Your email is verified and payment is confirmed. You have full access to all premium features.
                 </p>
               </div>
             </div>
@@ -265,195 +210,105 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm">
+          <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-center">
-              <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
-                <FileText className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-              </div>
+              <FileText className="h-8 w-8 text-blue-600" />
               <div className="ml-4">
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {userStats.documentsCreated.toLocaleString()}
-                </p>
-                <p className="text-gray-600 dark:text-gray-400">Documents</p>
+                <p className="text-sm font-medium text-gray-600">Documents</p>
+                <p className="text-2xl font-bold text-gray-900">3</p>
               </div>
             </div>
           </div>
-
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm">
+          
+          <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-center">
-              <div className="p-2 bg-green-100 dark:bg-green-900 rounded-lg">
-                <PenTool className="w-6 h-6 text-green-600 dark:text-green-400" />
-              </div>
+              <PenTool className="h-8 w-8 text-green-600" />
               <div className="ml-4">
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {userStats.wordsWritten.toLocaleString()}
-                </p>
-                <p className="text-gray-600 dark:text-gray-400">Words Written</p>
+                <p className="text-sm font-medium text-gray-600">Words Written</p>
+                <p className="text-2xl font-bold text-gray-900">1,250</p>
               </div>
             </div>
           </div>
-
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm">
+          
+          <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-center">
-              <div className="p-2 bg-purple-100 dark:bg-purple-900 rounded-lg">
-                <Clock className="w-6 h-6 text-purple-600 dark:text-purple-400" />
-              </div>
+              <Clock className="h-8 w-8 text-purple-600" />
               <div className="ml-4">
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {userStats.timeSpent}
-                </p>
-                <p className="text-gray-600 dark:text-gray-400">Time Spent</p>
+                <p className="text-sm font-medium text-gray-600">Time Spent</p>
+                <p className="text-2xl font-bold text-gray-900">2h</p>
               </div>
             </div>
           </div>
-
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm">
+          
+          <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-center">
-              <div className="p-2 bg-orange-100 dark:bg-orange-900 rounded-lg">
-                <TrendingUp className="w-6 h-6 text-orange-600 dark:text-orange-400" />
-              </div>
+              <BarChart3 className="h-8 w-8 text-orange-600" />
               <div className="ml-4">
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {userStats.averageScore}%
-                </p>
-                <p className="text-gray-600 dark:text-gray-400">Avg Score</p>
+                <p className="text-sm font-medium text-gray-600">Avg Score</p>
+                <p className="text-2xl font-bold text-gray-900">78%</p>
               </div>
             </div>
           </div>
         </div>
 
         {/* Quick Actions */}
-        <div className="mb-8">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Quick Actions</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {quickActions.map((action) => {
-              const Icon = action.icon;
-              const isDisabled = (action.requiresVerification && !emailVerified) || 
-                               (action.requiresPayment && !paymentCompleted);
+        <div className="bg-white rounded-lg shadow mb-8">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <h2 className="text-lg font-medium text-gray-900">Quick Actions</h2>
+          </div>
+          <div className="p-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="border border-gray-200 rounded-lg p-6 hover:border-blue-300 transition-colors cursor-pointer">
+                <div className="flex items-center mb-4">
+                  <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                    <PenTool className="h-6 w-6 text-blue-600" />
+                  </div>
+                  <div className="ml-4">
+                    <h3 className="text-lg font-medium text-gray-900">Start Writing</h3>
+                    <p className="text-gray-600">Create a new document with AI assistance</p>
+                  </div>
+                </div>
+                {!isVerified && (
+                  <div className="bg-yellow-50 border border-yellow-200 rounded p-2">
+                    <p className="text-sm text-yellow-800">Payment required</p>
+                  </div>
+                )}
+              </div>
               
-              return (
-                <div
-                  key={action.id}
-                  className={`bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border transition-all duration-200 ${
-                    isDisabled 
-                      ? 'opacity-50 cursor-not-allowed border-gray-200 dark:border-gray-700' 
-                      : 'hover:shadow-md cursor-pointer border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600'
-                  }`}
-                  onClick={isDisabled ? undefined : action.action}
-                >
-                  <div className={`p-3 rounded-lg mb-4 ${action.color} ${isDisabled ? 'opacity-50' : ''}`}>
-                    <Icon className="w-6 h-6 text-white" />
+              <div className="border border-gray-200 rounded-lg p-6 hover:border-green-300 transition-colors cursor-pointer">
+                <div className="flex items-center mb-4">
+                  <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                    <BarChart3 className="h-6 w-6 text-green-600" />
                   </div>
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                    {action.title}
-                  </h3>
-                  <p className="text-gray-600 dark:text-gray-400 text-sm mb-4">
-                    {action.description}
-                  </p>
-                  {isDisabled && (
-                    <div className="text-xs text-yellow-600 dark:text-yellow-400">
-                      {!emailVerified ? 'Email verification required' : 'Payment required'}
-                    </div>
-                  )}
-                  {!isDisabled && (
-                    <ArrowRight className="w-4 h-4 text-gray-400" />
-                  )}
+                  <div className="ml-4">
+                    <h3 className="text-lg font-medium text-gray-900">Practice Exam</h3>
+                    <p className="text-gray-600">Take a NSW Selective practice test</p>
+                  </div>
                 </div>
-              );
-            })}
+                {!isVerified && (
+                  <div className="bg-yellow-50 border border-yellow-200 rounded p-2">
+                    <p className="text-sm text-yellow-800">Payment required</p>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Recent Documents */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Recent Documents</h2>
-            <button
-              onClick={() => onNavigate('writing')}
-              disabled={!emailVerified || !paymentCompleted}
-              className={`flex items-center px-4 py-2 rounded-lg font-medium transition-colors ${
-                emailVerified && paymentCompleted
-                  ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                  : 'bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed'
-              }`}
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              New Document
-            </button>
+        {/* Recent Activity */}
+        <div className="bg-white rounded-lg shadow">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <h2 className="text-lg font-medium text-gray-900">Recent Activity</h2>
           </div>
-          
-          {recentDocuments.length > 0 ? (
-            <div className="space-y-4">
-              {recentDocuments.map((doc) => (
-                <div
-                  key={doc.id}
-                  className="flex items-center justify-between p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"
-                >
-                  <div className="flex items-center">
-                    <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg mr-4">
-                      <FileText className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-gray-900 dark:text-white">{doc.title}</h3>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        {doc.type} • {doc.wordCount} words • {doc.lastModified}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center">
-                    <div className="flex items-center mr-4">
-                      <Star className="w-4 h-4 text-yellow-400 mr-1" />
-                      <span className="text-sm font-medium text-gray-900 dark:text-white">
-                        {doc.score}%
-                      </span>
-                    </div>
-                    <ArrowRight className="w-4 h-4 text-gray-400" />
-                  </div>
-                </div>
-              ))}
+          <div className="p-6">
+            <div className="text-center text-gray-500">
+              <FileText className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+              <p>No recent activity yet. Start writing to see your progress here!</p>
             </div>
-          ) : (
-            <div className="text-center py-12">
-              <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-                No documents yet
-              </h3>
-              <p className="text-gray-600 dark:text-gray-400 mb-4">
-                Start writing your first document to see it here.
-              </p>
-              <button
-                onClick={() => onNavigate('writing')}
-                disabled={!emailVerified || !paymentCompleted}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                  emailVerified && paymentCompleted
-                    ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                    : 'bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed'
-                }`}
-              >
-                Create Your First Document
-              </button>
-            </div>
-          )}
+          </div>
         </div>
-
-        {/* Debug Info (development only) */}
-        {process.env.NODE_ENV === 'development' && (
-          <div className="mt-8 p-4 bg-gray-100 dark:bg-gray-800 rounded-lg">
-            <h4 className="font-bold mb-2">Debug Information:</h4>
-            <p>User: {user?.email}</p>
-            <p>Email Verified: {emailVerified ? 'Yes' : 'No'}</p>
-            <p>Payment Completed: {paymentCompleted ? 'Yes' : 'No'}</p>
-            <p>Verification Loading: {verificationLoading ? 'Yes' : 'No'}</p>
-            <button 
-              onClick={handleManualVerificationCheck}
-              className="mt-2 px-3 py-1 bg-blue-500 text-white rounded text-sm"
-            >
-              Refresh Status
-            </button>
-          </div>
-        )}
       </div>
     </div>
   );
-};
+}
 
