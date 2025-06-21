@@ -12,6 +12,52 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
+// NEW: Handle email verification callback
+export const handleEmailVerificationCallback = async () => {
+  try {
+    console.log('🔄 Processing email verification callback...');
+    
+    // Get the current session after verification
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    
+    if (sessionError) {
+      console.error('❌ Session error:', sessionError);
+      return { success: false, error: sessionError };
+    }
+    
+    if (!session || !session.user) {
+      console.log('❌ No session or user found after verification');
+      return { success: false, error: { message: 'No session found after verification' } };
+    }
+    
+    const user = session.user;
+    console.log('✅ User session found:', user.email);
+    
+    // Update user_access_status to mark email as verified
+    const { error: updateError } = await supabase
+      .from('user_access_status')
+      .upsert({
+        id: user.id,
+        email: user.email,
+        email_verified: true,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'id' });
+    
+    if (updateError) {
+      console.error('❌ Error updating user access status:', updateError);
+      // Don't fail the verification for this
+    } else {
+      console.log('✅ User access status updated');
+    }
+    
+    return { success: true, user: user };
+    
+  } catch (error) {
+    console.error('❌ Error in email verification callback:', error);
+    return { success: false, error };
+  }
+};
+
 // ENHANCED: Temporary access functions
 export const grantTemporaryAccess = async (userId: string, planType: string = 'base_plan') => {
   try {
