@@ -166,7 +166,7 @@ function App() {
   };
 
   const handleStartWriting = () => {
-    setActivePage('writing');
+    handleNavigation("writing");
   };
 
   // Writing app state management
