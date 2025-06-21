@@ -1,7 +1,6 @@
-// FIXED: Simplified and reliable EmailVerificationHandler component
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { supabase, handleEmailVerificationCallback, isEmailVerified } from '../lib/supabase';
+import { supabase, isEmailVerified } from '../lib/supabase';
 import { CheckCircle, XCircle, Loader, AlertTriangle } from 'lucide-react';
 
 export function EmailVerificationHandler() {
@@ -21,17 +20,55 @@ export function EmailVerificationHandler() {
         console.log('=== EMAIL VERIFICATION HANDLER STARTED ===');
         console.log('Current URL:', window.location.href);
         
-        // FIRST: Check if user is already verified
-        console.log('🔍 Checking if user is already verified...');
-        const alreadyVerified = await isEmailVerified();
+        // FIRST: Get current user session
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
         
-        if (alreadyVerified) {
+        if (userError) {
+          console.error('❌ Error getting user:', userError);
+          if (mounted) {
+            setStatus('error');
+            setErrorMessage('Unable to verify user session. Please try signing in again.');
+          }
+          return;
+        }
+
+        if (!user) {
+          console.log('❌ No user session found');
+          if (mounted) {
+            setStatus('error');
+            setErrorMessage('No user session found. Please sign in again.');
+          }
+          return;
+        }
+
+        console.log('✅ User session found:', user.email);
+        setUserEmail(user.email || '');
+
+        // SECOND: Check if user is already verified
+        console.log('🔍 Checking if user is already verified...');
+        console.log('User email_confirmed_at:', user.email_confirmed_at);
+        console.log('User metadata email_verified:', user.user_metadata?.email_verified);
+        
+        // Check multiple verification sources
+        const isAlreadyVerified = user.email_confirmed_at != null || 
+                                 user.user_metadata?.email_verified === true ||
+                                 await isEmailVerified(user.id);
+        
+        if (isAlreadyVerified) {
           console.log('✅ User is already verified, redirecting...');
-          const { data: { user } } = await supabase.auth.getUser();
           
           if (mounted) {
-            setUserEmail(user?.email || '');
             setStatus('already_verified');
+            
+            // Update user_access_status to ensure consistency
+            await supabase
+              .from('user_access_status')
+              .upsert({
+                id: user.id,
+                email: user.email,
+                email_verified: true,
+                updated_at: new Date().toISOString()
+              }, { onConflict: 'id' });
             
             // Redirect after a short delay
             setTimeout(() => {
@@ -43,7 +80,7 @@ export function EmailVerificationHandler() {
           return;
         }
         
-        // Parse URL for errors
+        // THIRD: Parse URL for errors
         const searchParams = new URLSearchParams(location.search);
         const hashParams = new URLSearchParams(location.hash.substring(1));
         
@@ -66,15 +103,36 @@ export function EmailVerificationHandler() {
           return;
         }
 
-        // Process the verification callback
+        // FOURTH: Process the verification callback
         console.log('🔄 Processing verification callback...');
-        const result = await handleEmailVerificationCallback();
         
-        if (result.success && result.user) {
-          console.log('✅ Email verification successful:', result.user.email);
+        // Get the current session to see if verification was successful
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError) {
+          console.error('❌ Session error:', sessionError);
+          if (mounted) {
+            setStatus('error');
+            setErrorMessage('Error verifying session. Please try signing in again.');
+          }
+          return;
+        }
+        
+        if (session && session.user) {
+          console.log('✅ Email verification successful:', session.user.email);
+          
+          // Update user_access_status
+          await supabase
+            .from('user_access_status')
+            .upsert({
+              id: session.user.id,
+              email: session.user.email,
+              email_verified: true,
+              updated_at: new Date().toISOString()
+            }, { onConflict: 'id' });
           
           if (mounted) {
-            setUserEmail(result.user.email || '');
+            setUserEmail(session.user.email || '');
             setStatus('success');
             
             // Redirect after showing success message
@@ -85,18 +143,14 @@ export function EmailVerificationHandler() {
             }, 3000);
           }
         } else {
-          console.error('❌ Email verification failed:', result.error);
+          console.error('❌ No session found after verification');
           
           if (mounted) {
-            if (result.error?.code === 'otp_expired') {
-              setStatus('expired');
-              setErrorMessage('Your verification link has expired. Please request a new verification email.');
-            } else {
-              setStatus('error');
-              setErrorMessage(result.error?.message || 'Verification failed. Please try signing in manually.');
-            }
+            setStatus('error');
+            setErrorMessage('Verification completed but no session found. Please try signing in manually.');
           }
         }
+        
       } catch (error: any) {
         console.error('❌ Unexpected error in verification handler:', error);
         
@@ -116,7 +170,7 @@ export function EmailVerificationHandler() {
 
   const handleResendVerification = async () => {
     try {
-      const email = localStorage.getItem('userEmail');
+      const email = localStorage.getItem('userEmail') || userEmail;
       if (!email) {
         alert('No email found. Please sign up again.');
         navigate('/');
