@@ -29,10 +29,10 @@ export default defineConfig({
       'react-dom',
       'react-router-dom',
       'framer-motion',
-      'lucide-react'
+      'lucide-react',
+      '@supabase/supabase-js'
     ],
     exclude: [
-      '@supabase/supabase-js',
       'openai',
       'stripe'
     ]
