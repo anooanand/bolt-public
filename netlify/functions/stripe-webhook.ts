@@ -15,10 +15,10 @@ const supabase = createClient(
 );
 
 export const handler: Handler = async (event) => {
-  console.log('🔔 Stripe Webhook received:', event.httpMethod);
+  console.log('🔔 Stripe Webhook received:', event.httpMethod );
 
   // Handle CORS preflight
-  if (event.httpMethod === 'OPTIONS') {
+  if (event.httpMethod === 'OPTIONS' ) {
     return {
       statusCode: 200,
       headers: {
@@ -30,7 +30,7 @@ export const handler: Handler = async (event) => {
     };
   }
 
-  if (event.httpMethod !== 'POST') {
+  if (event.httpMethod !== 'POST' ) {
     return { statusCode: 405, body: 'Method Not Allowed' };
   }
 
@@ -171,7 +171,7 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
         current_period_end: currentPeriodEnd,
         updated_at: new Date().toISOString()
       }, {
-        onConflict: 'user_id'
+        onConflict: 'id' // CORRECTED: Changed from 'user_id' to 'id'
       });
 
     if (profileError) {
