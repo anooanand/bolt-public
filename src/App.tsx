@@ -452,7 +452,7 @@ function App() {
                   />
                 } />
 
-                <Route path="/email-verification" element={
+                <Route path="/auth/callback" element={
                   <EmailVerificationHandler />
                 } />
               </Routes>
@@ -463,9 +463,11 @@ function App() {
             {/* Modals */}
             {showAuthModal && (
               <AuthModal
-                mode={authModalMode}
+                isOpen={showAuthModal}
                 onClose={() => setShowAuthModal(false)}
                 onSuccess={handleAuthSuccess}
+                initialMode={authModalMode}
+                onNavigate={handleNavigation}
               />
             )}
 
@@ -475,16 +477,23 @@ function App() {
 
             {showPlanningTool && (
               <PlanningToolModal
+                isOpen={showPlanningTool}
                 onClose={() => setShowPlanningTool(false)}
-                onSave={handleSavePlan}
+                onSavePlan={handleSavePlan}
+                content={content}
+                textType={textType}
+                onRestoreContent={handleRestoreContent}
               />
             )}
 
             {/* Email Verification Reminder */}
             {user && !emailVerified && activePage === 'dashboard' && (
               <EmailVerificationReminder 
-                userEmail={user.email || ''}
-                onClose={() => setActivePage('home')}
+                email={user.email || ''}
+                onVerified={() => {
+                  // Refresh the page to update verification status
+                  window.location.reload();
+                }}
               />
             )}
           </div>
