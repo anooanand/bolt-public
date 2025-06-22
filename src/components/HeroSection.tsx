@@ -33,7 +33,7 @@ export function HeroSection({ onGetStarted }: HeroSectionProps) {
               onClick={onGetStarted}
               className="px-8 py-4 text-lg font-semibold rounded-md bg-indigo-600 hover:bg-indigo-700 text-white transition-all duration-200 flex items-center justify-center"
             >
-              View Pricing
+              Get Started
               <ArrowRight className="ml-2 w-5 h-5" />
             </button>
             
