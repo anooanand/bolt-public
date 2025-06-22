@@ -1,5 +1,5 @@
-// FIXED WEBHOOK: netlify/functions/stripe-webhook.ts
-// This version works with your REAL TABLES instead of the view
+// CORRECTED WEBHOOK: netlify/functions/stripe-webhook.ts
+// Fixed the undefined variable error
 
 import { Handler } from '@netlify/functions';
 import Stripe from 'stripe';
@@ -15,10 +15,10 @@ const supabase = createClient(
 );
 
 export const handler: Handler = async (event) => {
-  console.log('🔔 Stripe Webhook received:', event.httpMethod );
+  console.log('🔔 Stripe Webhook received:', event.httpMethod);
 
   // Handle CORS preflight
-  if (event.httpMethod === 'OPTIONS' ) {
+  if (event.httpMethod === 'OPTIONS') {
     return {
       statusCode: 200,
       headers: {
@@ -30,7 +30,7 @@ export const handler: Handler = async (event) => {
     };
   }
 
-  if (event.httpMethod !== 'POST' ) {
+  if (event.httpMethod !== 'POST') {
     return { statusCode: 405, body: 'Method Not Allowed' };
   }
 
@@ -131,8 +131,11 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
 
   console.log('📋 Subscription ID:', subscriptionId);
 
-  // Get subscription details for plan type
+  // Get subscription details for plan type and dates
   let planType = 'base_plan';
+  let currentPeriodStart = new Date().toISOString();
+  let currentPeriodEnd = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(); // 1 year from now
+
   if (subscriptionId) {
     try {
       const subscription = await stripe.subscriptions.retrieve(subscriptionId);
@@ -140,28 +143,35 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
       console.log('💰 Price ID:', priceId);
       planType = getPlanTypeFromPriceId(priceId);
       console.log('📋 Plan type:', planType);
+      
+      // Get actual subscription period dates
+      currentPeriodStart = new Date(subscription.current_period_start * 1000).toISOString();
+      currentPeriodEnd = new Date(subscription.current_period_end * 1000).toISOString();
+      console.log('📅 Period:', currentPeriodStart, 'to', currentPeriodEnd);
     } catch (error) {
       console.error('⚠️ Error fetching subscription:', error);
     }
   }
 
-  // 1. UPDATE USER_PROFILES TABLE (instead of user_access_status view)
+  // 1. UPDATE USER_PROFILES TABLE
   try {
     const { error: profileError } = await supabase
       .from('user_profiles')
       .upsert({
-        id: userId, // Add this line
         user_id: userId,
         email: customerEmail,
         stripe_customer_id: stripeCustomerId,
+        stripe_subscription_id: subscriptionId,
         subscription_status: 'active',
         payment_status: 'verified',
         plan_type: planType,
         last_payment_date: new Date().toISOString(),
         payment_verified: true,
-        current_period_start: currentPeriodStart, // Add this line
-        current_period_end: currentPeriodEnd,   // Add this line
+        current_period_start: currentPeriodStart,
+        current_period_end: currentPeriodEnd,
         updated_at: new Date().toISOString()
+      }, {
+        onConflict: 'user_id'
       });
 
     if (profileError) {
@@ -174,7 +184,7 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
     throw error;
   }
 
-  // 2. INSERT INTO USER_PAYMENTS TABLE
+  // 2. INSERT INTO USER_PAYMENTS TABLE (if it exists)
   try {
     const { error: paymentError } = await supabase
       .from('user_payments')
@@ -192,7 +202,7 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
 
     if (paymentError) {
       console.error('❌ Error inserting user_payments:', paymentError);
-      // Don't throw - this is not critical
+      // Don't throw - this table might not exist
     } else {
       console.log('✅ Inserted user_payments successfully');
     }
@@ -201,7 +211,7 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
     // Don't throw - this is not critical
   }
 
-  // 3. LOG TO PAYMENT_LOGS TABLE
+  // 3. LOG TO PAYMENT_LOGS TABLE (if it exists)
   try {
     const { error: logError } = await supabase
       .from('payment_logs')
@@ -224,7 +234,7 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
 
     if (logError) {
       console.error('❌ Error logging to payment_logs:', logError);
-      // Don't throw - this is not critical
+      // Don't throw - this table might not exist
     } else {
       console.log('✅ Logged to payment_logs successfully');
     }
@@ -305,3 +315,4 @@ function getPlanTypeFromPriceId(priceId: string): string {
 
   return priceMap[priceId] || 'base_plan';
 }
+
