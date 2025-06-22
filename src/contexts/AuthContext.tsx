@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 
@@ -8,6 +8,9 @@ interface AuthContextType {
   loading: boolean;
   verificationStatus: 'pending' | 'verified' | 'failed';
   refreshAuth: () => Promise<void>;
+  emailVerified: boolean;
+  paymentCompleted: boolean;
+  authSignOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -16,6 +19,9 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   verificationStatus: 'pending',
   refreshAuth: async () => {},
+  emailVerified: false,
+  paymentCompleted: false,
+  authSignOut: async () => {},
 });
 
 export const useAuth = () => {
@@ -31,8 +37,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
   const [verificationStatus, setVerificationStatus] = useState<'pending' | 'verified' | 'failed'>('pending');
+  const [emailVerified, setEmailVerified] = useState(false);
+  const [paymentCompleted, setPaymentCompleted] = useState(false);
 
-  const checkAdminStatus = async (user: User, retries = 3) => {
+  // Optimized admin status check with caching
+  const checkAdminStatus = useCallback(async (user: User, retries = 2) => {
+    // Check cache first
+    const cacheKey = `admin_status_${user.id}`;
+    const cached = sessionStorage.getItem(cacheKey);
+    if (cached) {
+      const { isAdmin: cachedAdmin, timestamp } = JSON.parse(cached);
+      // Cache for 5 minutes
+      if (Date.now() - timestamp < 5 * 60 * 1000) {
+        setIsAdmin(cachedAdmin);
+        return cachedAdmin;
+      }
+    }
+
     try {
       const { data, error } = await supabase
         .from('user_profiles')
@@ -48,280 +69,256 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           return checkAdminStatus(user, retries - 1);
         }
         
-        console.error('Error checking admin status:', error);
+        console.log('Admin check error (non-critical):', error.message);
         setIsAdmin(false);
+        return false;
+      }
+
+      const adminStatus = data?.role === 'admin';
+      setIsAdmin(adminStatus);
+      
+      // Cache the result
+      sessionStorage.setItem(cacheKey, JSON.stringify({
+        isAdmin: adminStatus,
+        timestamp: Date.now()
+      }));
+      
+      return adminStatus;
+    } catch (error) {
+      console.error('Admin status check failed:', error);
+      setIsAdmin(false);
+      return false;
+    }
+  }, []);
+
+  // Optimized email verification check
+  const checkEmailVerification = useCallback(async (user: User) => {
+    try {
+      // Check if email is confirmed in auth
+      if (user.email_confirmed_at) {
+        setEmailVerified(true);
+        setVerificationStatus('verified');
+        return true;
+      }
+
+      // Fallback: check user metadata
+      if (user.user_metadata?.email_verified) {
+        setEmailVerified(true);
+        setVerificationStatus('verified');
+        return true;
+      }
+
+      setEmailVerified(false);
+      setVerificationStatus('pending');
+      return false;
+    } catch (error) {
+      console.error('Email verification check failed:', error);
+      setEmailVerified(false);
+      setVerificationStatus('failed');
+      return false;
+    }
+  }, []);
+
+  // Optimized payment status check
+  const checkPaymentStatus = useCallback(async (user: User) => {
+    try {
+      // Check local storage for temporary access first
+      const paymentDate = localStorage.getItem('payment_date');
+      const paymentPlan = localStorage.getItem('payment_plan');
+      
+      if (paymentDate && paymentPlan) {
+        const paymentTime = new Date(paymentDate).getTime();
+        const now = Date.now();
+        const hoursSincePayment = (now - paymentTime) / (1000 * 60 * 60);
+        
+        // 24-hour temporary access
+        if (hoursSincePayment < 24) {
+          console.log('✅ Temporary payment access valid');
+          setPaymentCompleted(true);
+          return true;
+        } else {
+          // Clean up expired temporary access
+          localStorage.removeItem('payment_date');
+          localStorage.removeItem('payment_plan');
+        }
+      }
+
+      // Check database for permanent access
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select('subscription_status, subscription_end_date')
+        .eq('user_id', user.id)
+        .single();
+
+      if (error) {
+        console.log('Payment check error (non-critical):', error.message);
+        setPaymentCompleted(false);
+        return false;
+      }
+
+      const hasValidSubscription = data?.subscription_status === 'active' ||
+                                  (data?.subscription_end_date && new Date(data.subscription_end_date) > new Date());
+      
+      setPaymentCompleted(hasValidSubscription);
+      return hasValidSubscription;
+    } catch (error) {
+      console.error('Payment status check failed:', error);
+      setPaymentCompleted(false);
+      return false;
+    }
+  }, []);
+
+  // Optimized auth refresh
+  const refreshAuth = useCallback(async () => {
+    try {
+      const { data: { session }, error } = await supabase.auth.getSession();
+      
+      if (error) {
+        console.error('Session refresh error:', error);
+        setUser(null);
+        setIsAdmin(false);
+        setEmailVerified(false);
+        setPaymentCompleted(false);
+        setLoading(false);
         return;
       }
 
-      setIsAdmin(data?.role === 'admin');
-    } catch (error) {
-      console.error('Error checking admin status:', error);
-      setIsAdmin(false);
-    }
-  };
-
-  // FIXED: Simplified retry mechanism without generics
-  const retryOperation = async (
-    operation: () => Promise<any>,
-    maxRetries: number = 5,
-    operationName: string = 'operation'
-  ): Promise<any> => {
-    let lastError;
-    
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        console.log(`${operationName} - attempt ${attempt}/${maxRetries}`);
-        return await operation();
-      } catch (error: any) {
-        lastError = error;
-        
-        // Check if it's a retryable error
-        const isRetryable = 
-          error.message?.includes('timeout') ||
-          error.message?.includes('network') ||
-          error.code === 'NETWORK_ERROR' ||
-          error.status >= 500;
-        
-        if (isRetryable && attempt < maxRetries) {
-          const delay = Math.min(1000 * Math.pow(2, attempt), 10000); // Max 10s
-          console.log(`${operationName} failed, retrying in ${delay}ms...`, error.message);
-          await new Promise(resolve => setTimeout(resolve, delay));
-          continue;
-        }
-        
-        // If it's not retryable or we've exhausted retries, break
-        break;
-      }
-    }
-    
-    console.error(`${operationName} failed after ${maxRetries} attempts:`, lastError);
-    return null;
-  };
-
-  // Auth state checker with multiple verification points
-  const checkAuthState = async (retryCount = 0) => {
-    const maxRetries = 5;
-    
-    try {
-      console.log(`🔍 Checking auth state (attempt ${retryCount + 1}/${maxRetries + 1})`);
-      
-      // Get session with timeout protection
-      const sessionResult = await retryOperation(
-        () => supabase.auth.getSession(),
-        3,
-        'getSession'
-      );
-
-      if (!sessionResult) {
-        if (retryCount < maxRetries) {
-          console.log(`Session fetch failed, retrying in ${(retryCount + 1) * 2000}ms...`);
-          setTimeout(() => checkAuthState(retryCount + 1), (retryCount + 1) * 2000);
-          return;
-        } else {
-          console.error('Failed to get session after maximum retries');
-          setLoading(false);
-          setVerificationStatus('failed');
-          return;
-        }
-      }
-
-      const { session, error } = sessionResult;
-      
-      if (error) {
-        console.error('Session error:', error);
-        if (retryCount < maxRetries) {
-          setTimeout(() => checkAuthState(retryCount + 1), (retryCount + 1) * 2000);
-          return;
-        } else {
-          setLoading(false);
-          setVerificationStatus('failed');
-          return;
-        }
-      }
-
       if (session?.user) {
-        // Double-check with fresh user data
-        const userResult = await retryOperation(
-          () => supabase.auth.getUser(),
-          3,
-          'getUser'
-        );
-
-        if (userResult && !userResult.error) {
-          const freshUser = userResult.data.user;
-          
-          // Check verification status
-          if (freshUser?.email_confirmed_at) {
-            console.log('✅ User email verified:', freshUser.email);
-            setUser(freshUser);
-            setVerificationStatus('verified');
-            await checkAdminStatus(freshUser);
-          } else {
-            console.log('⚠️ User email not yet verified:', freshUser?.email);
-            setUser(freshUser);
-            setVerificationStatus('pending');
-            // Still check admin status for unverified users
-            await checkAdminStatus(freshUser);
-          }
-        } else {
-          // Fall back to session user if fresh user fetch fails
-          console.warn('Fresh user fetch failed, using session user');
-          setUser(session.user);
-          
-          if (session.user.email_confirmed_at) {
-            setVerificationStatus('verified');
-          } else {
-            setVerificationStatus('pending');
-          }
-          
-          await checkAdminStatus(session.user);
-        }
+        setUser(session.user);
+        
+        // Run checks in parallel for better performance
+        await Promise.all([
+          checkAdminStatus(session.user),
+          checkEmailVerification(session.user),
+          checkPaymentStatus(session.user)
+        ]);
       } else {
-        console.log('No active session');
         setUser(null);
         setIsAdmin(false);
-        setVerificationStatus('pending');
+        setEmailVerified(false);
+        setPaymentCompleted(false);
       }
-      
-      setLoading(false);
     } catch (error) {
-      console.error('Unexpected error in auth state check:', error);
-      
-      if (retryCount < maxRetries) {
-        console.log(`Retrying auth state check (${retryCount + 1}/${maxRetries})...`);
-        setTimeout(() => checkAuthState(retryCount + 1), (retryCount + 1) * 2000);
-      } else {
-        console.error('Auth state check failed after maximum retries');
-        setLoading(false);
-        setVerificationStatus('failed');
-      }
+      console.error('Auth refresh failed:', error);
+      setUser(null);
+      setIsAdmin(false);
+      setEmailVerified(false);
+      setPaymentCompleted(false);
+    } finally {
+      setLoading(false);
     }
-  };
+  }, [checkAdminStatus, checkEmailVerification, checkPaymentStatus]);
 
-  // Manual auth refresh function
-  const refreshAuth = async () => {
-    console.log('🔄 Manual auth refresh triggered');
-    setLoading(true);
-    await checkAuthState(0);
-  };
-
-  useEffect(() => {
-    let mounted = true;
-    let authSubscription: any;
-
-    const initializeAuth = async () => {
-      if (!mounted) return;
+  // Optimized sign out
+  const authSignOut = useCallback(async () => {
+    try {
+      await supabase.auth.signOut();
+      setUser(null);
+      setIsAdmin(false);
+      setEmailVerified(false);
+      setPaymentCompleted(false);
       
-      console.log('🚀 Initializing AuthProvider...');
-      await checkAuthState(0);
+      // Clear caches
+      sessionStorage.clear();
+      localStorage.removeItem('payment_date');
+      localStorage.removeItem('payment_plan');
+    } catch (error) {
+      console.error('Sign out error:', error);
+      throw error;
+    }
+  }, []);
+
+  // Initialize auth state
+  useEffect(() => {
+    console.log('🚀 Initializing AuthProvider...');
+    
+    let mounted = true;
+    
+    const initializeAuth = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (!mounted) return;
+        
+        if (error) {
+          console.error('Initial session error:', error);
+          setLoading(false);
+          return;
+        }
+
+        if (session?.user) {
+          console.log('🔄 Auth state change detected: SIGNED_IN');
+          setUser(session.user);
+          
+          // Run checks in parallel
+          await Promise.all([
+            checkAdminStatus(session.user),
+            checkEmailVerification(session.user),
+            checkPaymentStatus(session.user)
+          ]);
+        } else {
+          console.log('🔄 Auth state change detected: SIGNED_OUT');
+          setUser(null);
+          setIsAdmin(false);
+          setEmailVerified(false);
+          setPaymentCompleted(false);
+        }
+      } catch (error) {
+        console.error('Auth initialization failed:', error);
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
+      }
     };
 
     initializeAuth();
 
-    // Auth state change listener with improved handling
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (!mounted) return;
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!mounted) return;
+      
+      console.log('🔄 Auth state change:', event);
+      
+      if (session?.user) {
+        setUser(session.user);
         
-        console.log('🔄 Auth state change detected:', event, {
-          hasUser: !!session?.user,
-          userEmail: session?.user?.email,
-          emailConfirmed: !!session?.user?.email_confirmed_at
-        });
-        
-        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-          // Add delay to allow for potential state propagation
-          setTimeout(async () => {
-            if (!mounted) return;
-            
-            try {
-              // Always fetch fresh user data on sign-in events
-              const { data: userData, error } = await supabase.auth.getUser();
-              
-              if (error) {
-                console.error('Error fetching user after auth change:', error);
-                // Fall back to session user
-                if (session?.user) {
-                  setUser(session.user);
-                  setVerificationStatus(session.user.email_confirmed_at ? 'verified' : 'pending');
-                  await checkAdminStatus(session.user);
-                }
-                return;
-              }
-
-              const freshUser = userData.user;
-              
-              if (freshUser?.email_confirmed_at) {
-                console.log('✅ User verified via auth state change:', freshUser.email);
-                setUser(freshUser);
-                setVerificationStatus('verified');
-                await checkAdminStatus(freshUser);
-              } else if (freshUser) {
-                console.log('⚠️ User not yet verified via auth state change:', freshUser.email);
-                setUser(freshUser);
-                setVerificationStatus('pending');
-                await checkAdminStatus(freshUser);
-              }
-            } catch (error) {
-              console.error('Error in auth state change handler:', error);
-            }
-          }, 1500); // 1.5 second delay for state propagation
-        }
-        
-        if (event === 'SIGNED_OUT') {
-          console.log('👋 User signed out');
-          setUser(null);
-          setIsAdmin(false);
-          setVerificationStatus('pending');
-        }
-        
-        // Handle password recovery and user updates
-        if (event === 'PASSWORD_RECOVERY' || event === 'USER_UPDATED') {
-          if (session?.user) {
-            setUser(session.user);
-            setVerificationStatus(session.user.email_confirmed_at ? 'verified' : 'pending');
-            await checkAdminStatus(session.user);
-          }
-        }
-        
-        setLoading(false);
+        // Run checks in parallel
+        await Promise.all([
+          checkAdminStatus(session.user),
+          checkEmailVerification(session.user),
+          checkPaymentStatus(session.user)
+        ]);
+      } else {
+        setUser(null);
+        setIsAdmin(false);
+        setEmailVerified(false);
+        setPaymentCompleted(false);
       }
-    );
+      
+      setLoading(false);
+    });
 
-    authSubscription = subscription;
-
-    // Cleanup
     return () => {
       mounted = false;
-      if (authSubscription) {
-        authSubscription.unsubscribe();
-      }
+      subscription.unsubscribe();
     };
-  }, []);
+  }, [checkAdminStatus, checkEmailVerification, checkPaymentStatus]);
 
-  // Debug logging for development
-  useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
-      console.log('👤 Auth State:', {
-        user: user?.email || 'none',
-        isAdmin,
-        loading,
-        verificationStatus,
-        emailConfirmed: !!user?.email_confirmed_at
-      });
-    }
-  }, [user, isAdmin, loading, verificationStatus]);
-
-  const value = {
+  // Memoize context value to prevent unnecessary re-renders
+  const contextValue = useMemo(() => ({
     user,
     isAdmin,
     loading,
     verificationStatus,
-    refreshAuth
-  };
+    refreshAuth,
+    emailVerified,
+    paymentCompleted,
+    authSignOut
+  }), [user, isAdmin, loading, verificationStatus, refreshAuth, emailVerified, paymentCompleted, authSignOut]);
 
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );
