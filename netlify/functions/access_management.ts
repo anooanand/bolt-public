@@ -7,14 +7,15 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 const handler: Handler = async (event) => {
-  // Enable CORS
+  // Enhanced CORS headers
   const headers = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+    'Content-Type': 'application/json',
   };
 
-  if (event.httpMethod === 'OPTIONS' ) {
+  if (event.httpMethod === 'OPTIONS') {
     return {
       statusCode: 200,
       headers,
@@ -23,10 +24,10 @@ const handler: Handler = async (event) => {
   }
 
   try {
-    const path = event.path.replace('/.netlify/functions/access-management', '');
+    const path = event.path.replace('/.netlify/functions/access_management', '');
     const method = event.httpMethod;
 
-    console.log('🔐 Access management request:', { method, path } );
+    console.log('🔐 Access management request:', { method, path });
 
     switch (path) {
       case '/grant-temporary-access':
@@ -86,7 +87,7 @@ const handler: Handler = async (event) => {
   }
 };
 
-// Grant temporary access to a user
+// Enhanced grant temporary access function
 async function handleGrantTemporaryAccess(event: any) {
   try {
     const { userId, hours = 24, reason = 'Manual grant' } = JSON.parse(event.body || '{}');
@@ -110,10 +111,17 @@ async function handleGrantTemporaryAccess(event: any) {
 
     if (error) {
       console.error('❌ Error granting temporary access:', error);
-      throw error;
+      
+      // Fallback: Direct table update if function fails
+      const fallbackResult = await fallbackGrantAccess(userId, hours);
+      if (!fallbackResult.success) {
+        throw error;
+      }
+      
+      console.log('✅ Temporary access granted via fallback method');
+    } else {
+      console.log('✅ Temporary access granted successfully via database function');
     }
-
-    console.log('✅ Temporary access granted successfully');
 
     return {
       statusCode: 200,
@@ -135,6 +143,48 @@ async function handleGrantTemporaryAccess(event: any) {
         message: error.message 
       }),
     };
+  }
+}
+
+// Fallback function for direct database access
+async function fallbackGrantAccess(userId: string, hours: number) {
+  try {
+    const expiresAt = new Date(Date.now() + hours * 60 * 60 * 1000).toISOString();
+    
+    // Update user_profiles
+    const { error: profileError } = await supabase
+      .from('user_profiles')
+      .upsert({
+        user_id: userId,
+        temporary_access_granted: true,
+        temp_access_until: expiresAt,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'user_id' });
+
+    if (profileError) {
+      console.error('❌ Fallback profile update error:', profileError);
+    }
+
+    // Update user_access_status
+    const { error: accessError } = await supabase
+      .from('user_access_status')
+      .upsert({
+        id: userId,
+        has_access: true,
+        access_type: `Temporary access (${hours} hours)`,
+        temp_access_until: expiresAt,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'id' });
+
+    if (accessError) {
+      console.error('❌ Fallback access update error:', accessError);
+      return { success: false, error: accessError };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('❌ Fallback grant access error:', error);
+    return { success: false, error };
   }
 }
 
@@ -167,7 +217,7 @@ async function handleCheckAccess(event: any) {
     const { data: userStatus, error: statusError } = await supabase
       .from('user_access_status')
       .select('*')
-      .eq('user_id', userId)
+      .eq('id', userId)
       .single();
 
     if (statusError && statusError.code !== 'PGRST116') {
@@ -201,7 +251,7 @@ async function handleCheckAccess(event: any) {
   }
 }
 
-// Process payment success (called from frontend)
+// Enhanced process payment success function
 async function handleProcessPaymentSuccess(event: any) {
   try {
     const { userId, planType, sessionId } = JSON.parse(event.body || '{}');
@@ -216,51 +266,22 @@ async function handleProcessPaymentSuccess(event: any) {
 
     console.log('💳 Processing payment success:', { userId, planType, sessionId });
 
-    // First, grant temporary access immediately (if still desired as an immediate fallback)
-    const { error: tempAccessError } = await supabase.rpc('grant_temporary_access', {
+    // Use the comprehensive payment success function
+    const { data, error } = await supabase.rpc('process_payment_success', {
       p_user_id: userId,
-      p_hours: 30 * 24,
-      p_reason: 'Payment success - awaiting webhook confirmation'
+      p_plan_type: planType,
+      p_stripe_customer_id: null,
+      p_stripe_subscription_id: sessionId
     });
 
-    if (tempAccessError) {
-      console.error('❌ Error granting temporary access:', tempAccessError);
-      // Don't fail the entire request, just log the error
-    }
-
-    // Update user_access_status for permanent access
-    const { error: updateAccessError } = await supabase
-      .from('user_access_status')
-      .upsert({
-        id: userId,
-        payment_verified: true, // Set to true on successful payment
-        subscription_status: 'active', // Set to active
-        temp_access_until: null, // Clear temporary access expiration
-        has_access: true // Grant permanent access
-      }, { onConflict: 'id' });
-
-    if (updateAccessError) {
-      console.error('❌ Error updating permanent access status:', updateAccessError);
-      // Log but don't fail the request
-    }
-
-    // Log the payment success event
-    const { error: logError } = await supabase
-      .from('payment_logs')
-      .insert({
-        user_id: userId,
-        stripe_session_id: sessionId,
-        event_type: 'payment_success_frontend',
-        payment_status: 'pending_webhook',
-        plan_type: planType,
-        metadata: {
-          source: 'frontend_callback',
-          processed_at: new Date().toISOString()
-        }
-      });
-
-    if (logError) {
-      console.error('❌ Error logging payment success:', logError);
+    if (error) {
+      console.error('❌ Error processing payment success:', error);
+      
+      // Fallback to direct updates
+      const fallbackResult = await fallbackProcessPayment(userId, planType);
+      if (!fallbackResult.success) {
+        throw error;
+      }
     }
 
     console.log('✅ Payment success processed');
@@ -270,8 +291,8 @@ async function handleProcessPaymentSuccess(event: any) {
       headers: getCorsHeaders(),
       body: JSON.stringify({
         success: true,
-        message: 'Payment success processed, temporary access granted',
-        temporaryAccessHours: 30 * 24
+        message: 'Payment success processed, access granted',
+        planType: planType
       }),
     };
 
@@ -285,6 +306,54 @@ async function handleProcessPaymentSuccess(event: any) {
         message: error.message 
       }),
     };
+  }
+}
+
+// Fallback payment processing
+async function fallbackProcessPayment(userId: string, planType: string) {
+  try {
+    const expiresAt = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(); // 1 year
+    
+    // Update user_profiles with permanent access
+    const { error: profileError } = await supabase
+      .from('user_profiles')
+      .upsert({
+        user_id: userId,
+        payment_verified: true,
+        payment_status: 'verified',
+        subscription_status: 'active',
+        subscription_plan: planType,
+        temp_access_until: expiresAt,
+        last_payment_date: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'user_id' });
+
+    if (profileError) {
+      console.error('❌ Fallback profile update error:', profileError);
+    }
+
+    // Update user_access_status with permanent access
+    const { error: accessError } = await supabase
+      .from('user_access_status')
+      .upsert({
+        id: userId,
+        payment_verified: true,
+        subscription_status: 'active',
+        has_access: true,
+        access_type: `Paid subscription (${planType})`,
+        temp_access_until: expiresAt,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'id' });
+
+    if (accessError) {
+      console.error('❌ Fallback access update error:', accessError);
+      return { success: false, error: accessError };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('❌ Fallback process payment error:', error);
+    return { success: false, error };
   }
 }
 
@@ -346,7 +415,7 @@ async function handleGetUserStatus(event: any) {
     const { data: accessStatus, error: accessError } = await supabase
       .from('user_access_status')
       .select('*')
-      .eq('user_id', userId)
+      .eq('id', userId)
       .single();
 
     if (accessError && accessError.code !== 'PGRST116') {
