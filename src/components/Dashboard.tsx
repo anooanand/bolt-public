@@ -1,4 +1,4 @@
-// COMPLETE FILE: src/components/Dashboard.tsx
+// FIXED VERSION: src/components/Dashboard.tsx
 // Copy-paste this entire file into bolt.new (REPLACE existing)
 
 import React, { useState, useEffect } from 'react';
@@ -6,16 +6,28 @@ import { useAuth } from '../contexts/AuthContext';
 import { isEmailVerified, hasAnyAccess } from '../lib/supabase';
 import { Mail, CheckCircle, Clock, FileText, PenTool, BarChart3, Settings } from 'lucide-react';
 
-export function Dashboard() {
+// ✅ FIXED: Added proper props interface
+interface DashboardProps {
+  onNavigate: (page: string) => void;
+  user?: any;
+  emailVerified?: boolean;
+  paymentCompleted?: boolean;
+}
+
+// ✅ FIXED: Added props parameter with proper typing
+export function Dashboard({ onNavigate, user: propUser, emailVerified: propEmailVerified, paymentCompleted: propPaymentCompleted }: DashboardProps) {
   const { user } = useAuth();
   const [isVerified, setIsVerified] = useState(false);
   const [accessType, setAccessType] = useState<'none' | 'temporary' | 'permanent'>('none');
   const [tempAccessUntil, setTempAccessUntil] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Use prop user if provided, otherwise use context user
+  const currentUser = propUser || user;
+
   useEffect(() => {
     const checkVerificationStatus = async () => {
-      if (user) {
+      if (currentUser) {
         console.log('🔍 Dashboard: Checking verification status...');
         setIsLoading(true);
         
@@ -42,14 +54,14 @@ export function Dashboard() {
           }
           
           // Check for any access (temporary or permanent)
-          const hasAccess = await hasAnyAccess(user.id);
+          const hasAccess = await hasAnyAccess(currentUser.id);
           if (hasAccess) {
             setIsVerified(true);
             setAccessType('permanent');
             console.log('✅ Dashboard: Permanent access confirmed');
           } else {
             // Check basic email verification
-            const verified = await isEmailVerified(user.id);
+            const verified = await isEmailVerified(currentUser.id);
             setIsVerified(verified);
             setAccessType(verified ? 'permanent' : 'none');
             console.log('📊 Dashboard: Basic verification result:', verified);
@@ -65,14 +77,14 @@ export function Dashboard() {
     };
 
     checkVerificationStatus();
-  }, [user]);
+  }, [currentUser]);
 
   const handleManualRefresh = async () => {
-    if (user) {
+    if (currentUser) {
       setIsLoading(true);
       try {
-        const hasAccess = await hasAnyAccess(user.id);
-        const verified = await isEmailVerified(user.id);
+        const hasAccess = await hasAnyAccess(currentUser.id);
+        const verified = await isEmailVerified(currentUser.id);
         
         if (hasAccess) {
           setIsVerified(true);
@@ -89,6 +101,17 @@ export function Dashboard() {
       }
       setIsLoading(false);
     }
+  };
+
+  // ✅ FIXED: Added proper navigation handlers
+  const handleStartWriting = () => {
+    console.log('🚀 Dashboard: Starting writing...');
+    onNavigate('writing');
+  };
+
+  const handlePracticeExam = () => {
+    console.log('🚀 Dashboard: Starting practice exam...');
+    onNavigate('exam');
   };
 
   const formatDateTime = (dateString: string) => {
@@ -112,7 +135,7 @@ export function Dashboard() {
     }
   };
 
-  if (!user) {
+  if (!currentUser) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -129,7 +152,7 @@ export function Dashboard() {
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900">
-            Welcome back, {user.email?.split('@')[0]}!
+            Welcome back, {currentUser.email?.split('@')[0]}!
           </h1>
           <p className="text-gray-600 mt-2">Ready to continue your writing journey?</p>
         </div>
@@ -152,7 +175,7 @@ export function Dashboard() {
               <div className="flex-1">
                 <h3 className="text-lg font-medium text-blue-900">Verify Your Email Address</h3>
                 <p className="text-blue-700 mt-1">
-                  We've sent a verification email to {user?.email}. Please check your inbox and click the verification link to activate your account.
+                  We've sent a verification email to {currentUser?.email}. Please check your inbox and click the verification link to activate your account.
                 </p>
                 <p className="text-sm text-blue-600 mt-2">
                   After verifying your email, you'll need to complete payment to access all premium features.
@@ -258,7 +281,11 @@ export function Dashboard() {
           </div>
           <div className="p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="border border-gray-200 rounded-lg p-6 hover:border-blue-300 transition-colors cursor-pointer" onClick={() => onNavigate('writing')}>
+              {/* ✅ FIXED: Proper click handler with navigation */}
+              <div 
+                className="border border-gray-200 rounded-lg p-6 hover:border-blue-300 transition-colors cursor-pointer" 
+                onClick={handleStartWriting}
+              >
                 <div className="flex items-center mb-4">
                   <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
                     <PenTool className="h-6 w-6 text-blue-600" />
@@ -275,7 +302,11 @@ export function Dashboard() {
                 )}
               </div>
               
-              <div className="border border-gray-200 rounded-lg p-6 hover:border-green-300 transition-colors cursor-pointer">
+              {/* ✅ FIXED: Proper click handler for practice exam */}
+              <div 
+                className="border border-gray-200 rounded-lg p-6 hover:border-green-300 transition-colors cursor-pointer"
+                onClick={handlePracticeExam}
+              >
                 <div className="flex items-center mb-4">
                   <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
                     <BarChart3 className="h-6 w-6 text-green-600" />
