@@ -14,7 +14,7 @@ const handler: Handler = async (event) => {
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
   };
 
-  if (event.httpMethod === 'OPTIONS') {
+  if (event.httpMethod === 'OPTIONS' ) {
     return {
       statusCode: 200,
       headers,
@@ -26,7 +26,7 @@ const handler: Handler = async (event) => {
     const path = event.path.replace('/.netlify/functions/access-management', '');
     const method = event.httpMethod;
 
-    console.log('🔐 Access management request:', { method, path });
+    console.log('🔐 Access management request:', { method, path } );
 
     switch (path) {
       case '/grant-temporary-access':
@@ -216,7 +216,7 @@ async function handleProcessPaymentSuccess(event: any) {
 
     console.log('💳 Processing payment success:', { userId, planType, sessionId });
 
-    // First, grant temporary access immediately
+    // First, grant temporary access immediately (if still desired as an immediate fallback)
     const { error: tempAccessError } = await supabase.rpc('grant_temporary_access', {
       p_user_id: userId,
       p_hours: 30 * 24,
@@ -226,6 +226,22 @@ async function handleProcessPaymentSuccess(event: any) {
     if (tempAccessError) {
       console.error('❌ Error granting temporary access:', tempAccessError);
       // Don't fail the entire request, just log the error
+    }
+
+    // Update user_access_status for permanent access
+    const { error: updateAccessError } = await supabase
+      .from('user_access_status')
+      .upsert({
+        id: userId,
+        payment_verified: true, // Set to true on successful payment
+        subscription_status: 'active', // Set to active
+        temp_access_until: null, // Clear temporary access expiration
+        has_access: true // Grant permanent access
+      }, { onConflict: 'id' });
+
+    if (updateAccessError) {
+      console.error('❌ Error updating permanent access status:', updateAccessError);
+      // Log but don't fail the request
     }
 
     // Log the payment success event
