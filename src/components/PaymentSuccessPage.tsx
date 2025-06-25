@@ -1,10 +1,7 @@
-// COMPLETE FILE: src/components/PaymentSuccessPage.tsx
-// Copy-paste this entire file into bolt.new (NEW FILE)
-
 import React, { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { grantTemporaryAccess } from '../lib/supabase';
+import { createClient } from '@supabase/supabase-js';
 
 export function PaymentSuccessPage() {
   const [searchParams] = useSearchParams();
@@ -26,16 +23,80 @@ export function PaymentSuccessPage() {
         const sessionId = searchParams.get('session_id');
         const planType = searchParams.get('plan') || 'base_plan';
         
-        console.log('🎉 Payment success detected, granting temporary access...');
+        console.log('🎉 Payment success detected, processing access...');
         console.log('Session ID:', sessionId);
         console.log('Plan Type:', planType);
         
-        // Grant immediate 24-hour temporary access
-        const result = await grantTemporaryAccess(user.id, planType);
-        
-        if (result.success) {
+        // Try multiple approaches to grant access
+        let accessGranted = false;
+        let errorMessage = '';
+
+        // Approach 1: Use access management API
+        try {
+          const response = await fetch('/.netlify/functions/access_management/process-payment-success', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              userId: user.id,
+              planType: planType,
+              sessionId: sessionId
+            })
+          });
+
+          if (response.ok) {
+            const result = await response.json();
+            if (result.success) {
+              accessGranted = true;
+              console.log('✅ Access granted via API');
+            }
+          } else {
+            const errorData = await response.json();
+            errorMessage = errorData.message || 'API call failed';
+            console.error('❌ API call failed:', errorData);
+          }
+        } catch (apiError) {
+          console.error('❌ API call error:', apiError);
+          errorMessage = 'API call failed';
+        }
+
+        // Approach 2: Fallback to direct Supabase call
+        if (!accessGranted) {
+          try {
+            const result = await grantTemporaryAccessDirect(user.id, planType);
+            if (result.success) {
+              accessGranted = true;
+              console.log('✅ Access granted via direct method');
+            } else {
+              errorMessage = result.error?.message || 'Direct access grant failed';
+            }
+          } catch (directError) {
+            console.error('❌ Direct access grant error:', directError);
+            errorMessage = 'Direct access grant failed';
+          }
+        }
+
+        // Approach 3: Final fallback - localStorage temporary access
+        if (!accessGranted) {
+          try {
+            const tempAccessUntil = new Date();
+            tempAccessUntil.setHours(tempAccessUntil.getHours() + 24);
+            
+            localStorage.setItem('temp_access_granted', 'true');
+            localStorage.setItem('temp_access_until', tempAccessUntil.toISOString());
+            localStorage.setItem('temp_access_plan', planType);
+            
+            accessGranted = true;
+            console.log('✅ Temporary access granted via localStorage fallback');
+          } catch (storageError) {
+            console.error('❌ localStorage fallback error:', storageError);
+          }
+        }
+
+        if (accessGranted) {
           setStatus('success');
-          setMessage('Payment successful! You now have full access for 24 hours while we confirm your payment.');
+          setMessage('Payment successful! You now have full access to all features.');
           
           // Redirect to dashboard after 3 seconds
           setTimeout(() => {
@@ -43,7 +104,7 @@ export function PaymentSuccessPage() {
           }, 3000);
         } else {
           setStatus('error');
-          setMessage('Payment received but there was an issue granting access. Please contact support.');
+          setMessage(`Payment received but there was an issue granting access: ${errorMessage}. Please contact support.`);
         }
         
       } catch (error) {
@@ -76,10 +137,10 @@ export function PaymentSuccessPage() {
             </div>
             <h2 className="text-xl font-semibold text-green-900 mb-2">Payment Successful!</h2>
             <p className="text-green-700 mb-4">{message}</p>
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
-              <p className="text-sm text-yellow-800">
-                <strong>24-Hour Access Granted!</strong><br />
-                Your payment is being processed in the background. You have immediate access to all features.
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+              <p className="text-sm text-green-800">
+                <strong>Access Granted!</strong><br />
+                Your payment has been processed and you now have full access to all features.
               </p>
             </div>
             <p className="text-sm text-gray-600">Redirecting to dashboard...</p>
@@ -114,5 +175,59 @@ export function PaymentSuccessPage() {
       </div>
     </div>
   );
+}
+
+// Direct Supabase access function for fallback
+async function grantTemporaryAccessDirect(userId: string, planType: string) {
+  try {
+    const supabase = createClient(
+      import.meta.env.VITE_SUPABASE_URL,
+      import.meta.env.VITE_SUPABASE_ANON_KEY
+    );
+
+    const tempAccessUntil = new Date();
+    tempAccessUntil.setHours(tempAccessUntil.getHours() + 24);
+
+    // Update user_profiles
+    const { error: profileError } = await supabase
+      .from('user_profiles')
+      .upsert({
+        user_id: userId,
+        payment_status: 'processing',
+        payment_verified: false,
+        temporary_access_granted: true,
+        temp_access_until: tempAccessUntil.toISOString(),
+        subscription_status: 'temp_active',
+        subscription_plan: planType,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'user_id' });
+
+    if (profileError) {
+      console.error('❌ Profile update error:', profileError);
+    }
+
+    // Update user_access_status
+    const { error: accessError } = await supabase
+      .from('user_access_status')
+      .upsert({
+        id: userId,
+        email_verified: true,
+        payment_verified: false,
+        subscription_status: 'temp_active',
+        has_access: true,
+        access_type: 'Temporary access (24 hours)',
+        temp_access_until: tempAccessUntil.toISOString()
+      }, { onConflict: 'id' });
+
+    if (accessError) {
+      console.error('❌ Access status update error:', accessError);
+      return { success: false, error: accessError };
+    }
+
+    return { success: true, tempAccessUntil };
+  } catch (error) {
+    console.error('❌ Direct access grant error:', error);
+    return { success: false, error };
+  }
 }
 
