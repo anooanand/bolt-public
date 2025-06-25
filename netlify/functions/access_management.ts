@@ -219,7 +219,7 @@ async function handleProcessPaymentSuccess(event: any) {
     // First, grant temporary access immediately
     const { error: tempAccessError } = await supabase.rpc('grant_temporary_access', {
       p_user_id: userId,
-      p_hours: 24,
+      p_hours: 30 * 24,
       p_reason: 'Payment success - awaiting webhook confirmation'
     });
 
@@ -255,7 +255,7 @@ async function handleProcessPaymentSuccess(event: any) {
       body: JSON.stringify({
         success: true,
         message: 'Payment success processed, temporary access granted',
-        temporaryAccessHours: 24
+        temporaryAccessHours: 30 * 24
       }),
     };
 
