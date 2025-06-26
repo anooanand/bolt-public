@@ -1,95 +1,5 @@
-// CORRECTED WEBHOOK: netlify/functions/stripe-webhook.ts
-// Fixed the undefined variable error
-
-import { Handler } from '@netlify/functions';
-import Stripe from 'stripe';
-import { createClient } from '@supabase/supabase-js';
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2024-06-20',
-});
-
-const supabase = createClient(
-  process.env.VITE_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
-export const handler: Handler = async (event) => {
-  console.log('🔔 Stripe Webhook received:', event.httpMethod );
-
-  // Handle CORS preflight
-  if (event.httpMethod === 'OPTIONS' ) {
-    return {
-      statusCode: 200,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type, stripe-signature',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      },
-      body: '',
-    };
-  }
-
-  if (event.httpMethod !== 'POST' ) {
-    return { statusCode: 405, body: 'Method Not Allowed' };
-  }
-
-  const sig = event.headers['stripe-signature'];
-  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-
-  if (!sig || !webhookSecret) {
-    console.error('❌ Missing signature or webhook secret');
-    return { statusCode: 400, body: 'Missing signature or webhook secret' };
-  }
-
-  let stripeEvent: Stripe.Event;
-
-  try {
-    stripeEvent = stripe.webhooks.constructEvent(event.body!, sig, webhookSecret);
-    console.log(`✅ Webhook signature verified for event: ${stripeEvent.type} ID: ${stripeEvent.id}`);
-  } catch (err) {
-    console.error('❌ Webhook signature verification failed:', err);
-    return { statusCode: 400, body: 'Webhook signature verification failed' };
-  }
-
-  try {
-    console.log(`🔄 Processing event: ${stripeEvent.type}`);
-
-    switch (stripeEvent.type) {
-      case 'checkout.session.completed':
-        await handleCheckoutSessionCompleted(stripeEvent.data.object as Stripe.Checkout.Session);
-        break;
-      case 'customer.subscription.updated':
-      case 'customer.subscription.created':
-        await handleSubscriptionChange(stripeEvent.data.object as Stripe.Subscription);
-        break;
-      case 'invoice.payment_succeeded':
-        await handleInvoicePaymentSucceeded(stripeEvent.data.object as Stripe.Invoice);
-        break;
-      default:
-        console.log(`ℹ️ Unhandled event type: ${stripeEvent.type}`);
-    }
-
-    return {
-      statusCode: 200,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ received: true, eventType: stripeEvent.type }),
-    };
-  } catch (error) {
-    console.error('❌ Error processing webhook:', error);
-    return {
-      statusCode: 500,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ error: 'Webhook processing failed' }),
-    };
-  }
-};
+// CORRECTED STRIPE WEBHOOK: Fixed table structure and constraint issues
+// Replace the handleCheckoutSessionCompleted function in your stripe-webhook.ts
 
 async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) {
   console.log('🎉 Processing checkout session completed:', session.id);
@@ -153,25 +63,48 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
     }
   }
 
-  // 1. UPDATE USER_PROFILES TABLE
+  // Try using the database function first
   try {
+    const { data, error } = await supabase.rpc('process_payment_success', {
+      p_user_id: userId,
+      p_plan_type: planType,
+      p_stripe_customer_id: stripeCustomerId,
+      p_stripe_subscription_id: subscriptionId
+    });
+
+    if (error) {
+      console.error('❌ Error calling process_payment_success function:', error);
+      throw error;
+    } else {
+      console.log('✅ Payment success processed via database function');
+      return; // Success, exit early
+    }
+  } catch (error) {
+    console.error('❌ Database function failed, using fallback method:', error);
+  }
+
+  // Fallback: Direct table updates with correct structure
+  try {
+    // 1. UPDATE USER_PROFILES TABLE using user_id as primary key
     const { error: profileError } = await supabase
       .from('user_profiles')
       .upsert({
-        user_id: userId,
+        user_id: userId, // Use user_id as primary key
         email: customerEmail,
         stripe_customer_id: stripeCustomerId,
         stripe_subscription_id: subscriptionId,
         subscription_status: 'active',
         payment_status: 'verified',
         plan_type: planType,
+        subscription_plan: planType,
         last_payment_date: new Date().toISOString(),
         payment_verified: true,
         current_period_start: currentPeriodStart,
         current_period_end: currentPeriodEnd,
+        temp_access_until: currentPeriodEnd,
         updated_at: new Date().toISOString()
       }, {
-        onConflict: 'id' // CORRECTED: Changed from 'user_id' to 'id'
+        onConflict: 'user_id' // Use user_id for conflict resolution
       });
 
     if (profileError) {
@@ -179,73 +112,71 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
       throw profileError;
     }
     console.log('✅ Updated user_profiles successfully');
+
+    // 2. UPDATE USER_ACCESS_STATUS TABLE using id as primary key
+    const { error: accessError } = await supabase
+      .from('user_access_status')
+      .upsert({
+        id: userId, // Use id as primary key
+        email: customerEmail,
+        email_verified: true,
+        payment_verified: true,
+        subscription_status: 'active',
+        has_access: true,
+        access_type: `Paid subscription (${planType})`,
+        temp_access_until: currentPeriodEnd,
+        updated_at: new Date().toISOString()
+      }, {
+        onConflict: 'id' // Use id for conflict resolution
+      });
+
+    if (accessError) {
+      console.error('❌ Error updating user_access_status:', accessError);
+      throw accessError;
+    }
+    console.log('✅ Updated user_access_status successfully');
+
+    // 3. LOG TO PAYMENT_LOGS TABLE (if it exists)
+    try {
+      const { error: logError } = await supabase
+        .from('payment_logs')
+        .insert({
+          user_id: userId,
+          stripe_customer_id: stripeCustomerId,
+          stripe_subscription_id: subscriptionId,
+          event_type: 'checkout.session.completed',
+          payment_status: 'completed',
+          amount: session.amount_total || 0,
+          currency: session.currency || 'usd',
+          processed_at: new Date().toISOString(),
+          webhook_verified: true,
+          metadata: {
+            session_id: session.id,
+            plan_type: planType,
+            payment_method: session.payment_method_types?.[0] || 'unknown'
+          }
+        });
+
+      if (logError) {
+        console.error('❌ Error logging to payment_logs:', logError);
+        // Don't throw - this table might not exist
+      } else {
+        console.log('✅ Logged to payment_logs successfully');
+      }
+    } catch (error) {
+      console.error('❌ Error with payment_logs:', error);
+      // Don't throw - this is not critical
+    }
+
+    console.log('🎊 Checkout session processing completed successfully!');
+
   } catch (error) {
-    console.error('❌ Error updating user_profiles:', error);
+    console.error('❌ Error in fallback processing:', error);
     throw error;
   }
-
-  // 2. INSERT INTO USER_PAYMENTS TABLE (if it exists)
-  try {
-    const { error: paymentError } = await supabase
-      .from('user_payments')
-      .insert({
-        user_id: userId,
-        stripe_customer_id: stripeCustomerId,
-        stripe_subscription_id: subscriptionId,
-        payment_status: 'completed',
-        plan_type: planType,
-        amount: session.amount_total || 0,
-        currency: session.currency || 'usd',
-        payment_date: new Date().toISOString(),
-        created_at: new Date().toISOString()
-      });
-
-    if (paymentError) {
-      console.error('❌ Error inserting user_payments:', paymentError);
-      // Don't throw - this table might not exist
-    } else {
-      console.log('✅ Inserted user_payments successfully');
-    }
-  } catch (error) {
-    console.error('❌ Error with user_payments:', error);
-    // Don't throw - this is not critical
-  }
-
-  // 3. LOG TO PAYMENT_LOGS TABLE (if it exists)
-  try {
-    const { error: logError } = await supabase
-      .from('payment_logs')
-      .insert({
-        user_id: userId,
-        stripe_customer_id: stripeCustomerId,
-        stripe_subscription_id: subscriptionId,
-        event_type: 'checkout.session.completed',
-        payment_status: 'completed',
-        amount: session.amount_total || 0,
-        currency: session.currency || 'usd',
-        processed_at: new Date().toISOString(),
-        webhook_verified: true,
-        metadata: {
-          session_id: session.id,
-          plan_type: planType,
-          payment_method: session.payment_method_types?.[0] || 'unknown'
-        }
-      });
-
-    if (logError) {
-      console.error('❌ Error logging to payment_logs:', logError);
-      // Don't throw - this table might not exist
-    } else {
-      console.log('✅ Logged to payment_logs successfully');
-    }
-  } catch (error) {
-    console.error('❌ Error with payment_logs:', error);
-    // Don't throw - this is not critical
-  }
-
-  console.log('🎊 Checkout session processing completed successfully!');
 }
 
+// Also update the handleSubscriptionChange function to use correct table structure
 async function handleSubscriptionChange(subscription: Stripe.Subscription) {
   console.log('🔄 Processing subscription change:', subscription.id, 'status:', subscription.status);
 
@@ -265,7 +196,7 @@ async function handleSubscriptionChange(subscription: Stripe.Subscription) {
 
   const userId = profiles[0].user_id;
 
-  // Update subscription status in user_profiles
+  // Update subscription status in user_profiles using user_id
   const { error: updateError } = await supabase
     .from('user_profiles')
     .update({
@@ -283,17 +214,19 @@ async function handleSubscriptionChange(subscription: Stripe.Subscription) {
   }
 }
 
+// Update handleInvoicePaymentSucceeded function
 async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
   console.log('💰 Processing invoice payment succeeded:', invoice.id);
 
   const customerId = invoice.customer as string;
 
-  // Update last payment date in user_profiles
+  // Update last payment date in user_profiles using stripe_customer_id
   const { error: updateError } = await supabase
     .from('user_profiles')
     .update({
       last_payment_date: new Date().toISOString(),
       payment_status: 'verified',
+      payment_verified: true,
       updated_at: new Date().toISOString()
     })
     .eq('stripe_customer_id', customerId);
@@ -303,16 +236,5 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
   } else {
     console.log('✅ Updated payment date for customer:', customerId);
   }
-}
-
-function getPlanTypeFromPriceId(priceId: string): string {
-  // Map your actual Stripe price IDs to plan types
-  const priceMap: { [key: string]: string } = {
-    'price_1QexWRtCrOpCXM5InfpatS': 'try_out_plan',
-    'price_1RXEqERtcrDpOK7ME3QH9uzu': 'base_plan',
-    // Add more price IDs as needed
-  };
-
-  return priceMap[priceId] || 'base_plan';
 }
 
