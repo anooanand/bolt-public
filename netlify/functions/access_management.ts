@@ -87,7 +87,7 @@ const handler: Handler = async (event) => {
   }
 };
 
-// Enhanced grant temporary access function
+// Enhanced grant temporary access function (WORKS WITH VIEW)
 async function handleGrantTemporaryAccess(event: any) {
   try {
     const { userId, hours = 24, reason = 'Manual grant' } = JSON.parse(event.body || '{}');
@@ -112,7 +112,7 @@ async function handleGrantTemporaryAccess(event: any) {
     if (error) {
       console.error('❌ Error granting temporary access:', error);
       
-      // Fallback: Direct table update if function fails
+      // Fallback: Direct table update (only user_profiles, not the view)
       const fallbackResult = await fallbackGrantAccess(userId, hours);
       if (!fallbackResult.success) {
         throw error;
@@ -146,16 +146,26 @@ async function handleGrantTemporaryAccess(event: any) {
   }
 }
 
-// Fallback function for direct database access
+// Fallback function - ONLY updates user_profiles table (view will reflect changes)
 async function fallbackGrantAccess(userId: string, hours: number) {
   try {
     const expiresAt = new Date(Date.now() + hours * 60 * 60 * 1000).toISOString();
     
-    // Update user_profiles
+    // Get user email
+    const { data: userData, error: userError } = await supabase.auth.admin.getUserById(userId);
+    if (userError || !userData.user) {
+      console.error('❌ Error getting user data:', userError);
+      return { success: false, error: userError };
+    }
+
+    const userEmail = userData.user.email;
+
+    // ONLY update user_profiles table (user_access_status is a view)
     const { error: profileError } = await supabase
       .from('user_profiles')
       .upsert({
         user_id: userId,
+        email: userEmail,
         temporary_access_granted: true,
         temp_access_until: expiresAt,
         updated_at: new Date().toISOString()
@@ -163,24 +173,10 @@ async function fallbackGrantAccess(userId: string, hours: number) {
 
     if (profileError) {
       console.error('❌ Fallback profile update error:', profileError);
+      return { success: false, error: profileError };
     }
 
-    // Update user_access_status
-    const { error: accessError } = await supabase
-      .from('user_access_status')
-      .upsert({
-        id: userId,
-        has_access: true,
-        access_type: `Temporary access (${hours} hours)`,
-        temp_access_until: expiresAt,
-        updated_at: new Date().toISOString()
-      }, { onConflict: 'id' });
-
-    if (accessError) {
-      console.error('❌ Fallback access update error:', accessError);
-      return { success: false, error: accessError };
-    }
-
+    console.log('✅ Updated user_profiles - view will reflect changes automatically');
     return { success: true };
   } catch (error) {
     console.error('❌ Fallback grant access error:', error);
@@ -188,7 +184,7 @@ async function fallbackGrantAccess(userId: string, hours: number) {
   }
 }
 
-// Check if user has valid access
+// Check if user has valid access (WORKS WITH VIEW)
 async function handleCheckAccess(event: any) {
   try {
     const { userId } = JSON.parse(event.body || '{}');
@@ -213,7 +209,7 @@ async function handleCheckAccess(event: any) {
       throw error;
     }
 
-    // Get detailed user status
+    // Get detailed user status from the VIEW (read-only)
     const { data: userStatus, error: statusError } = await supabase
       .from('user_access_status')
       .select('*')
@@ -222,7 +218,7 @@ async function handleCheckAccess(event: any) {
 
     if (statusError && statusError.code !== 'PGRST116') {
       console.error('❌ Error getting user status:', statusError);
-      throw statusError;
+      // Don't throw - view might have different structure
     }
 
     const hasAccess = data === true;
@@ -251,7 +247,7 @@ async function handleCheckAccess(event: any) {
   }
 }
 
-// Enhanced process payment success function
+// Enhanced process payment success function (WORKS WITH VIEW)
 async function handleProcessPaymentSuccess(event: any) {
   try {
     const { userId, planType, sessionId } = JSON.parse(event.body || '{}');
@@ -277,7 +273,7 @@ async function handleProcessPaymentSuccess(event: any) {
     if (error) {
       console.error('❌ Error processing payment success:', error);
       
-      // Fallback to direct updates
+      // Fallback to direct updates (only user_profiles table)
       const fallbackResult = await fallbackProcessPayment(userId, planType);
       if (!fallbackResult.success) {
         throw error;
@@ -309,16 +305,26 @@ async function handleProcessPaymentSuccess(event: any) {
   }
 }
 
-// Fallback payment processing
+// Fallback payment processing - ONLY updates user_profiles table
 async function fallbackProcessPayment(userId: string, planType: string) {
   try {
     const expiresAt = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(); // 1 year
     
-    // Update user_profiles with permanent access
+    // Get user email
+    const { data: userData, error: userError } = await supabase.auth.admin.getUserById(userId);
+    if (userError || !userData.user) {
+      console.error('❌ Error getting user data:', userError);
+      return { success: false, error: userError };
+    }
+
+    const userEmail = userData.user.email;
+
+    // ONLY update user_profiles table (user_access_status is a view)
     const { error: profileError } = await supabase
       .from('user_profiles')
       .upsert({
         user_id: userId,
+        email: userEmail,
         payment_verified: true,
         payment_status: 'verified',
         subscription_status: 'active',
@@ -330,26 +336,10 @@ async function fallbackProcessPayment(userId: string, planType: string) {
 
     if (profileError) {
       console.error('❌ Fallback profile update error:', profileError);
+      return { success: false, error: profileError };
     }
 
-    // Update user_access_status with permanent access
-    const { error: accessError } = await supabase
-      .from('user_access_status')
-      .upsert({
-        id: userId,
-        payment_verified: true,
-        subscription_status: 'active',
-        has_access: true,
-        access_type: `Paid subscription (${planType})`,
-        temp_access_until: expiresAt,
-        updated_at: new Date().toISOString()
-      }, { onConflict: 'id' });
-
-    if (accessError) {
-      console.error('❌ Fallback access update error:', accessError);
-      return { success: false, error: accessError };
-    }
-
+    console.log('✅ Updated user_profiles - view will reflect changes automatically');
     return { success: true };
   } catch (error) {
     console.error('❌ Fallback process payment error:', error);
@@ -357,7 +347,7 @@ async function fallbackProcessPayment(userId: string, planType: string) {
   }
 }
 
-// Cleanup expired temporary access
+// Cleanup expired temporary access (WORKS WITH VIEW)
 async function handleCleanupExpired(event: any) {
   try {
     console.log('🧹 Cleaning up expired temporary access');
@@ -396,7 +386,7 @@ async function handleCleanupExpired(event: any) {
   }
 }
 
-// Get detailed user status
+// Get detailed user status (READ FROM VIEW)
 async function handleGetUserStatus(event: any) {
   try {
     const { userId } = JSON.parse(event.body || '{}');
@@ -411,7 +401,7 @@ async function handleGetUserStatus(event: any) {
 
     console.log('📊 Getting user status:', userId);
 
-    // Get user access status
+    // Get user access status from VIEW (read-only)
     const { data: accessStatus, error: accessError } = await supabase
       .from('user_access_status')
       .select('*')
@@ -420,20 +410,21 @@ async function handleGetUserStatus(event: any) {
 
     if (accessError && accessError.code !== 'PGRST116') {
       console.error('❌ Error getting access status:', accessError);
-      throw accessError;
+      // Don't throw - try to get from user_profiles instead
     }
 
-    // Get recent payment logs
-    const { data: recentLogs, error: logsError } = await supabase
-      .from('payment_logs')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-      .limit(5);
+    // Fallback: Get from user_profiles table directly
+    let userStatus = accessStatus;
+    if (!userStatus) {
+      const { data: profileData, error: profileError } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('user_id', userId)
+        .single();
 
-    if (logsError) {
-      console.error('❌ Error getting payment logs:', logsError);
-      // Don't fail the request, just log the error
+      if (!profileError) {
+        userStatus = profileData;
+      }
     }
 
     console.log('✅ User status retrieved');
@@ -442,8 +433,7 @@ async function handleGetUserStatus(event: any) {
       statusCode: 200,
       headers: getCorsHeaders(),
       body: JSON.stringify({
-        accessStatus: accessStatus || null,
-        recentLogs: recentLogs || [],
+        accessStatus: userStatus || null,
         retrievedAt: new Date().toISOString()
       }),
     };
