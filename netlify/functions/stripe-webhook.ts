@@ -1,6 +1,22 @@
-// CORRECTED STRIPE WEBHOOK: Fixed table structure and constraint issues
-// Replace the handleCheckoutSessionCompleted function in your stripe-webhook.ts
+import Stripe from 'stripe';
+import { createClient } from '@supabase/supabase-js';
 
+// Initialize Supabase and Stripe clients (ensure these are correctly configured with your keys)
+const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!); // Use environment variables
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: '2024-06-20', // Use your desired API version
+});
+
+// Helper function to get plan type (assuming this is defined elsewhere or needs to be added)
+function getPlanTypeFromPriceId(priceId: string): string {
+  // Implement your logic to map Stripe Price ID to your internal plan type
+  if (priceId === 'price_1RXEqERtcrDpOK7ME3QH9uzu') {
+    return 'premium_plan';
+  }
+  return 'base_plan';
+}
+
+// Your existing handleCheckoutSessionCompleted function
 async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) {
   console.log('🎉 Processing checkout session completed:', session.id);
   console.log('Session details:', {
@@ -238,3 +254,49 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
   }
 }
 
+// **MAIN HANDLER FUNCTION FOR THE WEBHOOK**
+export async function handler(event: any) {
+  if (event.httpMethod !== 'POST' ) {
+    return { statusCode: 405, body: 'Method Not Allowed' };
+  }
+
+  const sig = event.headers['stripe-signature'];
+  let stripeEvent: Stripe.Event;
+
+  try {
+    stripeEvent = stripe.webhooks.constructEvent(
+      event.body,
+      sig,
+      process.env.STRIPE_WEBHOOK_SECRET! // Your Stripe webhook secret
+    );
+  } catch (err: any) {
+    console.error(`Webhook Error: ${err.message}`);
+    return { statusCode: 400, body: `Webhook Error: ${err.message}` };
+  }
+
+  try {
+    switch (stripeEvent.type) {
+      case 'checkout.session.completed':
+        const checkoutSession = stripeEvent.data.object as Stripe.Checkout.Session;
+        await handleCheckoutSessionCompleted(checkoutSession);
+        break;
+      case 'customer.subscription.updated':
+      case 'customer.subscription.deleted':
+        const subscription = stripeEvent.data.object as Stripe.Subscription;
+        await handleSubscriptionChange(subscription);
+        break;
+      case 'invoice.payment_succeeded':
+        const invoice = stripeEvent.data.object as Stripe.Invoice;
+        await handleInvoicePaymentSucceeded(invoice);
+        break;
+      // Add other event types as needed
+      default:
+        console.log(`Unhandled event type ${stripeEvent.type}`);
+    }
+
+    return { statusCode: 200, body: 'Success' };
+  } catch (error) {
+    console.error('Error processing webhook event:', error);
+    return { statusCode: 500, body: 'Internal Server Error' };
+  }
+}
