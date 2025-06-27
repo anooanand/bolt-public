@@ -1,60 +1,43 @@
-// CRITICAL FIXES for App.tsx - Replace the navigation functions with these:
+import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { ThemeProvider } from './contexts/ThemeContext';
+import { AppProvider } from './contexts/AppContext';
+import { useAuth } from './contexts/AuthContext';
 
-// ✅ FIXED: Remove activePage state and use React Router navigation
-// Replace the existing handleNavigation function with this:
+// Import components
+import NavBar from './components/NavBar';
+import HeroSection from './components/HeroSection';
+import FeaturesSection from './components/FeaturesSection';
+import ToolsSection from './components/ToolsSection';
+import WritingTypesSection from './components/WritingTypesSection';
+import Footer from './components/Footer';
+import Dashboard from './components/Dashboard';
+import AuthModal from './components/AuthModal';
+import PlanningToolModal from './components/PlanningToolModal';
+import WritingAccessCheck from './components/WritingAccessCheck';
+import PaymentSuccessPage from './components/PaymentSuccessPage';
+import PricingPage from './components/PricingPage';
 
-const handleNavigation = (page: string) => {
-  console.log('🚀 App: Navigating to:', page);
-  // Remove setActivePage calls - use React Router instead
-  setShowAuthModal(false);
-  
-  // Let React Router handle navigation
-  // Components should use useNavigate() hook directly
-};
-
-// ✅ FIXED: Update Dashboard component props in App.tsx
-// Replace the Dashboard route with this:
-
-<Route path="/dashboard" element={
-  user ? (
-    <Dashboard 
-      user={user} 
-      emailVerified={emailVerified}
-      paymentCompleted={paymentCompleted}
-      // ✅ REMOVED: onNavigate prop - Dashboard now uses useNavigate() directly
-    />
-  ) : (
-    <Navigate to="/" />
-  )
-} />
-
-// ✅ FIXED: Update PaymentSuccessPage route
-// Replace the payment-success route with this:
-
-<Route path="/payment-success" element={<PaymentSuccessPage />} />
-
-// ✅ FIXED: Remove activePage-based conditional rendering
-// Replace the main content rendering logic with pure React Router:
+// Writing components
+import EnhancedHeader from './components/EnhancedHeader';
+import WritingArea from './components/WritingArea';
+import CoachPanel from './components/CoachPanel';
 
 function App() {
   const { user, loading, paymentCompleted, emailVerified, authSignOut, forceRefreshVerification } = useAuth();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'signin' | 'signup'>('signin');
   
-  // ✅ REMOVED: activePage state - use React Router instead
-  // const [activePage, setActivePage] = useState('home');
-  
-  // Writing state (keep these)
+  // Writing state
   const [content, setContent] = useState('');
   const [textType, setTextType] = useState('narrative');
   const [assistanceLevel, setAssistanceLevel] = useState('some');
   const [showExamMode, setShowExamMode] = useState(false);
   const [showPlanningTool, setShowPlanningTool] = useState(false);
 
-  // ✅ FIXED: Simplified navigation handlers
+  // Navigation handlers
   const handleGetStarted = () => {
     if (user) {
-      // Use React Router navigation instead of setActivePage
       window.location.href = '/dashboard';
     } else {
       setAuthModalMode('signup');
@@ -63,25 +46,36 @@ function App() {
   };
 
   const handleStartWriting = () => {
-    // Use React Router navigation
     window.location.href = '/writing';
   };
 
-  // ✅ FIXED: Remove activePage checks in useEffect
-  // Replace payment success detection with URL-based detection:
-  
+  const handleStartExam = () => {
+    setShowExamMode(true);
+  };
+
+  const handleSavePlan = (plan: any) => {
+    console.log('Plan saved:', plan);
+    setShowPlanningTool(false);
+  };
+
+  // Handle payment success from URL parameters
   useEffect(() => {
-    // Handle payment success from URL parameters
     const urlParams = new URLSearchParams(window.location.search);
     const sessionId = urlParams.get('session_id');
     
     if (sessionId && window.location.pathname === '/payment-success') {
       console.log('💳 Payment success detected');
-      // PaymentSuccessPage component will handle the rest
     }
   }, []);
 
-  // ✅ FIXED: Main render - use only React Router
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-lg">Loading...</div>
+      </div>
+    );
+  }
+
   return (
     <Router>
       <ThemeProvider>
@@ -106,7 +100,7 @@ function App() {
                 </>
               } />
               
-              {/* Other routes remain the same... */}
+              {/* Other routes */}
               <Route path="/pricing" element={<PricingPage />} />
               <Route path="/payment-success" element={<PaymentSuccessPage />} />
               <Route path="/dashboard" element={
@@ -124,7 +118,6 @@ function App() {
               {/* Writing routes */}
               <Route path="/writing" element={
                 <WritingAccessCheck>
-                  {/* Writing interface components */}
                   <div className="flex flex-col h-screen">
                     <EnhancedHeader 
                       textType={textType}
@@ -157,8 +150,6 @@ function App() {
                   </div>
                 </WritingAccessCheck>
               } />
-              
-              {/* Add other routes as needed */}
             </Routes>
 
             {/* Modals */}
@@ -184,11 +175,5 @@ function App() {
   );
 }
 
-// ✅ SUMMARY OF CRITICAL FIXES:
-// 1. Removed activePage state system
-// 2. Dashboard now uses useNavigate() directly  
-// 3. PaymentSuccessPage uses useNavigate() directly
-// 4. All navigation uses React Router
-// 5. Removed conflicting navigation logic
-// 6. Fixed component prop interfaces
+export default App;
 
