@@ -25,8 +25,25 @@ import { CoachPanel } from './components/CoachPanel';
 
 function App() {
   const { user, loading, paymentCompleted, emailVerified, authSignOut, forceRefreshVerification } = useAuth();
+  const [activePage, setActivePage] = useState("home");
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const [authModalMode, setAuthModalMode] = useState<'signin' | 'signup'>('signin');
+  const [authModalMode, setAuthModalMode] = useState<"signin" | "signup">("signin");
+
+  // Navigation handler
+  const handleNavigation = (page: string) => {
+    if (page === "dashboard" && user) {
+      if (!emailVerified) {
+        setActivePage("dashboard"); // Show email verification reminder
+      } else if (paymentCompleted) {
+        setActivePage("writing"); // Full access
+      } else {
+        setActivePage("pricing"); // Need to complete payment
+      }
+    } else {
+      setActivePage(page);
+    }
+    setShowAuthModal(false);
+  };
   
   // Writing state
   const [content, setContent] = useState('');
@@ -35,18 +52,23 @@ function App() {
   const [showExamMode, setShowExamMode] = useState(false);
   const [showPlanningTool, setShowPlanningTool] = useState(false);
 
-  // Navigation handlers
   const handleGetStarted = () => {
     if (user) {
-      window.location.href = '/dashboard';
+      if (!emailVerified) {
+        handleNavigation("dashboard"); // Show email verification reminder
+      } else if (paymentCompleted) {
+        handleNavigation("writing"); // Full access
+      } else {
+        handleNavigation("pricing"); // Need to complete payment
+      }
     } else {
-      setAuthModalMode('signup');
+      setAuthModalMode("signup");
       setShowAuthModal(true);
     }
   };
 
   const handleStartWriting = () => {
-    window.location.href = '/writing';
+    handleNavigation("writing");
   };
 
   const handleStartExam = () => {
@@ -86,15 +108,22 @@ function App() {
               <Route path="/" element={
                 <>
                   <NavBar 
-                    onGetStarted={handleGetStarted}
-                    onSignIn={() => {
-                      setAuthModalMode('signin');
+                    activePage={activePage}
+                    onNavigate={handleNavigation}
+                    user={user}
+                    onSignInClick={() => {
+                      setAuthModalMode("signin");
                       setShowAuthModal(true);
                     }}
+                    onSignUpClick={() => {
+                      setAuthModalMode("signup");
+                      setShowAuthModal(true);
+                    }}
+                    onForceSignOut={authSignOut}
                   />
-                  <HeroSection onGetStarted={handleGetStarted} />
+                  <HeroSection onGetStarted={() => handleNavigation("writing")} />
                   <FeaturesSection />
-                  <ToolsSection />
+                  <ToolsSection onOpenTool={handleNavigation} />
                   <WritingTypesSection />
                   <Footer />
                 </>
@@ -107,6 +136,7 @@ function App() {
                 user ? (
                   <Dashboard 
                     user={user} 
+                    onNavigate={handleNavigation} 
                     emailVerified={emailVerified}
                     paymentCompleted={paymentCompleted}
                   />
