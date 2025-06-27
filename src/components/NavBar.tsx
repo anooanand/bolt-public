@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { User } from '@supabase/supabase-js';
 import { useLearning } from '../contexts/LearningContext';
+import { useAuth } from '../contexts/AuthContext'; // FIXED: Added missing import
 import { Link } from 'react-router-dom';
 import { LogOut, Menu, X, AlertCircle, CheckCircle, XCircle, Mail, CreditCard, RefreshCw } from 'lucide-react';
 
@@ -72,7 +73,9 @@ export function NavBar({
       setIsLearningMenuOpen(false);
       
       // Clear any auth errors
-      clearAuthError();
+      if (clearAuthError) {
+        clearAuthError();
+      }
       
       // Call the sign out function
       await onForceSignOut();
@@ -87,14 +90,14 @@ export function NavBar({
     }
   };
 
-  // ENHANCED: Verification status component
+  // ENHANCED: Verification status component with null checks
   const VerificationStatusIndicator = () => {
     if (!user) return null;
 
     return (
       <div className="flex items-center space-x-2">
         {/* Email Verification Status */}
-        {!emailVerified && (
+        {emailVerified === false && (
           <div className="flex items-center text-yellow-600 dark:text-yellow-400">
             <Mail className="w-4 h-4 mr-1" />
             <span className="text-xs hidden sm:inline">Email pending</span>
@@ -102,7 +105,7 @@ export function NavBar({
         )}
         
         {/* Payment Verification Status */}
-        {!paymentCompleted && emailVerified && (
+        {paymentCompleted === false && emailVerified === true && (
           <div className="flex items-center text-orange-600 dark:text-orange-400">
             <CreditCard className="w-4 h-4 mr-1" />
             <span className="text-xs hidden sm:inline">Payment pending</span>
@@ -110,7 +113,7 @@ export function NavBar({
         )}
         
         {/* Fully Verified Status */}
-        {emailVerified && paymentCompleted && (
+        {emailVerified === true && paymentCompleted === true && (
           <div className="flex items-center text-green-600 dark:text-green-400">
             <CheckCircle className="w-4 h-4 mr-1" />
             <span className="text-xs hidden sm:inline">Verified</span>
@@ -126,7 +129,7 @@ export function NavBar({
         )}
         
         {/* Auth Error with Retry */}
-        {authError && (
+        {authError && retryAuth && (
           <button
             onClick={retryAuth}
             className="flex items-center text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-colors"
@@ -283,7 +286,7 @@ export function NavBar({
                       </div>
                       
                       {/* ENHANCED: Auth error display in menu */}
-                      {authError && (
+                      {authError && retryAuth && (
                         <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700">
                           <div className="text-xs text-red-600 dark:text-red-400 mb-2">
                             {authError}
@@ -438,7 +441,7 @@ export function NavBar({
                     </div>
                     
                     {/* ENHANCED: Mobile auth error display */}
-                    {authError && (
+                    {authError && retryAuth && (
                       <div className="mt-2">
                         <div className="text-xs text-red-600 dark:text-red-400 mb-1">
                           {authError}
