@@ -16,7 +16,55 @@ function getPlanTypeFromPriceId(priceId: string): string {
   return 'base_plan';
 }
 
-// Your existing handleCheckoutSessionCompleted function
+// FIXED: Added retry logic for user lookup to handle timing issues
+async function findUserByEmailWithRetry(customerEmail: string, maxRetries = 5, delayMs = 2000): Promise<any> {
+  console.log(`🔍 Starting user lookup for email: ${customerEmail}`);
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`📋 User lookup attempt ${attempt}/${maxRetries}`);
+      
+      const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
+      if (authError) {
+        console.error(`❌ Error fetching auth users (attempt ${attempt}):`, authError);
+        if (attempt === maxRetries) {
+          throw new Error(`Failed to fetch users after ${maxRetries} attempts: ${authError.message}`);
+        }
+        continue;
+      }
+
+      const user = authUsers.users.find(u => u.email === customerEmail);
+      if (user) {
+        console.log(`✅ Found user ID after ${attempt} attempt(s):`, user.id);
+        return user;
+      }
+
+      console.warn(`⚠️ User not found with email: ${customerEmail}. Attempt ${attempt}/${maxRetries}`);
+      
+      // Don't wait after the last attempt
+      if (attempt < maxRetries) {
+        console.log(`⏳ Waiting ${delayMs / 1000} seconds before retry...`);
+        await new Promise(resolve => setTimeout(resolve, delayMs));
+      }
+    } catch (error) {
+      console.error(`❌ Error during user lookup attempt ${attempt}:`, error);
+      if (attempt === maxRetries) {
+        throw error;
+      }
+      // Wait before retry on error
+      if (attempt < maxRetries) {
+        await new Promise(resolve => setTimeout(resolve, delayMs));
+      }
+    }
+  }
+
+  // If we get here, user was not found after all attempts
+  const errorMessage = `User still not found after ${maxRetries} attempts with email: ${customerEmail}`;
+  console.error(`❌ ${errorMessage}`);
+  throw new Error(errorMessage);
+}
+
+// Your existing handleCheckoutSessionCompleted function with improved error handling
 async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) {
   console.log('🎉 Processing checkout session completed:', session.id);
   console.log('Session details:', {
@@ -31,25 +79,45 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
   const customerEmail = session.customer_email;
   if (!customerEmail) {
     console.error('❌ No customer email in session');
-    return;
+    throw new Error('No customer email provided in checkout session');
   }
 
   console.log('👤 Processing payment for email:', customerEmail);
 
-  // Find user by email in auth.users
-  const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
-  if (authError) {
-    console.error('❌ Error fetching auth users:', authError);
-    throw new Error(`Failed to fetch users: ${authError.message}`);
+  // FIXED: Use retry logic for user lookup
+  let user;
+  try {
+    user = await findUserByEmailWithRetry(customerEmail);
+  } catch (error) {
+    console.error('❌ Failed to find user after retries:', error);
+    // Log the error but don't throw immediately - try fallback approaches
+    
+    // Fallback: Try to find user by checking recent signups (within last hour)
+    try {
+      console.log('🔄 Attempting fallback user lookup...');
+      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+      const { data: recentUsers, error: recentError } = await supabase.auth.admin.listUsers();
+      
+      if (!recentError && recentUsers) {
+        const recentUser = recentUsers.users.find(u => 
+          u.email === customerEmail && 
+          new Date(u.created_at) > new Date(oneHourAgo)
+        );
+        
+        if (recentUser) {
+          console.log('✅ Found user via fallback lookup:', recentUser.id);
+          user = recentUser;
+        }
+      }
+    } catch (fallbackError) {
+      console.error('❌ Fallback user lookup also failed:', fallbackError);
+    }
+    
+    // If still no user found, throw the original error
+    if (!user) {
+      throw error;
+    }
   }
-
-  const user = authUsers.users.find(u => u.email === customerEmail);
-  if (!user) {
-    console.error(`❌ No user found with email: ${customerEmail}`);
-    throw new Error(`No user found with email: ${customerEmail}`);
-  }
-
-  console.log('✅ Found user ID:', user.id);
 
   const userId = user.id;
   const stripeCustomerId = session.customer as string;
@@ -99,7 +167,7 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
     console.error('❌ Database function failed, using fallback method:', error);
   }
 
-  // Fallback: Direct table updates with correct structure
+  // Fallback: Direct table updates with correct structure and improved error handling
   try {
     // 1. UPDATE USER_PROFILES TABLE using user_id as primary key
     const { error: profileError } = await supabase
@@ -254,7 +322,7 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
   }
 }
 
-// **MAIN HANDLER FUNCTION FOR THE WEBHOOK**
+// **MAIN HANDLER FUNCTION FOR THE WEBHOOK** - Enhanced with better error handling
 export async function handler(event: any) {
   if (event.httpMethod !== 'POST' ) {
     return { statusCode: 405, body: 'Method Not Allowed' };
@@ -270,9 +338,11 @@ export async function handler(event: any) {
       process.env.STRIPE_WEBHOOK_SECRET! // Your Stripe webhook secret
     );
   } catch (err: any) {
-    console.error(`Webhook Error: ${err.message}`);
+    console.error(`Webhook signature verification failed: ${err.message}`);
     return { statusCode: 400, body: `Webhook Error: ${err.message}` };
   }
+
+  console.log(`🎯 Processing webhook event: ${stripeEvent.type}`);
 
   try {
     switch (stripeEvent.type) {
@@ -294,9 +364,21 @@ export async function handler(event: any) {
         console.log(`Unhandled event type ${stripeEvent.type}`);
     }
 
-    return { statusCode: 200, body: 'Success' };
+    console.log(`✅ Successfully processed webhook event: ${stripeEvent.type}`);
+    return { statusCode: 200, body: JSON.stringify({ received: true, event_type: stripeEvent.type }) };
   } catch (error) {
-    console.error('Error processing webhook event:', error);
-    return { statusCode: 500, body: 'Internal Server Error' };
+    console.error(`❌ Error processing webhook event ${stripeEvent.type}:`, error);
+    
+    // Return appropriate error response
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    return { 
+      statusCode: 500, 
+      body: JSON.stringify({ 
+        error: 'Internal Server Error', 
+        message: errorMessage,
+        event_type: stripeEvent.type 
+      }) 
+    };
   }
 }
+
