@@ -1,70 +1,25 @@
 import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
 
-// Initialize Supabase and Stripe clients (ensure these are correctly configured with your keys)
-const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!); // Use environment variables
+// Initialize Supabase and Stripe clients
+const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2024-06-20', // Use your desired API version
+  apiVersion: '2024-06-20',
 });
 
-// Helper function to get plan type (assuming this is defined elsewhere or needs to be added)
+// Helper function to get plan type
 function getPlanTypeFromPriceId(priceId: string): string {
-  // Implement your logic to map Stripe Price ID to your internal plan type
-  if (priceId === 'price_1RXEqERtcrDpOK7ME3QH9uzu') {
-    return 'premium_plan';
-  }
-  return 'base_plan';
-}
-
-// FIXED: Added retry logic for user lookup to handle timing issues
-async function findUserByEmailWithRetry(customerEmail: string, maxRetries = 5, delayMs = 2000): Promise<any> {
-  console.log(`🔍 Starting user lookup for email: ${customerEmail}`);
+  // Map your Stripe Price IDs to internal plan types
+  const planMapping: { [key: string]: string } = {
+    'price_1RXEqERtcrDpOK7ME3QH9uzu': 'premium_plan',
+    'price_1QzeXvRtcrDpOK7M5IHfp8ES': 'premium_plan',
+    // Add more price ID mappings as needed
+  };
   
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      console.log(`📋 User lookup attempt ${attempt}/${maxRetries}`);
-      
-      const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
-      if (authError) {
-        console.error(`❌ Error fetching auth users (attempt ${attempt}):`, authError);
-        if (attempt === maxRetries) {
-          throw new Error(`Failed to fetch users after ${maxRetries} attempts: ${authError.message}`);
-        }
-        continue;
-      }
-
-      const user = authUsers.users.find(u => u.email === customerEmail);
-      if (user) {
-        console.log(`✅ Found user ID after ${attempt} attempt(s):`, user.id);
-        return user;
-      }
-
-      console.warn(`⚠️ User not found with email: ${customerEmail}. Attempt ${attempt}/${maxRetries}`);
-      
-      // Don't wait after the last attempt
-      if (attempt < maxRetries) {
-        console.log(`⏳ Waiting ${delayMs / 1000} seconds before retry...`);
-        await new Promise(resolve => setTimeout(resolve, delayMs));
-      }
-    } catch (error) {
-      console.error(`❌ Error during user lookup attempt ${attempt}:`, error);
-      if (attempt === maxRetries) {
-        throw error;
-      }
-      // Wait before retry on error
-      if (attempt < maxRetries) {
-        await new Promise(resolve => setTimeout(resolve, delayMs));
-      }
-    }
-  }
-
-  // If we get here, user was not found after all attempts
-  const errorMessage = `User still not found after ${maxRetries} attempts with email: ${customerEmail}`;
-  console.error(`❌ ${errorMessage}`);
-  throw new Error(errorMessage);
+  return planMapping[priceId] || 'premium_plan';
 }
 
-// Your existing handleCheckoutSessionCompleted function with improved error handling
+// IMPROVED: Bypass user lookup and update by email directly
 async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) {
   console.log('🎉 Processing checkout session completed:', session.id);
   console.log('Session details:', {
@@ -77,6 +32,9 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
   });
 
   const customerEmail = session.customer_email;
+  const stripeCustomerId = session.customer as string;
+  const subscriptionId = session.subscription as string;
+  
   if (!customerEmail) {
     console.error('❌ No customer email in session');
     throw new Error('No customer email provided in checkout session');
@@ -84,49 +42,8 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
 
   console.log('👤 Processing payment for email:', customerEmail);
 
-  // FIXED: Use retry logic for user lookup
-  let user;
-  try {
-    user = await findUserByEmailWithRetry(customerEmail);
-  } catch (error) {
-    console.error('❌ Failed to find user after retries:', error);
-    // Log the error but don't throw immediately - try fallback approaches
-    
-    // Fallback: Try to find user by checking recent signups (within last hour)
-    try {
-      console.log('🔄 Attempting fallback user lookup...');
-      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-      const { data: recentUsers, error: recentError } = await supabase.auth.admin.listUsers();
-      
-      if (!recentError && recentUsers) {
-        const recentUser = recentUsers.users.find(u => 
-          u.email === customerEmail && 
-          new Date(u.created_at) > new Date(oneHourAgo)
-        );
-        
-        if (recentUser) {
-          console.log('✅ Found user via fallback lookup:', recentUser.id);
-          user = recentUser;
-        }
-      }
-    } catch (fallbackError) {
-      console.error('❌ Fallback user lookup also failed:', fallbackError);
-    }
-    
-    // If still no user found, throw the original error
-    if (!user) {
-      throw error;
-    }
-  }
-
-  const userId = user.id;
-  const stripeCustomerId = session.customer as string;
-  const subscriptionId = session.subscription as string;
-
-  console.log('📋 Subscription ID:', subscriptionId);
-
   // Get subscription details for plan type and dates
-  let planType = 'base_plan';
+  let planType = 'premium_plan';
   let currentPeriodStart = new Date().toISOString();
   let currentPeriodEnd = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(); // 1 year from now
 
@@ -147,85 +64,60 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
     }
   }
 
-  // Try using the database function first
   try {
-    const { data, error } = await supabase.rpc('process_payment_success', {
-      p_user_id: userId,
-      p_plan_type: planType,
-      p_stripe_customer_id: stripeCustomerId,
-      p_stripe_subscription_id: subscriptionId
-    });
-
-    if (error) {
-      console.error('❌ Error calling process_payment_success function:', error);
-      throw error;
-    } else {
-      console.log('✅ Payment success processed via database function');
-      return; // Success, exit early
-    }
-  } catch (error) {
-    console.error('❌ Database function failed, using fallback method:', error);
-  }
-
-  // Fallback: Direct table updates with correct structure and improved error handling
-  try {
-    // 1. UPDATE USER_PROFILES TABLE using user_id as primary key
-    const { error: profileError } = await supabase
+    // IMPROVED: Update user_profiles by email (bypass user lookup)
+    console.log('📝 Updating user_profiles table...');
+    const { error: profileError, count: profileCount } = await supabase
       .from('user_profiles')
-      .upsert({
-        user_id: userId, // Use user_id as primary key
-        email: customerEmail,
-        stripe_customer_id: stripeCustomerId,
-        stripe_subscription_id: subscriptionId,
-        subscription_status: 'active',
+      .update({
         payment_status: 'verified',
+        payment_verified: true,
+        subscription_status: 'active',
         plan_type: planType,
         subscription_plan: planType,
+        stripe_customer_id: stripeCustomerId,
+        stripe_subscription_id: subscriptionId,
         last_payment_date: new Date().toISOString(),
-        payment_verified: true,
         current_period_start: currentPeriodStart,
         current_period_end: currentPeriodEnd,
         temp_access_until: currentPeriodEnd,
         updated_at: new Date().toISOString()
-      }, {
-        onConflict: 'user_id' // Use user_id for conflict resolution
-      });
+      })
+      .eq('email', customerEmail);
 
     if (profileError) {
       console.error('❌ Error updating user_profiles:', profileError);
       throw profileError;
     }
-    console.log('✅ Updated user_profiles successfully');
+    console.log(`✅ Updated user_profiles successfully (${profileCount} rows affected)`);
 
-    // 2. UPDATE USER_ACCESS_STATUS TABLE using id as primary key
-    const { error: accessError } = await supabase
+    // IMPROVED: Update user_access_status by email
+    console.log('📝 Updating user_access_status table...');
+    const { error: accessError, count: accessCount } = await supabase
       .from('user_access_status')
-      .upsert({
-        id: userId, // Use id as primary key
-        email: customerEmail,
-        email_verified: true,
+      .update({
         payment_verified: true,
         subscription_status: 'active',
         has_access: true,
         access_type: `Paid subscription (${planType})`,
         temp_access_until: currentPeriodEnd,
         updated_at: new Date().toISOString()
-      }, {
-        onConflict: 'id' // Use id for conflict resolution
-      });
+      })
+      .eq('email', customerEmail);
 
     if (accessError) {
       console.error('❌ Error updating user_access_status:', accessError);
       throw accessError;
     }
-    console.log('✅ Updated user_access_status successfully');
+    console.log(`✅ Updated user_access_status successfully (${accessCount} rows affected)`);
 
-    // 3. LOG TO PAYMENT_LOGS TABLE (if it exists)
+    // IMPROVED: Log to payment_logs table for audit trail
     try {
+      console.log('📝 Logging payment to audit trail...');
       const { error: logError } = await supabase
         .from('payment_logs')
         .insert({
-          user_id: userId,
+          email: customerEmail,
           stripe_customer_id: stripeCustomerId,
           stripe_subscription_id: subscriptionId,
           event_type: 'checkout.session.completed',
@@ -234,16 +126,17 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
           currency: session.currency || 'usd',
           processed_at: new Date().toISOString(),
           webhook_verified: true,
+          plan_type: planType,
           metadata: {
             session_id: session.id,
-            plan_type: planType,
-            payment_method: session.payment_method_types?.[0] || 'unknown'
+            payment_method: session.payment_method_types?.[0] || 'unknown',
+            mode: session.mode
           }
         });
 
       if (logError) {
         console.error('❌ Error logging to payment_logs:', logError);
-        // Don't throw - this table might not exist
+        // Don't throw - this is not critical
       } else {
         console.log('✅ Logged to payment_logs successfully');
       }
@@ -255,76 +148,132 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
     console.log('🎊 Checkout session processing completed successfully!');
 
   } catch (error) {
-    console.error('❌ Error in fallback processing:', error);
+    console.error('❌ Error in payment processing:', error);
+    
+    // IMPROVED: Attempt to grant temporary access as fallback
+    try {
+      console.log('🔄 Attempting to grant temporary access as fallback...');
+      await supabase
+        .from('user_access_status')
+        .update({
+          has_access: true,
+          access_type: 'Temporary access (payment processing error)',
+          temp_access_until: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours
+          updated_at: new Date().toISOString()
+        })
+        .eq('email', customerEmail);
+      
+      console.log('✅ Granted temporary access as fallback');
+    } catch (fallbackError) {
+      console.error('❌ Fallback access grant also failed:', fallbackError);
+    }
+    
     throw error;
   }
 }
 
-// Also update the handleSubscriptionChange function to use correct table structure
+// IMPROVED: Handle subscription changes with better error handling
 async function handleSubscriptionChange(subscription: Stripe.Subscription) {
   console.log('🔄 Processing subscription change:', subscription.id, 'status:', subscription.status);
 
   const customerId = subscription.customer as string;
   
-  // Find user by stripe customer ID in user_profiles
-  const { data: profiles, error: profileError } = await supabase
-    .from('user_profiles')
-    .select('user_id, email')
-    .eq('stripe_customer_id', customerId)
-    .limit(1);
+  try {
+    // Find user by stripe customer ID in user_profiles
+    const { data: profiles, error: profileError } = await supabase
+      .from('user_profiles')
+      .select('user_id, email')
+      .eq('stripe_customer_id', customerId)
+      .limit(1);
 
-  if (profileError || !profiles || profiles.length === 0) {
-    console.warn('⚠️ User not found for customer ID:', customerId);
-    return;
-  }
+    if (profileError) {
+      console.error('❌ Error finding user profile:', profileError);
+      return;
+    }
 
-  const userId = profiles[0].user_id;
+    if (!profiles || profiles.length === 0) {
+      console.warn('⚠️ User not found for customer ID:', customerId);
+      return;
+    }
 
-  // Update subscription status in user_profiles using user_id
-  const { error: updateError } = await supabase
-    .from('user_profiles')
-    .update({
-      subscription_status: subscription.status,
-      current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-      current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
-      updated_at: new Date().toISOString()
-    })
-    .eq('user_id', userId);
+    const userProfile = profiles[0];
+    console.log('✅ Found user:', userProfile.email);
 
-  if (updateError) {
-    console.error('❌ Error updating subscription status:', updateError);
-  } else {
+    // Update subscription status in user_profiles
+    const { error: updateError } = await supabase
+      .from('user_profiles')
+      .update({
+        subscription_status: subscription.status,
+        current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
+        current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .eq('stripe_customer_id', customerId);
+
+    if (updateError) {
+      console.error('❌ Error updating subscription status:', updateError);
+      throw updateError;
+    }
+
+    // Update user_access_status based on subscription status
+    const hasAccess = subscription.status === 'active';
+    const accessType = hasAccess ? 'Paid subscription (active)' : `Subscription ${subscription.status}`;
+    
+    const { error: accessUpdateError } = await supabase
+      .from('user_access_status')
+      .update({
+        subscription_status: subscription.status,
+        has_access: hasAccess,
+        access_type: accessType,
+        updated_at: new Date().toISOString()
+      })
+      .eq('email', userProfile.email);
+
+    if (accessUpdateError) {
+      console.error('❌ Error updating access status:', accessUpdateError);
+      throw accessUpdateError;
+    }
+
     console.log('✅ Updated subscription status successfully');
+  } catch (error) {
+    console.error('❌ Error in subscription change handling:', error);
+    throw error;
   }
 }
 
-// Update handleInvoicePaymentSucceeded function
+// IMPROVED: Handle invoice payment with better error handling
 async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
   console.log('💰 Processing invoice payment succeeded:', invoice.id);
 
   const customerId = invoice.customer as string;
 
-  // Update last payment date in user_profiles using stripe_customer_id
-  const { error: updateError } = await supabase
-    .from('user_profiles')
-    .update({
-      last_payment_date: new Date().toISOString(),
-      payment_status: 'verified',
-      payment_verified: true,
-      updated_at: new Date().toISOString()
-    })
-    .eq('stripe_customer_id', customerId);
+  try {
+    // Update last payment date in user_profiles using stripe_customer_id
+    const { error: updateError, count } = await supabase
+      .from('user_profiles')
+      .update({
+        last_payment_date: new Date().toISOString(),
+        payment_status: 'verified',
+        payment_verified: true,
+        updated_at: new Date().toISOString()
+      })
+      .eq('stripe_customer_id', customerId);
 
-  if (updateError) {
-    console.error('❌ Error updating payment date:', updateError);
-  } else {
-    console.log('✅ Updated payment date for customer:', customerId);
+    if (updateError) {
+      console.error('❌ Error updating payment date:', updateError);
+      throw updateError;
+    }
+    
+    console.log(`✅ Updated payment date for customer: ${customerId} (${count} rows affected)`);
+  } catch (error) {
+    console.error('❌ Error in invoice payment handling:', error);
+    throw error;
   }
 }
 
-// **MAIN HANDLER FUNCTION FOR THE WEBHOOK** - Enhanced with better error handling
+// IMPROVED: Main handler with better error handling and logging
 export async function handler(event: any) {
-  if (event.httpMethod !== 'POST' ) {
+  if (event.httpMethod !== 'POST') {
     return { statusCode: 405, body: 'Method Not Allowed' };
   }
 
@@ -335,10 +284,10 @@ export async function handler(event: any) {
     stripeEvent = stripe.webhooks.constructEvent(
       event.body,
       sig,
-      process.env.STRIPE_WEBHOOK_SECRET! // Your Stripe webhook secret
+      process.env.STRIPE_WEBHOOK_SECRET!
     );
   } catch (err: any) {
-    console.error(`Webhook signature verification failed: ${err.message}`);
+    console.error(`❌ Webhook signature verification failed: ${err.message}`);
     return { statusCode: 400, body: `Webhook Error: ${err.message}` };
   }
 
@@ -350,22 +299,32 @@ export async function handler(event: any) {
         const checkoutSession = stripeEvent.data.object as Stripe.Checkout.Session;
         await handleCheckoutSessionCompleted(checkoutSession);
         break;
+        
       case 'customer.subscription.updated':
       case 'customer.subscription.deleted':
         const subscription = stripeEvent.data.object as Stripe.Subscription;
         await handleSubscriptionChange(subscription);
         break;
+        
       case 'invoice.payment_succeeded':
         const invoice = stripeEvent.data.object as Stripe.Invoice;
         await handleInvoicePaymentSucceeded(invoice);
         break;
-      // Add other event types as needed
+        
       default:
-        console.log(`Unhandled event type ${stripeEvent.type}`);
+        console.log(`ℹ️ Unhandled event type: ${stripeEvent.type}`);
     }
 
     console.log(`✅ Successfully processed webhook event: ${stripeEvent.type}`);
-    return { statusCode: 200, body: JSON.stringify({ received: true, event_type: stripeEvent.type }) };
+    return { 
+      statusCode: 200, 
+      body: JSON.stringify({ 
+        received: true, 
+        event_type: stripeEvent.type,
+        processed_at: new Date().toISOString()
+      }) 
+    };
+    
   } catch (error) {
     console.error(`❌ Error processing webhook event ${stripeEvent.type}:`, error);
     
@@ -376,7 +335,9 @@ export async function handler(event: any) {
       body: JSON.stringify({ 
         error: 'Internal Server Error', 
         message: errorMessage,
-        event_type: stripeEvent.type 
+        event_type: stripeEvent.type,
+        event_id: stripeEvent.id,
+        timestamp: new Date().toISOString()
       }) 
     };
   }
