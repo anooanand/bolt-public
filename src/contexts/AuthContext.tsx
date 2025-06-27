@@ -11,6 +11,10 @@ interface AuthContextType {
   emailVerified: boolean;
   paymentCompleted: boolean;
   authSignOut: () => Promise<void>;
+  // ENHANCED: Added error state and retry functionality
+  authError: string | null;
+  retryAuth: () => Promise<void>;
+  clearAuthError: () => void;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -22,6 +26,9 @@ const AuthContext = createContext<AuthContextType>({
   emailVerified: false,
   paymentCompleted: false,
   authSignOut: async () => {},
+  authError: null,
+  retryAuth: async () => {},
+  clearAuthError: () => {},
 });
 
 export const useAuth = () => {
@@ -39,18 +46,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [verificationStatus, setVerificationStatus] = useState<'pending' | 'verified' | 'failed'>('pending');
   const [emailVerified, setEmailVerified] = useState(false);
   const [paymentCompleted, setPaymentCompleted] = useState(false);
+  // ENHANCED: Added error state management
+  const [authError, setAuthError] = useState<string | null>(null);
 
-  // Optimized admin status check with caching
+  // ENHANCED: Clear auth error function
+  const clearAuthError = useCallback(() => {
+    setAuthError(null);
+  }, []);
+
+  // Optimized admin status check with caching and better error handling
   const checkAdminStatus = useCallback(async (user: User, retries = 2) => {
     // Check cache first
     const cacheKey = `admin_status_${user.id}`;
     const cached = sessionStorage.getItem(cacheKey);
     if (cached) {
-      const { isAdmin: cachedAdmin, timestamp } = JSON.parse(cached);
-      // Cache for 5 minutes
-      if (Date.now() - timestamp < 5 * 60 * 1000) {
-        setIsAdmin(cachedAdmin);
-        return cachedAdmin;
+      try {
+        const { isAdmin: cachedAdmin, timestamp } = JSON.parse(cached);
+        // Cache for 5 minutes
+        if (Date.now() - timestamp < 5 * 60 * 1000) {
+          setIsAdmin(cachedAdmin);
+          return cachedAdmin;
+        }
+      } catch (error) {
+        // Clear invalid cache
+        sessionStorage.removeItem(cacheKey);
       }
     }
 
@@ -78,10 +97,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsAdmin(adminStatus);
       
       // Cache the result
-      sessionStorage.setItem(cacheKey, JSON.stringify({
-        isAdmin: adminStatus,
-        timestamp: Date.now()
-      }));
+      try {
+        sessionStorage.setItem(cacheKey, JSON.stringify({
+          isAdmin: adminStatus,
+          timestamp: Date.now()
+        }));
+      } catch (error) {
+        console.warn('Failed to cache admin status:', error);
+      }
       
       return adminStatus;
     } catch (error) {
@@ -91,7 +114,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
-  // Optimized email verification check
+  // Optimized email verification check with better error handling
   const checkEmailVerification = useCallback(async (user: User) => {
     try {
       // Check if email is confirmed in auth
@@ -119,7 +142,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
-  // Optimized payment status check
+  // Optimized payment status check with better error handling
   const checkPaymentStatus = useCallback(async (user: User) => {
     try {
       // Check local storage for temporary access first
@@ -127,17 +150,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const paymentPlan = localStorage.getItem('payment_plan');
       
       if (paymentDate && paymentPlan) {
-        const paymentTime = new Date(paymentDate).getTime();
-        const now = Date.now();
-        const hoursSincePayment = (now - paymentTime) / (1000 * 60 * 60);
-        
-        // 24-hour temporary access
-        if (hoursSincePayment < 24) {
-          console.log('✅ Temporary payment access valid');
-          setPaymentCompleted(true);
-          return true;
-        } else {
-          // Clean up expired temporary access
+        try {
+          const paymentTime = new Date(paymentDate).getTime();
+          const now = Date.now();
+          const hoursSincePayment = (now - paymentTime) / (1000 * 60 * 60);
+          
+          // 24-hour temporary access
+          if (hoursSincePayment < 24) {
+            console.log('✅ Temporary payment access valid');
+            setPaymentCompleted(true);
+            return true;
+          } else {
+            // Clean up expired temporary access
+            localStorage.removeItem('payment_date');
+            localStorage.removeItem('payment_plan');
+          }
+        } catch (error) {
+          console.warn('Invalid payment date in localStorage:', error);
           localStorage.removeItem('payment_date');
           localStorage.removeItem('payment_plan');
         }
@@ -146,7 +175,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Check database for permanent access
       const { data, error } = await supabase
         .from('user_profiles')
-        .select('subscription_status, subscription_end_date')
+        .select('subscription_status, subscription_end_date, payment_verified, current_period_end')
         .eq('user_id', user.id)
         .single();
 
@@ -156,8 +185,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return false;
       }
 
+      // ENHANCED: More comprehensive payment status check
       const hasValidSubscription = data?.subscription_status === 'active' ||
-                                  (data?.subscription_end_date && new Date(data.subscription_end_date) > new Date());
+                                  data?.payment_verified === true ||
+                                  (data?.subscription_end_date && new Date(data.subscription_end_date) > new Date()) ||
+                                  (data?.current_period_end && new Date(data.current_period_end) > new Date());
       
       setPaymentCompleted(hasValidSubscription);
       return hasValidSubscription;
@@ -168,13 +200,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
-  // Optimized auth refresh
+  // Optimized auth refresh with better error handling
   const refreshAuth = useCallback(async () => {
     try {
+      setAuthError(null); // Clear any previous errors
       const { data: { session }, error } = await supabase.auth.getSession();
       
       if (error) {
         console.error('Session refresh error:', error);
+        setAuthError(`Session error: ${error.message}`);
         setUser(null);
         setIsAdmin(false);
         setEmailVerified(false);
@@ -187,11 +221,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(session.user);
         
         // Run checks in parallel for better performance
-        await Promise.all([
-          checkAdminStatus(session.user),
-          checkEmailVerification(session.user),
-          checkPaymentStatus(session.user)
-        ]);
+        try {
+          await Promise.all([
+            checkAdminStatus(session.user),
+            checkEmailVerification(session.user),
+            checkPaymentStatus(session.user)
+          ]);
+        } catch (error) {
+          console.error('Error during user status checks:', error);
+          setAuthError('Failed to load user status');
+        }
       } else {
         setUser(null);
         setIsAdmin(false);
@@ -200,6 +239,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     } catch (error) {
       console.error('Auth refresh failed:', error);
+      setAuthError(`Authentication failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
       setUser(null);
       setIsAdmin(false);
       setEmailVerified(false);
@@ -209,26 +249,72 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [checkAdminStatus, checkEmailVerification, checkPaymentStatus]);
 
-  // Optimized sign out
+  // ENHANCED: Retry auth function
+  const retryAuth = useCallback(async () => {
+    setLoading(true);
+    setAuthError(null);
+    await refreshAuth();
+  }, [refreshAuth]);
+
+  // ENHANCED: Improved sign out with better cleanup and error handling
   const authSignOut = useCallback(async () => {
     try {
-      await supabase.auth.signOut();
+      setAuthError(null);
+      console.log('🚪 Initiating sign out...');
+      
+      // Sign out from Supabase
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error('Supabase sign out error:', error);
+        setAuthError(`Sign out failed: ${error.message}`);
+        throw error;
+      }
+      
+      // Clear all state
       setUser(null);
       setIsAdmin(false);
       setEmailVerified(false);
       setPaymentCompleted(false);
+      setVerificationStatus('pending');
       
-      // Clear caches
-      sessionStorage.clear();
-      localStorage.removeItem('payment_date');
-      localStorage.removeItem('payment_plan');
+      // ENHANCED: More thorough cache cleanup
+      try {
+        sessionStorage.clear();
+        localStorage.removeItem('payment_date');
+        localStorage.removeItem('payment_plan');
+        localStorage.removeItem('userEmail');
+        // Clear any other auth-related localStorage items
+        Object.keys(localStorage).forEach(key => {
+          if (key.startsWith('auth_') || key.startsWith('user_') || key.startsWith('admin_')) {
+            localStorage.removeItem(key);
+          }
+        });
+      } catch (error) {
+        console.warn('Error clearing storage:', error);
+      }
+      
+      console.log('✅ Sign out completed successfully');
     } catch (error) {
       console.error('Sign out error:', error);
+      // Even if sign out fails, clear local state to prevent stuck sessions
+      setUser(null);
+      setIsAdmin(false);
+      setEmailVerified(false);
+      setPaymentCompleted(false);
+      setVerificationStatus('pending');
+      
+      try {
+        sessionStorage.clear();
+        localStorage.clear();
+      } catch (storageError) {
+        console.warn('Error clearing storage during failed logout:', storageError);
+      }
+      
       throw error;
     }
   }, []);
 
-  // Initialize auth state
+  // Initialize auth state with better error handling
   useEffect(() => {
     console.log('🚀 Initializing AuthProvider...');
     
@@ -236,12 +322,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     const initializeAuth = async () => {
       try {
+        setAuthError(null);
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (!mounted) return;
         
         if (error) {
           console.error('Initial session error:', error);
+          setAuthError(`Initialization error: ${error.message}`);
           setLoading(false);
           return;
         }
@@ -251,11 +339,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setUser(session.user);
           
           // Run checks in parallel
-          await Promise.all([
-            checkAdminStatus(session.user),
-            checkEmailVerification(session.user),
-            checkPaymentStatus(session.user)
-          ]);
+          try {
+            await Promise.all([
+              checkAdminStatus(session.user),
+              checkEmailVerification(session.user),
+              checkPaymentStatus(session.user)
+            ]);
+          } catch (error) {
+            console.error('Error during initial user status checks:', error);
+            setAuthError('Failed to load user status');
+          }
         } else {
           console.log('🔄 Auth state change detected: SIGNED_OUT');
           setUser(null);
@@ -265,6 +358,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       } catch (error) {
         console.error('Auth initialization failed:', error);
+        setAuthError(`Initialization failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
       } finally {
         if (mounted) {
           setLoading(false);
@@ -274,29 +368,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     initializeAuth();
 
-    // Listen for auth changes
+    // Listen for auth changes with better error handling
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return;
       
       console.log('🔄 Auth state change:', event);
       
-      if (session?.user) {
-        setUser(session.user);
+      try {
+        setAuthError(null);
         
-        // Run checks in parallel
-        await Promise.all([
-          checkAdminStatus(session.user),
-          checkEmailVerification(session.user),
-          checkPaymentStatus(session.user)
-        ]);
-      } else {
-        setUser(null);
-        setIsAdmin(false);
-        setEmailVerified(false);
-        setPaymentCompleted(false);
+        if (session?.user) {
+          setUser(session.user);
+          
+          // Run checks in parallel
+          try {
+            await Promise.all([
+              checkAdminStatus(session.user),
+              checkEmailVerification(session.user),
+              checkPaymentStatus(session.user)
+            ]);
+          } catch (error) {
+            console.error('Error during auth state change checks:', error);
+            setAuthError('Failed to update user status');
+          }
+        } else {
+          setUser(null);
+          setIsAdmin(false);
+          setEmailVerified(false);
+          setPaymentCompleted(false);
+        }
+      } catch (error) {
+        console.error('Error handling auth state change:', error);
+        setAuthError(`Auth state change error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      } finally {
+        setLoading(false);
       }
-      
-      setLoading(false);
     });
 
     return () => {
@@ -314,8 +420,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     refreshAuth,
     emailVerified,
     paymentCompleted,
-    authSignOut
-  }), [user, isAdmin, loading, verificationStatus, refreshAuth, emailVerified, paymentCompleted, authSignOut]);
+    authSignOut,
+    authError,
+    retryAuth,
+    clearAuthError
+  }), [user, isAdmin, loading, verificationStatus, refreshAuth, emailVerified, paymentCompleted, authSignOut, authError, retryAuth, clearAuthError]);
 
   return (
     <AuthContext.Provider value={contextValue}>
