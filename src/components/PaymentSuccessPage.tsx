@@ -11,7 +11,7 @@ export const PaymentSuccessPage: React.FC<PaymentSuccessPageProps> = ({
   planType, 
   onContinue 
 }) => {
-  const { forceRefreshVerification } = useAuth();
+  const { forceRefreshVerification, user } = useAuth();
 
   useEffect(() => {
     // Force refresh verification after payment success
@@ -23,6 +23,35 @@ export const PaymentSuccessPage: React.FC<PaymentSuccessPageProps> = ({
 
     return () => clearTimeout(refreshTimer);
   }, [forceRefreshVerification]);
+
+  // ENHANCED: Better click handler with debugging
+  const handleContinueClick = () => {
+    console.log('🔄 Continue to Dashboard clicked');
+    
+    try {
+      // Force refresh verification first
+      if (forceRefreshVerification) {
+        forceRefreshVerification();
+      }
+      
+      // Call the onContinue handler
+      if (onContinue) {
+        onContinue();
+      } else {
+        console.error('❌ onContinue handler is missing');
+        // Fallback navigation
+        if (user) {
+          window.location.href = '/dashboard';
+        } else {
+          window.location.href = '/';
+        }
+      }
+    } catch (error) {
+      console.error('❌ Error in handleContinueClick:', error);
+      // Fallback navigation
+      window.location.href = user ? '/dashboard' : '/';
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4">
@@ -48,14 +77,23 @@ export const PaymentSuccessPage: React.FC<PaymentSuccessPageProps> = ({
           </p>
         </div>
         
+        {/* ENHANCED: Better button with explicit click handler and debugging */}
         <button
-          onClick={onContinue}
-          className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center space-x-2"
+          onClick={handleContinueClick}
+          className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center space-x-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+          type="button"
         >
           <span>Continue to Dashboard</span>
           <ArrowRight className="w-4 h-4" />
         </button>
+        
+        {/* ENHANCED: Debug info (remove in production) */}
+        <div className="mt-4 text-xs text-gray-500">
+          <p>User: {user ? 'Logged in' : 'Not logged in'}</p>
+          <p>Plan: {planType || 'Unknown'}</p>
+        </div>
       </div>
     </div>
   );
 };
+
