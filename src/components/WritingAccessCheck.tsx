@@ -1,184 +1,185 @@
-import React, { useState, useEffect } from 'react';
-import { supabase, isEmailVerified } from '../lib/supabase';
-import { Loader, Lock } from 'lucide-react';
+import React from 'react';
+import { useAuth } from '../contexts/AuthContext';
+import { Lock, Mail, CreditCard, CheckCircle } from 'lucide-react';
 
 interface WritingAccessCheckProps {
   children: React.ReactNode;
   onNavigate: (page: string) => void;
 }
 
-export function WritingAccessCheck({ children, onNavigate }: WritingAccessCheckProps) {
-  const [hasAccess, setHasAccess] = useState<boolean | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [emailVerified, setEmailVerified] = useState(false);
+export const WritingAccessCheck: React.FC<WritingAccessCheckProps> = ({ 
+  children, 
+  onNavigate 
+}) => {
+  const { 
+    user, 
+    emailVerified, 
+    paymentCompleted, 
+    loading,
+    verificationStatus 
+  } = useAuth();
 
-  // Local function to check temporary access
-  const checkTemporaryAccess = async (): Promise<boolean> => {
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-400">Checking access...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Check if user is logged in
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 p-4">
+        <div className="max-w-md w-full bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8 text-center">
+          <Lock className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+            Sign In Required
+          </h2>
+          <p className="text-gray-600 dark:text-gray-300 mb-6">
+            Please sign in to access the writing tools.
+          </p>
+          <button
+            onClick={() => onNavigate('home')}
+            className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Go to Sign In
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ENHANCED: Check for temporary payment access (24-hour grace period)
+  const hasTemporaryAccess = () => {
     try {
-      // Check localStorage first for immediate response
-      const tempAccess = localStorage.getItem('temp_access_granted');
-      const tempUntil = localStorage.getItem('temp_access_until');
+      const paymentDate = localStorage.getItem('payment_date');
+      const paymentPlan = localStorage.getItem('payment_plan');
       
-      if (tempAccess === 'true' && tempUntil) {
-        const tempDate = new Date(tempUntil);
-        if (tempDate > new Date()) {
-          console.log('✅ 24-hour temporary access valid until:', tempDate);
-          return true;
-        } else {
-          // Temporary access expired, clean up
-          localStorage.removeItem('temp_access_granted');
-          localStorage.removeItem('temp_access_until');
-          localStorage.removeItem('temp_access_plan');
-          console.log('⏰ Temporary access expired');
-        }
+      if (paymentDate && paymentPlan) {
+        const paymentTime = new Date(paymentDate).getTime();
+        const now = Date.now();
+        const hoursSincePayment = (now - paymentTime) / (1000 * 60 * 60);
+        
+        // 24-hour temporary access
+        return hoursSincePayment < 24;
       }
-      
-      // Check database for temporary access
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return false;
-      
-      const { data: accessData } = await supabase
-        .from('user_access_status')
-        .select('temp_access_until, has_access')
-        .eq('id', user.id)
-        .single();
-      
-      if (accessData?.temp_access_until) {
-        const tempDate = new Date(accessData.temp_access_until);
-        if (tempDate > new Date()) {
-          console.log('✅ Database temporary access valid until:', tempDate);
-          return true;
-        }
-      }
-      
       return false;
     } catch (error) {
-      console.error('❌ Error checking temporary access:', error);
       return false;
     }
   };
 
-  // Local function to check payment completion
-  const checkPaymentCompletion = async (): Promise<boolean> => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return false;
-      
-      // Check user_profiles for payment verification
-      const { data: profile } = await supabase
-        .from('user_profiles')
-        .select('payment_verified, subscription_status, manual_override')
-        .eq('user_id', user.id)
-        .single();
-      
-      if (profile?.payment_verified === true || 
-          profile?.subscription_status === 'active' ||
-          profile?.manual_override === true) {
-        console.log('✅ Payment verified or manual override');
-        return true;
-      }
-      
-      // Check user_access_status for access
-      const { data: accessData } = await supabase
-        .from('user_access_status')
-        .select('has_access, payment_verified')
-        .eq('id', user.id)
-        .single();
-      
-      if (accessData?.has_access === true || accessData?.payment_verified === true) {
-        console.log('✅ Access confirmed via user_access_status');
-        return true;
-      }
-      
-      return false;
-    } catch (error) {
-      console.error('❌ Error checking payment completion:', error);
-      return false;
-    }
-  };
+  // ENHANCED: More permissive access check
+  const hasWritingAccess = emailVerified && (paymentCompleted || hasTemporaryAccess());
 
-  useEffect(() => {
-    const checkAccess = async () => {
-      setIsLoading(true);
-      
-      try {
-        // Check if email is verified
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-          setHasAccess(false);
-          setEmailVerified(false);
-          setIsLoading(false);
-          return;
-        }
+  // Check email verification
+  if (!emailVerified) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 p-4">
+        <div className="max-w-md w-full bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8 text-center">
+          <Mail className="w-16 h-16 text-yellow-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+            Email Verification Required
+          </h2>
+          <p className="text-gray-600 dark:text-gray-300 mb-6">
+            Please verify your email address to access the writing tools.
+          </p>
+          <div className="space-y-3">
+            <button
+              onClick={() => onNavigate('dashboard')}
+              className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Go to Dashboard
+            </button>
+            <button
+              onClick={() => onNavigate('home')}
+              className="w-full bg-gray-200 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors"
+            >
+              Back to Home
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
-        const emailVerificationResult = await isEmailVerified(user.id);
-        setEmailVerified(emailVerificationResult);
-        
-        if (!emailVerificationResult) {
-          console.log('❌ Email not verified');
-          setHasAccess(false);
-          setIsLoading(false);
-          return;
-        }
-        
-        // First check for temporary access (24-hour immediate access)
-        const tempAccess = await checkTemporaryAccess();
-        
-        if (tempAccess) {
-          console.log('✅ User has 24-hour temporary access');
-          setHasAccess(true);
-          setIsLoading(false);
-          return;
-        }
-        
-        // Then check for permanent access
-        const paymentCompleted = await checkPaymentCompletion();
-        console.log('Payment completion check result:', paymentCompleted);
-        setHasAccess(paymentCompleted);
-        
-      } catch (error) {
-        console.error('❌ Error checking access:', error);
-        setHasAccess(false);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  // Check payment status (with temporary access consideration)
+  if (!hasWritingAccess) {
+    const temporaryAccess = hasTemporaryAccess();
     
-    checkAccess();
-  }, []);
-
-  if (isLoading) {
     return (
-      <div className="flex items-center justify-center p-4 h-full">
-        <Loader className="h-6 w-6 text-blue-600 animate-spin" />
-        <span className="ml-2 text-sm text-gray-600">Checking access...</span>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 p-4">
+        <div className="max-w-md w-full bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8 text-center">
+          <CreditCard className="w-16 h-16 text-red-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+            {temporaryAccess ? 'Temporary Access Expired' : 'Payment Required'}
+          </h2>
+          <p className="text-gray-600 dark:text-gray-300 mb-6">
+            {temporaryAccess 
+              ? 'Your temporary access has expired. Please complete payment to continue.'
+              : 'Please complete payment to access the writing tools.'
+            }
+          </p>
+          
+          {/* Status indicators */}
+          <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 mb-6 text-left">
+            <div className="flex items-center space-x-2 mb-2">
+              <CheckCircle className="w-4 h-4 text-green-500" />
+              <span className="text-sm text-gray-700 dark:text-gray-300">Email verified</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <CreditCard className="w-4 h-4 text-red-500" />
+              <span className="text-sm text-gray-700 dark:text-gray-300">
+                Payment {temporaryAccess ? 'expired' : 'required'}
+              </span>
+            </div>
+          </div>
+          
+          <div className="space-y-3">
+            <button
+              onClick={() => onNavigate('pricing')}
+              className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              View Pricing Plans
+            </button>
+            <button
+              onClick={() => onNavigate('dashboard')}
+              className="w-full bg-gray-200 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors"
+            >
+              Go to Dashboard
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
 
-  if (hasAccess === false) {
-    return (
-      <div className="flex flex-col items-center justify-center p-4 h-full bg-gray-50 dark:bg-gray-800 rounded-lg">
-        <Lock className="h-8 w-8 text-gray-400 mb-2" />
-        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-1">
-          {!emailVerified ? 'Email Verification Required' : 'Premium Feature'}
-        </h3>
-        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 text-center">
-          {!emailVerified 
-            ? 'Please verify your email address to access this feature'
-            : 'This feature requires a subscription. Get 24-hour immediate access after payment!'}
-        </p>
-        <button
-          onClick={() => onNavigate(!emailVerified ? 'dashboard' : 'pricing')}
-          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm"
-        >
-          {!emailVerified ? 'Go to Dashboard' : 'View Plans'}
-        </button>
-      </div>
-    );
-  }
-
-  // User has access, render the children
-  return <>{children}</>;
-}
+  // User has full access - render the writing tools
+  return (
+    <div className="relative">
+      {/* Success indicator for temporary access */}
+      {hasTemporaryAccess() && !paymentCompleted && (
+        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <CheckCircle className="h-5 w-5 text-yellow-400" />
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-yellow-700">
+                You have temporary access. Complete payment for permanent access.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {children}
+    </div>
+  );
+};
 
