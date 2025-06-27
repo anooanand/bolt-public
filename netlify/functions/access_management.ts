@@ -1,6 +1,3 @@
-// Enhanced payment processing fix for access_management.ts
-// This prevents the duplicate payment processing shown in your logs
-
 import { Handler } from '@netlify/functions';
 import { createClient } from '@supabase/supabase-js';
 
@@ -28,180 +25,6 @@ function generatePaymentKey(userId: string, sessionId: string, planType: string)
   return `${userId}-${sessionId}-${planType}`.toLowerCase();
 }
 
-// ENHANCED: Process payment success with idempotency
-async function handleProcessPaymentSuccess(event: any) {
-  try {
-    const { userId, planType, sessionId } = JSON.parse(event.body || '{}');
-
-    if (!userId || !planType) {
-      return {
-        statusCode: 400,
-        headers: getCorsHeaders(),
-        body: JSON.stringify({ error: 'userId and planType are required' }),
-      };
-    }
-
-    // ENHANCED: Create unique payment key for idempotency
-    const paymentKey = generatePaymentKey(userId, sessionId || 'no-session', planType);
-    
-    // ENHANCED: Check if payment was already processed recently
-    cleanupCache();
-    const cached = processedPayments.get(paymentKey);
-    if (cached) {
-      console.log('🔄 Payment already processed recently, returning cached result:', paymentKey);
-      return {
-        statusCode: 200,
-        headers: getCorsHeaders(),
-        body: JSON.stringify({
-          ...cached.result,
-          cached: true,
-          message: 'Payment already processed (cached result)'
-        }),
-      };
-    }
-
-    console.log('💳 Processing payment success:', { userId, planType, sessionId, paymentKey });
-
-    // ENHANCED: Add processing lock to prevent race conditions
-    const processingKey = `processing-${paymentKey}`;
-    if (processedPayments.has(processingKey)) {
-      console.log('⏳ Payment currently being processed, waiting...');
-      // Wait a bit and check cache again
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      const newCached = processedPayments.get(paymentKey);
-      if (newCached) {
-        return {
-          statusCode: 200,
-          headers: getCorsHeaders(),
-          body: JSON.stringify({
-            ...newCached.result,
-            cached: true,
-            message: 'Payment processed while waiting'
-          }),
-        };
-      }
-    }
-
-    // Set processing lock
-    processedPayments.set(processingKey, { timestamp: Date.now(), result: null });
-
-    try {
-      // Use the comprehensive payment success function
-      const { data, error } = await supabase.rpc('process_payment_success', {
-        p_user_id: userId,
-        p_plan_type: planType,
-        p_stripe_customer_id: null,
-        p_stripe_subscription_id: sessionId
-      });
-
-      if (error) {
-        console.error('❌ Error processing payment success:', error);
-        
-        // Fallback to direct updates (only user_profiles table)
-        const fallbackResult = await fallbackProcessPayment(userId, planType);
-        if (!fallbackResult.success) {
-          throw error;
-        }
-      }
-
-      const result = {
-        success: true,
-        message: 'Payment success processed, access granted',
-        planType: planType,
-        processedAt: new Date().toISOString()
-      };
-
-      // ENHANCED: Cache the successful result
-      processedPayments.set(paymentKey, { timestamp: Date.now(), result });
-      
-      // Remove processing lock
-      processedPayments.delete(processingKey);
-
-      console.log('✅ Payment success processed and cached:', paymentKey);
-
-      return {
-        statusCode: 200,
-        headers: getCorsHeaders(),
-        body: JSON.stringify(result),
-      };
-
-    } catch (processingError) {
-      // Remove processing lock on error
-      processedPayments.delete(processingKey);
-      throw processingError;
-    }
-
-  } catch (error: any) {
-    console.error('❌ Error in handleProcessPaymentSuccess:', error);
-    return {
-      statusCode: 500,
-      headers: getCorsHeaders(),
-      body: JSON.stringify({ 
-        error: 'Failed to process payment success',
-        message: error.message 
-      }),
-    };
-  }
-}
-
-// ENHANCED: Fallback payment processing with better error handling
-async function fallbackProcessPayment(userId: string, planType: string) {
-  try {
-    const expiresAt = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(); // 1 year
-    
-    // Get user email with retry logic
-    let userData, userError;
-    for (let attempt = 0; attempt < 3; attempt++) {
-      const result = await supabase.auth.admin.getUserById(userId);
-      userData = result.data;
-      userError = result.error;
-      
-      if (!userError && userData.user) break;
-      
-      if (attempt < 2) {
-        console.log(`Retrying user fetch (attempt ${attempt + 1}/3)...`);
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      }
-    }
-
-    if (userError || !userData.user) {
-      console.error('❌ Error getting user data after retries:', userError);
-      return { success: false, error: userError };
-    }
-
-    const userEmail = userData.user.email;
-
-    // ENHANCED: Upsert with conflict resolution
-    const { error: profileError } = await supabase
-      .from('user_profiles')
-      .upsert({
-        user_id: userId,
-        email: userEmail,
-        payment_verified: true,
-        payment_status: 'verified',
-        subscription_status: 'active',
-        subscription_plan: planType,
-        temp_access_until: expiresAt,
-        last_payment_date: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      }, { 
-        onConflict: 'user_id',
-        ignoreDuplicates: false 
-      });
-
-    if (profileError) {
-      console.error('❌ Fallback profile update error:', profileError);
-      return { success: false, error: profileError };
-    }
-
-    console.log('✅ Updated user_profiles via fallback - view will reflect changes automatically');
-    return { success: true };
-  } catch (error) {
-    console.error('❌ Fallback process payment error:', error);
-    return { success: false, error };
-  }
-}
-
 // ENHANCED: CORS headers function
 function getCorsHeaders() {
   return {
@@ -212,7 +35,6 @@ function getCorsHeaders() {
   };
 }
 
-// ENHANCED: Main handler with better error handling
 const handler: Handler = async (event) => {
   const headers = getCorsHeaders();
 
@@ -228,16 +50,36 @@ const handler: Handler = async (event) => {
     const path = event.path.replace('/.netlify/functions/access_management', '');
     const method = event.httpMethod;
 
-    console.log('🔐 Access management request:', { method, path });
-
     switch (path) {
+      case '/grant-temporary-access':
+        if (method === 'POST') {
+          return await handleGrantTemporaryAccess(event);
+        }
+        break;
+
+      case '/check-access':
+        if (method === 'POST') {
+          return await handleCheckAccess(event);
+        }
+        break;
+
       case '/process-payment-success':
         if (method === 'POST') {
           return await handleProcessPaymentSuccess(event);
         }
         break;
 
-      // ... other endpoints remain the same
+      case '/cleanup-expired':
+        if (method === 'POST') {
+          return await handleCleanupExpired(event);
+        }
+        break;
+
+      case '/user-status':
+        if (method === 'POST') {
+          return await handleGetUserStatus(event);
+        }
+        break;
 
       default:
         return {
@@ -266,55 +108,356 @@ const handler: Handler = async (event) => {
   }
 };
 
-export { handler };
-
-// ENHANCED: Additional utility functions for verification
-
-// Function to manually verify a user's payment status
-export async function verifyUserPaymentStatus(userId: string) {
+// ENHANCED: Quieter payment processing with better error handling
+async function handleProcessPaymentSuccess(event: any) {
   try {
-    const { data, error } = await supabase
-      .from('user_access_status')
-      .select('*')
-      .eq('id', userId)
-      .single();
+    const { userId, planType, sessionId } = JSON.parse(event.body || '{}');
 
-    if (error) {
-      console.error('Error verifying payment status:', error);
-      return { verified: false, error: error.message };
+    if (!userId || !planType) {
+      return {
+        statusCode: 400,
+        headers: getCorsHeaders(),
+        body: JSON.stringify({ error: 'userId and planType are required' }),
+      };
     }
 
-    const isVerified = data?.payment_verified === true || 
-                      data?.subscription_status === 'active' ||
-                      (data?.temp_access_until && new Date(data.temp_access_until) > new Date());
+    // ENHANCED: Create unique payment key for idempotency
+    const paymentKey = generatePaymentKey(userId, sessionId || 'no-session', planType);
+    
+    // ENHANCED: Check if payment was already processed recently
+    cleanupCache();
+    const cached = processedPayments.get(paymentKey);
+    if (cached) {
+      return {
+        statusCode: 200,
+        headers: getCorsHeaders(),
+        body: JSON.stringify({
+          ...cached.result,
+          cached: true,
+          message: 'Payment already processed'
+        }),
+      };
+    }
 
-    return { 
-      verified: isVerified, 
-      status: data,
-      checkedAt: new Date().toISOString()
+    // ENHANCED: Reduced logging - only log essential info
+    console.log('💳 Processing payment:', { userId: userId.substring(0, 8) + '...', planType });
+
+    // ENHANCED: Add processing lock
+    const processingKey = `processing-${paymentKey}`;
+    if (processedPayments.has(processingKey)) {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      const newCached = processedPayments.get(paymentKey);
+      if (newCached) {
+        return {
+          statusCode: 200,
+          headers: getCorsHeaders(),
+          body: JSON.stringify({
+            ...newCached.result,
+            cached: true,
+            message: 'Payment processed while waiting'
+          }),
+        };
+      }
+    }
+
+    // Set processing lock
+    processedPayments.set(processingKey, { timestamp: Date.now(), result: null });
+
+    try {
+      // ENHANCED: Set 30-day access period (not 1 year)
+      const thirtyDaysFromNow = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+      
+      // Get user email
+      const { data: userData, error: userError } = await supabase.auth.admin.getUserById(userId);
+      if (userError || !userData.user) {
+        throw new Error('User not found');
+      }
+
+      const userEmail = userData.user.email;
+
+      // ENHANCED: Direct database update with 30-day access
+      const { error: profileError } = await supabase
+        .from('user_profiles')
+        .upsert({
+          user_id: userId,
+          email: userEmail,
+          payment_verified: true,
+          payment_status: 'verified',
+          subscription_status: 'active',
+          subscription_plan: planType,
+          current_period_end: thirtyDaysFromNow, // 30 days from now
+          temp_access_until: thirtyDaysFromNow,   // 30 days from now
+          last_payment_date: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }, { 
+          onConflict: 'user_id',
+          ignoreDuplicates: false 
+        });
+
+      if (profileError) {
+        throw profileError;
+      }
+
+      const result = {
+        success: true,
+        message: 'Payment processed successfully',
+        planType: planType,
+        accessUntil: thirtyDaysFromNow,
+        processedAt: new Date().toISOString()
+      };
+
+      // Cache the successful result
+      processedPayments.set(paymentKey, { timestamp: Date.now(), result });
+      
+      // Remove processing lock
+      processedPayments.delete(processingKey);
+
+      console.log('✅ Payment processed successfully');
+
+      return {
+        statusCode: 200,
+        headers: getCorsHeaders(),
+        body: JSON.stringify(result),
+      };
+
+    } catch (processingError) {
+      processedPayments.delete(processingKey);
+      throw processingError;
+    }
+
+  } catch (error: any) {
+    console.error('❌ Payment processing error:', error.message);
+    return {
+      statusCode: 500,
+      headers: getCorsHeaders(),
+      body: JSON.stringify({ 
+        error: 'Failed to process payment',
+        message: error.message 
+      }),
     };
-  } catch (error) {
-    console.error('Payment verification error:', error);
-    return { verified: false, error: error.message };
   }
 }
 
-// Function to refresh user verification status
-export async function refreshUserVerification(userId: string) {
+// Enhanced grant temporary access function
+async function handleGrantTemporaryAccess(event: any) {
   try {
-    // Force refresh by calling the database function
-    const { data, error } = await supabase.rpc('user_has_valid_access', {
-      p_user_id: userId
-    });
+    const { userId, hours = 24, reason = 'Manual grant' } = JSON.parse(event.body || '{}');
+
+    if (!userId) {
+      return {
+        statusCode: 400,
+        headers: getCorsHeaders(),
+        body: JSON.stringify({ error: 'userId is required' }),
+      };
+    }
+
+    const expiresAt = new Date(Date.now() + hours * 60 * 60 * 1000).toISOString();
+    
+    // Get user email
+    const { data: userData, error: userError } = await supabase.auth.admin.getUserById(userId);
+    if (userError || !userData.user) {
+      return {
+        statusCode: 400,
+        headers: getCorsHeaders(),
+        body: JSON.stringify({ error: 'User not found' }),
+      };
+    }
+
+    const userEmail = userData.user.email;
+
+    // Update user_profiles table
+    const { error: profileError } = await supabase
+      .from('user_profiles')
+      .upsert({
+        user_id: userId,
+        email: userEmail,
+        temporary_access_granted: true,
+        temp_access_until: expiresAt,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'user_id' });
+
+    if (profileError) {
+      console.error('❌ Error granting temporary access:', profileError);
+      return {
+        statusCode: 500,
+        headers: getCorsHeaders(),
+        body: JSON.stringify({ 
+          error: 'Failed to grant temporary access',
+          message: profileError.message 
+        }),
+      };
+    }
+
+    return {
+      statusCode: 200,
+      headers: getCorsHeaders(),
+      body: JSON.stringify({
+        success: true,
+        message: `Temporary access granted for ${hours} hours`,
+        expiresAt: expiresAt
+      }),
+    };
+
+  } catch (error: any) {
+    console.error('❌ Error in handleGrantTemporaryAccess:', error);
+    return {
+      statusCode: 500,
+      headers: getCorsHeaders(),
+      body: JSON.stringify({ 
+        error: 'Failed to grant temporary access',
+        message: error.message 
+      }),
+    };
+  }
+}
+
+// Check if user has valid access
+async function handleCheckAccess(event: any) {
+  try {
+    const { userId } = JSON.parse(event.body || '{}');
+
+    if (!userId) {
+      return {
+        statusCode: 400,
+        headers: getCorsHeaders(),
+        body: JSON.stringify({ error: 'userId is required' }),
+      };
+    }
+
+    // Get detailed user status from the user_profiles table
+    const { data: userStatus, error: statusError } = await supabase
+      .from('user_profiles')
+      .select('*')
+      .eq('user_id', userId)
+      .single();
+
+    if (statusError && statusError.code !== 'PGRST116') {
+      console.error('❌ Error getting user status:', statusError);
+      return {
+        statusCode: 500,
+        headers: getCorsHeaders(),
+        body: JSON.stringify({ 
+          error: 'Failed to check access',
+          message: statusError.message 
+        }),
+      };
+    }
+
+    // Check if user has valid access
+    const hasAccess = userStatus?.subscription_status === 'active' ||
+                     userStatus?.payment_verified === true ||
+                     (userStatus?.current_period_end && new Date(userStatus.current_period_end) > new Date()) ||
+                     (userStatus?.temp_access_until && new Date(userStatus.temp_access_until) > new Date());
+
+    return {
+      statusCode: 200,
+      headers: getCorsHeaders(),
+      body: JSON.stringify({
+        hasAccess,
+        userStatus: userStatus || null,
+        checkedAt: new Date().toISOString()
+      }),
+    };
+
+  } catch (error: any) {
+    console.error('❌ Error in handleCheckAccess:', error);
+    return {
+      statusCode: 500,
+      headers: getCorsHeaders(),
+      body: JSON.stringify({ 
+        error: 'Failed to check access',
+        message: error.message 
+      }),
+    };
+  }
+}
+
+// Cleanup expired temporary access
+async function handleCleanupExpired(event: any) {
+  try {
+    const now = new Date().toISOString();
+    
+    const { error } = await supabase
+      .from('user_profiles')
+      .update({
+        temporary_access_granted: false,
+        temp_access_until: null,
+        updated_at: now
+      })
+      .lt('temp_access_until', now)
+      .eq('temporary_access_granted', true);
 
     if (error) {
       throw error;
     }
 
-    return { hasAccess: data === true, refreshedAt: new Date().toISOString() };
-  } catch (error) {
-    console.error('Verification refresh error:', error);
-    return { hasAccess: false, error: error.message };
+    return {
+      statusCode: 200,
+      headers: getCorsHeaders(),
+      body: JSON.stringify({
+        success: true,
+        message: 'Expired access cleaned up',
+        cleanedAt: now
+      }),
+    };
+
+  } catch (error: any) {
+    console.error('❌ Error in handleCleanupExpired:', error);
+    return {
+      statusCode: 500,
+      headers: getCorsHeaders(),
+      body: JSON.stringify({ 
+        error: 'Failed to cleanup expired access',
+        message: error.message 
+      }),
+    };
   }
 }
+
+// Get user status
+async function handleGetUserStatus(event: any) {
+  try {
+    const { userId } = JSON.parse(event.body || '{}');
+
+    if (!userId) {
+      return {
+        statusCode: 400,
+        headers: getCorsHeaders(),
+        body: JSON.stringify({ error: 'userId is required' }),
+      };
+    }
+
+    const { data: userStatus, error } = await supabase
+      .from('user_profiles')
+      .select('*')
+      .eq('user_id', userId)
+      .single();
+
+    if (error && error.code !== 'PGRST116') {
+      throw error;
+    }
+
+    return {
+      statusCode: 200,
+      headers: getCorsHeaders(),
+      body: JSON.stringify({
+        userStatus: userStatus || null,
+        retrievedAt: new Date().toISOString()
+      }),
+    };
+
+  } catch (error: any) {
+    console.error('❌ Error in handleGetUserStatus:', error);
+    return {
+      statusCode: 500,
+      headers: getCorsHeaders(),
+      body: JSON.stringify({ 
+        error: 'Failed to get user status',
+        message: error.message 
+      }),
+    };
+  }
+}
+
+export { handler };
 
