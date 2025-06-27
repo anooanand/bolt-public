@@ -1,22 +1,22 @@
 // FIXED VERSION: src/components/Dashboard.tsx
-// Copy-paste this entire file into bolt.new (REPLACE existing)
+// Copy-paste this entire file to replace the existing Dashboard.tsx
 
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { isEmailVerified, hasAnyAccess } from '../lib/supabase';
 import { Mail, CheckCircle, Clock, FileText, PenTool, BarChart3, Settings } from 'lucide-react';
 
-// ✅ FIXED: Added proper props interface
+// ✅ FIXED: Removed onNavigate prop and use React Router's useNavigate instead
 interface DashboardProps {
-  onNavigate: (page: string) => void;
   user?: any;
   emailVerified?: boolean;
   paymentCompleted?: boolean;
 }
 
-// ✅ FIXED: Added props parameter with proper typing
-export function Dashboard({ onNavigate, user: propUser, emailVerified: propEmailVerified, paymentCompleted: propPaymentCompleted }: DashboardProps) {
+export function Dashboard({ user: propUser, emailVerified: propEmailVerified, paymentCompleted: propPaymentCompleted }: DashboardProps) {
   const { user } = useAuth();
+  const navigate = useNavigate(); // ✅ FIXED: Use React Router navigation
   const [isVerified, setIsVerified] = useState(false);
   const [accessType, setAccessType] = useState<'none' | 'temporary' | 'permanent'>('none');
   const [tempAccessUntil, setTempAccessUntil] = useState<string | null>(null);
@@ -103,15 +103,15 @@ export function Dashboard({ onNavigate, user: propUser, emailVerified: propEmail
     }
   };
 
-  // ✅ FIXED: Added proper navigation handlers
+  // ✅ FIXED: Use React Router navigation instead of onNavigate prop
   const handleStartWriting = () => {
-    console.log('🚀 Dashboard: Starting writing...');
-    onNavigate('writing');
+    console.log('🚀 Dashboard: Navigating to writing area...');
+    navigate('/writing');
   };
 
   const handlePracticeExam = () => {
-    console.log('🚀 Dashboard: Starting practice exam...');
-    onNavigate('exam');
+    console.log('🚀 Dashboard: Navigating to practice exam...');
+    navigate('/exam');
   };
 
   const formatDateTime = (dateString: string) => {
@@ -281,9 +281,9 @@ export function Dashboard({ onNavigate, user: propUser, emailVerified: propEmail
           </div>
           <div className="p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* ✅ FIXED: Proper click handler with navigation */}
+              {/* ✅ FIXED: Proper click handler with React Router navigation */}
               <div 
-                className="border border-gray-200 rounded-lg p-6 hover:border-blue-300 transition-colors cursor-pointer" 
+                className="border border-gray-200 rounded-lg p-6 hover:border-blue-300 hover:shadow-md transition-all cursor-pointer" 
                 onClick={handleStartWriting}
               >
                 <div className="flex items-center mb-4">
@@ -301,10 +301,10 @@ export function Dashboard({ onNavigate, user: propUser, emailVerified: propEmail
                   </div>
                 )}
               </div>
-              
-              {/* ✅ FIXED: Proper click handler for practice exam */}
+
+              {/* ✅ FIXED: Practice Exam with proper navigation */}
               <div 
-                className="border border-gray-200 rounded-lg p-6 hover:border-green-300 transition-colors cursor-pointer"
+                className="border border-gray-200 rounded-lg p-6 hover:border-green-300 hover:shadow-md transition-all cursor-pointer" 
                 onClick={handlePracticeExam}
               >
                 <div className="flex items-center mb-4">
@@ -332,9 +332,15 @@ export function Dashboard({ onNavigate, user: propUser, emailVerified: propEmail
             <h2 className="text-lg font-medium text-gray-900">Recent Activity</h2>
           </div>
           <div className="p-6">
-            <div className="text-center text-gray-500">
-              <FileText className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-              <p>No recent activity yet. Start writing to see your progress here!</p>
+            <div className="text-center py-8">
+              <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-500">No recent activity yet. Start writing to see your progress here!</p>
+              <button 
+                onClick={handleStartWriting}
+                className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+              >
+                Start Your First Essay
+              </button>
             </div>
           </div>
         </div>
