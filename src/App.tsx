@@ -5,23 +5,23 @@ import { AppProvider } from './contexts/AppContext';
 import { useAuth } from './contexts/AuthContext';
 
 // Import components
-import NavBar from './components/NavBar';
-import HeroSection from './components/HeroSection';
-import FeaturesSection from './components/FeaturesSection';
-import ToolsSection from './components/ToolsSection';
-import WritingTypesSection from './components/WritingTypesSection';
+import { NavBar } from './components/NavBar';
+import { HeroSection } from './components/HeroSection';
+import { FeaturesSection } from './components/FeaturesSection';
+import { ToolsSection } from './components/ToolsSection';
+import { WritingTypesSection } from './components/WritingTypesSection';
 import Footer from './components/Footer';
-import Dashboard from './components/Dashboard';
-import AuthModal from './components/AuthModal';
-import PlanningToolModal from './components/PlanningToolModal';
-import WritingAccessCheck from './components/WritingAccessCheck';
-import PaymentSuccessPage from './components/PaymentSuccessPage';
-import PricingPage from './components/PricingPage';
+import { Dashboard } from './components/Dashboard';
+import { AuthModal } from './components/AuthModal';
+import { PlanningToolModal } from './components/PlanningToolModal';
+import { WritingAccessCheck } from './components/WritingAccessCheck';
+import { PaymentSuccessPage } from './components/PaymentSuccessPage';
+import { PricingPage } from './components/PricingPage';
 
 // Writing components
-import EnhancedHeader from './components/EnhancedHeader';
-import WritingArea from './components/WritingArea';
-import CoachPanel from './components/CoachPanel';
+import { EnhancedHeader } from './components/EnhancedHeader';
+import { WritingArea } from './components/WritingArea';
+import { CoachPanel } from './components/CoachPanel';
 
 function App() {
   const { user, loading, paymentCompleted, emailVerified, authSignOut, forceRefreshVerification } = useAuth();
