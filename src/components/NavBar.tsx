@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { User } from '@supabase/supabase-js';
 import { useLearning } from '../contexts/LearningContext';
 import { Link } from 'react-router-dom';
-import { LogOut, Menu, X } from 'lucide-react';
+import { LogOut, Menu, X, AlertCircle, CheckCircle, XCircle, Mail, CreditCard, RefreshCw } from 'lucide-react';
 
 interface NavBarProps {
   activePage: string;
@@ -28,6 +28,16 @@ export function NavBar({
   
   // Use ref to prevent multiple simultaneous sign out attempts
   const isSigningOut = useRef(false);
+
+  // ENHANCED: Get verification status from auth context
+  const { 
+    emailVerified, 
+    paymentCompleted, 
+    verificationStatus, 
+    authError, 
+    retryAuth, 
+    clearAuthError 
+  } = useAuth();
 
   const navigationItems = [
     { id: 'home', name: 'Home', href: '/' },
@@ -61,6 +71,9 @@ export function NavBar({
       setIsMenuOpen(false);
       setIsLearningMenuOpen(false);
       
+      // Clear any auth errors
+      clearAuthError();
+      
       // Call the sign out function
       await onForceSignOut();
       
@@ -72,6 +85,59 @@ export function NavBar({
         isSigningOut.current = false;
       }, 2000);
     }
+  };
+
+  // ENHANCED: Verification status component
+  const VerificationStatusIndicator = () => {
+    if (!user) return null;
+
+    return (
+      <div className="flex items-center space-x-2">
+        {/* Email Verification Status */}
+        {!emailVerified && (
+          <div className="flex items-center text-yellow-600 dark:text-yellow-400">
+            <Mail className="w-4 h-4 mr-1" />
+            <span className="text-xs hidden sm:inline">Email pending</span>
+          </div>
+        )}
+        
+        {/* Payment Verification Status */}
+        {!paymentCompleted && emailVerified && (
+          <div className="flex items-center text-orange-600 dark:text-orange-400">
+            <CreditCard className="w-4 h-4 mr-1" />
+            <span className="text-xs hidden sm:inline">Payment pending</span>
+          </div>
+        )}
+        
+        {/* Fully Verified Status */}
+        {emailVerified && paymentCompleted && (
+          <div className="flex items-center text-green-600 dark:text-green-400">
+            <CheckCircle className="w-4 h-4 mr-1" />
+            <span className="text-xs hidden sm:inline">Verified</span>
+          </div>
+        )}
+        
+        {/* Verification Failed */}
+        {verificationStatus === 'failed' && (
+          <div className="flex items-center text-red-600 dark:text-red-400">
+            <XCircle className="w-4 h-4 mr-1" />
+            <span className="text-xs hidden sm:inline">Failed</span>
+          </div>
+        )}
+        
+        {/* Auth Error with Retry */}
+        {authError && (
+          <button
+            onClick={retryAuth}
+            className="flex items-center text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-colors"
+            title={authError}
+          >
+            <RefreshCw className="w-4 h-4 mr-1" />
+            <span className="text-xs hidden sm:inline">Retry</span>
+          </button>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -172,6 +238,9 @@ export function NavBar({
 
             {user ? (
               <div className="flex items-center space-x-4 relative">
+                {/* ENHANCED: Verification Status Indicator */}
+                <VerificationStatusIndicator />
+                
                 <Link
                   to="/dashboard"
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
@@ -191,12 +260,43 @@ export function NavBar({
                   </button>
                   
                   {isUserMenuOpen && (
-                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50 dark:bg-gray-800 dark:border-gray-700">
+                    <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50 dark:bg-gray-800 dark:border-gray-700">
                       <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700">
                         <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
                           {user.email}
                         </p>
+                        {/* ENHANCED: Detailed verification status in user menu */}
+                        <div className="mt-2 space-y-1">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-gray-500 dark:text-gray-400">Email:</span>
+                            <span className={emailVerified ? 'text-green-600' : 'text-yellow-600'}>
+                              {emailVerified ? 'Verified' : 'Pending'}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-gray-500 dark:text-gray-400">Payment:</span>
+                            <span className={paymentCompleted ? 'text-green-600' : 'text-orange-600'}>
+                              {paymentCompleted ? 'Active' : 'Pending'}
+                            </span>
+                          </div>
+                        </div>
                       </div>
+                      
+                      {/* ENHANCED: Auth error display in menu */}
+                      {authError && (
+                        <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700">
+                          <div className="text-xs text-red-600 dark:text-red-400 mb-2">
+                            {authError}
+                          </div>
+                          <button
+                            onClick={retryAuth}
+                            className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                          >
+                            Retry verification
+                          </button>
+                        </div>
+                      )}
+                      
                       <Link
                         to="/dashboard"
                         className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
@@ -246,7 +346,10 @@ export function NavBar({
           </div>
 
           {/* Mobile menu button */}
-          <div className="md:hidden">
+          <div className="md:hidden flex items-center space-x-2">
+            {/* ENHANCED: Mobile verification status */}
+            {user && <VerificationStatusIndicator />}
+            
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
               className="text-gray-700 hover:text-blue-600 dark:text-gray-300 dark:hover:text-blue-400"
@@ -292,6 +395,7 @@ export function NavBar({
             >
               Pricing
             </Link>          
+            
             {/* Mobile Learning Items */}
             <div className="border-t border-gray-200 pt-2 mt-2 dark:border-gray-700">
               <div className="text-xs font-medium text-gray-500 px-3 py-1 uppercase tracking-wide dark:text-gray-400">
@@ -317,7 +421,38 @@ export function NavBar({
                     <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
                       {user.email}
                     </p>
+                    {/* ENHANCED: Mobile verification status details */}
+                    <div className="mt-2 space-y-1">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-gray-500 dark:text-gray-400">Email:</span>
+                        <span className={emailVerified ? 'text-green-600' : 'text-yellow-600'}>
+                          {emailVerified ? 'Verified' : 'Pending'}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-gray-500 dark:text-gray-400">Payment:</span>
+                        <span className={paymentCompleted ? 'text-green-600' : 'text-orange-600'}>
+                          {paymentCompleted ? 'Active' : 'Pending'}
+                        </span>
+                      </div>
+                    </div>
+                    
+                    {/* ENHANCED: Mobile auth error display */}
+                    {authError && (
+                      <div className="mt-2">
+                        <div className="text-xs text-red-600 dark:text-red-400 mb-1">
+                          {authError}
+                        </div>
+                        <button
+                          onClick={retryAuth}
+                          className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                        >
+                          Retry verification
+                        </button>
+                      </div>
+                    )}
                   </div>
+                  
                   <Link
                     to="/dashboard"
                     className="block w-full text-left px-3 py-2 rounded-md text-sm font-medium bg-blue-600 text-white"
@@ -370,18 +505,6 @@ export function NavBar({
             </div>
           </div>
         </div>
-      )}
-
-      {/* Click outside to close dropdowns */}
-      {(isLearningMenuOpen || isMenuOpen || isUserMenuOpen) && (
-        <div
-          className="fixed inset-0 z-10"
-          onClick={() => {
-            setIsLearningMenuOpen(false);
-            setIsMenuOpen(false);
-            setIsUserMenuOpen(false);
-          }}
-        ></div>
       )}
     </nav>
   );
