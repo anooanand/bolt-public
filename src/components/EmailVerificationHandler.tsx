@@ -1,163 +1,264 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { CheckCircle, XCircle, Loader } from 'lucide-react';
+import { CheckCircle, XCircle, Loader, RefreshCw } from 'lucide-react';
 
 export function EmailVerificationHandler() {
-  const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
+  const [status, setStatus] = useState<'loading' | 'success' | 'error' | 'processing'>('loading');
   const [message, setMessage] = useState('Verifying your email...');
+  const [isProcessing, setIsProcessing] = useState(false);
   const navigate = useNavigate();
-  const location = useLocation();
 
-  useEffect(() => {
-    const verifyEmail = async () => {
+  // COMPLETELY DIFFERENT APPROACH: Process verification on component mount
+  React.useLayoutEffect(() => {
+    let isMounted = true;
+    
+    const processEmailVerification = async () => {
+      if (!isMounted) return;
+      
       try {
-        console.log('🚀 Fast email verification started');
+        console.log('🔥 NEW VERIFICATION APPROACH STARTED');
+        setStatus('processing');
+        setMessage('Processing verification...');
         
-        // Extract tokens from URL hash
-        const hashParams = new URLSearchParams(location.hash.substring(1));
-        const accessToken = hashParams.get('access_token');
-        const refreshToken = hashParams.get('refresh_token');
+        // Get URL parameters directly from window.location
+        const urlHash = window.location.hash;
+        const urlSearch = window.location.search;
+        
+        console.log('📍 URL Hash:', urlHash);
+        console.log('📍 URL Search:', urlSearch);
+        
+        // Parse tokens from hash
+        let accessToken = null;
+        let refreshToken = null;
+        
+        if (urlHash) {
+          const hashParams = new URLSearchParams(urlHash.substring(1));
+          accessToken = hashParams.get('access_token');
+          refreshToken = hashParams.get('refresh_token');
+        }
+        
+        // Also check search params as fallback
+        if (!accessToken && urlSearch) {
+          const searchParams = new URLSearchParams(urlSearch);
+          accessToken = searchParams.get('access_token');
+          refreshToken = searchParams.get('refresh_token');
+        }
+        
+        console.log('🔑 Tokens found:', { 
+          access: accessToken ? 'YES' : 'NO', 
+          refresh: refreshToken ? 'YES' : 'NO' 
+        });
         
         if (accessToken && refreshToken) {
-          console.log('🔑 Setting session...');
+          console.log('🚀 Setting session with tokens...');
           
-          // Set the session
-          const { data, error } = await supabase.auth.setSession({
+          const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
             access_token: accessToken,
             refresh_token: refreshToken
           });
 
-          if (error) {
-            console.error('❌ Session error:', error);
-            setStatus('error');
-            setMessage('Verification failed. Please try again.');
+          if (sessionError) {
+            console.error('❌ Session error:', sessionError);
+            if (isMounted) {
+              setStatus('error');
+              setMessage(`Session error: ${sessionError.message}`);
+            }
             return;
           }
 
-          if (data.user) {
-            console.log('✅ Email verified for:', data.user.email);
+          if (sessionData?.user) {
+            console.log('✅ Session established for:', sessionData.user.email);
             
-            // Quick database update
-            try {
-              await supabase
-                .from('user_access_status')
-                .upsert({
-                  id: data.user.id,
-                  email: data.user.email,
-                  email_verified: true,
-                  updated_at: new Date().toISOString()
-                }, { onConflict: 'id' });
-            } catch (dbError) {
-              console.warn('Database update failed, but verification succeeded');
+            // Update database immediately
+            const { error: dbError } = await supabase
+              .from('user_access_status')
+              .upsert({
+                id: sessionData.user.id,
+                email: sessionData.user.email,
+                email_verified: true,
+                updated_at: new Date().toISOString()
+              }, { onConflict: 'id' });
+
+            if (dbError) {
+              console.warn('⚠️ Database update warning:', dbError);
+            } else {
+              console.log('✅ Database updated successfully');
             }
 
-            setStatus('success');
-            setMessage('Email verified successfully!');
-            
-            // Clean URL and redirect quickly
-            window.history.replaceState({}, document.title, window.location.pathname);
-            
-            setTimeout(() => {
-              navigate('/pricing');
-            }, 1500); // Faster redirect
-            
+            if (isMounted) {
+              setStatus('success');
+              setMessage(`Welcome ${sessionData.user.email}! Email verified successfully.`);
+              
+              // Clean the URL immediately
+              window.history.replaceState({}, document.title, '/auth/callback');
+              
+              // Quick redirect
+              setTimeout(() => {
+                if (isMounted) {
+                  navigate('/pricing', { replace: true });
+                }
+              }, 1200);
+            }
             return;
           }
         }
 
-        // Check if user is already signed in
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user?.email_confirmed_at) {
-          console.log('✅ User already verified');
-          setStatus('success');
-          setMessage('Email already verified!');
-          setTimeout(() => navigate('/pricing'), 1000);
+        // Alternative: Check if user is already authenticated
+        console.log('🔍 Checking existing session...');
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        
+        if (userError) {
+          console.error('❌ User check error:', userError);
+          if (isMounted) {
+            setStatus('error');
+            setMessage('Unable to verify session. Please try signing in again.');
+          }
           return;
         }
 
-        // If no tokens or user, show error
-        setStatus('error');
-        setMessage('Invalid verification link. Please try again.');
+        if (user) {
+          console.log('👤 Found existing user:', user.email);
+          
+          if (user.email_confirmed_at) {
+            console.log('✅ User already verified');
+            if (isMounted) {
+              setStatus('success');
+              setMessage('Email already verified! Redirecting...');
+              setTimeout(() => {
+                if (isMounted) {
+                  navigate('/pricing', { replace: true });
+                }
+              }, 1000);
+            }
+            return;
+          }
+        }
+
+        // If we get here, verification failed
+        console.log('❌ No valid tokens or session found');
+        if (isMounted) {
+          setStatus('error');
+          setMessage('No verification tokens found. Please check your email and click the verification link again.');
+        }
         
-      } catch (error) {
-        console.error('❌ Verification error:', error);
-        setStatus('error');
-        setMessage('Verification failed. Please try again.');
+      } catch (error: any) {
+        console.error('💥 Verification process error:', error);
+        if (isMounted) {
+          setStatus('error');
+          setMessage(`Verification failed: ${error.message || 'Unknown error'}`);
+        }
       }
     };
 
-    // Start verification immediately
-    verifyEmail();
-  }, [location.hash, navigate]);
+    // Start processing immediately
+    processEmailVerification();
+    
+    return () => {
+      isMounted = false;
+    };
+  }, []); // Empty dependency array - run only once
 
-  const handleRetry = () => {
-    window.location.reload();
+  const handleManualRetry = async () => {
+    setIsProcessing(true);
+    setStatus('loading');
+    setMessage('Retrying verification...');
+    
+    // Force reload the page to restart the process
+    setTimeout(() => {
+      window.location.reload();
+    }, 500);
   };
 
-  const handleContinue = () => {
-    navigate('/pricing');
+  const handleSkipVerification = () => {
+    navigate('/pricing', { replace: true });
+  };
+
+  const handleGoHome = () => {
+    navigate('/', { replace: true });
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
-      <div className="max-w-md w-full bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8 text-center">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
+      <div className="max-w-lg w-full bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-8 text-center border border-gray-200 dark:border-gray-700">
         
-        {status === 'loading' && (
+        {(status === 'loading' || status === 'processing') && (
           <>
-            <Loader className="h-12 w-12 text-blue-600 animate-spin mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-              Verifying Email
+            <div className="relative">
+              <Loader className="h-16 w-16 text-blue-600 animate-spin mx-auto mb-6" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="w-8 h-8 bg-blue-600 rounded-full animate-pulse"></div>
+              </div>
+            </div>
+            <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-3">
+              {status === 'processing' ? 'Processing...' : 'Verifying Email'}
             </h2>
-            <p className="text-gray-600 dark:text-gray-300 mb-4">
+            <p className="text-gray-600 dark:text-gray-300 mb-6 text-lg">
               {message}
             </p>
-            <div className="text-sm text-gray-500">
-              This should be quick...
+            <div className="flex items-center justify-center space-x-2 text-sm text-gray-500">
+              <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce"></div>
+              <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+              <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
             </div>
           </>
         )}
 
         {status === 'success' && (
           <>
-            <div className="w-16 h-16 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center mx-auto mb-4">
-              <CheckCircle className="h-8 w-8 text-green-600 dark:text-green-400" />
+            <div className="w-20 h-20 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center mx-auto mb-6">
+              <CheckCircle className="h-12 w-12 text-green-600 dark:text-green-400" />
             </div>
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-              Success! 🎉
+            <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-3">
+              Verification Complete! 🎉
             </h2>
-            <p className="text-gray-600 dark:text-gray-300 mb-6">
+            <p className="text-gray-600 dark:text-gray-300 mb-6 text-lg">
               {message}
             </p>
-            <div className="text-sm text-gray-500">
-              Redirecting to pricing...
+            <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 mb-6">
+              <p className="text-green-800 dark:text-green-200 text-sm">
+                Redirecting to pricing page...
+              </p>
             </div>
           </>
         )}
 
         {status === 'error' && (
           <>
-            <div className="w-16 h-16 bg-red-100 dark:bg-red-900 rounded-full flex items-center justify-center mx-auto mb-4">
-              <XCircle className="h-8 w-8 text-red-600 dark:text-red-400" />
+            <div className="w-20 h-20 bg-red-100 dark:bg-red-900 rounded-full flex items-center justify-center mx-auto mb-6">
+              <XCircle className="h-12 w-12 text-red-600 dark:text-red-400" />
             </div>
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+            <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-3">
               Verification Issue
             </h2>
-            <p className="text-gray-600 dark:text-gray-300 mb-6">
+            <p className="text-gray-600 dark:text-gray-300 mb-6 text-lg">
               {message}
             </p>
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-6">
+              <p className="text-red-800 dark:text-red-200 text-sm">
+                Don't worry! You can try again or continue anyway.
+              </p>
+            </div>
             <div className="space-y-3">
               <button
-                onClick={handleRetry}
-                className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                onClick={handleManualRetry}
+                disabled={isProcessing}
+                className="w-full flex items-center justify-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                Try Again
+                <RefreshCw className={`w-5 h-5 mr-2 ${isProcessing ? 'animate-spin' : ''}`} />
+                {isProcessing ? 'Retrying...' : 'Try Again'}
               </button>
               <button
-                onClick={handleContinue}
-                className="w-full px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+                onClick={handleSkipVerification}
+                className="w-full px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
               >
-                Continue Anyway
+                Continue to Pricing
+              </button>
+              <button
+                onClick={handleGoHome}
+                className="w-full px-6 py-3 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
+              >
+                Back to Home
               </button>
             </div>
           </>
