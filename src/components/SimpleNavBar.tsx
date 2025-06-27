@@ -13,7 +13,16 @@ export const SimpleNavBar: React.FC<SimpleNavBarProps> = ({
   onNavigate, 
   onShowAuth 
 }) => {
-  const { user, signOut } = useAuth();
+  const { user, authSignOut } = useAuth(); // ✅ FIXED: Use authSignOut instead of signOut
+
+  const handleSignOut = async () => {
+    try {
+      await authSignOut();
+      console.log('✅ User signed out successfully');
+    } catch (error) {
+      console.error('❌ Sign out error:', error);
+    }
+  };
 
   return (
     <nav className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
@@ -88,8 +97,8 @@ export const SimpleNavBar: React.FC<SimpleNavBarProps> = ({
                   {user.email}
                 </span>
                 <button
-                  onClick={signOut}
-                  className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
+                  onClick={handleSignOut} // ✅ FIXED: Use handleSignOut function
+                  className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
                 >
                   Sign Out
                 </button>
