@@ -1,13 +1,10 @@
-// SIMPLE FIX: Replace your PaymentSuccessPage.tsx with this version
-// This uses direct window.location navigation which always works
-
 import React, { useEffect } from 'react';
 import { CheckCircle, ArrowRight } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 interface PaymentSuccessPageProps {
   planType?: string;
-  onContinue?: () => void;
+  onContinue: () => void;
 }
 
 export const PaymentSuccessPage: React.FC<PaymentSuccessPageProps> = ({ 
@@ -27,38 +24,33 @@ export const PaymentSuccessPage: React.FC<PaymentSuccessPageProps> = ({
     return () => clearTimeout(refreshTimer);
   }, [forceRefreshVerification]);
 
-  // SIMPLE FIX: Direct navigation that always works
+  // ENHANCED: Better click handler with debugging
   const handleContinueClick = () => {
     console.log('🔄 Continue to Dashboard clicked');
     
-    // Force refresh verification
-    if (forceRefreshVerification) {
-      forceRefreshVerification();
+    try {
+      // Force refresh verification first
+      if (forceRefreshVerification) {
+        forceRefreshVerification();
+      }
+      
+      // Call the onContinue handler
+      if (onContinue) {
+        onContinue();
+      } else {
+        console.error('❌ onContinue handler is missing');
+        // Fallback navigation
+        if (user) {
+          window.location.href = '/dashboard';
+        } else {
+          window.location.href = '/';
+        }
+      }
+    } catch (error) {
+      console.error('❌ Error in handleContinueClick:', error);
+      // Fallback navigation
+      window.location.href = user ? '/dashboard' : '/';
     }
-    
-    // Direct navigation - this will always work
-    setTimeout(() => {
-      window.location.href = '/dashboard';
-    }, 500);
-  };
-
-  const handleGoToWriting = () => {
-    console.log('✍️ Going to Writing');
-    
-    // Force refresh verification
-    if (forceRefreshVerification) {
-      forceRefreshVerification();
-    }
-    
-    // Direct navigation to writing
-    setTimeout(() => {
-      window.location.href = '/writing';
-    }, 500);
-  };
-
-  const handleGoHome = () => {
-    console.log('🏠 Going to Home');
-    window.location.href = '/';
   };
 
   return (
@@ -85,39 +77,20 @@ export const PaymentSuccessPage: React.FC<PaymentSuccessPageProps> = ({
           </p>
         </div>
         
-        {/* SIMPLE NAVIGATION BUTTONS */}
-        <div className="space-y-3">
-          <button
-            onClick={handleContinueClick}
-            className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center space-x-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-            type="button"
-          >
-            <span>Continue to Dashboard</span>
-            <ArrowRight className="w-4 h-4" />
-          </button>
-          
-          <button
-            onClick={handleGoToWriting}
-            className="w-full bg-green-600 text-white py-3 px-6 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center space-x-2 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
-            type="button"
-          >
-            <span>Start Writing Now</span>
-            <ArrowRight className="w-4 h-4" />
-          </button>
-          
-          <button
-            onClick={handleGoHome}
-            className="w-full bg-gray-200 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors text-sm"
-          >
-            Back to Home
-          </button>
-        </div>
+        {/* ENHANCED: Better button with explicit click handler and debugging */}
+        <button
+          onClick={handleContinueClick}
+          className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center space-x-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+          type="button"
+        >
+          <span>Continue to Dashboard</span>
+          <ArrowRight className="w-4 h-4" />
+        </button>
         
-        {/* Debug info */}
-        <div className="mt-4 text-xs text-gray-500 bg-gray-100 dark:bg-gray-700 p-2 rounded">
-          <p>User: {user ? '✅ Logged in' : '❌ Not logged in'}</p>
+        {/* ENHANCED: Debug info (remove in production) */}
+        <div className="mt-4 text-xs text-gray-500">
+          <p>User: {user ? 'Logged in' : 'Not logged in'}</p>
           <p>Plan: {planType || 'Unknown'}</p>
-          <p>Status: Ready for navigation</p>
         </div>
       </div>
     </div>
