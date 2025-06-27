@@ -271,6 +271,109 @@ export async function getWritingStructure(textType: string): Promise<string> {
   }
 }
 
+// WRITING_TEMPLATES - Essential for preventing undefined errors
+export const WRITING_TEMPLATES = {
+  narrative: {
+    title: "Narrative Writing",
+    description: "Tell a story with characters, setting, and plot",
+    steps: [
+      "Create interesting characters",
+      "Set the scene with descriptive details",
+      "Develop a clear plot with beginning, middle, and end",
+      "Use dialogue to bring characters to life",
+      "Include sensory details to engage readers"
+    ]
+  },
+  imaginative: {
+    title: "Imaginative Writing",
+    description: "Create fantastical stories and unique worlds",
+    steps: [
+      "Imagine a unique setting or world",
+      "Create magical or unusual characters",
+      "Develop an exciting adventure or quest",
+      "Use vivid descriptions to paint your world",
+      "Let your creativity flow freely"
+    ]
+  },
+  recount: {
+    title: "Recount Writing",
+    description: "Share personal or historical experiences effectively",
+    steps: [
+      "Choose a memorable experience",
+      "Organize events in chronological order",
+      "Include specific details about what happened",
+      "Explain how you felt during the experience",
+      "Reflect on what you learned"
+    ]
+  },
+  persuasive: {
+    title: "Persuasive Writing",
+    description: "Convince readers with strong arguments and evidence",
+    steps: [
+      "State your position clearly",
+      "Provide strong reasons and evidence",
+      "Address opposing viewpoints",
+      "Use persuasive language techniques",
+      "End with a compelling call to action"
+    ]
+  },
+  discursive: {
+    title: "Discursive Writing",
+    description: "Explore different viewpoints on complex topics",
+    steps: [
+      "Introduce the topic and its complexity",
+      "Present multiple perspectives fairly",
+      "Analyze the strengths of each viewpoint",
+      "Consider the implications of different positions",
+      "Draw balanced conclusions"
+    ]
+  },
+  expository: {
+    title: "Expository Writing",
+    description: "Explain concepts clearly and factually",
+    steps: [
+      "Introduce your topic clearly",
+      "Organize information logically",
+      "Use examples and evidence to support points",
+      "Explain complex ideas in simple terms",
+      "Summarize key information"
+    ]
+  },
+  reflective: {
+    title: "Reflective Writing",
+    description: "Share personal insights and learning experiences",
+    steps: [
+      "Describe the experience or situation",
+      "Explain your initial thoughts and feelings",
+      "Analyze what you learned",
+      "Consider how it changed your perspective",
+      "Connect to broader life lessons"
+    ]
+  },
+  descriptive: {
+    title: "Descriptive Writing",
+    description: "Create vivid imagery using sensory details",
+    steps: [
+      "Choose a subject to describe",
+      "Use all five senses in your description",
+      "Select specific, concrete details",
+      "Organize details in a logical order",
+      "Create a clear impression for readers"
+    ]
+  },
+  diary: {
+    title: "Diary Writing",
+    description: "Express personal thoughts and feelings effectively",
+    steps: [
+      "Write in first person",
+      "Include the date and setting",
+      "Share honest thoughts and feelings",
+      "Describe important events of the day",
+      "Reflect on experiences and emotions"
+    ]
+  }
+};
+
 export default {
   generatePrompt,
   getWritingFeedback,
@@ -281,5 +384,6 @@ export default {
   getTextTypeVocabulary,
   evaluateEssay,
   getWritingStructure,
-  isOpenAIAvailable
+  isOpenAIAvailable,
+  WRITING_TEMPLATES
 };
