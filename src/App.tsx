@@ -40,7 +40,7 @@ import { EmailVerificationHandler } from './components/EmailVerificationHandler'
 import { CheckCircle } from 'lucide-react';
 
 function App() {
-  const { user, isLoading, paymentCompleted, emailVerified, authSignOut } = useAuth();
+  const { user, loading, paymentCompleted, emailVerified, authSignOut, forceRefreshVerification } = useAuth();
   const [activePage, setActivePage] = useState('home');
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'signin' | 'signup'>('signin');
@@ -58,18 +58,18 @@ function App() {
   const [showHelpCenter, setShowHelpCenter] = useState(false);
   const [showPlanningTool, setShowPlanningTool] = useState(false);
 
-  // ENHANCED: Check for payment success in URL on mount (24-hour temporary access)
+  // ENHANCED: Better payment success detection and redirect handling
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const paymentSuccess = urlParams.get('paymentSuccess') === 'true' || 
                           urlParams.get('payment_success') === 'true' ||
                           urlParams.get('success') === 'true';
     const sessionId = urlParams.get('session_id');
-    const planType = urlParams.get('planType') || urlParams.get('plan') || 'base_plan';
+    const planType = urlParams.get('planType') || urlParams.get('plan') || 'premium_plan';
     const userEmail = urlParams.get('email');
     
     if (paymentSuccess || sessionId) {
-      console.log('🚀 Payment success detected for plan:', planType);
+      console.log('🎉 Payment success detected for plan:', planType);
       
       // Store payment info for 24-hour temporary access
       if (userEmail) {
@@ -78,14 +78,41 @@ function App() {
       localStorage.setItem('payment_plan', planType);
       localStorage.setItem('payment_date', new Date().toISOString());
       
-      // Clear URL parameters
-      window.history.replaceState({}, document.title, window.location.pathname);
+      // ENHANCED: Clear URL parameters immediately to prevent reprocessing
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, document.title, newUrl);
       
-      setShowPaymentSuccess(true);
-      setPendingPaymentPlan(planType);
-      setActivePage('payment-success');
+      // ENHANCED: Handle payment success based on user state
+      if (user) {
+        // User is logged in - force refresh verification and redirect to dashboard
+        console.log('🔄 User logged in, refreshing verification...');
+        
+        // Force refresh verification after a short delay
+        setTimeout(() => {
+          if (forceRefreshVerification) {
+            forceRefreshVerification();
+          }
+        }, 1000);
+        
+        // Show success page briefly then redirect to dashboard
+        setShowPaymentSuccess(true);
+        setPendingPaymentPlan(planType);
+        setActivePage('payment-success');
+        
+        // Auto-redirect to dashboard after 3 seconds
+        setTimeout(() => {
+          setShowPaymentSuccess(false);
+          setActivePage('dashboard');
+        }, 3000);
+        
+      } else {
+        // User not logged in - show payment success page
+        setShowPaymentSuccess(true);
+        setPendingPaymentPlan(planType);
+        setActivePage('payment-success');
+      }
     }
-  }, []);
+  }, [user, forceRefreshVerification]);
 
   // Text selection logic for writing area
   useEffect(() => {
@@ -125,7 +152,10 @@ function App() {
     try {
       await authSignOut();
       setActivePage('home');
-      localStorage.clear();
+      // Clear payment-related localStorage items
+      localStorage.removeItem('payment_date');
+      localStorage.removeItem('payment_plan');
+      localStorage.removeItem('userEmail');
     } catch (error) {
       console.error('Error during sign out:', error);
       // Force reset even if sign out fails
@@ -206,8 +236,8 @@ function App() {
     setContent(restoredContent);
   };
 
-  // Loading state
-  if (isLoading) {
+  // ENHANCED: Better loading state with payment success handling
+  if (loading && !showPaymentSuccess) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
         <div className="text-center">
@@ -430,12 +460,17 @@ function App() {
                   <LearningPage onNavigate={handleNavigation} />
                 } />
                 
+                {/* ENHANCED: Better payment success page handling */}
                 <Route path="/payment-success" element={
                   <PaymentSuccessPage 
-                    planType={pendingPaymentPlan || 'base_plan'}
+                    planType={pendingPaymentPlan || 'premium_plan'}
                     onContinue={() => {
                       setShowPaymentSuccess(false);
-                      setActivePage('writing');
+                      if (user) {
+                        setActivePage('dashboard');
+                      } else {
+                        setActivePage('home');
+                      }
                     }}
                   />
                 } />
@@ -486,13 +521,15 @@ function App() {
               />
             )}
 
-            {/* Email Verification Reminder */}
+            {/* ENHANCED: Email Verification Reminder with better handling */}
             {user && !emailVerified && activePage === 'dashboard' && (
               <EmailVerificationReminder 
                 email={user.email || ''}
                 onVerified={() => {
-                  // Refresh the page to update verification status
-                  window.location.reload();
+                  // Force refresh verification instead of full page reload
+                  if (forceRefreshVerification) {
+                    forceRefreshVerification();
+                  }
                 }}
               />
             )}
@@ -504,3 +541,4 @@ function App() {
 }
 
 export default App;
+
