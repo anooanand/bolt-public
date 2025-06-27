@@ -19,8 +19,99 @@ export function EmailVerificationHandler() {
       try {
         console.log('=== EMAIL VERIFICATION HANDLER STARTED ===');
         console.log('Current URL:', window.location.href);
+        console.log('Location search:', location.search);
+        console.log('Location hash:', location.hash);
         
-        // FIRST: Get current user session
+        // FIRST: Handle the access token from URL hash if present
+        const hashParams = new URLSearchParams(location.hash.substring(1));
+        const accessToken = hashParams.get('access_token');
+        const refreshToken = hashParams.get('refresh_token');
+        const tokenType = hashParams.get('token_type');
+        
+        console.log('Hash params:', {
+          access_token: accessToken ? 'present' : 'missing',
+          refresh_token: refreshToken ? 'present' : 'missing',
+          token_type: tokenType
+        });
+
+        // If we have tokens in the URL, set the session
+        if (accessToken && refreshToken) {
+          console.log('🔑 Setting session from URL tokens...');
+          
+          const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken
+          });
+
+          if (sessionError) {
+            console.error('❌ Error setting session:', sessionError);
+            if (mounted) {
+              setStatus('error');
+              setErrorMessage('Failed to verify email. The verification link may be invalid or expired.');
+            }
+            return;
+          }
+
+          if (sessionData.session && sessionData.user) {
+            console.log('✅ Session set successfully for user:', sessionData.user.email);
+            
+            // Update user_access_status to mark email as verified
+            const { error: updateError } = await supabase
+              .from('user_access_status')
+              .upsert({
+                id: sessionData.user.id,
+                email: sessionData.user.email,
+                email_verified: true,
+                updated_at: new Date().toISOString()
+              }, { onConflict: 'id' });
+
+            if (updateError) {
+              console.error('❌ Error updating user access status:', updateError);
+              // Don't fail verification for this
+            } else {
+              console.log('✅ User access status updated');
+            }
+
+            if (mounted) {
+              setUserEmail(sessionData.user.email || '');
+              setStatus('success');
+              
+              // Clear the URL hash to remove tokens
+              window.history.replaceState({}, document.title, window.location.pathname);
+              
+              // Redirect after showing success message
+              setTimeout(() => {
+                if (mounted) {
+                  navigate('/pricing');
+                }
+              }, 3000);
+            }
+            return;
+          }
+        }
+
+        // SECOND: Check for errors in URL parameters
+        const searchParams = new URLSearchParams(location.search);
+        const errorCode = searchParams.get('error_code') || hashParams.get('error_code');
+        const errorDescription = searchParams.get('error_description') || hashParams.get('error_description');
+        const error = searchParams.get('error') || hashParams.get('error');
+        
+        if (errorCode || error) {
+          console.error(`❌ Error in verification URL: ${errorCode || error} - ${errorDescription}`);
+          
+          if (mounted) {
+            if (errorCode === 'otp_expired' || error === 'access_denied') {
+              setStatus('expired');
+              setErrorMessage('Your verification link has expired. Please request a new verification email.');
+            } else {
+              setStatus('error');
+              setErrorMessage(errorDescription || 'Verification link is invalid or has expired');
+            }
+          }
+          return;
+        }
+
+        // THIRD: Get current user session
         const { data: { user }, error: userError } = await supabase.auth.getUser();
         
         if (userError) {
@@ -44,7 +135,7 @@ export function EmailVerificationHandler() {
         console.log('✅ User session found:', user.email);
         setUserEmail(user.email || '');
 
-        // SECOND: Check if user is already verified
+        // FOURTH: Check if user is already verified
         console.log('🔍 Checking if user is already verified...');
         console.log('User email_confirmed_at:', user.email_confirmed_at);
         console.log('User metadata email_verified:', user.user_metadata?.email_verified);
@@ -79,76 +170,13 @@ export function EmailVerificationHandler() {
           }
           return;
         }
-        
-        // THIRD: Parse URL for errors
-        const searchParams = new URLSearchParams(location.search);
-        const hashParams = new URLSearchParams(location.hash.substring(1));
-        
-        const errorCode = searchParams.get('error_code') || hashParams.get('error_code');
-        const errorDescription = searchParams.get('error_description') || hashParams.get('error_description');
-        const error = searchParams.get('error') || hashParams.get('error');
-        
-        if (errorCode || error) {
-          console.error(`❌ Error in verification URL: ${errorCode || error} - ${errorDescription}`);
-          
-          if (mounted) {
-            if (errorCode === 'otp_expired' || error === 'access_denied') {
-              setStatus('expired');
-              setErrorMessage('Your verification link has expired. Please request a new verification email.');
-            } else {
-              setStatus('error');
-              setErrorMessage(errorDescription || 'Verification link is invalid or has expired');
-            }
-          }
-          return;
-        }
 
-        // FOURTH: Process the verification callback
-        console.log('🔄 Processing verification callback...');
+        // FIFTH: If we reach here without tokens, the verification might have failed
+        console.log('⚠️ No tokens found and user not verified - verification may have failed');
         
-        // Get the current session to see if verification was successful
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        
-        if (sessionError) {
-          console.error('❌ Session error:', sessionError);
-          if (mounted) {
-            setStatus('error');
-            setErrorMessage('Error verifying session. Please try signing in again.');
-          }
-          return;
-        }
-        
-        if (session && session.user) {
-          console.log('✅ Email verification successful:', session.user.email);
-          
-          // Update user_access_status
-          await supabase
-            .from('user_access_status')
-            .upsert({
-              id: session.user.id,
-              email: session.user.email,
-              email_verified: true,
-              updated_at: new Date().toISOString()
-            }, { onConflict: 'id' });
-          
-          if (mounted) {
-            setUserEmail(session.user.email || '');
-            setStatus('success');
-            
-            // Redirect after showing success message
-            setTimeout(() => {
-              if (mounted) {
-                navigate('/pricing');
-              }
-            }, 3000);
-          }
-        } else {
-          console.error('❌ No session found after verification');
-          
-          if (mounted) {
-            setStatus('error');
-            setErrorMessage('Verification completed but no session found. Please try signing in manually.');
-          }
+        if (mounted) {
+          setStatus('error');
+          setErrorMessage('Email verification incomplete. Please check your email and click the verification link again.');
         }
         
       } catch (error: any) {
@@ -161,10 +189,12 @@ export function EmailVerificationHandler() {
       }
     };
 
-    processVerification();
+    // Add a small delay to ensure the component is mounted
+    const timer = setTimeout(processVerification, 100);
 
     return () => {
       mounted = false;
+      clearTimeout(timer);
     };
   }, [navigate, location.search, location.hash]);
 
@@ -202,6 +232,11 @@ export function EmailVerificationHandler() {
     navigate('/pricing');
   };
 
+  const handleTryAgain = () => {
+    // Reload the page to retry verification
+    window.location.reload();
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
       <div className="max-w-md w-full bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8 text-center">
@@ -217,6 +252,16 @@ export function EmailVerificationHandler() {
             <p className="text-xs text-gray-500 mt-2">
               This should only take a moment
             </p>
+            
+            {/* Add a timeout fallback */}
+            <div className="mt-6">
+              <button
+                onClick={handleTryAgain}
+                className="text-sm text-blue-600 hover:text-blue-800 underline"
+              >
+                Taking too long? Click to retry
+              </button>
+            </div>
           </>
         )}
 
@@ -309,6 +354,12 @@ export function EmailVerificationHandler() {
             </p>
             <div className="space-y-3">
               <button
+                onClick={handleTryAgain}
+                className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              >
+                Try Again
+              </button>
+              <button
                 onClick={handleContinueAnyway}
                 className="w-full px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
               >
@@ -316,7 +367,7 @@ export function EmailVerificationHandler() {
               </button>
               <button
                 onClick={handleResendVerification}
-                className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                className="w-full px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700"
               >
                 Resend Verification Email
               </button>
