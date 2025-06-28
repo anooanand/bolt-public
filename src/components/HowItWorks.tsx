@@ -1,73 +1,264 @@
 import React from 'react';
-import { Sparkles, ArrowRight, Star, Zap, Check, BookOpen, Brain, Target } from 'lucide-react';
+import { Brain, Target, CheckCircle, BarChart, Sparkles, GraduationCap, Check, X } from 'lucide-react';
 
 export function HowItWorks() {
+  const features = [
+    {
+      name: 'Step-by-step writing guidance',
+      instachat: true,
+      others: false,
+    },
+    {
+      name: 'Follows NSW writing criteria',
+      instachat: true,
+      others: false,
+    },
+    {
+      name: 'NSW exam-style feedback',
+      instachat: true,
+      others: false,
+    },
+    {
+      name: 'Real-time grammar & sentence corrections',
+      instachat: true,
+      others: true,
+    },
+    {
+      name: 'Adaptive learning based on skill level',
+      instachat: true,
+      others: false,
+    },
+    {
+      name: 'Interactive AI coaching',
+      instachat: true,
+      others: false,
+    },
+  ];
+
   return (
-    <section className="py-16 bg-gradient-to-b from-white to-gray-50 dark:from-gray-900 dark:to-gray-800" id="how-it-works">
+    <section className="py-16 bg-white dark:bg-gray-900">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-transparent bg-clip-text">
-            How InstaChat AI Works
+        <div className="text-center mb-12">
+          <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 via-purple-600 to-orange-600">
+            How InstaChat AI Helps Students Succeed in Writing
           </h2>
-          <p className="text-lg text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
-            Our AI-powered platform makes writing practice effective, engaging, and tailored to NSW Selective exam requirements
+          <p className="mt-4 text-lg text-gray-600 dark:text-gray-300">
+            Our AI-powered platform guides students step-by-step, helping them master key writing formats
+            required for NSW Selective School exams and school assignments.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          <StepCard 
-            number="1"
-            title="Choose Your Writing Type"
-            description="Select from narrative, persuasive, informative, or any other writing style covered in the NSW Selective exam."
-            icon={<BookOpen className="w-6 h-6 text-indigo-500" />}
-          />
-          
-          <StepCard 
-            number="2"
-            title="Practice with AI Guidance"
-            description="Write with real-time suggestions, vocabulary enhancements, and structure guidance from our specialized AI."
-            icon={<Brain className="w-6 h-6 text-purple-500" />}
-          />
-          
-          <StepCard 
-            number="3"
-            title="Receive Detailed Feedback"
-            description="Get comprehensive feedback aligned with NSW marking criteria to understand your strengths and areas for improvement."
-            icon={<Target className="w-6 h-6 text-rose-500" />}
-          />
-        </div>
+        {/* Smart Technology Section */}
+        <div className="grid md:grid-cols-2 gap-12 mb-16">
+          <div>
+            <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
+              🚀 How InstaChat AI Works
+            </h3>
+            <div className="space-y-6">
+              <div className="flex items-start space-x-4">
+                <div className="flex-shrink-0">
+                  <Brain className="h-6 w-6 text-indigo-600" />
+                </div>
+                <div>
+                  <h4 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    Step-by-Step Writing Support
+                  </h4>
+                  <p className="mt-2 text-gray-600 dark:text-gray-400">
+                    The AI guides students through each section using an interactive, structured approach
+                    based on NSW syllabus expectations.
+                  </p>
+                  <div className="mt-3 bg-indigo-50 dark:bg-indigo-900/50 p-4 rounded-lg">
+                    <p className="text-sm text-indigo-700 dark:text-indigo-300">
+                      <span className="font-semibold">Example:</span> "What is your main argument? 
+                      Why do you believe this is true?"
+                    </p>
+                  </div>
+                </div>
+              </div>
 
-        <div className="mt-16 bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden">
-          <div className="p-8">
-            <h3 className="text-2xl font-bold mb-6 text-gray-900 dark:text-white">Why Students & Parents Love Us</h3>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Testimonial 
-                quote="My daughter's writing has improved dramatically since using this platform. Her last practice test score increased by 15 points!"
-                author="Sarah M."
-                role="Parent of Year 6 student"
-              />
-              
-              <Testimonial 
-                quote="The AI feedback is like having a tutor available 24/7. I can practice whenever I want and always get helpful guidance."
-                author="Jason T."
-                role="Year 5 student"
-              />
+              <div className="flex items-start space-x-4">
+                <div className="flex-shrink-0">
+                  <Target className="h-6 w-6 text-purple-600" />
+                </div>
+                <div>
+                  <h4 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    Real-Time AI Feedback
+                  </h4>
+                  <ul className="mt-2 space-y-2 text-gray-600 dark:text-gray-400">
+                    <li className="flex items-center space-x-2">
+                      <CheckCircle className="h-4 w-4 text-green-500" />
+                      <span>Grammar & spelling corrections</span>
+                    </li>
+                    <li className="flex items-center space-x-2">
+                      <CheckCircle className="h-4 w-4 text-green-500" />
+                      <span>Sentence structure improvements</span>
+                    </li>
+                    <li className="flex items-center space-x-2">
+                      <CheckCircle className="h-4 w-4 text-green-500" />
+                      <span>Persuasive & narrative techniques</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
             </div>
           </div>
-          
-          <div className="bg-indigo-50 dark:bg-indigo-900/30 p-8">
-            <div className="flex flex-col md:flex-row items-center justify-between">
-              <div className="mb-6 md:mb-0">
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white">Ready to boost your writing skills?</h3>
-                <p className="text-gray-600 dark:text-gray-300">Join thousands of students preparing for NSW Selective exams</p>
+
+          <div>
+            <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
+              📈 Student Success Data
+            </h3>
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 border border-gray-200 dark:border-gray-700">
+              <div className="space-y-6">
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                      Writing Score Improvement
+                    </span>
+                    <span className="text-sm font-semibold text-indigo-600 dark:text-indigo-400">
+                      82%
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                    <div className="bg-indigo-600 h-2 rounded-full" style={{ width: '82%' }}></div>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                      Student Confidence
+                    </span>
+                    <span className="text-sm font-semibold text-indigo-600 dark:text-indigo-400">
+                      94%
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                    <div className="bg-indigo-600 h-2 rounded-full" style={{ width: '94%' }}></div>
+                  </div>
+                </div>
               </div>
-              
-              <button className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-md flex items-center">
-                Get Started Now
-                <ArrowRight className="ml-2 w-5 h-5" />
-              </button>
             </div>
+          </div>
+        </div>
+
+        {/* Feature Comparison Section */}
+        <div className="mb-16">
+          <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
+            💡 How InstaChat AI Stands Out from Other AI Writing Tools
+          </h3>
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden border border-gray-200 dark:border-gray-700">
+            <div className="px-6 py-4 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
+              <h4 className="text-lg font-semibold text-gray-900 dark:text-white">
+                🔍 Feature Comparison
+              </h4>
+            </div>
+            <div className="divide-y divide-gray-200 dark:divide-gray-700">
+              <div className="grid grid-cols-3 px-6 py-3 text-sm font-medium text-gray-700 dark:text-gray-300">
+                <div>Feature</div>
+                <div className="text-center">InstaChat AI</div>
+                <div className="text-center">Generic AI Chatbots</div>
+              </div>
+              {features.map((feature, index) => (
+                <div
+                  key={index}
+                  className="grid grid-cols-3 px-6 py-3 text-sm hover:bg-gray-50 dark:hover:bg-gray-800/50"
+                >
+                  <div className="text-gray-900 dark:text-white">{feature.name}</div>
+                  <div className="flex justify-center">
+                    {feature.instachat ? (
+                      <Check className="h-5 w-5 text-green-500" />
+                    ) : (
+                      <X className="h-5 w-5 text-red-500" />
+                    )}
+                  </div>
+                  <div className="flex justify-center">
+                    {feature.others ? (
+                      <Check className="h-5 w-5 text-green-500" />
+                    ) : (
+                      <X className="h-5 w-5 text-red-500" />
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <p className="mt-4 text-gray-600 dark:text-gray-400 text-sm">
+            📌 Unlike generic AI chatbots, InstaChat AI teaches students how to write better, rather than just generating answers.
+          </p>
+        </div>
+
+        {/* Writing Formats Section */}
+        <div className="grid md:grid-cols-3 gap-8">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 border border-gray-200 dark:border-gray-700">
+            <Sparkles className="h-8 w-8 text-indigo-600 mb-4" />
+            <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+              Narrative Writing
+            </h4>
+            <p className="text-gray-600 dark:text-gray-400 mb-4">
+              Uses Story Mountain framework for engaging storytelling
+            </p>
+            <ul className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
+              <li className="flex items-center space-x-2">
+                <CheckCircle className="h-4 w-4 text-green-500" />
+                <span>Character development</span>
+              </li>
+              <li className="flex items-center space-x-2">
+                <CheckCircle className="h-4 w-4 text-green-500" />
+                <span>Plot structure</span>
+              </li>
+              <li className="flex items-center space-x-2">
+                <CheckCircle className="h-4 w-4 text-green-500" />
+                <span>Descriptive language</span>
+              </li>
+            </ul>
+          </div>
+
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 border border-gray-200 dark:border-gray-700">
+            <Brain className="h-8 w-8 text-purple-600 mb-4" />
+            <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+              Persuasive Writing
+            </h4>
+            <p className="text-gray-600 dark:text-gray-400 mb-4">
+              Follows PEEEL structure for compelling arguments
+            </p>
+            <ul className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
+              <li className="flex items-center space-x-2">
+                <CheckCircle className="h-4 w-4 text-green-500" />
+                <span>Strong thesis statements</span>
+              </li>
+              <li className="flex items-center space-x-2">
+                <CheckCircle className="h-4 w-4 text-green-500" />
+                <span>Evidence-based arguments</span>
+              </li>
+              <li className="flex items-center space-x-2">
+                <CheckCircle className="h-4 w-4 text-green-500" />
+                <span>Logical reasoning</span>
+              </li>
+            </ul>
+          </div>
+
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 border border-gray-200 dark:border-gray-700">
+            <GraduationCap className="h-8 w-8 text-orange-600 mb-4" />
+            <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+              NSW Exam Alignment
+            </h4>
+            <p className="text-gray-600 dark:text-gray-400 mb-4">
+              Built specifically for NSW writing standards
+            </p>
+            <ul className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
+              <li className="flex items-center space-x-2">
+                <CheckCircle className="h-4 w-4 text-green-500" />
+                <span>Selective School criteria</span>
+              </li>
+              <li className="flex items-center space-x-2">
+                <CheckCircle className="h-4 w-4 text-green-500" />
+                <span>NAPLAN alignment</span>
+              </li>
+              <li className="flex items-center space-x-2">
+                <CheckCircle className="h-4 w-4 text-green-500" />
+                <span>HSC preparation</span>
+              </li>
+            </ul>
           </div>
         </div>
       </div>
@@ -75,52 +266,3 @@ export function HowItWorks() {
   );
 }
 
-interface StepCardProps {
-  number: string;
-  title: string;
-  description: string;
-  icon: React.ReactNode;
-}
-
-function StepCard({ number, title, description, icon }: StepCardProps) {
-  return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all duration-300 p-6 h-full">
-      <div className="flex items-center mb-4">
-        <div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center mr-4">
-          <span className="text-lg font-bold text-indigo-600 dark:text-indigo-400">{number}</span>
-        </div>
-        <div className="p-2 bg-indigo-50 dark:bg-indigo-900/30 rounded-md">
-          {icon}
-        </div>
-      </div>
-      
-      <h3 className="text-xl font-semibold mb-3 text-gray-900 dark:text-white">{title}</h3>
-      <p className="text-gray-600 dark:text-gray-300">{description}</p>
-    </div>
-  );
-}
-
-interface TestimonialProps {
-  quote: string;
-  author: string;
-  role: string;
-}
-
-function Testimonial({ quote, author, role }: TestimonialProps) {
-  return (
-    <div className="bg-gray-50 dark:bg-gray-700/30 rounded-lg p-6">
-      <div className="flex mb-4">
-        {[1, 2, 3, 4, 5].map((star) => (
-          <Star key={star} className="w-5 h-5 text-yellow-400 fill-current" />
-        ))}
-      </div>
-      
-      <p className="text-gray-600 dark:text-gray-300 mb-4 italic">"{quote}"</p>
-      
-      <div>
-        <p className="font-medium text-gray-900 dark:text-white">{author}</p>
-        <p className="text-sm text-gray-500 dark:text-gray-400">{role}</p>
-      </div>
-    </div>
-  );
-}
