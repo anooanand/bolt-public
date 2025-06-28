@@ -121,7 +121,7 @@ function App() {
                     }}
                     onForceSignOut={authSignOut}
                   />
-                  <HeroSection onGetStarted={() => handleNavigation("writing")} />
+                  <HeroSection onGetStarted={handleGetStarted} />
                   <FeaturesSection />
                   <ToolsSection onOpenTool={handleNavigation} />
                   <WritingTypesSection />
@@ -185,9 +185,14 @@ function App() {
             {/* Modals */}
             {showAuthModal && (
               <AuthModal
-                mode={authModalMode}
+                isOpen={showAuthModal}
+                initialMode={authModalMode}
                 onClose={() => setShowAuthModal(false)}
-                onSwitchMode={(mode) => setAuthModalMode(mode)}
+                onSuccess={(user) => {
+                  setShowAuthModal(false);
+                  // Handle successful authentication
+                }}
+                onNavigate={handleNavigation}
               />
             )}
             
