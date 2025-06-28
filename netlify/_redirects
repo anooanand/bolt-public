@@ -1,8 +1,35 @@
-# Proxy for Supabase API requests
-/.netlify/functions/supabase-proxy/*  https://zrzicouoioyqptfplnkg.supabase.co/:splat  200
-/.netlify/functions/supabase-auth/*   https://zrzicouoioyqptfplnkg.supabase.co/auth/v1/:splat  200
-/.netlify/functions/supabase-rest/*   https://zrzicouoioyqptfplnkg.supabase.co/rest/v1/:splat  200
-/.netlify/functions/supabase-realtime/* https://zrzicouoioyqptfplnkg.supabase.co/realtime/v1/:splat 200
+[build]
+  command = "npm run build"
+  publish = "dist"
+  functions = "netlify/functions"
 
-# SPA fallback
-/*    /index.html   200
+# Proxy for Supabase API requests
+[[redirects]]
+  from = "/.netlify/functions/supabase-proxy/*"
+  to = "https://zrzicouoioyqptfplnkg.supabase.co/:splat"
+  status = 200
+  force = true # Add force to ensure these rules take precedence
+
+[[redirects]]
+  from = "/.netlify/functions/supabase-auth/*"
+  to = "https://zrzicouoioyqptfplnkg.supabase.co/auth/v1/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/.netlify/functions/supabase-rest/*"
+  to = "https://zrzicouoioyqptfplnkg.supabase.co/rest/v1/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/.netlify/functions/supabase-realtime/*"
+  to = "https://zrzicouoioyqptfplnkg.supabase.co/realtime/v1/:splat"
+  status = 200
+  force = true
+
+# SPA fallback - this should be the last rule
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
