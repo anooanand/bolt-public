@@ -2,9 +2,11 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { generatePrompt, getSynonyms, rephraseSentence, evaluateEssay, getWritingFeedback, identifyCommonMistakes, getTextTypeVocabulary, getSpecializedTextTypeFeedback, getWritingStructure } from '../lib/openai';
 import { dbOperations } from '../lib/database';
 import { useApp } from '../contexts/AppContext';
-import { AlertCircle, ChevronLeft, ChevronRight, Save, FileText, Clock } from 'lucide-react';
+import { AlertCircle, ChevronLeft, ChevronRight, Save, FileText, Clock, RefreshCw, BookOpen } from 'lucide-react';
 import { InlineSuggestionPopup } from './InlineSuggestionPopup';
 import { WritingStatusBar } from './WritingStatusBar';
+import { WritingToolbar } from './WritingToolbar';
+import { ParaphrasePanel } from './ParaphrasePanel';
 import './responsive.css';
 
 interface WritingAreaProps {
@@ -46,6 +48,10 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [wordCount, setWordCount] = useState(0);
+  const [showParaphrasePanel, setShowParaphrasePanel] = useState(false);
+  const [selectedText, setSelectedText] = useState('');
+  const [showHelpCenter, setShowHelpCenter] = useState(false);
+  const [showPlanningTool, setShowPlanningTool] = useState(false);
   
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
@@ -158,6 +164,34 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
     onSubmit();
   };
 
+  const handleTextSelection = () => {
+    if (textareaRef.current) {
+      const start = textareaRef.current.selectionStart;
+      const end = textareaRef.current.selectionEnd;
+      const selected = content.substring(start, end);
+      
+      if (selected.trim().length > 0) {
+        setSelectedText(selected);
+      }
+    }
+  };
+
+  const handleParaphraseClick = () => {
+    handleTextSelection();
+    setShowParaphrasePanel(true);
+  };
+
+  const handleApplyParaphrase = (paraphrasedText: string) => {
+    if (textareaRef.current && selectedText) {
+      const start = textareaRef.current.selectionStart;
+      const end = textareaRef.current.selectionEnd;
+      const newContent = content.substring(0, start) + paraphrasedText + content.substring(end);
+      onChange(newContent);
+      setShowParaphrasePanel(false);
+      setSelectedText('');
+    }
+  };
+
   // Error state
   if (error) {
     return (
@@ -223,6 +257,15 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
         </div>
       </div>
 
+      {/* WritingToolbar */}
+      <WritingToolbar
+        content={content}
+        textType={textType}
+        onShowHelpCenter={() => setShowHelpCenter(true)}
+        onShowPlanningTool={() => setShowPlanningTool(true)}
+        onTimerStart={onTimerStart}
+      />
+
       {/* Prompt Section */}
       {prompt && (
         <div className="prompt-section bg-blue-50 border-b border-blue-200 p-4">
@@ -273,14 +316,31 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
       <div className="flex-1 flex">
         {/* Writing Editor */}
         <div className="flex-1 p-4">
-          <textarea
-            ref={textareaRef}
-            value={content}
-            onChange={(e) => onChange(e.target.value)}
-            placeholder="Start writing your essay here..."
-            className="w-full h-full min-h-[400px] p-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-            style={{ fontFamily: 'Georgia, serif', fontSize: '16px', lineHeight: '1.6' }}
-          />
+          <div className="relative">
+            {/* Paraphrase Button (shows when text is selected) */}
+            {selectedText && (
+              <div className="absolute top-2 right-2 z-10">
+                <button
+                  onClick={handleParaphraseClick}
+                  className="flex items-center px-3 py-1 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700"
+                >
+                  <RefreshCw className="w-4 h-4 mr-1" />
+                  Paraphrase
+                </button>
+              </div>
+            )}
+            
+            <textarea
+              ref={textareaRef}
+              value={content}
+              onChange={(e) => onChange(e.target.value)}
+              onMouseUp={handleTextSelection}
+              onKeyUp={handleTextSelection}
+              placeholder="Start writing your essay here..."
+              className="w-full h-full min-h-[400px] p-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+              style={{ fontFamily: 'Georgia, serif', fontSize: '16px', lineHeight: '1.6' }}
+            />
+          </div>
         </div>
 
         {/* Sidebar */}
@@ -372,6 +432,51 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
           suggestions={suggestions}
           isLoading={isLoadingSuggestions}
         />
+      )}
+
+      {/* Paraphrase Panel Modal */}
+      {showParaphrasePanel && (
+        <div className="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+          <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" onClick={() => setShowParaphrasePanel(false)}></div>
+            <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
+              <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                <div className="flex justify-between items-start mb-4">
+                  <h3 className="text-lg leading-6 font-medium text-gray-900" id="modal-title">
+                    Paraphrase Tool
+                  </h3>
+                  <button
+                    type="button"
+                    className="bg-white rounded-md text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                    onClick={() => setShowParaphrasePanel(false)}
+                  >
+                    <span className="sr-only">Close</span>
+                    <svg className="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+                
+                <div className="h-96">
+                  <ParaphrasePanel 
+                    selectedText={selectedText}
+                    onNavigate={() => {}}
+                  />
+                </div>
+              </div>
+              <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                <button
+                  type="button"
+                  className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
+                  onClick={() => setShowParaphrasePanel(false)}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
