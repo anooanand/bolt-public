@@ -14,6 +14,7 @@ import Footer from './components/Footer';
 import { Dashboard } from './components/Dashboard';
 import { AuthModal } from './components/AuthModal';
 import { PlanningToolModal } from './components/PlanningToolModal';
+import { EmailVerificationHandler } from './components/EmailVerificationHandler';
 import { WritingAccessCheck } from './components/WritingAccessCheck';
 import { PaymentSuccessPage } from './components/PaymentSuccessPage';
 import { PricingPage } from './components/PricingPage';
@@ -130,6 +131,7 @@ function App() {
               } />
               
               {/* Other routes */}
+              <Route path="/auth/callback" element={<EmailVerificationHandler />} />
               <Route path="/pricing" element={<PricingPage />} />
               <Route path="/payment-success" element={<PaymentSuccessPage />} />
               <Route path="/dashboard" element={
