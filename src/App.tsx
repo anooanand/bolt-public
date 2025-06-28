@@ -23,6 +23,8 @@ import { PricingPage } from './components/PricingPage';
 import { EnhancedHeader } from './components/EnhancedHeader';
 import { WritingArea } from './components/WritingArea';
 import { CoachPanel } from './components/CoachPanel';
+import { WritingStudio } from './components/WritingStudio';
+import { ParaphrasePanel } from './components/ParaphrasePanel';
 
 function App() {
   const { user, loading, paymentCompleted, emailVerified, authSignOut, forceRefreshVerification } = useAuth();
@@ -39,6 +41,13 @@ function App() {
         setActivePage("writing"); // Full access
       } else {
         setActivePage("pricing"); // Need to complete payment
+      }
+    } else if (page === "paraphrase" || page === "brainstorm" || page === "learn" || page === "exam") {
+      // Handle writing tool navigation
+      if (user && emailVerified && paymentCompleted) {
+        setActivePage(page);
+      } else {
+        setActivePage("pricing");
       }
     } else {
       setActivePage(page);
@@ -177,6 +186,67 @@ function App() {
                           textType={textType}
                           assistanceLevel={assistanceLevel}
                         />
+                      </div>
+                    </div>
+                  </div>
+                </WritingAccessCheck>
+              } />
+              
+              {/* Writing Studio route */}
+              <Route path="/studio" element={
+                <WritingAccessCheck>
+                  <WritingStudio onNavigate={handleNavigation} />
+                </WritingAccessCheck>
+              } />
+              
+              {/* Paraphrase tool route */}
+              <Route path="/paraphrase" element={
+                <WritingAccessCheck>
+                  <div className="min-h-screen bg-gray-50 p-8">
+                    <div className="max-w-4xl mx-auto">
+                      <h1 className="text-2xl font-bold text-gray-900 mb-6">Paraphrase Tool</h1>
+                      <ParaphrasePanel selectedText="" onNavigate={handleNavigation} />
+                    </div>
+                  </div>
+                </WritingAccessCheck>
+              } />
+              
+              {/* Brainstorm tool route */}
+              <Route path="/brainstorm" element={
+                <WritingAccessCheck>
+                  <div className="min-h-screen bg-gray-50 p-8">
+                    <div className="max-w-4xl mx-auto">
+                      <h1 className="text-2xl font-bold text-gray-900 mb-6">Brainstorm Ideas</h1>
+                      <div className="bg-white rounded-lg shadow-sm p-6">
+                        <p className="text-gray-600">Brainstorming tool coming soon...</p>
+                      </div>
+                    </div>
+                  </div>
+                </WritingAccessCheck>
+              } />
+              
+              {/* Learn route */}
+              <Route path="/learn" element={
+                <WritingAccessCheck>
+                  <div className="min-h-screen bg-gray-50 p-8">
+                    <div className="max-w-4xl mx-auto">
+                      <h1 className="text-2xl font-bold text-gray-900 mb-6">Writing Tutorials</h1>
+                      <div className="bg-white rounded-lg shadow-sm p-6">
+                        <p className="text-gray-600">Writing tutorials coming soon...</p>
+                      </div>
+                    </div>
+                  </div>
+                </WritingAccessCheck>
+              } />
+              
+              {/* Exam practice route */}
+              <Route path="/exam" element={
+                <WritingAccessCheck>
+                  <div className="min-h-screen bg-gray-50 p-8">
+                    <div className="max-w-4xl mx-auto">
+                      <h1 className="text-2xl font-bold text-gray-900 mb-6">Exam Practice</h1>
+                      <div className="bg-white rounded-lg shadow-sm p-6">
+                        <p className="text-gray-600">Exam practice coming soon...</p>
                       </div>
                     </div>
                   </div>
