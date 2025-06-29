@@ -30,8 +30,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(supabaseUser);
 
       if (supabaseUser) {
-        // Check email verification status
-        setEmailVerified(!!supabaseUser.email_confirmed_at);
+        // Enhanced email verification check
+        let isEmailVerified = false;
+        
+        // First check: Supabase auth email_confirmed_at
+        if (supabaseUser.email_confirmed_at) {
+          isEmailVerified = true;
+          console.log('✅ Email verified via auth.users');
+        }
+        
+        // Second check: user_access_status table
+        if (!isEmailVerified) {
+          try {
+            const { data: accessStatus } = await supabase
+              .from('user_access_status')
+              .select('email_verified')
+              .eq('id', supabaseUser.id)
+              .single();
+            
+            if (accessStatus?.email_verified) {
+              isEmailVerified = true;
+              console.log('✅ Email verified via user_access_status');
+            }
+          } catch (accessError) {
+            console.warn('Could not check user_access_status:', accessError);
+          }
+        }
+        
+        setEmailVerified(isEmailVerified);
 
         // Check payment status
         try {
