@@ -182,22 +182,22 @@ export class KidFriendlyErrorHandler {
     const celebrations = {
       'first-words': {
         title: '🎉 First Words!',
-        message: `Fantastic! You've written your first ${wordCount} words!`,
+        message: `Fantastic! You\'ve written your first ${wordCount} words!`,
         icon: '🌟'
       },
       'word-warrior': {
         title: '⚔️ Word Warrior!',
-        message: `Amazing! You're now a Word Warrior with ${wordCount} words!`,
+        message: `Amazing! You\'re now a Word Warrior with ${wordCount} words!`,
         icon: '🏆'
       },
       'story-master': {
         title: '📖 Story Master!',
-        message: `Incredible! You've become a Story Master with ${wordCount} words!`,
+        message: `Incredible! You\'ve become a Story Master with ${wordCount} words!`,
         icon: '👑'
       },
       'writing-champion': {
         title: '🏅 Writing Champion!',
-        message: `Outstanding! You're a true Writing Champion with ${wordCount} words!`,
+        message: `Outstanding! You\'re a true Writing Champion with ${wordCount} words!`,
         icon: '🎖️'
       }
     };
@@ -315,4 +315,3 @@ style.textContent = `
   }
 `;
 document.head.appendChild(style);
-
