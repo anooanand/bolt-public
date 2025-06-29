@@ -45,7 +45,7 @@ interface ToolGroup {
   color: string;
 }
 
-interface KidFriendlyToolbarProps {
+interface WritingToolbarProps {
   content: string;
   textType: string;
   onShowHelpCenter: () => void;
@@ -59,7 +59,7 @@ interface KidFriendlyToolbarProps {
   onTextToSpeech?: () => void;
 }
 
-export function KidFriendlyToolbar({
+export function WritingToolbar({
   content,
   textType,
   onShowHelpCenter,
