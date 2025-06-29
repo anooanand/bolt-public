@@ -795,3 +795,7 @@ export function KidFriendlyWritingArea({ content, onChange, textType, onTimerSta
   );
 }
 
+
+// Export alias for backward compatibility
+export const WritingArea = KidFriendlyWritingArea;
+
