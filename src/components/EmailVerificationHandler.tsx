@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { CheckCircle, XCircle, Loader, RefreshCw } from 'lucide-react';
@@ -9,33 +9,34 @@ export function EmailVerificationHandler() {
   const [isProcessing, setIsProcessing] = useState(false);
   const navigate = useNavigate();
 
-  // COMPLETELY DIFFERENT APPROACH: Process verification on component mount
-  React.useLayoutEffect(() => {
+  useEffect(() => {
     let isMounted = true;
     
     const processEmailVerification = async () => {
       if (!isMounted) return;
       
       try {
-        console.log('🔥 NEW VERIFICATION APPROACH STARTED');
+        console.log('🔥 EMAIL VERIFICATION HANDLER STARTED');
         setStatus('processing');
         setMessage('Processing verification...');
         
-        // Get URL parameters directly from window.location
+        // Get URL parameters from both hash and search
         const urlHash = window.location.hash;
         const urlSearch = window.location.search;
         
         console.log('📍 URL Hash:', urlHash);
         console.log('📍 URL Search:', urlSearch);
         
-        // Parse tokens from hash
+        // Parse tokens from hash (Supabase typically uses hash)
         let accessToken = null;
         let refreshToken = null;
+        let tokenType = null;
         
         if (urlHash) {
           const hashParams = new URLSearchParams(urlHash.substring(1));
           accessToken = hashParams.get('access_token');
           refreshToken = hashParams.get('refresh_token');
+          tokenType = hashParams.get('token_type');
         }
         
         // Also check search params as fallback
@@ -43,11 +44,13 @@ export function EmailVerificationHandler() {
           const searchParams = new URLSearchParams(urlSearch);
           accessToken = searchParams.get('access_token');
           refreshToken = searchParams.get('refresh_token');
+          tokenType = searchParams.get('token_type');
         }
         
         console.log('🔑 Tokens found:', { 
           access: accessToken ? 'YES' : 'NO', 
-          refresh: refreshToken ? 'YES' : 'NO' 
+          refresh: refreshToken ? 'YES' : 'NO',
+          type: tokenType
         });
         
         if (accessToken && refreshToken) {
@@ -93,15 +96,30 @@ export function EmailVerificationHandler() {
               // Clean the URL immediately
               window.history.replaceState({}, document.title, '/auth/callback');
               
-              // Quick redirect
+              // Redirect to pricing after success
               setTimeout(() => {
                 if (isMounted) {
                   navigate('/pricing', { replace: true });
                 }
-              }, 1200);
+              }, 1500);
             }
             return;
           }
+        }
+
+        // Check for error parameters
+        const errorCode = new URLSearchParams(urlSearch).get('error_code') || 
+                         new URLSearchParams(urlHash.substring(1)).get('error_code');
+        const errorDescription = new URLSearchParams(urlSearch).get('error_description') || 
+                               new URLSearchParams(urlHash.substring(1)).get('error_description');
+        
+        if (errorCode) {
+          console.log('❌ Error in URL:', errorCode, errorDescription);
+          if (isMounted) {
+            setStatus('error');
+            setMessage(`Verification failed: ${errorDescription || errorCode}`);
+          }
+          return;
         }
 
         // Alternative: Check if user is already authenticated
