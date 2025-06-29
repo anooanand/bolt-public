@@ -1,10 +1,21 @@
-// Example snippet (verify against your actual AuthContext.tsx)
-// project-bolt-new-2/project/src/contexts/AuthContext.tsx
-
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
+import type { User } from '@supabase/supabase-js';
 
-// ... (other imports and interfaces)
+// Define the AuthContext interface
+interface AuthContextType {
+  user: User | null;
+  loading: boolean;
+  emailVerified: boolean;
+  paymentCompleted: boolean;
+  authSignIn: (email: string, password: string) => Promise<{ data: any; error: any }>;
+  authSignUp: (email: string, password: string) => Promise<{ data: any; error: any }>;
+  authSignOut: () => Promise<void>;
+  forceRefreshVerification: () => void;
+}
+
+// Create the AuthContext
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -13,31 +24,47 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [paymentCompleted, setPaymentCompleted] = useState(false);
 
   const checkUserAndStatus = useCallback(async () => {
-    setLoading(true);
-    const { data: { user: supabaseUser } } = await supabase.auth.getUser();
-    setUser(supabaseUser);
+    try {
+      setLoading(true);
+      const { data: { user: supabaseUser } } = await supabase.auth.getUser();
+      setUser(supabaseUser);
 
-    if (supabaseUser) {
-      // Check email verification status
-      setEmailVerified(!!supabaseUser.email_confirmed_at);
+      if (supabaseUser) {
+        // Check email verification status
+        setEmailVerified(!!supabaseUser.email_confirmed_at);
 
-      // Check payment status (example - adapt to your actual payment logic)
-      const { data: profile, error } = await supabase
-        .from('user_profiles')
-        .select('payment_completed')
-        .eq('user_id', supabaseUser.id)
-        .single();
+        // Check payment status
+        try {
+          const { data: profile, error } = await supabase
+            .from('user_profiles')
+            .select('payment_completed, payment_verified, manual_override')
+            .eq('user_id', supabaseUser.id)
+            .single();
 
-      if (profile && profile.payment_completed) {
-        setPaymentCompleted(true);
+          if (error) {
+            console.warn('Error fetching user profile:', error);
+            setPaymentCompleted(false);
+          } else if (profile && (profile.payment_completed || profile.payment_verified || profile.manual_override)) {
+            setPaymentCompleted(true);
+          } else {
+            setPaymentCompleted(false);
+          }
+        } catch (profileError) {
+          console.warn('Error checking payment status:', profileError);
+          setPaymentCompleted(false);
+        }
       } else {
+        setEmailVerified(false);
         setPaymentCompleted(false);
       }
-    } else {
+    } catch (error) {
+      console.error('Error in checkUserAndStatus:', error);
+      setUser(null);
       setEmailVerified(false);
       setPaymentCompleted(false);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, []);
 
   useEffect(() => {
@@ -50,7 +77,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     return () => {
-      authListener.unsubscribe();
+      authListener.subscription.unsubscribe();
     };
   }, [checkUserAndStatus]);
 
@@ -59,16 +86,64 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     checkUserAndStatus();
   }, [checkUserAndStatus]);
 
-  // ... (rest of your AuthContext)
+  const authSignIn = async (email: string, password: string) => {
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      
+      if (error) {
+        return { data: null, error };
+      }
+      
+      return { data, error: null };
+    } catch (error) {
+      return { data: null, error };
+    }
+  };
+
+  const authSignUp = async (email: string, password: string) => {
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+      });
+      
+      if (error) {
+        return { data: null, error };
+      }
+      
+      return { data, error: null };
+    } catch (error) {
+      return { data: null, error };
+    }
+  };
+
+  const authSignOut = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error('Sign out error:', error);
+      }
+    } catch (error) {
+      console.error('Sign out error:', error);
+    }
+  };
+
+  const value: AuthContextType = {
+    user,
+    loading,
+    emailVerified,
+    paymentCompleted,
+    authSignIn,
+    authSignUp,
+    authSignOut,
+    forceRefreshVerification
+  };
 
   return (
-    <AuthContext.Provider value={{
-      user, loading, emailVerified, paymentCompleted,
-      authSignIn: async (email, password) => { /* ... */ },
-      authSignUp: async (email, password) => { /* ... */ },
-      authSignOut: async () => { /* ... */ },
-      forceRefreshVerification // Make this available
-    }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );
@@ -81,3 +156,4 @@ export const useAuth = () => {
   }
   return context;
 };
+
