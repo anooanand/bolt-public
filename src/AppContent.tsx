@@ -25,7 +25,7 @@ import { WritingStudio } from './WritingStudio';
 import { ParaphrasePanel } from './ParaphrasePanel';
 
 export const AppContent: React.FC = () => {
-  const { user, loading, paymentCompleted, emailVerified, authSignOut, forceRefreshVerification } = useAuth();
+  const { user, loading, paymentCompleted, emailVerified, authSignOut } = useAuth();
   const [activePage, setActivePage] = useState("home");
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<"signin" | "signup">("signin");
@@ -34,14 +34,13 @@ export const AppContent: React.FC = () => {
   const handleNavigation = (page: string) => {
     if (page === "dashboard" && user) {
       if (!emailVerified) {
-        setActivePage("dashboard"); // Show email verification reminder
+        setActivePage("dashboard");
       } else if (paymentCompleted) {
-        setActivePage("writing"); // Full access
+        setActivePage("writing");
       } else {
-        setActivePage("pricing"); // Need to complete payment
+        setActivePage("pricing");
       }
     } else if (page === "paraphrase" || page === "brainstorm" || page === "learn" || page === "exam") {
-      // Handle writing tool navigation
       if (user && emailVerified && paymentCompleted) {
         setActivePage(page);
       } else {
@@ -63,20 +62,16 @@ export const AppContent: React.FC = () => {
   const handleGetStarted = () => {
     if (user) {
       if (!emailVerified) {
-        handleNavigation("dashboard"); // Show email verification reminder
+        handleNavigation("dashboard");
       } else if (paymentCompleted) {
-        handleNavigation("writing"); // Full access
+        handleNavigation("writing");
       } else {
-        handleNavigation("pricing"); // Need to complete payment
+        handleNavigation("pricing");
       }
     } else {
       setAuthModalMode("signup");
       setShowAuthModal(true);
     }
-  };
-
-  const handleStartWriting = () => {
-    handleNavigation("writing");
   };
 
   const handleStartExam = () => {
@@ -88,7 +83,6 @@ export const AppContent: React.FC = () => {
     setShowPlanningTool(false);
   };
 
-  // Handle payment success from URL parameters
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const sessionId = urlParams.get('session_id');
@@ -109,7 +103,6 @@ export const AppContent: React.FC = () => {
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900">
       <Routes>
-        {/* Home route */}
         <Route path="/" element={
           <>
             <NavBar 
@@ -134,7 +127,6 @@ export const AppContent: React.FC = () => {
           </>
         } />
         
-        {/* Other routes */}
         <Route path="/auth/callback" element={<EmailVerificationHandler />} />
         <Route path="/pricing" element={<PricingPage />} />
         <Route path="/payment-success" element={<PaymentSuccessPage />} />
@@ -151,7 +143,6 @@ export const AppContent: React.FC = () => {
           )
         } />
         
-        {/* Writing routes */}
         <Route path="/writing" element={
           <WritingAccessCheck>
             <div className="flex flex-col h-screen">
@@ -187,14 +178,12 @@ export const AppContent: React.FC = () => {
           </WritingAccessCheck>
         } />
         
-        {/* Writing Studio route */}
         <Route path="/studio" element={
           <WritingAccessCheck>
             <WritingStudio onNavigate={handleNavigation} />
           </WritingAccessCheck>
         } />
         
-        {/* Paraphrase tool route */}
         <Route path="/paraphrase" element={
           <WritingAccessCheck>
             <div className="min-h-screen bg-gray-50 p-8">
@@ -206,7 +195,6 @@ export const AppContent: React.FC = () => {
           </WritingAccessCheck>
         } />
         
-        {/* Brainstorm tool route */}
         <Route path="/brainstorm" element={
           <WritingAccessCheck>
             <div className="min-h-screen bg-gray-50 p-8">
@@ -220,7 +208,6 @@ export const AppContent: React.FC = () => {
           </WritingAccessCheck>
         } />
         
-        {/* Learn route */}
         <Route path="/learn" element={
           <WritingAccessCheck>
             <div className="min-h-screen bg-gray-50 p-8">
@@ -234,7 +221,6 @@ export const AppContent: React.FC = () => {
           </WritingAccessCheck>
         } />
         
-        {/* Exam practice route */}
         <Route path="/exam" element={
           <WritingAccessCheck>
             <div className="min-h-screen bg-gray-50 p-8">
@@ -249,15 +235,13 @@ export const AppContent: React.FC = () => {
         } />
       </Routes>
 
-      {/* Modals */}
       {showAuthModal && (
         <AuthModal
           isOpen={showAuthModal}
           initialMode={authModalMode}
           onClose={() => setShowAuthModal(false)}
-          onSuccess={(user) => {
+          onSuccess={() => {
             setShowAuthModal(false);
-            // Handle successful authentication
           }}
           onNavigate={handleNavigation}
         />
@@ -273,4 +257,3 @@ export const AppContent: React.FC = () => {
     </div>
   );
 };
-
