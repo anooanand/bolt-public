@@ -277,4 +277,3 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
 // Export types for use in other components
 export type { AppState, Writing, Feedback, UserProgress };
-
