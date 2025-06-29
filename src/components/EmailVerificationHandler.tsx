@@ -34,15 +34,15 @@ export function EmailVerificationHandler() {
         
         if (urlHash) {
           const hashParams = new URLSearchParams(urlHash.substring(1));
-          accessToken = decodeURIComponent(hashParams.get('access_token') || '');
-          refreshToken = decodeURIComponent(hashParams.get('refresh_token') || '');
+          accessToken = hashParams.get('access_token');
+          refreshToken = hashParams.get('refresh_token');
         }
         
         // Also check search params as fallback
         if (!accessToken && urlSearch) {
           const searchParams = new URLSearchParams(urlSearch);
-          accessToken = decodeURIComponent(searchParams.get("access_token") || "");
-          refreshToken = decodeURIComponent(searchParams.get("refresh_token") || "");
+          accessToken = searchParams.get('access_token');
+          refreshToken = searchParams.get('refresh_token');
         }
         
         console.log('🔑 Tokens found:', { 
