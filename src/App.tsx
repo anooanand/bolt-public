@@ -58,8 +58,48 @@ function App() {
   const [showHelpCenter, setShowHelpCenter] = useState(false);
   const [showPlanningTool, setShowPlanningTool] = useState(false);
 
-  // ENHANCED: Better payment success detection and redirect handling
+  // ENHANCED: Global email verification token detection
   useEffect(() => {
+    const urlHash = window.location.hash;
+    const urlSearch = window.location.search;
+    
+    // Check for email verification tokens in URL
+    let hasVerificationTokens = false;
+    
+    if (urlHash) {
+      const hashParams = new URLSearchParams(urlHash.substring(1));
+      const accessToken = hashParams.get('access_token');
+      const refreshToken = hashParams.get('refresh_token');
+      const tokenType = hashParams.get('token_type');
+      
+      if (accessToken && refreshToken && tokenType === 'bearer') {
+        hasVerificationTokens = true;
+        console.log('🔑 Email verification tokens detected in hash');
+      }
+    }
+    
+    if (!hasVerificationTokens && urlSearch) {
+      const searchParams = new URLSearchParams(urlSearch);
+      const accessToken = searchParams.get('access_token');
+      const refreshToken = searchParams.get('refresh_token');
+      
+      if (accessToken && refreshToken) {
+        hasVerificationTokens = true;
+        console.log('🔑 Email verification tokens detected in search');
+      }
+    }
+    
+    // Check for error parameters that indicate failed verification
+    const errorCode = new URLSearchParams(urlSearch).get('error_code') || 
+                     (urlHash ? new URLSearchParams(urlHash.substring(1)).get('error_code') : null);
+    
+    if (hasVerificationTokens || errorCode) {
+      console.log('🚀 Redirecting to email verification handler');
+      window.location.href = '/auth/callback' + window.location.hash + window.location.search;
+      return;
+    }
+    
+    // Continue with payment success detection if no verification tokens
     const urlParams = new URLSearchParams(window.location.search);
     const paymentSuccess = urlParams.get('paymentSuccess') === 'true' || 
                           urlParams.get('payment_success') === 'true' ||
