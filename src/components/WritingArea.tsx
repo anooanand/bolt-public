@@ -22,7 +22,7 @@ import {
   X,
   ChevronDown
 } from 'lucide-react';
-import { KidFriendlyErrorHandler, KidFriendlyErrorDisplay } from '../utils/kidFriendlyErrorHandler';
+import { KidFriendlyErrorHandler, KidFriendlyErrorDisplay } from '../utils/kidFriendlyErrorHandler.tsx';
 import { WritingStatusBar } from './WritingStatusBar';
 import { WritingToolbar } from './WritingToolbar';
 import { ParaphrasePanel } from './ParaphrasePanel';
