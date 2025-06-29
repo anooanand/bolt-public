@@ -182,4 +182,3 @@ export const WritingAccessCheck: React.FC<WritingAccessCheckProps> = ({
     </div>
   );
 };
-
