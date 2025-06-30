@@ -1,194 +1,336 @@
-// COMPLETE FILE: src/lib/supabase.ts
-// Copy-paste this entire file into bolt.new
-
+import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+// Initialize Supabase and Stripe clients
+const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: '2024-06-20',
+});
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase environment variables');
+// Helper function to get plan type
+function getPlanTypeFromPriceId(priceId: string): string {
+  // Map your Stripe Price IDs to internal plan types
+  const planMapping: { [key: string]: string } = {
+    'price_1RXEqERtcrDpOK7ME3QH9uzu': 'premium_plan',
+    'price_1QzeXvRtcrDpOK7M5IHfp8ES': 'premium_plan',
+    // Add more price ID mappings as needed
+  };
+  
+  return planMapping[priceId] || 'premium_plan';
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// IMPROVED: Bypass user lookup and update by email directly
+async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) {
+  console.log('🎉 Processing checkout session completed:', session.id);
+  console.log('Session details:', {
+    id: session.id,
+    customer: session.customer,
+    customer_email: session.customer_email,
+    mode: session.mode,
+    payment_status: session.payment_status,
+    subscription: session.subscription
+  });
 
-// ENHANCED: Temporary access functions
-export const grantTemporaryAccess = async (userId: string, planType: string = 'base_plan') => {
+  const customerEmail = session.customer_email;
+  const stripeCustomerId = session.customer as string;
+  const subscriptionId = session.subscription as string;
+  
+  if (!customerEmail) {
+    console.error('❌ No customer email in session');
+    throw new Error('No customer email provided in checkout session');
+  }
+
+  console.log('👤 Processing payment for email:', customerEmail);
+
+  // Get subscription details for plan type and dates
+  let planType = 'premium_plan';
+  let currentPeriodStart = new Date().toISOString();
+  let currentPeriodEnd = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(); // 1 year from now
+
+  if (subscriptionId) {
+    try {
+      const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+      const priceId = subscription.items.data[0]?.price.id;
+      console.log('💰 Price ID:', priceId);
+      planType = getPlanTypeFromPriceId(priceId);
+      console.log('📋 Plan type:', planType);
+      
+      // Get actual subscription period dates
+      currentPeriodStart = new Date(subscription.current_period_start * 1000).toISOString();
+      currentPeriodEnd = new Date(subscription.current_period_end * 1000).toISOString();
+      console.log('📅 Period:', currentPeriodStart, 'to', currentPeriodEnd);
+    } catch (error) {
+      console.error('⚠️ Error fetching subscription:', error);
+    }
+  }
+
   try {
-    console.log('🚀 Granting 24-hour temporary access for user:', userId);
-    
-    // Set 24-hour temporary access
-    const tempAccessUntil = new Date();
-    tempAccessUntil.setHours(tempAccessUntil.getHours() + 24);
-    
-    // Update user_profiles with temporary access
-    const { error: profileError } = await supabase
-      .from('user_profiles')
+    const { error: profileError, count: profileCount } = await supabase
+      .from(\'user_profiles\')
       .upsert({
-        id: userId, // Standardize to 'id' matching auth.users.id
-        payment_status: 'processing',
-        payment_verified: false,
-        temporary_access_granted: true,
-        temp_access_until: tempAccessUntil.toISOString(),
-        subscription_status: 'temp_active',
+        email: customerEmail,
+        payment_status: \'verified\',
+        payment_verified: true,
+        subscription_status: \'active\',
+        plan_type: planType,
         subscription_plan: planType,
+        stripe_customer_id: stripeCustomerId,
+        stripe_subscription_id: subscriptionId,
+        last_payment_date: new Date().toISOString(),
+        current_period_start: currentPeriodStart,
+        current_period_end: currentPeriodEnd,
+        temp_access_until: currentPeriodEnd,
         updated_at: new Date().toISOString()
-      }, { onConflict: 'id' }); // Conflict on 'id'
+      }, { onConflict: \'email\', ignoreDuplicates: false });
 
-    if (profileError) throw profileError;
-
-    // Update user_access_status with temporary access
-    const { error: accessError } = await supabase
+    // IMPROVED: Update user_access_status by email
+    console.log('📝 Updating user_access_status table...');
+    const { error: accessError, count: accessCount } = await supabase
       .from('user_access_status')
-      .upsert({
-        id: userId,
-        email_verified: true,
-        payment_verified: false,
-        subscription_status: 'temp_active',
+      .update({
+        payment_verified: true,
+        subscription_status: 'active',
         has_access: true,
-        access_type: 'Temporary access (24 hours)',
-        temp_access_until: tempAccessUntil.toISOString()
-      }, { onConflict: 'id' });
+        access_type: `Paid subscription (${planType})`,
+        temp_access_until: currentPeriodEnd,
+        updated_at: new Date().toISOString()
+      })
+      .eq('email', customerEmail);
 
-    if (accessError) throw accessError;
-
-    console.log('✅ Temporary access granted successfully.');
-    return { success: true };
-  } catch (error) {
-    console.error('❌ Error granting temporary access:', error);
-    return { success: false, error };
-  }
-};
-
-// Email verification function
-export const isEmailVerified = async (userId: string): Promise<boolean> => {
-  try {
-    console.log('🔍 Checking email verification for user:', userId);
-    
-    // Check if user exists in auth.users and email is confirmed
-    const { data: authUser, error: authError } = await supabase.auth.getUser();
-    
-    if (authError || !authUser.user) {
-      console.log('❌ No authenticated user found');
-      return false;
+    if (accessError) {
+      console.error('❌ Error updating user_access_status:', accessError);
+      throw accessError;
     }
+    console.log(`✅ Updated user_access_status successfully (${accessCount} rows affected)`);
 
-    // Check if email is confirmed in auth.users
-    const isEmailConfirmed = authUser.user.email_confirmed_at !== null;
-    console.log('📧 Email confirmation status:', isEmailConfirmed);
-    
-    return isEmailConfirmed;
-  } catch (error) {
-    console.error('❌ Error checking email verification:', error);
-    return false;
-  }
-};
-
-// Check if user has any access (temporary or permanent)
-export const hasAnyAccess = async (userId: string): Promise<boolean> => {
-  try {
-    console.log('🔍 Checking access status for user:', userId);
-    
-    // First check user_profiles table
-    const { data: profile, error: profileError } = await supabase
-      .from('user_profiles')
-      .select('*')
-      .eq('id', userId)
-      .single();
-
-    if (profileError && profileError.code !== 'PGRST116') {
-      console.error('❌ Error fetching user profile:', profileError);
-      return false;
-    }
-
-    if (profile) {
-      // Check for temporary access
-      if (profile.temporary_access_granted && profile.temp_access_until) {
-        const tempAccessUntil = new Date(profile.temp_access_until);
-        const now = new Date();
-        
-        if (tempAccessUntil > now) {
-          console.log('✅ User has valid temporary access until:', tempAccessUntil);
-          return true;
-        } else {
-          console.log('⏰ Temporary access expired at:', tempAccessUntil);
-        }
-      }
-
-      // Check for permanent access
-      if (profile.payment_verified && 
-          (profile.subscription_status === 'active' || 
-           profile.subscription_status === 'temp_active')) {
-        console.log('✅ User has permanent access');
-        return true;
-      }
-
-      // Check manual override
-      if (profile.manual_override) {
-        console.log('✅ User has manual override access');
-        return true;
-      }
-    }
-
-    // Also check user_access_status table if it exists
-    const { data: accessStatus, error: accessError } = await supabase
-      .from('user_access_status')
-      .select('*')
-      .eq('id', userId)
-      .single();
-
-    if (!accessError && accessStatus) {
-      if (accessStatus.has_access) {
-        // Check if temporary access is still valid
-        if (accessStatus.temp_access_until) {
-          const tempAccessUntil = new Date(accessStatus.temp_access_until);
-          const now = new Date();
-          
-          if (tempAccessUntil > now) {
-            console.log('✅ User has valid access via access_status table');
-            return true;
+    // IMPROVED: Log to payment_logs table for audit trail
+    try {
+      console.log('📝 Logging payment to audit trail...');
+      const { error: logError } = await supabase
+        .from('payment_logs')
+        .insert({
+          email: customerEmail,
+          stripe_customer_id: stripeCustomerId,
+          stripe_subscription_id: subscriptionId,
+          event_type: 'checkout.session.completed',
+          payment_status: 'completed',
+          amount: session.amount_total || 0,
+          currency: session.currency || 'usd',
+          processed_at: new Date().toISOString(),
+          webhook_verified: true,
+          plan_type: planType,
+          metadata: {
+            session_id: session.id,
+            payment_method: session.payment_method_types?.[0] || 'unknown',
+            mode: session.mode
           }
-        } else if (accessStatus.payment_verified) {
-          console.log('✅ User has permanent access via access_status table');
-          return true;
-        }
+        });
+
+      if (logError) {
+        console.error('❌ Error logging to payment_logs:', logError);
+        // Don't throw - this is not critical
+      } else {
+        console.log('✅ Logged to payment_logs successfully');
       }
+    } catch (error) {
+      console.error('❌ Error with payment_logs:', error);
+      // Don't throw - this is not critical
     }
 
-    console.log('❌ User does not have access');
-    return false;
-  } catch (error) {
-    console.error('❌ Error checking access status:', error);
-    return false;
-  }
-};
+    console.log('🎊 Checkout session processing completed successfully!');
 
-// Check user payment status
-export const checkPaymentStatus = async (userId: string) => {
-  try {
-    console.log('💳 Checking payment status for user:', userId);
+  } catch (error) {
+    console.error('❌ Error in payment processing:', error);
     
-    const { data: profile, error } = await supabase
-      .from('user_profiles')
-      .select('*')
-      .eq('id', userId)
-      .single();
+    // IMPROVED: Attempt to grant temporary access as fallback
+    try {
+      console.log('🔄 Attempting to grant temporary access as fallback...');
+      await supabase
+        .from('user_access_status')
+        .update({
+          has_access: true,
+          access_type: 'Temporary access (payment processing error)',
+          temp_access_until: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours
+          updated_at: new Date().toISOString()
+        })
+        .eq('email', customerEmail);
+      
+      console.log('✅ Granted temporary access as fallback');
+    } catch (fallbackError) {
+      console.error('❌ Fallback access grant also failed:', fallbackError);
+    }
+    
+    throw error;
+  }
+}
 
-    if (error) {
-      console.error('❌ Error fetching payment status:', error);
-      return { verified: false, status: 'error' };
+// IMPROVED: Handle subscription changes with better error handling
+async function handleSubscriptionChange(subscription: Stripe.Subscription) {
+  console.log('🔄 Processing subscription change:', subscription.id, 'status:', subscription.status);
+
+  const customerId = subscription.customer as string;
+  
+  try {
+    // Find user by stripe customer ID in user_profiles
+    const { data: profiles, error: profileError } = await supabase
+      .from('user_profiles')
+      .select('user_id, email')
+      .eq('stripe_customer_id', customerId)
+      .limit(1);
+
+    if (profileError) {
+      console.error('❌ Error finding user profile:', profileError);
+      return;
     }
 
-    return {
-      verified: profile?.payment_verified || false,
-      status: profile?.payment_status || 'pending',
-      subscriptionStatus: profile?.subscription_status || 'free',
-      hasTemporaryAccess: profile?.temporary_access_granted || false,
-      tempAccessUntil: profile?.temp_access_until
-    };
-  } catch (error) {
-    console.error('❌ Error checking payment status:', error);
-    return { verified: false, status: 'error' };
-  }
-};
+    if (!profiles || profiles.length === 0) {
+      console.warn('⚠️ User not found for customer ID:', customerId);
+      return;
+    }
 
+    const userProfile = profiles[0];
+    console.log('✅ Found user:', userProfile.email);
+
+    // Update subscription status in user_profiles
+    const { error: updateError } = await supabase
+      .from('user_profiles')
+      .update({
+        subscription_status: subscription.status,
+        current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
+        current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .eq('stripe_customer_id', customerId);
+
+    if (updateError) {
+      console.error('❌ Error updating subscription status:', updateError);
+      throw updateError;
+    }
+
+    // Update user_access_status based on subscription status
+    const hasAccess = subscription.status === 'active';
+    const accessType = hasAccess ? 'Paid subscription (active)' : `Subscription ${subscription.status}`;
+    
+    const { error: accessUpdateError } = await supabase
+      .from('user_access_status')
+      .update({
+        subscription_status: subscription.status,
+        has_access: hasAccess,
+        access_type: accessType,
+        updated_at: new Date().toISOString()
+      })
+      .eq('email', userProfile.email);
+
+    if (accessUpdateError) {
+      console.error('❌ Error updating access status:', accessUpdateError);
+      throw accessUpdateError;
+    }
+
+    console.log('✅ Updated subscription status successfully');
+  } catch (error) {
+    console.error('❌ Error in subscription change handling:', error);
+    throw error;
+  }
+}
+
+// IMPROVED: Handle invoice payment with better error handling
+async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
+  console.log('💰 Processing invoice payment succeeded:', invoice.id);
+
+  const customerId = invoice.customer as string;
+
+  try {
+    // Update last payment date in user_profiles using stripe_customer_id
+    const { error: updateError, count } = await supabase
+      .from('user_profiles')
+      .update({
+        last_payment_date: new Date().toISOString(),
+        payment_status: 'verified',
+        payment_verified: true,
+        updated_at: new Date().toISOString()
+      })
+      .eq('stripe_customer_id', customerId);
+
+    if (updateError) {
+      console.error('❌ Error updating payment date:', updateError);
+      throw updateError;
+    }
+    
+    console.log(`✅ Updated payment date for customer: ${customerId} (${count} rows affected)`);
+  } catch (error) {
+    console.error('❌ Error in invoice payment handling:', error);
+    throw error;
+  }
+}
+
+// IMPROVED: Main handler with better error handling and logging
+export async function handler(event: any) {
+  if (event.httpMethod !== 'POST') {
+    return { statusCode: 405, body: 'Method Not Allowed' };
+  }
+
+  const sig = event.headers['stripe-signature'];
+  let stripeEvent: Stripe.Event;
+
+  try {
+    stripeEvent = stripe.webhooks.constructEvent(
+      event.body,
+      sig,
+      process.env.STRIPE_WEBHOOK_SECRET!
+    );
+  } catch (err: any) {
+    console.error(`❌ Webhook signature verification failed: ${err.message}`);
+    return { statusCode: 400, body: `Webhook Error: ${err.message}` };
+  }
+
+  console.log(`🎯 Processing webhook event: ${stripeEvent.type}`);
+
+  try {
+    switch (stripeEvent.type) {
+      case 'checkout.session.completed':
+        const checkoutSession = stripeEvent.data.object as Stripe.Checkout.Session;
+        await handleCheckoutSessionCompleted(checkoutSession);
+        break;
+        
+      case 'customer.subscription.updated':
+      case 'customer.subscription.deleted':
+        const subscription = stripeEvent.data.object as Stripe.Subscription;
+        await handleSubscriptionChange(subscription);
+        break;
+        
+      case 'invoice.payment_succeeded':
+        const invoice = stripeEvent.data.object as Stripe.Invoice;
+        await handleInvoicePaymentSucceeded(invoice);
+        break;
+        
+      default:
+        console.log(`ℹ️ Unhandled event type: ${stripeEvent.type}`);
+    }
+
+    console.log(`✅ Successfully processed webhook event: ${stripeEvent.type}`);
+    return { 
+      statusCode: 200, 
+      body: JSON.stringify({ 
+        received: true, 
+        event_type: stripeEvent.type,
+        processed_at: new Date().toISOString()
+      }) 
+    };
+    
+  } catch (error) {
+    console.error(`❌ Error processing webhook event ${stripeEvent.type}:`, error);
+    
+    // Return appropriate error response
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    return { 
+      statusCode: 500, 
+      body: JSON.stringify({ 
+        error: 'Internal Server Error', 
+        message: errorMessage,
+        event_type: stripeEvent.type,
+        event_id: stripeEvent.id,
+        timestamp: new Date().toISOString()
+      }) 
+    };
+  }
+}
