@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { CheckCircle, XCircle, Loader, RefreshCw, AlertCircle } from 'lucide-react';
+import { CheckCircle, XCircle, Loader, RefreshCw, AlertCircle, UserX, Mail } from 'lucide-react';
 
 export function EmailVerificationHandler() {
-  const [status, setStatus] = useState<'loading' | 'success' | 'error' | 'processing'>('loading');
+  const [status, setStatus] = useState<'loading' | 'success' | 'error' | 'processing' | 'user_not_found'>('loading');
   const [message, setMessage] = useState('Verifying your email...');
   const [isProcessing, setIsProcessing] = useState(false);
   const [debugInfo, setDebugInfo] = useState<string[]>([]);
+  const [userEmail, setUserEmail] = useState<string>('');
   const navigate = useNavigate();
 
   // Add debug logging function
@@ -56,6 +57,17 @@ export function EmailVerificationHandler() {
         
         addDebugInfo(`🔑 Tokens found: access=${accessToken ? 'YES' : 'NO'}, refresh=${refreshToken ? 'YES' : 'NO'}, type=${tokenType}`);
         
+        // Extract email from JWT token for better error messaging
+        if (accessToken) {
+          try {
+            const payload = JSON.parse(atob(accessToken.split('.')[1]));
+            setUserEmail(payload.email || '');
+            addDebugInfo(`📧 Email from token: ${payload.email || 'not found'}`);
+          } catch (e) {
+            addDebugInfo('⚠️ Could not decode JWT token');
+          }
+        }
+        
         if (accessToken && refreshToken) {
           addDebugInfo('🚀 Setting session with tokens...');
           setMessage('Establishing secure session...');
@@ -67,6 +79,26 @@ export function EmailVerificationHandler() {
 
           if (sessionError) {
             addDebugInfo(`❌ Session error: ${sessionError.message}`);
+            
+            // Handle specific "user does not exist" error
+            if (sessionError.message.includes('User from sub claim in JWT does not exist')) {
+              if (isMounted) {
+                setStatus('user_not_found');
+                setMessage('Your account was not found in our system. This usually happens when the account was removed.');
+              }
+              return;
+            }
+            
+            // Handle token expiration
+            if (sessionError.message.includes('expired') || sessionError.message.includes('Invalid JWT')) {
+              if (isMounted) {
+                setStatus('error');
+                setMessage('Your verification link has expired. Please request a new verification email.');
+              }
+              return;
+            }
+            
+            // Handle other session errors
             if (isMounted) {
               setStatus('error');
               setMessage(`Session error: ${sessionError.message}`);
@@ -111,7 +143,7 @@ export function EmailVerificationHandler() {
                   addDebugInfo('🔄 Redirecting to pricing page...');
                   navigate('/pricing', { replace: true });
                 }
-              }, 2000); // Increased from 1500ms to 2000ms
+              }, 2000);
             }
             return;
           }
@@ -203,6 +235,11 @@ export function EmailVerificationHandler() {
     }, 500);
   };
 
+  const handleSignUpAgain = () => {
+    addDebugInfo('🔄 User chose to sign up again');
+    navigate('/', { replace: true });
+  };
+
   const handleSkipVerification = () => {
     addDebugInfo('🔄 User chose to skip verification');
     navigate('/pricing', { replace: true });
@@ -262,6 +299,45 @@ export function EmailVerificationHandler() {
               <p className="text-green-800 dark:text-green-200 text-sm">
                 Redirecting to pricing page in a moment...
               </p>
+            </div>
+          </>
+        )}
+
+        {status === 'user_not_found' && (
+          <>
+            <div className="w-20 h-20 bg-orange-100 dark:bg-orange-900 rounded-full flex items-center justify-center mx-auto mb-6">
+              <UserX className="h-12 w-12 text-orange-600 dark:text-orange-400" />
+            </div>
+            <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-3">
+              Account Not Found
+            </h2>
+            <p className="text-gray-600 dark:text-gray-300 mb-6 text-lg">
+              {message}
+            </p>
+            {userEmail && (
+              <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-4 mb-6">
+                <p className="text-orange-800 dark:text-orange-200 text-sm mb-2">
+                  <strong>Email:</strong> {userEmail}
+                </p>
+                <p className="text-orange-800 dark:text-orange-200 text-sm">
+                  Your account may have been removed from our system. Please sign up again to create a new account.
+                </p>
+              </div>
+            )}
+            <div className="space-y-3 mb-4">
+              <button
+                onClick={handleSignUpAgain}
+                className="w-full flex items-center justify-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                <Mail className="w-5 h-5 mr-2" />
+                Sign Up Again
+              </button>
+              <button
+                onClick={handleGoHome}
+                className="w-full px-6 py-3 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
+              >
+                Back to Home
+              </button>
             </div>
           </>
         )}
@@ -331,3 +407,4 @@ export function EmailVerificationHandler() {
     </div>
   );
 }
+
