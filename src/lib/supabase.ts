@@ -66,12 +66,12 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
 
   try {
     const { error: profileError, count: profileCount } = await supabase
-      .from(\'user_profiles\')
+      .from('user_profiles')
       .upsert({
         email: customerEmail,
-        payment_status: \'verified\',
+        payment_status: 'verified',
         payment_verified: true,
-        subscription_status: \'active\',
+        subscription_status: 'active',
         plan_type: planType,
         subscription_plan: planType,
         stripe_customer_id: stripeCustomerId,
@@ -81,7 +81,7 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
         current_period_end: currentPeriodEnd,
         temp_access_until: currentPeriodEnd,
         updated_at: new Date().toISOString()
-      }, { onConflict: \'email\', ignoreDuplicates: false });
+      }, { onConflict: 'email', ignoreDuplicates: false });
 
     // IMPROVED: Update user_access_status by email
     console.log('📝 Updating user_access_status table...');
@@ -334,3 +334,18 @@ export async function handler(event: any) {
     };
   }
 }
+
+
+export { supabase };
+
+
+
+export function isEmailVerified(user: any): boolean {
+  return user?.email_confirmed_at !== undefined && user?.email_confirmed_at !== null;
+}
+
+export function hasAnyAccess(userProfile: any): boolean {
+  return userProfile?.has_access === true || userProfile?.temp_access_until !== undefined;
+}
+
+
