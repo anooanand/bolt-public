@@ -2,7 +2,15 @@ import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
 
 // Initialize Supabase and Stripe clients
-const supabase = createClient(import.meta.env.VITE_SUPABASE_URL!, import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY!);
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+// Ensure that the environment variables are defined
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error('Supabase URL and Anon Key are required!');
+}
+
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 const stripe = new Stripe(import.meta.env.VITE_STRIPE_SECRET_KEY!, {
 });
 
@@ -114,7 +122,7 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
           event_type: 'checkout.session.completed',
           payment_status: 'completed',
           amount: session.amount_total || 0,
-          currency: session.currency || 'usd',
+          currency: session.currency || 'unknown',
           processed_at: new Date().toISOString(),
           webhook_verified: true,
           plan_type: planType,
@@ -264,7 +272,7 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
 
 // IMPROVED: Main handler with better error handling and logging
 export async function handler(event: any) {
-  if (event.httpMethod !== 'POST') {
+  if (event.httpMethod !== 'POST' ) {
     return { statusCode: 405, body: 'Method Not Allowed' };
   }
 
