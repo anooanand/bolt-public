@@ -58,13 +58,14 @@ function App() {
   const [showHelpCenter, setShowHelpCenter] = useState(false);
   const [showPlanningTool, setShowPlanningTool] = useState(false);
 
-  // ENHANCED: Global email verification token detection
+  // IMPROVED: Enhanced email verification token detection with better error handling
   useEffect(() => {
     const urlHash = window.location.hash;
     const urlSearch = window.location.search;
     
-    // Check for email verification tokens in URL
+    // Enhanced email verification token detection with better logging
     let hasVerificationTokens = false;
+    let tokenSource = '';
     
     if (urlHash) {
       const hashParams = new URLSearchParams(urlHash.substring(1));
@@ -74,7 +75,8 @@ function App() {
       
       if (accessToken && refreshToken && tokenType === 'bearer') {
         hasVerificationTokens = true;
-        console.log('🔑 Email verification tokens detected in hash');
+        tokenSource = 'hash';
+        console.log('🔑 Email verification tokens detected in URL hash');
       }
     }
     
@@ -85,17 +87,25 @@ function App() {
       
       if (accessToken && refreshToken) {
         hasVerificationTokens = true;
-        console.log('🔑 Email verification tokens detected in search');
+        tokenSource = 'search';
+        console.log('🔑 Email verification tokens detected in URL search');
       }
     }
     
     // Check for error parameters that indicate failed verification
     const errorCode = new URLSearchParams(urlSearch).get('error_code') || 
                      (urlHash ? new URLSearchParams(urlHash.substring(1)).get('error_code') : null);
+    const errorDescription = new URLSearchParams(urlSearch).get('error_description') || 
+                           (urlHash ? new URLSearchParams(urlHash.substring(1)).get('error_description') : null);
     
     if (hasVerificationTokens || errorCode) {
-      console.log('🚀 Redirecting to email verification handler');
-      window.location.href = '/auth/callback' + window.location.hash + window.location.search;
+      console.log(`🚀 Redirecting to email verification handler (source: ${tokenSource || 'error'})`);
+      
+      // Preserve all URL parameters and hash for the verification handler
+      const fullParams = window.location.hash + window.location.search;
+      
+      // Use replace to avoid back button issues
+      window.location.replace('/auth/callback' + fullParams);
       return;
     }
     
@@ -118,11 +128,11 @@ function App() {
       localStorage.setItem('payment_plan', planType);
       localStorage.setItem('payment_date', new Date().toISOString());
       
-      // ENHANCED: Clear URL parameters immediately to prevent reprocessing
+      // Clear URL parameters immediately to prevent reprocessing
       const newUrl = window.location.pathname;
       window.history.replaceState({}, document.title, newUrl);
       
-      // ENHANCED: Handle payment success based on user state
+      // Handle payment success based on user state
       if (user) {
         // User is logged in - force refresh verification and redirect to dashboard
         console.log('🔄 User logged in, refreshing verification...');
