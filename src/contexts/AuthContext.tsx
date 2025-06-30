@@ -30,7 +30,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(supabaseUser);
 
       if (supabaseUser) {
-        // Enhanced email verification check
+        // Enhanced email verification check with better error handling
         let isEmailVerified = false;
         
         // First check: Supabase auth email_confirmed_at
@@ -39,41 +39,81 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           console.log('✅ Email verified via auth.users');
         }
         
-        // Second check: user_access_status table
+        // Second check: user_access_status table (with fallback)
         if (!isEmailVerified) {
           try {
-            const { data: accessStatus } = await supabase
+            const { data: accessStatus, error: accessError } = await supabase
               .from('user_access_status')
               .select('email_verified')
               .eq('id', supabaseUser.id)
               .single();
             
-            if (accessStatus?.email_verified) {
+            if (accessError) {
+              console.warn('Could not check user_access_status:', accessError);
+            } else if (accessStatus?.email_verified) {
               isEmailVerified = true;
               console.log('✅ Email verified via user_access_status');
             }
           } catch (accessError) {
-            console.warn('Could not check user_access_status:', accessError);
+            console.warn('Error checking user_access_status:', accessError);
           }
         }
         
         setEmailVerified(isEmailVerified);
 
-        // Check payment status
+        // Check payment status with correct column names and better error handling
         try {
           const { data: profile, error } = await supabase
             .from('user_profiles')
-            .select('payment_completed, payment_verified, manual_override')
+            .select('payment_verified, payment_status, manual_override, subscription_status')
             .eq('user_id', supabaseUser.id)
             .single();
 
           if (error) {
-            console.warn('Error fetching user profile:', error);
-            setPaymentCompleted(false);
-          } else if (profile && (profile.payment_completed || profile.payment_verified || profile.manual_override)) {
+            // If error is "PGRST116" (no rows), try with 'id' field instead
+            if (error.code === 'PGRST116') {
+              console.log('🔄 No profile found with user_id, trying with id field...');
+              try {
+                const { data: profileById, error: errorById } = await supabase
+                  .from('user_profiles')
+                  .select('payment_verified, payment_status, manual_override, subscription_status')
+                  .eq('id', supabaseUser.id)
+                  .single();
+                
+                if (errorById) {
+                  console.warn('Error fetching user profile by id:', errorById);
+                  setPaymentCompleted(false);
+                } else if (profileById && (
+                  profileById.payment_verified === true || 
+                  profileById.payment_status === 'completed' ||
+                  profileById.subscription_status === 'active' ||
+                  profileById.manual_override === true
+                )) {
+                  setPaymentCompleted(true);
+                  console.log('✅ Payment completed via user_profiles (by id)');
+                } else {
+                  setPaymentCompleted(false);
+                  console.log('❌ Payment not completed (by id)');
+                }
+              } catch (profileByIdError) {
+                console.warn('Error checking payment status by id:', profileByIdError);
+                setPaymentCompleted(false);
+              }
+            } else {
+              console.warn('Error fetching user profile:', error);
+              setPaymentCompleted(false);
+            }
+          } else if (profile && (
+            profile.payment_verified === true || 
+            profile.payment_status === 'completed' ||
+            profile.subscription_status === 'active' ||
+            profile.manual_override === true
+          )) {
             setPaymentCompleted(true);
+            console.log('✅ Payment completed via user_profiles');
           } else {
             setPaymentCompleted(false);
+            console.log('❌ Payment not completed');
           }
         } catch (profileError) {
           console.warn('Error checking payment status:', profileError);
