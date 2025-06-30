@@ -20,14 +20,12 @@ export function EmailVerificationHandler() {
         setStatus('processing');
         setMessage('Processing verification...');
         
-        // Get URL parameters from both hash and search
         const urlHash = window.location.hash;
         const urlSearch = window.location.search;
         
         console.log('📍 URL Hash:', urlHash);
         console.log('📍 URL Search:', urlSearch);
         
-        // Parse tokens from hash (Supabase typically uses hash)
         let accessToken = null;
         let refreshToken = null;
         let tokenType = null;
@@ -39,7 +37,6 @@ export function EmailVerificationHandler() {
           tokenType = hashParams.get('token_type');
         }
         
-        // Also check search params as fallback
         if (!accessToken && urlSearch) {
           const searchParams = new URLSearchParams(urlSearch);
           accessToken = searchParams.get('access_token');
@@ -62,7 +59,7 @@ export function EmailVerificationHandler() {
           });
 
           if (sessionError) {
-            console.error('❌ Session error:', sessionError);
+            console.error('❌ Session error:', sessionError); // Changed to error
             if (isMounted) {
               setStatus('error');
               setMessage(`Session error: ${sessionError.message}`);
@@ -73,7 +70,8 @@ export function EmailVerificationHandler() {
           if (sessionData?.user) {
             console.log('✅ Session established for:', sessionData.user.email);
             
-            // Update database immediately
+            // Update database immediately to reflect email verification status
+            // Ensure 'id' is used consistently for user_access_status
             const { error: dbError } = await supabase
               .from('user_access_status')
               .upsert({
@@ -84,9 +82,9 @@ export function EmailVerificationHandler() {
               }, { onConflict: 'id' });
 
             if (dbError) {
-              console.warn('⚠️ Database update warning:', dbError);
+              console.error('⚠️ Database update error for user_access_status:', dbError); // Changed to error
             } else {
-              console.log('✅ Database updated successfully');
+              console.log('✅ Database updated successfully for user_access_status');
             }
 
             if (isMounted) {
@@ -114,7 +112,7 @@ export function EmailVerificationHandler() {
                                new URLSearchParams(urlHash.substring(1)).get('error_description');
         
         if (errorCode) {
-          console.log('❌ Error in URL:', errorCode, errorDescription);
+          console.error('❌ Error in URL parameters:', errorCode, errorDescription); // Changed to error
           if (isMounted) {
             setStatus('error');
             setMessage(`Verification failed: ${errorDescription || errorCode}`);
@@ -127,7 +125,7 @@ export function EmailVerificationHandler() {
         const { data: { user }, error: userError } = await supabase.auth.getUser();
         
         if (userError) {
-          console.error('❌ User check error:', userError);
+          console.error('❌ User check error:', userError); // Changed to error
           if (isMounted) {
             setStatus('error');
             setMessage('Unable to verify session. Please try signing in again.');
@@ -154,14 +152,14 @@ export function EmailVerificationHandler() {
         }
 
         // If we get here, verification failed
-        console.log('❌ No valid tokens or session found');
+        console.error('❌ No valid tokens or session found, or email not confirmed.'); // Changed to error
         if (isMounted) {
           setStatus('error');
-          setMessage('No verification tokens found. Please check your email and click the verification link again.');
+          setMessage('No verification tokens found or email not confirmed. Please check your email and click the verification link again.');
         }
         
       } catch (error: any) {
-        console.error('💥 Verification process error:', error);
+        console.error('💥 Verification process error:', error); // Changed to error
         if (isMounted) {
           setStatus('error');
           setMessage(`Verification failed: ${error.message || 'Unknown error'}`);
@@ -169,20 +167,18 @@ export function EmailVerificationHandler() {
       }
     };
 
-    // Start processing immediately
     processEmailVerification();
     
     return () => {
       isMounted = false;
     };
-  }, []); // Empty dependency array - run only once
+  }, []);
 
   const handleManualRetry = async () => {
     setIsProcessing(true);
     setStatus('loading');
     setMessage('Retrying verification...');
     
-    // Force reload the page to restart the process
     setTimeout(() => {
       window.location.reload();
     }, 500);
@@ -285,4 +281,5 @@ export function EmailVerificationHandler() {
     </div>
   );
 }
+
 

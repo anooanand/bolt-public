@@ -1,20 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowRight, Check, Star } from 'lucide-react';
-import { isEmailVerified, supabase } from '../lib/supabase';
+import { supabase } from '../lib/supabase'; // Removed isEmailVerified import
 import { createCheckoutSession } from '../lib/stripe';
 import { products } from '../stripe-config';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
 export function PricingPage() {
-  const { user } = useAuth();
+  const { user, emailVerified, paymentCompleted, forceRefreshVerification } = useAuth(); // Get emailVerified and paymentCompleted from AuthContext
   const navigate = useNavigate();
-  const [emailVerified, setEmailVerified] = useState(false);
-  const [paymentCompleted, setPaymentCompleted] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isCheckingVerification, setIsCheckingVerification] = useState(false);
 
-  // Local function to check payment status
+  // Local function to check payment status (can be removed if AuthContext handles all)
   const checkPaymentStatus = async (userId: string): Promise<boolean> => {
     try {
       // Check for temporary access first
@@ -33,7 +31,7 @@ export function PricingPage() {
       const { data } = await supabase
         .from('user_profiles')
         .select('payment_verified, subscription_status, manual_override')
-        .eq('user_id', userId)
+        .eq('id', userId) // Use 'id' consistently
         .single();
       
       return data?.payment_verified === true || 
@@ -45,38 +43,22 @@ export function PricingPage() {
     }
   };
 
-  const checkVerificationStatus = async () => {
+  useEffect(() => {
+    // No need to re-check email verification here, it's handled by AuthContext
+    // Just set loading state based on AuthContext's loading
     if (!user) {
       setIsLoading(false);
       return;
     }
 
-    setIsCheckingVerification(true);
-    
-    try {
-      console.log('🔍 Checking verification status for user:', user.email);
-      
-      // Check email verification
-      const emailVerificationResult = await isEmailVerified(user.id);
-      console.log('Email verification result:', emailVerificationResult);
-      setEmailVerified(emailVerificationResult);
-      
-      // Check payment completion
-      const paymentResult = await checkPaymentStatus(user.id);
-      console.log('Payment completion result:', paymentResult);
-      setPaymentCompleted(paymentResult);
-      
-    } catch (error) {
-      console.error('Error checking verification status:', error);
-    } finally {
+    // If AuthContext is still loading, keep PricingPage loading
+    if (typeof emailVerified === 'undefined' || typeof paymentCompleted === 'undefined') {
+      setIsLoading(true);
+    } else {
       setIsLoading(false);
-      setIsCheckingVerification(false);
     }
-  };
 
-  useEffect(() => {
-    checkVerificationStatus();
-  }, [user]);
+  }, [user, emailVerified, paymentCompleted]); // Depend on AuthContext states
 
   const handleSubscribe = async (priceId: string) => {
     if (!user) {
@@ -120,7 +102,7 @@ export function PricingPage() {
     
     if (paymentCompleted) {
       return { 
-        message: '✅ Email verified - Ready to subscribe!', 
+        message: '✅ Email verified and payment completed!', 
         color: 'text-green-600', 
         bgColor: 'bg-green-50' 
       };
@@ -173,7 +155,7 @@ export function PricingPage() {
               </p>
               {!emailVerified && (
                 <button
-                  onClick={checkVerificationStatus}
+                  onClick={forceRefreshVerification} // Use forceRefreshVerification from AuthContext
                   disabled={isCheckingVerification}
                   className="mt-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 text-sm"
                 >
@@ -276,4 +258,5 @@ export function PricingPage() {
 
 // Also export as PricingPageWithFixedVerification for backward compatibility
 export const PricingPageWithFixedVerification = PricingPage;
+
 

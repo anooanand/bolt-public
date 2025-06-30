@@ -12,52 +12,6 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-// NEW: Handle email verification callback
-export const handleEmailVerificationCallback = async () => {
-  try {
-    console.log('🔄 Processing email verification callback...');
-    
-    // Get the current session after verification
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    
-    if (sessionError) {
-      console.error('❌ Session error:', sessionError);
-      return { success: false, error: sessionError };
-    }
-    
-    if (!session || !session.user) {
-      console.log('❌ No session or user found after verification');
-      return { success: false, error: { message: 'No session found after verification' } };
-    }
-    
-    const user = session.user;
-    console.log('✅ User session found:', user.email);
-    
-    // Update user_access_status to mark email as verified
-    const { error: updateError } = await supabase
-      .from('user_access_status')
-      .upsert({
-        id: user.id,
-        email: user.email,
-        email_verified: true,
-        updated_at: new Date().toISOString()
-      }, { onConflict: 'id' });
-    
-    if (updateError) {
-      console.error('❌ Error updating user access status:', updateError);
-      // Don't fail the verification for this
-    } else {
-      console.log('✅ User access status updated');
-    }
-    
-    return { success: true, user: user };
-    
-  } catch (error) {
-    console.error('❌ Error in email verification callback:', error);
-    return { success: false, error };
-  }
-};
-
 // ENHANCED: Temporary access functions
 export const grantTemporaryAccess = async (userId: string, planType: string = 'base_plan') => {
   try {
@@ -71,7 +25,7 @@ export const grantTemporaryAccess = async (userId: string, planType: string = 'b
     const { error: profileError } = await supabase
       .from('user_profiles')
       .upsert({
-        user_id: userId,
+        id: userId, // Standardize to 'id' matching auth.users.id
         payment_status: 'processing',
         payment_verified: false,
         temporary_access_granted: true,
@@ -79,7 +33,7 @@ export const grantTemporaryAccess = async (userId: string, planType: string = 'b
         subscription_status: 'temp_active',
         subscription_plan: planType,
         updated_at: new Date().toISOString()
-      }, { onConflict: 'user_id' });
+      }, { onConflict: 'id' }); // Conflict on 'id'
 
     if (profileError) throw profileError;
 
@@ -98,333 +52,143 @@ export const grantTemporaryAccess = async (userId: string, planType: string = 'b
 
     if (accessError) throw accessError;
 
-    // Store in localStorage for immediate UI update
-    localStorage.setItem('temp_access_granted', 'true');
-    localStorage.setItem('temp_access_until', tempAccessUntil.toISOString());
-    localStorage.setItem('temp_access_plan', planType);
-    
-    console.log('✅ 24-hour temporary access granted until:', tempAccessUntil);
-    return { success: true, tempAccessUntil };
-    
+    console.log('✅ Temporary access granted successfully.');
+    return { success: true };
   } catch (error) {
     console.error('❌ Error granting temporary access:', error);
     return { success: false, error };
   }
 };
 
-// ENHANCED: Check if user has any access (temporary or permanent)
-export const hasAnyAccess = async (userId: string): Promise<boolean> => {
+// Email verification function
+export const isEmailVerified = async (userId: string): Promise<boolean> => {
   try {
-    // Check localStorage first for immediate response
-    const tempAccess = localStorage.getItem('temp_access_granted');
-    const tempUntil = localStorage.getItem('temp_access_until');
+    console.log('🔍 Checking email verification for user:', userId);
     
-    if (tempAccess === 'true' && tempUntil) {
-      const tempDate = new Date(tempUntil);
-      if (tempDate > new Date()) {
-        console.log('✅ Temporary access valid until:', tempDate);
-        return true;
-      } else {
-        // Temporary access expired, clean up
-        localStorage.removeItem('temp_access_granted');
-        localStorage.removeItem('temp_access_until');
-        localStorage.removeItem('temp_access_plan');
-      }
-    }
+    // Check if user exists in auth.users and email is confirmed
+    const { data: authUser, error: authError } = await supabase.auth.getUser();
     
-    // Check database for permanent access
-    const { data: accessData } = await supabase
-      .from('user_access_status')
-      .select('has_access, payment_verified, temp_access_until')
-      .eq('id', userId)
-      .single();
-    
-    if (accessData?.has_access) {
-      console.log('✅ Database access confirmed');
-      return true;
-    }
-    
-    // Check if temporary access is still valid in database
-    if (accessData?.temp_access_until) {
-      const tempDate = new Date(accessData.temp_access_until);
-      if (tempDate > new Date()) {
-        console.log('✅ Database temporary access valid');
-        return true;
-      }
-    }
-    
-    console.log('❌ No valid access found');
-    return false;
-    
-  } catch (error) {
-    console.error('❌ Error checking access:', error);
-    return false;
-  }
-};
-
-// NEW: Check if user has temporary access specifically
-export const hasTemporaryAccess = async (): Promise<boolean> => {
-  try {
-    // Check localStorage first for immediate response
-    const tempAccess = localStorage.getItem('temp_access_granted');
-    const tempUntil = localStorage.getItem('temp_access_until');
-    
-    if (tempAccess === 'true' && tempUntil) {
-      const tempDate = new Date(tempUntil);
-      if (tempDate > new Date()) {
-        console.log('✅ 24-hour temporary access valid until:', tempDate);
-        return true;
-      } else {
-        // Temporary access expired, clean up
-        localStorage.removeItem('temp_access_granted');
-        localStorage.removeItem('temp_access_until');
-        localStorage.removeItem('temp_access_plan');
-        console.log('⏰ Temporary access expired');
-      }
-    }
-    
-    // Check database for temporary access
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return false;
-    
-    const { data: accessData } = await supabase
-      .from('user_access_status')
-      .select('temp_access_until')
-      .eq('id', user.id)
-      .single();
-    
-    if (accessData?.temp_access_until) {
-      const tempDate = new Date(accessData.temp_access_until);
-      if (tempDate > new Date()) {
-        console.log('✅ Database temporary access valid until:', tempDate);
-        return true;
-      }
-    }
-    
-    return false;
-  } catch (error) {
-    console.error('❌ Error checking temporary access:', error);
-    return false;
-  }
-};
-
-// NEW: Check if user has completed payment (permanent or temporary)
-export const hasCompletedPayment = async (): Promise<boolean> => {
-  try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return false;
-    
-    // Check for temporary access first (immediate after payment)
-    const tempAccess = await hasTemporaryAccess();
-    if (tempAccess) {
-      console.log('✅ User has 24-hour temporary access (payment completed)');
-      return true;
-    }
-    
-    // Check user_profiles for payment verification
-    const { data: profile } = await supabase
-      .from('user_profiles')
-      .select('payment_verified, subscription_status, manual_override')
-      .eq('user_id', user.id)
-      .single();
-    
-    if (profile?.payment_verified === true || 
-        profile?.subscription_status === 'active' ||
-        profile?.manual_override === true) {
-      console.log('✅ Payment verified or manual override');
-      return true;
-    }
-    
-    // Check user_access_status for access
-    const { data: accessData } = await supabase
-      .from('user_access_status')
-      .select('has_access, payment_verified')
-      .eq('id', user.id)
-      .single();
-    
-    if (accessData?.has_access === true || accessData?.payment_verified === true) {
-      console.log('✅ Access confirmed via user_access_status');
-      return true;
-    }
-    
-    return false;
-  } catch (error) {
-    console.error('❌ Error checking payment completion:', error);
-    return false;
-  }
-};
-
-// ENHANCED: Email verification with temporary access support
-export const isEmailVerified = async (userId?: string): Promise<boolean> => {
-  try {
-    if (!userId) {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return false;
-      userId = user.id;
+    if (authError || !authUser.user) {
+      console.log('❌ No authenticated user found');
+      return false;
     }
 
-    // Check if user has any access (temporary or permanent)
-    const hasAccess = await hasAnyAccess(userId);
-    if (hasAccess) {
-      console.log('✅ User has access (temporary or permanent)');
-      return true;
-    }
-
-    // Original email verification logic as fallback
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user?.email_confirmed_at) {
-      console.log('✅ Email verified via auth.users');
-      return true;
-    }
-
-    // Fallback: Check user_access_status table
-    const { data: accessStatus } = await supabase
-      .from('user_access_status')
-      .select('email_verified')
-      .eq('id', userId)
-      .single();
-
-    if (accessStatus?.email_verified) {
-      console.log('✅ Email verified via user_access_status');
-      return true;
-    }
-
-    // Final fallback: Check user_profiles manual override
-    const { data: profile } = await supabase
-      .from('user_profiles')
-      .select('manual_override')
-      .eq('user_id', userId)
-      .single();
-
-    if (profile?.manual_override) {
-      console.log('✅ Email verified via manual override');
-      return true;
-    }
-
-    console.log('❌ Email not verified');
-    return false;
+    // Check if email is confirmed in auth.users
+    const isEmailConfirmed = authUser.user.email_confirmed_at !== null;
+    console.log('📧 Email confirmation status:', isEmailConfirmed);
     
+    return isEmailConfirmed;
   } catch (error) {
     console.error('❌ Error checking email verification:', error);
     return false;
   }
 };
 
-// Enhanced signup function
-export const signUp = async (email: string, password: string) => {
+// Check if user has any access (temporary or permanent)
+export const hasAnyAccess = async (userId: string): Promise<boolean> => {
   try {
-    console.log('🔐 Starting signup process for:', email);
+    console.log('🔍 Checking access status for user:', userId);
     
-    // Create auth user first
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email,
-      password,
-    });
-
-    if (authError) {
-      console.error('❌ Auth signup error:', authError);
-      throw authError;
-    }
-
-    if (!authData.user) {
-      throw new Error('No user returned from signup');
-    }
-
-    console.log('✅ Auth user created:', authData.user.id);
-
-    // Create user profile
-    const { error: profileError } = await supabase
+    // First check user_profiles table
+    const { data: profile, error: profileError } = await supabase
       .from('user_profiles')
-      .insert({
-        user_id: authData.user.id,
-        email: email,
-        payment_status: 'pending',
-        payment_verified: false,
-        subscription_status: 'free',
-        role: 'user',
-        temporary_access_granted: false,
-        manual_override: false,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      });
+      .select('*')
+      .eq('id', userId)
+      .single();
 
-    if (profileError) {
-      console.error('❌ Profile creation error:', profileError);
-      // Don't throw here, auth user is already created
-    } else {
-      console.log('✅ User profile created');
+    if (profileError && profileError.code !== 'PGRST116') {
+      console.error('❌ Error fetching user profile:', profileError);
+      return false;
     }
 
-    // Create user access status
-    const { error: accessError } = await supabase
+    if (profile) {
+      // Check for temporary access
+      if (profile.temporary_access_granted && profile.temp_access_until) {
+        const tempAccessUntil = new Date(profile.temp_access_until);
+        const now = new Date();
+        
+        if (tempAccessUntil > now) {
+          console.log('✅ User has valid temporary access until:', tempAccessUntil);
+          return true;
+        } else {
+          console.log('⏰ Temporary access expired at:', tempAccessUntil);
+        }
+      }
+
+      // Check for permanent access
+      if (profile.payment_verified && 
+          (profile.subscription_status === 'active' || 
+           profile.subscription_status === 'temp_active')) {
+        console.log('✅ User has permanent access');
+        return true;
+      }
+
+      // Check manual override
+      if (profile.manual_override) {
+        console.log('✅ User has manual override access');
+        return true;
+      }
+    }
+
+    // Also check user_access_status table if it exists
+    const { data: accessStatus, error: accessError } = await supabase
       .from('user_access_status')
-      .insert({
-        id: authData.user.id,
-        email: email,
-        email_verified: false,
-        payment_verified: false,
-        subscription_status: 'free',
-        has_access: false,
-        access_type: 'Free trial',
-        created_at: new Date().toISOString()
-      });
+      .select('*')
+      .eq('id', userId)
+      .single();
 
-    if (accessError) {
-      console.error('❌ Access status creation error:', accessError);
-      // Don't throw here, auth user is already created
-    } else {
-      console.log('✅ User access status created');
+    if (!accessError && accessStatus) {
+      if (accessStatus.has_access) {
+        // Check if temporary access is still valid
+        if (accessStatus.temp_access_until) {
+          const tempAccessUntil = new Date(accessStatus.temp_access_until);
+          const now = new Date();
+          
+          if (tempAccessUntil > now) {
+            console.log('✅ User has valid access via access_status table');
+            return true;
+          }
+        } else if (accessStatus.payment_verified) {
+          console.log('✅ User has permanent access via access_status table');
+          return true;
+        }
+      }
     }
 
-    return { data: authData, error: null };
-    
+    console.log('❌ User does not have access');
+    return false;
   } catch (error) {
-    console.error('❌ Signup process error:', error);
-    return { data: null, error };
+    console.error('❌ Error checking access status:', error);
+    return false;
   }
 };
 
-// Enhanced signin function
-export const signIn = async (email: string, password: string) => {
+// Check user payment status
+export const checkPaymentStatus = async (userId: string) => {
   try {
-    console.log('🔐 Starting signin process for:', email);
+    console.log('💳 Checking payment status for user:', userId);
     
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    const { data: profile, error } = await supabase
+      .from('user_profiles')
+      .select('*')
+      .eq('id', userId)
+      .single();
 
     if (error) {
-      console.error('❌ Signin error:', error);
-      throw error;
+      console.error('❌ Error fetching payment status:', error);
+      return { verified: false, status: 'error' };
     }
 
-    console.log('✅ User signed in successfully');
-    return { data, error: null };
-    
+    return {
+      verified: profile?.payment_verified || false,
+      status: profile?.payment_status || 'pending',
+      subscriptionStatus: profile?.subscription_status || 'free',
+      hasTemporaryAccess: profile?.temporary_access_granted || false,
+      tempAccessUntil: profile?.temp_access_until
+    };
   } catch (error) {
-    console.error('❌ Signin process error:', error);
-    return { data: null, error };
-  }
-};
-
-// Sign out function
-export const signOut = async () => {
-  try {
-    // Clear temporary access from localStorage
-    localStorage.removeItem('temp_access_granted');
-    localStorage.removeItem('temp_access_until');
-    localStorage.removeItem('temp_access_plan');
-    
-    const { error } = await supabase.auth.signOut();
-    if (error) throw error;
-    
-    console.log('✅ User signed out successfully');
-    return { error: null };
-    
-  } catch (error) {
-    console.error('❌ Signout error:', error);
-    return { error };
+    console.error('❌ Error checking payment status:', error);
+    return { verified: false, status: 'error' };
   }
 };
 

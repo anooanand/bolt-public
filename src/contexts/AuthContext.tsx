@@ -23,6 +23,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [emailVerified, setEmailVerified] = useState(false);
   const [paymentCompleted, setPaymentCompleted] = useState(false);
 
+  // Helper function to determine payment completion status
+  const isPaymentCompleted = (profile: any) => {
+    return (
+      profile.payment_verified === true ||
+      profile.payment_status === 'completed' ||
+      profile.subscription_status === 'active' ||
+      profile.manual_override === true
+    );
+  };
+
   const checkUserAndStatus = useCallback(async () => {
     try {
       setLoading(true);
@@ -30,16 +40,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(supabaseUser);
 
       if (supabaseUser) {
-        // Enhanced email verification check with better error handling
         let isEmailVerified = false;
         
-        // First check: Supabase auth email_confirmed_at
+        // Primary check: Supabase auth email_confirmed_at
         if (supabaseUser.email_confirmed_at) {
           isEmailVerified = true;
           console.log('✅ Email verified via auth.users');
         }
         
-        // Second check: user_access_status table (with fallback)
+        // Secondary check: user_access_status table (with fallback)
         if (!isEmailVerified) {
           try {
             const { data: accessStatus, error: accessError } = await supabase
@@ -55,68 +64,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               console.log('✅ Email verified via user_access_status');
             }
           } catch (accessError) {
-            console.warn('Error checking user_access_status:', accessError);
+            console.error('Error checking user_access_status:', accessError); // Changed to error
           }
         }
         
         setEmailVerified(isEmailVerified);
 
-        // Check payment status with correct column names and better error handling
+        // Check payment status from user_profiles, always using 'id'
         try {
           const { data: profile, error } = await supabase
             .from('user_profiles')
             .select('payment_verified, payment_status, manual_override, subscription_status')
-            .eq('user_id', supabaseUser.id)
+            .eq('id', supabaseUser.id) // Standardize to 'id'
             .single();
 
           if (error) {
-            // If error is "PGRST116" (no rows), try with 'id' field instead
-            if (error.code === 'PGRST116') {
-              console.log('🔄 No profile found with user_id, trying with id field...');
-              try {
-                const { data: profileById, error: errorById } = await supabase
-                  .from('user_profiles')
-                  .select('payment_verified, payment_status, manual_override, subscription_status')
-                  .eq('id', supabaseUser.id)
-                  .single();
-                
-                if (errorById) {
-                  console.warn('Error fetching user profile by id:', errorById);
-                  setPaymentCompleted(false);
-                } else if (profileById && (
-                  profileById.payment_verified === true || 
-                  profileById.payment_status === 'completed' ||
-                  profileById.subscription_status === 'active' ||
-                  profileById.manual_override === true
-                )) {
-                  setPaymentCompleted(true);
-                  console.log('✅ Payment completed via user_profiles (by id)');
-                } else {
-                  setPaymentCompleted(false);
-                  console.log('❌ Payment not completed (by id)');
-                }
-              } catch (profileByIdError) {
-                console.warn('Error checking payment status by id:', profileByIdError);
-                setPaymentCompleted(false);
-              }
-            } else {
-              console.warn('Error fetching user profile:', error);
-              setPaymentCompleted(false);
-            }
-          } else if (profile && (
-            profile.payment_verified === true || 
-            profile.payment_status === 'completed' ||
-            profile.subscription_status === 'active' ||
-            profile.manual_override === true
-          )) {
-            setPaymentCompleted(true);
-            console.log('✅ Payment completed via user_profiles');
+            console.warn('Error fetching user profile:', error); // Changed to warn
+            setPaymentCompleted(false);
+          } else if (profile) {
+            setPaymentCompleted(isPaymentCompleted(profile));
+            console.log(`Payment status: ${isPaymentCompleted(profile) ? '✅ Completed' : '❌ Not completed'}`);
           } else {
             setPaymentCompleted(false);
-            console.log('❌ Payment not completed');
+            console.log('❌ User profile not found.');
           }
         } catch (profileError) {
-          console.warn('Error checking payment status:', profileError);
+          console.error('Error checking payment status:', profileError); // Changed to error
           setPaymentCompleted(false);
         }
       } else {
@@ -124,7 +97,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setPaymentCompleted(false);
       }
     } catch (error) {
-      console.error('Error in checkUserAndStatus:', error);
+      console.error('Error in checkUserAndStatus:', error); // Changed to error
       setUser(null);
       setEmailVerified(false);
       setPaymentCompleted(false);
@@ -138,7 +111,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
       console.log('Auth state change:', _event);
-      // Re-check user and status on auth state changes
       checkUserAndStatus();
     });
 
@@ -165,6 +137,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       return { data, error: null };
     } catch (error) {
+      console.error('Sign in error:', error); // Added error logging
       return { data: null, error };
     }
   };
@@ -182,6 +155,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       return { data, error: null };
     } catch (error) {
+      console.error('Sign up error:', error); // Added error logging
       return { data: null, error };
     }
   };
@@ -222,4 +196,5 @@ export const useAuth = () => {
   }
   return context;
 };
+
 
