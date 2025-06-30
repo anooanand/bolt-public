@@ -1,35 +1,44 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { CheckCircle, XCircle, Loader, RefreshCw } from 'lucide-react';
+import { CheckCircle, XCircle, Loader, RefreshCw, AlertCircle } from 'lucide-react';
 
 export function EmailVerificationHandler() {
   const [status, setStatus] = useState<'loading' | 'success' | 'error' | 'processing'>('loading');
   const [message, setMessage] = useState('Verifying your email...');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [debugInfo, setDebugInfo] = useState<string[]>([]);
   const navigate = useNavigate();
+
+  // Add debug logging function
+  const addDebugInfo = (info: string) => {
+    console.log(info);
+    setDebugInfo(prev => [...prev, `${new Date().toLocaleTimeString()}: ${info}`]);
+  };
 
   useEffect(() => {
     let isMounted = true;
+    let timeoutId: NodeJS.Timeout;
     
     const processEmailVerification = async () => {
       if (!isMounted) return;
       
       try {
-        console.log('🔥 EMAIL VERIFICATION HANDLER STARTED');
+        addDebugInfo('🔥 EMAIL VERIFICATION HANDLER STARTED');
         setStatus('processing');
         setMessage('Processing verification...');
         
         const urlHash = window.location.hash;
         const urlSearch = window.location.search;
         
-        console.log('📍 URL Hash:', urlHash);
-        console.log('📍 URL Search:', urlSearch);
+        addDebugInfo(`📍 URL Hash: ${urlHash}`);
+        addDebugInfo(`📍 URL Search: ${urlSearch}`);
         
         let accessToken = null;
         let refreshToken = null;
         let tokenType = null;
         
+        // Parse tokens from URL hash first
         if (urlHash) {
           const hashParams = new URLSearchParams(urlHash.substring(1));
           accessToken = hashParams.get('access_token');
@@ -37,6 +46,7 @@ export function EmailVerificationHandler() {
           tokenType = hashParams.get('token_type');
         }
         
+        // Fallback to URL search params
         if (!accessToken && urlSearch) {
           const searchParams = new URLSearchParams(urlSearch);
           accessToken = searchParams.get('access_token');
@@ -44,14 +54,11 @@ export function EmailVerificationHandler() {
           tokenType = searchParams.get('token_type');
         }
         
-        console.log('🔑 Tokens found:', { 
-          access: accessToken ? 'YES' : 'NO', 
-          refresh: refreshToken ? 'YES' : 'NO',
-          type: tokenType
-        });
+        addDebugInfo(`🔑 Tokens found: access=${accessToken ? 'YES' : 'NO'}, refresh=${refreshToken ? 'YES' : 'NO'}, type=${tokenType}`);
         
         if (accessToken && refreshToken) {
-          console.log('🚀 Setting session with tokens...');
+          addDebugInfo('🚀 Setting session with tokens...');
+          setMessage('Establishing secure session...');
           
           const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
             access_token: accessToken,
@@ -59,7 +66,7 @@ export function EmailVerificationHandler() {
           });
 
           if (sessionError) {
-            console.error('❌ Session error:', sessionError); // Changed to error
+            addDebugInfo(`❌ Session error: ${sessionError.message}`);
             if (isMounted) {
               setStatus('error');
               setMessage(`Session error: ${sessionError.message}`);
@@ -68,23 +75,27 @@ export function EmailVerificationHandler() {
           }
 
           if (sessionData?.user) {
-            console.log('✅ Session established for:', sessionData.user.email);
+            addDebugInfo(`✅ Session established for: ${sessionData.user.email}`);
+            setMessage('Updating verification status...');
             
             // Update database immediately to reflect email verification status
-            // Ensure 'id' is used consistently for user_access_status
-            const { error: dbError } = await supabase
-              .from('user_access_status')
-              .upsert({
-                id: sessionData.user.id,
-                email: sessionData.user.email,
-                email_verified: true,
-                updated_at: new Date().toISOString()
-              }, { onConflict: 'id' });
+            try {
+              const { error: dbError } = await supabase
+                .from('user_access_status')
+                .upsert({
+                  id: sessionData.user.id,
+                  email: sessionData.user.email,
+                  email_verified: true,
+                  updated_at: new Date().toISOString()
+                }, { onConflict: 'id' });
 
-            if (dbError) {
-              console.error('⚠️ Database update error for user_access_status:', dbError); // Changed to error
-            } else {
-              console.log('✅ Database updated successfully for user_access_status');
+              if (dbError) {
+                addDebugInfo(`⚠️ Database update error for user_access_status: ${dbError.message}`);
+              } else {
+                addDebugInfo('✅ Database updated successfully for user_access_status');
+              }
+            } catch (dbError: any) {
+              addDebugInfo(`⚠️ Database update exception: ${dbError.message}`);
             }
 
             if (isMounted) {
@@ -94,8 +105,57 @@ export function EmailVerificationHandler() {
               // Clean the URL immediately
               window.history.replaceState({}, document.title, '/auth/callback');
               
-              // Redirect to pricing after success
-              setTimeout(() => {
+              // Set a timeout for redirect with longer delay for better UX
+              timeoutId = setTimeout(() => {
+                if (isMounted) {
+                  addDebugInfo('🔄 Redirecting to pricing page...');
+                  navigate('/pricing', { replace: true });
+                }
+              }, 2000); // Increased from 1500ms to 2000ms
+            }
+            return;
+          }
+        }
+
+        // Check for error parameters
+        const errorCode = new URLSearchParams(urlSearch).get('error_code') || 
+                         (urlHash ? new URLSearchParams(urlHash.substring(1)).get('error_code') : null);
+        const errorDescription = new URLSearchParams(urlSearch).get('error_description') || 
+                               (urlHash ? new URLSearchParams(urlHash.substring(1)).get('error_description') : null);
+        
+        if (errorCode) {
+          addDebugInfo(`❌ Error in URL parameters: ${errorCode} - ${errorDescription}`);
+          if (isMounted) {
+            setStatus('error');
+            setMessage(`Verification failed: ${errorDescription || errorCode}`);
+          }
+          return;
+        }
+
+        // Alternative: Check if user is already authenticated
+        addDebugInfo('🔍 Checking existing session...');
+        setMessage('Checking authentication status...');
+        
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        
+        if (userError) {
+          addDebugInfo(`❌ User check error: ${userError.message}`);
+          if (isMounted) {
+            setStatus('error');
+            setMessage('Unable to verify session. Please try signing in again.');
+          }
+          return;
+        }
+
+        if (user) {
+          addDebugInfo(`👤 Found existing user: ${user.email}`);
+          
+          if (user.email_confirmed_at) {
+            addDebugInfo('✅ User already verified');
+            if (isMounted) {
+              setStatus('success');
+              setMessage('Email already verified! Redirecting...');
+              timeoutId = setTimeout(() => {
                 if (isMounted) {
                   navigate('/pricing', { replace: true });
                 }
@@ -105,61 +165,15 @@ export function EmailVerificationHandler() {
           }
         }
 
-        // Check for error parameters
-        const errorCode = new URLSearchParams(urlSearch).get('error_code') || 
-                         new URLSearchParams(urlHash.substring(1)).get('error_code');
-        const errorDescription = new URLSearchParams(urlSearch).get('error_description') || 
-                               new URLSearchParams(urlHash.substring(1)).get('error_description');
-        
-        if (errorCode) {
-          console.error('❌ Error in URL parameters:', errorCode, errorDescription); // Changed to error
-          if (isMounted) {
-            setStatus('error');
-            setMessage(`Verification failed: ${errorDescription || errorCode}`);
-          }
-          return;
-        }
-
-        // Alternative: Check if user is already authenticated
-        console.log('🔍 Checking existing session...');
-        const { data: { user }, error: userError } = await supabase.auth.getUser();
-        
-        if (userError) {
-          console.error('❌ User check error:', userError); // Changed to error
-          if (isMounted) {
-            setStatus('error');
-            setMessage('Unable to verify session. Please try signing in again.');
-          }
-          return;
-        }
-
-        if (user) {
-          console.log('👤 Found existing user:', user.email);
-          
-          if (user.email_confirmed_at) {
-            console.log('✅ User already verified');
-            if (isMounted) {
-              setStatus('success');
-              setMessage('Email already verified! Redirecting...');
-              setTimeout(() => {
-                if (isMounted) {
-                  navigate('/pricing', { replace: true });
-                }
-              }, 1000);
-            }
-            return;
-          }
-        }
-
         // If we get here, verification failed
-        console.error('❌ No valid tokens or session found, or email not confirmed.'); // Changed to error
+        addDebugInfo('❌ No valid tokens or session found, or email not confirmed.');
         if (isMounted) {
           setStatus('error');
           setMessage('No verification tokens found or email not confirmed. Please check your email and click the verification link again.');
         }
         
       } catch (error: any) {
-        console.error('💥 Verification process error:', error); // Changed to error
+        addDebugInfo(`💥 Verification process error: ${error.message}`);
         if (isMounted) {
           setStatus('error');
           setMessage(`Verification failed: ${error.message || 'Unknown error'}`);
@@ -167,17 +181,22 @@ export function EmailVerificationHandler() {
       }
     };
 
+    // Start verification process
     processEmailVerification();
     
     return () => {
       isMounted = false;
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
     };
-  }, []);
+  }, [navigate]);
 
   const handleManualRetry = async () => {
     setIsProcessing(true);
     setStatus('loading');
     setMessage('Retrying verification...');
+    setDebugInfo([]);
     
     setTimeout(() => {
       window.location.reload();
@@ -185,21 +204,30 @@ export function EmailVerificationHandler() {
   };
 
   const handleSkipVerification = () => {
+    addDebugInfo('🔄 User chose to skip verification');
     navigate('/pricing', { replace: true });
   };
 
   const handleGoHome = () => {
+    addDebugInfo('🏠 User chose to go home');
     navigate('/', { replace: true });
   };
 
+  const toggleDebugInfo = () => {
+    const debugElement = document.getElementById('debug-info');
+    if (debugElement) {
+      debugElement.style.display = debugElement.style.display === 'none' ? 'block' : 'none';
+    }
+  };
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 p-4">
       <div className="max-w-lg w-full bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-8 text-center border border-gray-200 dark:border-gray-700">
         
         {(status === 'loading' || status === 'processing') && (
           <>
-            <div className="relative">
-              <Loader className="h-16 w-16 text-blue-600 animate-spin mx-auto mb-6" />
+            <div className="relative mb-6">
+              <Loader className="h-16 w-16 text-blue-600 animate-spin mx-auto" />
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="w-8 h-8 bg-blue-600 rounded-full animate-pulse"></div>
               </div>
@@ -210,11 +238,12 @@ export function EmailVerificationHandler() {
             <p className="text-gray-600 dark:text-gray-300 mb-6 text-lg">
               {message}
             </p>
-            <div className="flex items-center justify-center space-x-2 text-sm text-gray-500">
+            <div className="flex items-center justify-center space-x-2 text-sm text-gray-500 mb-4">
               <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce"></div>
               <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
               <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
             </div>
+            <p className="text-xs text-gray-400">This usually takes just a few seconds...</p>
           </>
         )}
 
@@ -231,7 +260,7 @@ export function EmailVerificationHandler() {
             </p>
             <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 mb-6">
               <p className="text-green-800 dark:text-green-200 text-sm">
-                Redirecting to pricing page...
+                Redirecting to pricing page in a moment...
               </p>
             </div>
           </>
@@ -253,7 +282,7 @@ export function EmailVerificationHandler() {
                 Don't worry! You can try again or continue anyway.
               </p>
             </div>
-            <div className="space-y-3">
+            <div className="space-y-3 mb-4">
               <button
                 onClick={handleManualRetry}
                 disabled={isProcessing}
@@ -275,11 +304,31 @@ export function EmailVerificationHandler() {
                 Back to Home
               </button>
             </div>
+            
+            {/* Debug Information Toggle */}
+            <button
+              onClick={toggleDebugInfo}
+              className="text-xs text-gray-400 hover:text-gray-600 flex items-center justify-center mx-auto"
+            >
+              <AlertCircle className="w-3 h-3 mr-1" />
+              Show Debug Info
+            </button>
           </>
         )}
+        
+        {/* Debug Information Panel */}
+        <div id="debug-info" style={{ display: 'none' }} className="mt-4 p-3 bg-gray-100 dark:bg-gray-700 rounded-lg text-left text-xs">
+          <h4 className="font-semibold mb-2">Debug Information:</h4>
+          <div className="max-h-40 overflow-y-auto space-y-1">
+            {debugInfo.map((info, index) => (
+              <div key={index} className="text-gray-600 dark:text-gray-300 font-mono">
+                {info}
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );
 }
-
 
