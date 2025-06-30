@@ -2,9 +2,8 @@ import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
 
 // Initialize Supabase and Stripe clients
-const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2024-06-20',
+const supabase = createClient(import.meta.env.VITE_SUPABASE_URL!, import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY!);
+const stripe = new Stripe(import.meta.env.VITE_STRIPE_SECRET_KEY!, {
 });
 
 // Helper function to get plan type
@@ -276,7 +275,7 @@ export async function handler(event: any) {
     stripeEvent = stripe.webhooks.constructEvent(
       event.body,
       sig,
-      process.env.STRIPE_WEBHOOK_SECRET!
+      import.meta.env.VITE_STRIPE_WEBHOOK_SECRET!
     );
   } catch (err: any) {
     console.error(`❌ Webhook signature verification failed: ${err.message}`);
