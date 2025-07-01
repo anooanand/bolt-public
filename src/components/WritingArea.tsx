@@ -219,7 +219,7 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
   }, [content, textType, state.user, addWriting]);
 
   useEffect(() => {
-    if (content.trim()) {
+    if (content && content.trim()) {
       analyzeText(content);
     }
   }, [content, analyzeText]);
