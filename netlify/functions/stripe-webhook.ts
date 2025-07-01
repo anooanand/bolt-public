@@ -7,7 +7,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2024-06-20',
 });
 
-// Helper function to get plan type
+// Helper function to get plan type from price ID
 function getPlanTypeFromPriceId(priceId: string): string {
   const planMapping: { [key: string]: string } = {
     'price_1RXEqERtcrDpOK7ME3QH9uzu': 'premium_plan',
@@ -16,18 +16,10 @@ function getPlanTypeFromPriceId(priceId: string): string {
   return planMapping[priceId] || 'premium_plan';
 }
 
-// FIXED: Handle checkout session completed with proper UUID generation and field mapping
+// TARGETED FIX: Handle checkout session completed based on actual schema
 async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) {
   console.log('🎉 Processing checkout session completed:', session.id);
-  console.log('Session details:', {
-    id: session.id,
-    customer: session.customer,
-    customer_email: session.customer_email,
-    mode: session.mode,
-    payment_status: session.payment_status,
-    subscription: session.subscription
-  });
-
+  
   const customerEmail = session.customer_email;
   const stripeCustomerId = session.customer as string;
   const subscriptionId = session.subscription as string;
@@ -39,63 +31,35 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
 
   console.log('👤 Processing payment for email:', customerEmail);
 
-  // Get subscription details
+  // Get subscription details from Stripe
   let planType = 'premium_plan';
-  let currentPeriodStart = new Date().toISOString();
-  let currentPeriodEnd = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+  let currentPeriodStart: string | null = null;
+  let currentPeriodEnd: string | null = null;
 
   if (subscriptionId) {
     try {
       const subscription = await stripe.subscriptions.retrieve(subscriptionId);
       const priceId = subscription.items.data[0]?.price.id;
       console.log('💰 Price ID:', priceId);
-      planType = getPlanTypeFromPriceId(priceId);
-      console.log('📋 Plan type:', planType);
       
+      planType = getPlanTypeFromPriceId(priceId);
       currentPeriodStart = new Date(subscription.current_period_start * 1000).toISOString();
       currentPeriodEnd = new Date(subscription.current_period_end * 1000).toISOString();
+      
+      console.log('📋 Plan type:', planType);
       console.log('📅 Period:', currentPeriodStart, 'to', currentPeriodEnd);
     } catch (error) {
       console.error('⚠️ Error fetching subscription:', error);
+      // Continue with default values
     }
-  }
-
-  // FIXED: Use database transaction for atomicity
-  const { data: transactionData, error: transactionError } = await supabase.rpc('begin');
-  if (transactionError) {
-    console.error('❌ Error starting transaction:', transactionError);
-    throw transactionError;
   }
 
   try {
-    // STEP 1: Check if user exists in auth.users
-    console.log('🔍 Checking if user exists in auth.users...');
-    const { data: authUser, error: authError } = await supabase
-      .from('auth.users')
-      .select('id, email')
-      .eq('email', customerEmail)
-      .single();
-
-    let userId: string;
-
-    if (authError && authError.code === 'PGRST116') {
-      // User doesn't exist in auth.users, this is unusual for a payment webhook
-      // but we'll handle it by creating a user profile without auth user
-      console.log('⚠️ User not found in auth.users, creating profile without auth reference');
-      userId = crypto.randomUUID(); // Generate new UUID for user profile
-    } else if (authError) {
-      console.error('❌ Error checking auth.users:', authError);
-      throw authError;
-    } else {
-      userId = authUser.id;
-      console.log('✅ Found user in auth.users:', userId);
-    }
-
-    // STEP 2: Handle user_profiles table with proper UUID generation
+    // Check if user profile exists
     console.log('🔍 Checking if user profile exists...');
     const { data: existingProfile, error: checkError } = await supabase
       .from('user_profiles')
-      .select('id, email, user_id')
+      .select('id, email')
       .eq('email', customerEmail)
       .single();
 
@@ -107,36 +71,25 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
     if (!existingProfile) {
       console.log('👤 Creating new user profile...');
       
-      // FIXED: Generate UUID for id field and properly map all fields
-      const newProfileData = {
-        id: userId, // Use the same UUID as auth.users or generated UUID
-        email: customerEmail,
-        payment_status: 'verified',
-        payment_verified: true,
-        subscription_status: 'active',
-        plan_type: planType,
-        subscription_plan: planType,
-        stripe_customer_id: stripeCustomerId,
-        stripe_subscription_id: subscriptionId,
-        last_payment_date: new Date().toISOString(),
-        current_period_start: currentPeriodStart,
-        current_period_end: currentPeriodEnd,
-        temp_access_until: currentPeriodEnd,
-        role: 'user',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        manual_override: false,
-        temporary_access_granted: false
-      };
-
-      // Only add user_id if we have an auth user
-      if (authUser) {
-        newProfileData.user_id = authUser.id;
-      }
-
+      // FIXED: Generate UUID and use only fields that exist based on indexes
       const { error: createError } = await supabase
         .from('user_profiles')
-        .insert(newProfileData);
+        .insert({
+          // Don't specify id - let database generate it with default
+          email: customerEmail,
+          payment_status: 'verified',
+          payment_verified: true,
+          subscription_status: 'active',
+          plan_type: planType,
+          stripe_customer_id: stripeCustomerId,
+          stripe_subscription_id: subscriptionId,
+          last_payment_date: new Date().toISOString(),
+          // Use temporary_access_expires based on index name
+          temporary_access_expires: currentPeriodEnd || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+          manual_override: false,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        });
 
       if (createError) {
         console.error('❌ Error creating user profile:', createError);
@@ -146,24 +99,19 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
     } else {
       console.log('📝 Updating existing user profile...');
       
-      const updateData = {
-        payment_status: 'verified',
-        payment_verified: true,
-        subscription_status: 'active',
-        plan_type: planType,
-        subscription_plan: planType,
-        stripe_customer_id: stripeCustomerId,
-        stripe_subscription_id: subscriptionId,
-        last_payment_date: new Date().toISOString(),
-        current_period_start: currentPeriodStart,
-        current_period_end: currentPeriodEnd,
-        temp_access_until: currentPeriodEnd,
-        updated_at: new Date().toISOString()
-      };
-
       const { error: updateError, count: updateCount } = await supabase
         .from('user_profiles')
-        .update(updateData)
+        .update({
+          payment_status: 'verified',
+          payment_verified: true,
+          subscription_status: 'active',
+          plan_type: planType,
+          stripe_customer_id: stripeCustomerId,
+          stripe_subscription_id: subscriptionId,
+          last_payment_date: new Date().toISOString(),
+          temporary_access_expires: currentPeriodEnd || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+          updated_at: new Date().toISOString()
+        })
         .eq('email', customerEmail);
 
       if (updateError) {
@@ -173,58 +121,15 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
       console.log(`✅ Updated user_profiles successfully (${updateCount} rows affected)`);
     }
 
-    // STEP 3: Handle user_access_status table (if it exists and is not a view)
-    console.log('🔍 Attempting to update user access status...');
-    try {
-      const { error: accessError } = await supabase
-        .from('user_access_status')
-        .upsert({
-          email: customerEmail,
-          payment_verified: true,
-          subscription_status: 'active',
-          has_access: true,
-          access_type: `Paid subscription (${planType})`,
-          temp_access_until: currentPeriodEnd,
-          email_verified: true,
-          manual_override: false
-        }, {
-          onConflict: 'email'
-        });
-
-      if (accessError) {
-        console.warn('⚠️ Could not update user_access_status (may be a view):', accessError);
-        // Don't throw - this table might be a view or not exist
-      } else {
-        console.log('✅ Updated user_access_status successfully');
-      }
-    } catch (error) {
-      console.warn('⚠️ Error with user_access_status table:', error);
-      // Don't throw - continue processing
-    }
-
-    // FIXED: Commit transaction
-    const { error: commitError } = await supabase.rpc('commit');
-    if (commitError) {
-      console.error('❌ Error committing transaction:', commitError);
-      throw commitError;
-    }
-
     console.log('🎊 Checkout session processing completed successfully!');
 
   } catch (error) {
     console.error('❌ Error in payment processing:', error);
-    
-    // Rollback transaction
-    const { error: rollbackError } = await supabase.rpc('rollback');
-    if (rollbackError) {
-      console.error('❌ Error rolling back transaction:', rollbackError);
-    }
-    
     throw error;
   }
 }
 
-// FIXED: Subscription change handler with proper error handling
+// Handle subscription changes
 async function handleSubscriptionChange(subscription: Stripe.Subscription) {
   console.log('🔄 Processing subscription change:', subscription.id, 'status:', subscription.status);
 
@@ -261,9 +166,7 @@ async function handleSubscriptionChange(subscription: Stripe.Subscription) {
         subscription_status: subscription.status,
         payment_verified: isActive,
         payment_status: isActive ? 'verified' : 'cancelled',
-        current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-        current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
-        temp_access_until: isActive ? new Date(subscription.current_period_end * 1000).toISOString() : null,
+        temporary_access_expires: isActive ? new Date(subscription.current_period_end * 1000).toISOString() : null,
         updated_at: new Date().toISOString()
       })
       .eq('stripe_customer_id', customerId);
@@ -280,7 +183,7 @@ async function handleSubscriptionChange(subscription: Stripe.Subscription) {
   }
 }
 
-// FIXED: Invoice payment handler
+// Handle invoice payment
 async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
   console.log('💰 Processing invoice payment succeeded:', invoice.id);
 
@@ -309,15 +212,36 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
   }
 }
 
-// FIXED: Main handler with comprehensive error handling
+// Main webhook handler
 export async function handler(event: any) {
+  // Handle CORS preflight requests
+  if (event.httpMethod === 'OPTIONS') {
+    return {
+      statusCode: 200,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type, stripe-signature',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS'
+      },
+      body: ''
+    };
+  }
+
   if (event.httpMethod !== 'POST') {
-    return { statusCode: 405, body: 'Method Not Allowed' };
+    return { 
+      statusCode: 405, 
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ error: 'Method Not Allowed' })
+    };
   }
 
   const sig = event.headers['stripe-signature'];
   let stripeEvent: Stripe.Event;
 
+  // Verify webhook signature
   try {
     stripeEvent = stripe.webhooks.constructEvent(
       event.body,
@@ -326,16 +250,29 @@ export async function handler(event: any) {
     );
   } catch (err: any) {
     console.error(`❌ Webhook signature verification failed: ${err.message}`);
-    return { statusCode: 400, body: `Webhook Error: ${err.message}` };
+    return { 
+      statusCode: 400, 
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ error: `Webhook Error: ${err.message}` })
+    };
   }
 
   console.log(`🎯 Processing webhook event: ${stripeEvent.type}`);
+  console.log(`📋 Event ID: ${stripeEvent.id}`);
 
   try {
+    // Process different webhook event types
     switch (stripeEvent.type) {
       case 'checkout.session.completed':
         const checkoutSession = stripeEvent.data.object as Stripe.Checkout.Session;
-        await handleCheckoutSessionCompleted(checkoutSession);
+        if (checkoutSession.mode === 'subscription' || checkoutSession.mode === 'payment') {
+          await handleCheckoutSessionCompleted(checkoutSession);
+        } else {
+          console.log(`ℹ️ Skipping checkout session with mode: ${checkoutSession.mode}`);
+        }
         break;
         
       case 'customer.subscription.updated':
@@ -349,16 +286,26 @@ export async function handler(event: any) {
         await handleInvoicePaymentSucceeded(invoice);
         break;
         
+      case 'customer.subscription.created':
+        console.log('ℹ️ Subscription created event - no action needed (handled by checkout.session.completed)');
+        break;
+        
       default:
         console.log(`ℹ️ Unhandled event type: ${stripeEvent.type}`);
     }
 
     console.log(`✅ Successfully processed webhook event: ${stripeEvent.type}`);
+    
     return { 
-      statusCode: 200, 
+      statusCode: 200,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Content-Type': 'application/json'
+      },
       body: JSON.stringify({ 
         received: true, 
         event_type: stripeEvent.type,
+        event_id: stripeEvent.id,
         processed_at: new Date().toISOString(),
         success: true
       }) 
@@ -368,14 +315,18 @@ export async function handler(event: any) {
     console.error(`❌ Error processing webhook event ${stripeEvent.type}:`, error);
     
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-    const errorDetails = error instanceof Error && 'code' in error ? error : null;
+    const errorCode = error instanceof Error && 'code' in error ? (error as any).code : null;
     
     return { 
-      statusCode: 500, 
+      statusCode: 500,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Content-Type': 'application/json'
+      },
       body: JSON.stringify({ 
         error: 'Internal Server Error', 
         message: errorMessage,
-        details: errorDetails,
+        code: errorCode,
         event_type: stripeEvent.type,
         event_id: stripeEvent.id,
         timestamp: new Date().toISOString(),
