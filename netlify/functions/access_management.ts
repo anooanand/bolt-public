@@ -108,7 +108,7 @@ const handler: Handler = async (event) => {
   }
 };
 
-// ENHANCED: Quieter payment processing with better error handling
+// FIXED: Payment processing without user_id field
 async function handleProcessPaymentSuccess(event: any) {
   try {
     const { userId, planType, sessionId } = JSON.parse(event.body || '{}');
@@ -175,11 +175,11 @@ async function handleProcessPaymentSuccess(event: any) {
 
       const userEmail = userData.user.email;
 
-      // ENHANCED: Direct database update with 30-day access
+      // FIXED: Direct database update without user_id field
       const { error: profileError } = await supabase
         .from('user_profiles')
         .upsert({
-          user_id: userId,
+          id: userId, // FIXED: Use 'id' instead of 'user_id'
           email: userEmail,
           payment_verified: true,
           payment_status: 'verified',
@@ -190,7 +190,7 @@ async function handleProcessPaymentSuccess(event: any) {
           last_payment_date: new Date().toISOString(),
           updated_at: new Date().toISOString()
         }, { 
-          onConflict: 'user_id',
+          onConflict: 'email', // FIXED: Use email as conflict resolution
           ignoreDuplicates: false 
         });
 
@@ -238,7 +238,7 @@ async function handleProcessPaymentSuccess(event: any) {
   }
 }
 
-// Enhanced grant temporary access function
+// FIXED: Grant temporary access function without user_id
 async function handleGrantTemporaryAccess(event: any) {
   try {
     const { userId, hours = 24, reason = 'Manual grant' } = JSON.parse(event.body || '{}');
@@ -265,16 +265,16 @@ async function handleGrantTemporaryAccess(event: any) {
 
     const userEmail = userData.user.email;
 
-    // Update user_profiles table
+    // FIXED: Update user_profiles table without user_id field
     const { error: profileError } = await supabase
       .from('user_profiles')
       .upsert({
-        user_id: userId,
+        id: userId, // FIXED: Use 'id' instead of 'user_id'
         email: userEmail,
         temporary_access_granted: true,
         temp_access_until: expiresAt,
         updated_at: new Date().toISOString()
-      }, { onConflict: 'user_id' });
+      }, { onConflict: 'email' }); // FIXED: Use email as conflict resolution
 
     if (profileError) {
       console.error('❌ Error granting temporary access:', profileError);
@@ -311,7 +311,7 @@ async function handleGrantTemporaryAccess(event: any) {
   }
 }
 
-// Check if user has valid access
+// FIXED: Check access function without user_id
 async function handleCheckAccess(event: any) {
   try {
     const { userId } = JSON.parse(event.body || '{}');
@@ -324,11 +324,11 @@ async function handleCheckAccess(event: any) {
       };
     }
 
-    // Get detailed user status from the user_profiles table
+    // FIXED: Get detailed user status by id instead of user_id
     const { data: userStatus, error: statusError } = await supabase
       .from('user_profiles')
       .select('*')
-      .eq('user_id', userId)
+      .eq('id', userId) // FIXED: Use 'id' instead of 'user_id'
       .single();
 
     if (statusError && statusError.code !== 'PGRST116') {
@@ -414,7 +414,7 @@ async function handleCleanupExpired(event: any) {
   }
 }
 
-// Get user status
+// FIXED: Get user status without user_id
 async function handleGetUserStatus(event: any) {
   try {
     const { userId } = JSON.parse(event.body || '{}');
@@ -427,10 +427,11 @@ async function handleGetUserStatus(event: any) {
       };
     }
 
+    // FIXED: Query by id instead of user_id
     const { data: userStatus, error } = await supabase
       .from('user_profiles')
       .select('*')
-      .eq('user_id', userId)
+      .eq('id', userId) // FIXED: Use 'id' instead of 'user_id'
       .single();
 
     if (error && error.code !== 'PGRST116') {
