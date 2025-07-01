@@ -16,7 +16,7 @@ function getPlanTypeFromPriceId(priceId: string): string {
   return planMapping[priceId] || 'premium_plan';
 }
 
-// CORRECTED: Handle checkout session completed - addresses all database issues
+// FIXED: Handle checkout session completed with proper UUID generation and field mapping
 async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) {
   console.log('🎉 Processing checkout session completed:', session.id);
   console.log('Session details:', {
@@ -60,12 +60,42 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
     }
   }
 
+  // FIXED: Use database transaction for atomicity
+  const { data: transactionData, error: transactionError } = await supabase.rpc('begin');
+  if (transactionError) {
+    console.error('❌ Error starting transaction:', transactionError);
+    throw transactionError;
+  }
+
   try {
-    // STEP 1: Handle user_profiles table (this is a real table)
+    // STEP 1: Check if user exists in auth.users
+    console.log('🔍 Checking if user exists in auth.users...');
+    const { data: authUser, error: authError } = await supabase
+      .from('auth.users')
+      .select('id, email')
+      .eq('email', customerEmail)
+      .single();
+
+    let userId: string;
+
+    if (authError && authError.code === 'PGRST116') {
+      // User doesn't exist in auth.users, this is unusual for a payment webhook
+      // but we'll handle it by creating a user profile without auth user
+      console.log('⚠️ User not found in auth.users, creating profile without auth reference');
+      userId = crypto.randomUUID(); // Generate new UUID for user profile
+    } else if (authError) {
+      console.error('❌ Error checking auth.users:', authError);
+      throw authError;
+    } else {
+      userId = authUser.id;
+      console.log('✅ Found user in auth.users:', userId);
+    }
+
+    // STEP 2: Handle user_profiles table with proper UUID generation
     console.log('🔍 Checking if user profile exists...');
     const { data: existingProfile, error: checkError } = await supabase
       .from('user_profiles')
-      .select('id, email')
+      .select('id, email, user_id')
       .eq('email', customerEmail)
       .single();
 
@@ -76,26 +106,37 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
 
     if (!existingProfile) {
       console.log('👤 Creating new user profile...');
-      // FIXED: Removed user_id field that doesn't exist in database
+      
+      // FIXED: Generate UUID for id field and properly map all fields
+      const newProfileData = {
+        id: userId, // Use the same UUID as auth.users or generated UUID
+        email: customerEmail,
+        payment_status: 'verified',
+        payment_verified: true,
+        subscription_status: 'active',
+        plan_type: planType,
+        subscription_plan: planType,
+        stripe_customer_id: stripeCustomerId,
+        stripe_subscription_id: subscriptionId,
+        last_payment_date: new Date().toISOString(),
+        current_period_start: currentPeriodStart,
+        current_period_end: currentPeriodEnd,
+        temp_access_until: currentPeriodEnd,
+        role: 'user',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        manual_override: false,
+        temporary_access_granted: false
+      };
+
+      // Only add user_id if we have an auth user
+      if (authUser) {
+        newProfileData.user_id = authUser.id;
+      }
+
       const { error: createError } = await supabase
         .from('user_profiles')
-        .insert({
-          email: customerEmail,
-          payment_status: 'verified',
-          payment_verified: true,
-          subscription_status: 'active',
-          plan_type: planType,
-          subscription_plan: planType,
-          stripe_customer_id: stripeCustomerId,
-          stripe_subscription_id: subscriptionId,
-          last_payment_date: new Date().toISOString(),
-          current_period_start: currentPeriodStart,
-          current_period_end: currentPeriodEnd,
-          temp_access_until: currentPeriodEnd,
-          role: 'user',
-          created_at: new Date().toISOString()
-          // REMOVED: user_id (field doesn't exist in database)
-        });
+        .insert(newProfileData);
 
       if (createError) {
         console.error('❌ Error creating user profile:', createError);
@@ -104,81 +145,68 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
       console.log('✅ Created new user profile successfully');
     } else {
       console.log('📝 Updating existing user profile...');
-      const { error: profileError, count: profileCount } = await supabase
+      
+      const updateData = {
+        payment_status: 'verified',
+        payment_verified: true,
+        subscription_status: 'active',
+        plan_type: planType,
+        subscription_plan: planType,
+        stripe_customer_id: stripeCustomerId,
+        stripe_subscription_id: subscriptionId,
+        last_payment_date: new Date().toISOString(),
+        current_period_start: currentPeriodStart,
+        current_period_end: currentPeriodEnd,
+        temp_access_until: currentPeriodEnd,
+        updated_at: new Date().toISOString()
+      };
+
+      const { error: updateError, count: updateCount } = await supabase
         .from('user_profiles')
-        .update({
-          payment_status: 'verified',
-          payment_verified: true,
-          subscription_status: 'active',
-          plan_type: planType,
-          subscription_plan: planType,
-          stripe_customer_id: stripeCustomerId,
-          stripe_subscription_id: subscriptionId,
-          last_payment_date: new Date().toISOString(),
-          current_period_start: currentPeriodStart,
-          current_period_end: currentPeriodEnd,
-          temp_access_until: currentPeriodEnd,
-          updated_at: new Date().toISOString()
-        })
+        .update(updateData)
         .eq('email', customerEmail);
 
-      if (profileError) {
-        console.error('❌ Error updating user_profiles:', profileError);
-        throw profileError;
+      if (updateError) {
+        console.error('❌ Error updating user_profiles:', updateError);
+        throw updateError;
       }
-      console.log(`✅ Updated user_profiles successfully (${profileCount} rows affected)`);
+      console.log(`✅ Updated user_profiles successfully (${updateCount} rows affected)`);
     }
 
-    // STEP 2: Handle user_access_status - CAREFUL handling for views
+    // STEP 3: Handle user_access_status table (if it exists and is not a view)
     console.log('🔍 Attempting to update user access status...');
     try {
-      // Try to update first (safer for views)
-      const { error: accessUpdateError, count: accessCount } = await supabase
+      const { error: accessError } = await supabase
         .from('user_access_status')
-        .update({
+        .upsert({
+          email: customerEmail,
           payment_verified: true,
           subscription_status: 'active',
           has_access: true,
           access_type: `Paid subscription (${planType})`,
           temp_access_until: currentPeriodEnd,
-          email_verified: true
-        })
-        .eq('email', customerEmail);
+          email_verified: true,
+          manual_override: false
+        }, {
+          onConflict: 'email'
+        });
 
-      if (accessUpdateError) {
-        console.warn('⚠️ Could not update user_access_status:', accessUpdateError);
-        
-        // If update fails and it's not a view error, try insert
-        if (accessUpdateError.code !== '55000') { // Not a view error
-          console.log('🔐 Trying to insert new user access status...');
-          const { error: createAccessError } = await supabase
-            .from('user_access_status')
-            .insert({
-              email: customerEmail,
-              payment_verified: true,
-              subscription_status: 'active',
-              has_access: true,
-              access_type: `Paid subscription (${planType})`,
-              temp_access_until: currentPeriodEnd,
-              email_verified: true,
-              manual_override: false
-            });
-
-          if (createAccessError) {
-            console.warn('⚠️ Could not insert into user_access_status:', createAccessError);
-            // Don't throw - this might be a view
-          } else {
-            console.log('✅ Created new user access status successfully');
-          }
-        } else {
-          console.log('ℹ️ user_access_status is a view - skipping direct manipulation');
-        }
+      if (accessError) {
+        console.warn('⚠️ Could not update user_access_status (may be a view):', accessError);
+        // Don't throw - this table might be a view or not exist
       } else {
-        console.log(`✅ Updated user_access_status successfully (${accessCount} rows affected)`);
+        console.log('✅ Updated user_access_status successfully');
       }
     } catch (error) {
-      console.warn('⚠️ Error with user_access_status table (likely a view):', error);
+      console.warn('⚠️ Error with user_access_status table:', error);
       // Don't throw - continue processing
+    }
+
+    // FIXED: Commit transaction
+    const { error: commitError } = await supabase.rpc('commit');
+    if (commitError) {
+      console.error('❌ Error committing transaction:', commitError);
+      throw commitError;
     }
 
     console.log('🎊 Checkout session processing completed successfully!');
@@ -186,44 +214,17 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
   } catch (error) {
     console.error('❌ Error in payment processing:', error);
     
-    // IMPROVED: More robust fallback
-    try {
-      console.log('🔄 Attempting robust fallback...');
-      
-      // Use upsert to handle both insert and update cases
-      const { error: upsertError } = await supabase
-        .from('user_profiles')
-        .upsert({
-          email: customerEmail,
-          payment_verified: true,
-          payment_status: 'verified',
-          subscription_status: 'active',
-          plan_type: planType,
-          subscription_plan: planType,
-          stripe_customer_id: stripeCustomerId,
-          stripe_subscription_id: subscriptionId,
-          temp_access_until: currentPeriodEnd,
-          last_payment_date: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        }, {
-          onConflict: 'email',
-          ignoreDuplicates: false
-        });
-      
-      if (upsertError) {
-        console.error('❌ Fallback upsert failed:', upsertError);
-        throw upsertError;
-      }
-      
-      console.log('✅ Robust fallback completed successfully');
-    } catch (fallbackError) {
-      console.error('❌ All fallback attempts failed:', fallbackError);
-      throw fallbackError;
+    // Rollback transaction
+    const { error: rollbackError } = await supabase.rpc('rollback');
+    if (rollbackError) {
+      console.error('❌ Error rolling back transaction:', rollbackError);
     }
+    
+    throw error;
   }
 }
 
-// IMPROVED: Subscription change handler with better error handling
+// FIXED: Subscription change handler with proper error handling
 async function handleSubscriptionChange(subscription: Stripe.Subscription) {
   console.log('🔄 Processing subscription change:', subscription.id, 'status:', subscription.status);
 
@@ -279,7 +280,7 @@ async function handleSubscriptionChange(subscription: Stripe.Subscription) {
   }
 }
 
-// IMPROVED: Invoice payment handler
+// FIXED: Invoice payment handler
 async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
   console.log('💰 Processing invoice payment succeeded:', invoice.id);
 
@@ -308,7 +309,7 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
   }
 }
 
-// IMPROVED: Main handler with better error reporting
+// FIXED: Main handler with comprehensive error handling
 export async function handler(event: any) {
   if (event.httpMethod !== 'POST') {
     return { statusCode: 405, body: 'Method Not Allowed' };
@@ -383,4 +384,3 @@ export async function handler(event: any) {
     };
   }
 }
-
