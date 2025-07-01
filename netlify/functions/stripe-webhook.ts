@@ -21,7 +21,7 @@ function getPlanTypeFromPriceId(priceId: string): string {
 async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) {
   console.log('🎉 Processing checkout session completed:', session.id);
   
-  const customerEmail = session.customer_email;
+  const customerEmail = session.customer_details?.email;
   const stripeCustomerId = session.customer as string;
   const subscriptionId = session.subscription as string;
   
@@ -32,22 +32,21 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
   console.log('👤 Processing payment for email:', customerEmail);
 
   let planType = 'premium_plan';
-  let currentPeriodEnd = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+  let temporaryAccessExpires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
 
   if (subscriptionId) {
     try {
       const subscription = await stripe.subscriptions.retrieve(subscriptionId);
       const priceId = subscription.items.data[0]?.price.id;
       planType = getPlanTypeFromPriceId(priceId);
-      currentPeriodEnd = new Date(subscription.current_period_end * 1000);
-      console.log('💰 Plan type:', planType, 'Period end:', currentPeriodEnd.toISOString());
+      temporaryAccessExpires = new Date(subscription.current_period_end * 1000).toISOString();
+      console.log('💰 Plan type:', planType, 'Period end:', temporaryAccessExpires);
     } catch (error) {
       console.error('⚠️ Error fetching subscription:', error);
     }
   }
 
   try {
-    // Find existing user profile by email
     const { data: existingProfile, error: profileError } = await supabase
       .from('user_profiles')
       .select('id, email')
@@ -60,7 +59,6 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
     }
 
     if (!existingProfile) {
-      // Create new user profile
       const { data: newProfile, error: createError } = await supabase
         .from('user_profiles')
         .insert({
@@ -71,7 +69,7 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
           plan_type: planType,
           stripe_customer_id: stripeCustomerId,
           stripe_subscription_id: subscriptionId,
-          temporary_access_expires: currentPeriodEnd.toISOString(),
+          temporary_access_expires: temporaryAccessExpires,
           last_payment_date: new Date().toISOString(),
           role: 'user',
           created_at: new Date().toISOString(),
@@ -87,7 +85,6 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
 
       console.log('✅ New user profile created:', newProfile.id);
     } else {
-      // Update existing user profile
       const { error: updateError } = await supabase
         .from('user_profiles')
         .update({
@@ -97,7 +94,7 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
           plan_type: planType,
           stripe_customer_id: stripeCustomerId,
           stripe_subscription_id: subscriptionId,
-          temporary_access_expires: currentPeriodEnd.toISOString(),
+          temporary_access_expires: temporaryAccessExpires,
           last_payment_date: new Date().toISOString(),
           updated_at: new Date().toISOString()
         })
@@ -165,7 +162,7 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
 
 export async function handler(event: any) {
   // Handle CORS preflight
-  if (event.httpMethod === 'OPTIONS') {
+  if (event.httpMethod === 'OPTIONS' ) {
     return {
       statusCode: 200,
       headers: {
@@ -177,7 +174,7 @@ export async function handler(event: any) {
     };
   }
 
-  if (event.httpMethod !== 'POST') {
+  if (event.httpMethod !== 'POST' ) {
     return { 
       statusCode: 405, 
       headers: { 'Access-Control-Allow-Origin': '*' },
