@@ -23,14 +23,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [emailVerified, setEmailVerified] = useState(false);
   const [paymentCompleted, setPaymentCompleted] = useState(false);
 
-  // Helper function to create user profile if it doesn't exist
+  // FIXED: Helper function to create user profile with proper ID mapping
   const ensureUserProfile = async (user: User) => {
     try {
-      // First, check if profile exists
+      // Check if profile exists by email (matches webhook behavior)
       const { data: existingProfile, error: fetchError } = await supabase
         .from('user_profiles')
-        .select('id')
-        .eq('id', user.id)
+        .select('id, email')
+        .eq('email', user.email)
         .single();
 
       if (fetchError && fetchError.code === 'PGRST116') {
@@ -39,12 +39,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const { error: createError } = await supabase
           .from('user_profiles')
           .insert({
-            id: user.id,
+            id: user.id, // Use auth user ID
             email: user.email,
             payment_verified: false,
             payment_status: 'pending',
-            subscription_status: 'inactive',
+            subscription_status: 'free', // Match database default
+            role: 'user',
             created_at: new Date().toISOString()
+            // REMOVED: user_id field (doesn't exist in database)
           });
 
         if (createError) {
@@ -54,47 +56,67 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       } else if (existingProfile) {
         console.log('✅ User profile already exists');
+        
+        // Update the profile with the correct user ID if it's missing
+        if (existingProfile.id !== user.id) {
+          console.log('Updating user profile ID mapping...');
+          const { error: updateError } = await supabase
+            .from('user_profiles')
+            .update({ id: user.id, updated_at: new Date().toISOString() })
+            .eq('email', user.email);
+          
+          if (updateError) {
+            console.error('Error updating user profile ID:', updateError);
+          }
+        }
       }
 
-      // Also ensure user_access_status record exists
-      const { data: existingAccess, error: accessFetchError } = await supabase
-        .from('user_access_status')
-        .select('id')
-        .eq('id', user.id)
-        .single();
-
-      if (accessFetchError && accessFetchError.code === 'PGRST116') {
-        // Access status doesn't exist, create it
-        console.log('Creating user access status for:', user.email);
-        const { error: createAccessError } = await supabase
+      // FIXED: Handle user_access_status more carefully (might be a view)
+      try {
+        const { data: existingAccess, error: accessFetchError } = await supabase
           .from('user_access_status')
-          .insert({
-            id: user.id,
-            email: user.email,
-            email_verified: !!user.email_confirmed_at,
-            payment_verified: false,
-            has_access: false,
-            access_type: 'No access'
-          });
+          .select('id, email')
+          .eq('email', user.email) // Query by email to match webhook
+          .single();
 
-        if (createAccessError) {
-          console.error('Error creating user access status:', createAccessError);
-        } else {
-          console.log('✅ User access status created successfully');
+        if (accessFetchError && accessFetchError.code === 'PGRST116') {
+          // Try to create access status record
+          console.log('Creating user access status for:', user.email);
+          const { error: createAccessError } = await supabase
+            .from('user_access_status')
+            .insert({
+              id: user.id,
+              email: user.email,
+              email_verified: !!user.email_confirmed_at,
+              payment_verified: false,
+              has_access: false,
+              access_type: 'No access',
+              subscription_status: 'free'
+            });
+
+          if (createAccessError) {
+            console.error('Error creating user access status:', createAccessError);
+            // Don't throw - might be a view
+          } else {
+            console.log('✅ User access status created successfully');
+          }
         }
+      } catch (accessError) {
+        console.warn('Could not manipulate user_access_status (might be a view):', accessError);
       }
     } catch (error) {
       console.error('Error ensuring user profile:', error);
     }
   };
 
-  // Helper function to determine payment completion status
+  // IMPROVED: Helper function to determine payment completion status
   const isPaymentCompleted = (profile: any) => {
     return (
       profile?.payment_verified === true ||
-      profile?.payment_status === 'completed' ||
+      profile?.payment_status === 'verified' || // Match webhook status
       profile?.subscription_status === 'active' ||
-      profile?.manual_override === true
+      profile?.manual_override === true ||
+      (profile?.temp_access_until && new Date(profile.temp_access_until) > new Date())
     );
   };
 
@@ -122,7 +144,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const { data: accessStatus, error: accessError } = await supabase
               .from('user_access_status')
               .select('email_verified')
-              .eq('id', supabaseUser.id)
+              .eq('email', supabaseUser.email) // FIXED: Query by email
               .single();
             
             if (accessError) {
@@ -138,26 +160,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         setEmailVerified(isEmailVerified);
 
-        // Check payment status from user_profiles with better error handling
+        // FIXED: Check payment status by email (matches webhook behavior)
         try {
           const { data: profile, error } = await supabase
             .from('user_profiles')
-            .select('payment_verified, payment_status, manual_override, subscription_status')
-            .eq('id', supabaseUser.id)
+            .select('payment_verified, payment_status, manual_override, subscription_status, temp_access_until')
+            .eq('email', supabaseUser.email) // FIXED: Query by email instead of ID
             .single();
 
           if (error) {
             if (error.code === 'PGRST116') {
-              // Profile doesn't exist, we already tried to create it above
-              console.warn('User profile still not found after creation attempt');
+              console.warn('User profile not found by email:', supabaseUser.email);
               setPaymentCompleted(false);
             } else {
               console.warn('Error fetching user profile:', error);
               setPaymentCompleted(false);
             }
           } else if (profile) {
-            setPaymentCompleted(isPaymentCompleted(profile));
-            console.log(`Payment status: ${isPaymentCompleted(profile) ? '✅ Completed' : '❌ Not completed'}`);
+            const completed = isPaymentCompleted(profile);
+            setPaymentCompleted(completed);
+            console.log(`Payment status: ${completed ? '✅ Completed' : '❌ Not completed'}`);
+            console.log('Profile data:', profile);
           } else {
             setPaymentCompleted(false);
             console.log('❌ User profile not found.');
@@ -227,7 +250,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return { data: null, error };
       }
       
-      // If signup is successful, the user profile will be created in checkUserAndStatus
       return { data, error: null };
     } catch (error) {
       console.error('Sign up error:', error);
