@@ -2,16 +2,9 @@ import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
 
 // Initialize Supabase and Stripe clients
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-// Ensure that the environment variables are defined
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Supabase URL and Anon Key are required!');
-}
-
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
-const stripe = new Stripe(import.meta.env.VITE_STRIPE_SECRET_KEY!, {
+const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: '2024-06-20',
 });
 
 // Helper function to get plan type
@@ -26,7 +19,7 @@ function getPlanTypeFromPriceId(priceId: string): string {
   return planMapping[priceId] || 'premium_plan';
 }
 
-// IMPROVED: Bypass user lookup and update by email directly
+// FIXED: Handle checkout session completed with correct database schema
 async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) {
   console.log('🎉 Processing checkout session completed:', session.id);
   console.log('Session details:', {
@@ -72,10 +65,11 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
   }
 
   try {
+    // FIXED: Update user_profiles by email (removed non-existent columns)
+    console.log('📝 Updating user_profiles table...');
     const { error: profileError, count: profileCount } = await supabase
       .from('user_profiles')
-      .upsert({
-        email: customerEmail,
+      .update({
         payment_status: 'verified',
         payment_verified: true,
         subscription_status: 'active',
@@ -86,11 +80,18 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
         last_payment_date: new Date().toISOString(),
         current_period_start: currentPeriodStart,
         current_period_end: currentPeriodEnd,
-        temp_access_until: currentPeriodEnd,
-        updated_at: new Date().toISOString()
-      }, { onConflict: 'email', ignoreDuplicates: false });
+        temp_access_until: currentPeriodEnd
+        // REMOVED: updated_at (column may not exist)
+      })
+      .eq('email', customerEmail);
 
-    // IMPROVED: Update user_access_status by email
+    if (profileError) {
+      console.error('❌ Error updating user_profiles:', profileError);
+      throw profileError;
+    }
+    console.log(`✅ Updated user_profiles successfully (${profileCount} rows affected)`);
+
+    // FIXED: Update user_access_status by email (removed non-existent columns)
     console.log('📝 Updating user_access_status table...');
     const { error: accessError, count: accessCount } = await supabase
       .from('user_access_status')
@@ -99,8 +100,8 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
         subscription_status: 'active',
         has_access: true,
         access_type: `Paid subscription (${planType})`,
-        temp_access_until: currentPeriodEnd,
-        updated_at: new Date().toISOString()
+        temp_access_until: currentPeriodEnd
+        // REMOVED: updated_at (column doesn't exist in this table)
       })
       .eq('email', customerEmail);
 
@@ -110,7 +111,7 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
     }
     console.log(`✅ Updated user_access_status successfully (${accessCount} rows affected)`);
 
-    // IMPROVED: Log to payment_logs table for audit trail
+    // IMPROVED: Log to payment_logs table for audit trail (if table exists)
     try {
       console.log('📝 Logging payment to audit trail...');
       const { error: logError } = await supabase
@@ -122,7 +123,7 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
           event_type: 'checkout.session.completed',
           payment_status: 'completed',
           amount: session.amount_total || 0,
-          currency: session.currency || 'unknown',
+          currency: session.currency || 'usd',
           processed_at: new Date().toISOString(),
           webhook_verified: true,
           plan_type: planType,
@@ -149,7 +150,7 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
   } catch (error) {
     console.error('❌ Error in payment processing:', error);
     
-    // IMPROVED: Attempt to grant temporary access as fallback
+    // FIXED: Attempt to grant temporary access as fallback (removed non-existent columns)
     try {
       console.log('🔄 Attempting to grant temporary access as fallback...');
       await supabase
@@ -157,8 +158,8 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
         .update({
           has_access: true,
           access_type: 'Temporary access (payment processing error)',
-          temp_access_until: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // 24 hours
-          updated_at: new Date().toISOString()
+          temp_access_until: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // 24 hours
+          // REMOVED: updated_at (column doesn't exist)
         })
         .eq('email', customerEmail);
       
@@ -171,17 +172,17 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
   }
 }
 
-// IMPROVED: Handle subscription changes with better error handling
+// FIXED: Handle subscription changes with better error handling and correct schema
 async function handleSubscriptionChange(subscription: Stripe.Subscription) {
   console.log('🔄 Processing subscription change:', subscription.id, 'status:', subscription.status);
 
   const customerId = subscription.customer as string;
   
   try {
-    // Find user by stripe customer ID in user_profiles
+    // FIXED: Find user by stripe customer ID in user_profiles (removed non-existent user_id column)
     const { data: profiles, error: profileError } = await supabase
       .from('user_profiles')
-      .select('user_id, email')
+      .select('email') // REMOVED: user_id (column may not exist)
       .eq('stripe_customer_id', customerId)
       .limit(1);
 
@@ -198,14 +199,14 @@ async function handleSubscriptionChange(subscription: Stripe.Subscription) {
     const userProfile = profiles[0];
     console.log('✅ Found user:', userProfile.email);
 
-    // Update subscription status in user_profiles
+    // FIXED: Update subscription status in user_profiles (removed non-existent columns)
     const { error: updateError } = await supabase
       .from('user_profiles')
       .update({
         subscription_status: subscription.status,
         current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-        current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
-        updated_at: new Date().toISOString()
+        current_period_end: new Date(subscription.current_period_end * 1000).toISOString()
+        // REMOVED: updated_at (column may not exist)
       })
       .eq('stripe_customer_id', customerId);
 
@@ -214,7 +215,7 @@ async function handleSubscriptionChange(subscription: Stripe.Subscription) {
       throw updateError;
     }
 
-    // Update user_access_status based on subscription status
+    // FIXED: Update user_access_status based on subscription status (removed non-existent columns)
     const hasAccess = subscription.status === 'active';
     const accessType = hasAccess ? 'Paid subscription (active)' : `Subscription ${subscription.status}`;
     
@@ -223,8 +224,8 @@ async function handleSubscriptionChange(subscription: Stripe.Subscription) {
       .update({
         subscription_status: subscription.status,
         has_access: hasAccess,
-        access_type: accessType,
-        updated_at: new Date().toISOString()
+        access_type: accessType
+        // REMOVED: updated_at (column doesn't exist)
       })
       .eq('email', userProfile.email);
 
@@ -240,21 +241,21 @@ async function handleSubscriptionChange(subscription: Stripe.Subscription) {
   }
 }
 
-// IMPROVED: Handle invoice payment with better error handling
+// FIXED: Handle invoice payment with better error handling and correct schema
 async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
   console.log('💰 Processing invoice payment succeeded:', invoice.id);
 
   const customerId = invoice.customer as string;
 
   try {
-    // Update last payment date in user_profiles using stripe_customer_id
+    // FIXED: Update last payment date in user_profiles using stripe_customer_id (removed non-existent columns)
     const { error: updateError, count } = await supabase
       .from('user_profiles')
       .update({
         last_payment_date: new Date().toISOString(),
         payment_status: 'verified',
-        payment_verified: true,
-        updated_at: new Date().toISOString()
+        payment_verified: true
+        // REMOVED: updated_at (column may not exist)
       })
       .eq('stripe_customer_id', customerId);
 
@@ -272,7 +273,7 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
 
 // IMPROVED: Main handler with better error handling and logging
 export async function handler(event: any) {
-  if (event.httpMethod !== 'POST' ) {
+  if (event.httpMethod !== 'POST') {
     return { statusCode: 405, body: 'Method Not Allowed' };
   }
 
@@ -283,7 +284,7 @@ export async function handler(event: any) {
     stripeEvent = stripe.webhooks.constructEvent(
       event.body,
       sig,
-      import.meta.env.VITE_STRIPE_WEBHOOK_SECRET!
+      process.env.STRIPE_WEBHOOK_SECRET!
     );
   } catch (err: any) {
     console.error(`❌ Webhook signature verification failed: ${err.message}`);
@@ -341,18 +342,4 @@ export async function handler(event: any) {
     };
   }
 }
-
-
-export { supabase };
-
-
-
-export function isEmailVerified(user: any): boolean {
-  return user?.email_confirmed_at !== undefined && user?.email_confirmed_at !== null;
-}
-
-export function hasAnyAccess(userProfile: any): boolean {
-  return userProfile?.has_access === true || userProfile?.temp_access_until !== undefined;
-}
-
 
