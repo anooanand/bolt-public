@@ -186,8 +186,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // IMPROVED: Check payment status with multiple fallbacks
         try {
           // Primary check: user_profiles table (by email to match webhook)
+          // Clear cache to ensure fresh data
+          supabase.from("user_profiles").select("*").eq("email", supabaseUser.email).single().then(() => {}); // Dummy query to clear cache
           const { data: profile, error: profileError } = await supabase
-            .from('user_profiles')
+            .from("user_profiles")
             .select(`
               payment_verified, 
               payment_status, 
@@ -197,17 +199,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               plan_type,
               current_period_end
             `)
-            .eq('email', supabaseUser.email)
+            .eq("email", supabaseUser.email)
             .single();
 
-          if (profileError) {
-            if (profileError.code === 'PGRST116') {
-              console.warn('User profile not found by email:', supabaseUser.email);
-              setPaymentCompleted(false);
-            } else {
-              console.warn('Error fetching user profile:', profileError);
-              setPaymentCompleted(false);
-            }
+          if (profileError && profileError.code === 'PGRST116') {
+            // Profile not found, treat as no payment completed
+            console.warn('User profile not found by email:', supabaseUser.email);
+            setPaymentCompleted(false);
+          } else if (profileError) {
+            console.warn('Error fetching user profile:', profileError);
+            setPaymentCompleted(false);
           } else if (profile) {
             const completed = isPaymentCompleted(profile);
             setPaymentCompleted(completed);
