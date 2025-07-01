@@ -23,13 +23,78 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [emailVerified, setEmailVerified] = useState(false);
   const [paymentCompleted, setPaymentCompleted] = useState(false);
 
+  // Helper function to create user profile if it doesn't exist
+  const ensureUserProfile = async (user: User) => {
+    try {
+      // First, check if profile exists
+      const { data: existingProfile, error: fetchError } = await supabase
+        .from('user_profiles')
+        .select('id')
+        .eq('id', user.id)
+        .single();
+
+      if (fetchError && fetchError.code === 'PGRST116') {
+        // Profile doesn't exist, create it
+        console.log('Creating user profile for:', user.email);
+        const { error: createError } = await supabase
+          .from('user_profiles')
+          .insert({
+            id: user.id,
+            email: user.email,
+            payment_verified: false,
+            payment_status: 'pending',
+            subscription_status: 'inactive',
+            created_at: new Date().toISOString()
+          });
+
+        if (createError) {
+          console.error('Error creating user profile:', createError);
+        } else {
+          console.log('✅ User profile created successfully');
+        }
+      } else if (existingProfile) {
+        console.log('✅ User profile already exists');
+      }
+
+      // Also ensure user_access_status record exists
+      const { data: existingAccess, error: accessFetchError } = await supabase
+        .from('user_access_status')
+        .select('id')
+        .eq('id', user.id)
+        .single();
+
+      if (accessFetchError && accessFetchError.code === 'PGRST116') {
+        // Access status doesn't exist, create it
+        console.log('Creating user access status for:', user.email);
+        const { error: createAccessError } = await supabase
+          .from('user_access_status')
+          .insert({
+            id: user.id,
+            email: user.email,
+            email_verified: !!user.email_confirmed_at,
+            payment_verified: false,
+            has_access: false,
+            access_type: 'No access'
+          });
+
+        if (createAccessError) {
+          console.error('Error creating user access status:', createAccessError);
+        } else {
+          console.log('✅ User access status created successfully');
+        }
+      }
+    } catch (error) {
+      console.error('Error ensuring user profile:', error);
+    }
+  };
+
   // Helper function to determine payment completion status
   const isPaymentCompleted = (profile: any) => {
     return (
-      profile.payment_verified === true ||
-      profile.payment_status === 'completed' ||
-      profile.subscription_status === 'active' ||
-      profile.manual_override === true
+      profile?.payment_verified === true ||
+      profile?.payment_status === 'completed' ||
+      profile?.subscription_status === 'active' ||
+      profile?.manual_override === true
     );
   };
 
@@ -40,6 +105,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(supabaseUser);
 
       if (supabaseUser) {
+        // Ensure user profile exists
+        await ensureUserProfile(supabaseUser);
+
         let isEmailVerified = false;
         
         // Primary check: Supabase auth email_confirmed_at
@@ -64,23 +132,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               console.log('✅ Email verified via user_access_status');
             }
           } catch (accessError) {
-            console.error('Error checking user_access_status:', accessError); // Changed to error
+            console.error('Error checking user_access_status:', accessError);
           }
         }
         
         setEmailVerified(isEmailVerified);
 
-        // Check payment status from user_profiles, always using 'id'
+        // Check payment status from user_profiles with better error handling
         try {
           const { data: profile, error } = await supabase
             .from('user_profiles')
             .select('payment_verified, payment_status, manual_override, subscription_status')
-            .eq('id', supabaseUser.id) // Standardize to 'id'
+            .eq('id', supabaseUser.id)
             .single();
 
           if (error) {
-            console.warn('Error fetching user profile:', error); // Changed to warn
-            setPaymentCompleted(false);
+            if (error.code === 'PGRST116') {
+              // Profile doesn't exist, we already tried to create it above
+              console.warn('User profile still not found after creation attempt');
+              setPaymentCompleted(false);
+            } else {
+              console.warn('Error fetching user profile:', error);
+              setPaymentCompleted(false);
+            }
           } else if (profile) {
             setPaymentCompleted(isPaymentCompleted(profile));
             console.log(`Payment status: ${isPaymentCompleted(profile) ? '✅ Completed' : '❌ Not completed'}`);
@@ -89,7 +163,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             console.log('❌ User profile not found.');
           }
         } catch (profileError) {
-          console.error('Error checking payment status:', profileError); // Changed to error
+          console.error('Error checking payment status:', profileError);
           setPaymentCompleted(false);
         }
       } else {
@@ -97,7 +171,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setPaymentCompleted(false);
       }
     } catch (error) {
-      console.error('Error in checkUserAndStatus:', error); // Changed to error
+      console.error('Error in checkUserAndStatus:', error);
       setUser(null);
       setEmailVerified(false);
       setPaymentCompleted(false);
@@ -137,7 +211,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       return { data, error: null };
     } catch (error) {
-      console.error('Sign in error:', error); // Added error logging
+      console.error('Sign in error:', error);
       return { data: null, error };
     }
   };
@@ -153,9 +227,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return { data: null, error };
       }
       
+      // If signup is successful, the user profile will be created in checkUserAndStatus
       return { data, error: null };
     } catch (error) {
-      console.error('Sign up error:', error); // Added error logging
+      console.error('Sign up error:', error);
       return { data: null, error };
     }
   };
@@ -196,5 +271,4 @@ export const useAuth = () => {
   }
   return context;
 };
-
 
