@@ -438,4 +438,3 @@ export function Dashboard({ user: propUser, emailVerified: propEmailVerified, pa
     </div>
   );
 }
-
