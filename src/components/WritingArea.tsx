@@ -1,3 +1,5 @@
+// File: src/components/WritingArea.tsx
+
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { generatePrompt, getSynonyms, rephraseSentence, evaluateEssay, getWritingFeedback, identifyCommonMistakes, getTextTypeVocabulary, getSpecializedTextTypeFeedback, getWritingStructure } from '../lib/openai';
 import { dbOperations } from '../lib/database';
@@ -46,6 +48,8 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  const currentContent = content || ''; // Ensure content is always a string
 
   useEffect(() => {
     if (prompt) {
@@ -189,16 +193,16 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
 
   // Auto-save functionality
   useEffect(() => {
-    if (content.trim() && textType && state.user) {
+    if (currentContent.trim() && textType && state.user) {
       const saveTimer = setTimeout(async () => {
         setIsSaving(true);
         try {
-          const wordCount = content.split(' ').filter(word => word.trim()).length;
-          const title = content.split('\n')[0].substring(0, 50) || `${textType} Writing`;
+          const wordCount = currentContent.split(' ').filter(word => word.trim()).length;
+          const title = currentContent.split('\n')[0].substring(0, 50) || `${textType} Writing`;
           
           const { data, error } = await dbOperations.writings.createWriting({
             title,
-            content,
+            content: currentContent,
             text_type: textType,
             word_count: wordCount
           });
@@ -216,13 +220,13 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
 
       return () => clearTimeout(saveTimer);
     }
-  }, [content, textType, state.user, addWriting]);
+  }, [currentContent, textType, state.user, addWriting]);
 
   useEffect(() => {
-    if (content && content.trim()) {
-      analyzeText(content);
+    if (currentContent && currentContent.trim()) {
+      analyzeText(currentContent);
     }
-  }, [content, analyzeText]);
+  }, [currentContent, analyzeText]);
 
   const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newContent = e.target.value;
@@ -258,7 +262,7 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
   };
 
   const handleApplySuggestion = (suggestion: string, start: number, end: number) => {
-    const newContent = content.slice(0, start) + suggestion + content.slice(end);
+    const newContent = currentContent.slice(0, start) + suggestion + currentContent.slice(end);
     onChange(newContent);
     setSelectedIssue(null);
     setSuggestions([]);
@@ -268,7 +272,7 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
     if (selectedIssue) {
       setIsLoadingSuggestions(true);
       try {
-        const text = content.slice(selectedIssue.start, selectedIssue.end);
+        const text = currentContent.slice(selectedIssue.start, selectedIssue.end);
         const alternatives = await rephraseSentence(text);
         setSuggestions(alternatives.split(',').map(s => s.trim()));
       } catch (error) {
@@ -283,7 +287,7 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
     if (selectedIssue) {
       setIsLoadingSuggestions(true);
       try {
-        const word = content.slice(selectedIssue.start, selectedIssue.end).toLowerCase();
+        const word = currentContent.slice(selectedIssue.start, selectedIssue.end).toLowerCase();
         const synonyms = await getSynonyms(word);
         setSuggestions(synonyms);
       } catch (error) {
@@ -347,10 +351,10 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
   };
 
   const handleGetWritingFeedback = async () => {
-    if (!content.trim() || !textType) return;
+    if (!currentContent.trim() || !textType) return;
     setIsLoadingSuggestions(true);
     try {
-      const feedback = await getWritingFeedback(content, textType, 'Year 5-6', []); // Assuming Year 5-6 and no feedback history for simplicity
+      const feedback = await getWritingFeedback(currentContent, textType, 'Year 5-6', []); // Assuming Year 5-6 and no feedback history for simplicity
       setWritingFeedback(feedback);
     } catch (error) {
       console.error('Error getting writing feedback:', error);
@@ -360,10 +364,10 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
   };
 
   const handleIdentifyCommonMistakes = async () => {
-    if (!content.trim() || !textType) return;
+    if (!currentContent.trim() || !textType) return;
     setIsLoadingSuggestions(true);
     try {
-      const mistakes = await identifyCommonMistakes(content, textType);
+      const mistakes = await identifyCommonMistakes(currentContent, textType);
       setCommonMistakes(mistakes);
     } catch (error) {
       console.error('Error identifying common mistakes:', error);
@@ -376,7 +380,7 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
     if (!textType) return;
     setIsLoadingSuggestions(true);
     try {
-      const vocabulary = await getTextTypeVocabulary(textType, content.substring(0, 500));
+      const vocabulary = await getTextTypeVocabulary(textType, currentContent.substring(0, 500));
       setVocabularySuggestions(vocabulary);
     } catch (error) {
       console.error('Error getting text type vocabulary:', error);
@@ -386,10 +390,10 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
   };
 
   const handleGetSpecializedTextTypeFeedback = async () => {
-    if (!content.trim() || !textType) return;
+    if (!currentContent.trim() || !textType) return;
     setIsLoadingSuggestions(true);
     try {
-      const feedback = await getSpecializedTextTypeFeedback(content, textType);
+      const feedback = await getSpecializedTextTypeFeedback(currentContent, textType);
       setSpecializedFeedback(feedback);
     } catch (error) {
       console.error('Error getting specialized text type feedback:', error);
@@ -450,211 +454,138 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
             <textarea
               value={customPrompt}
               onChange={(e) => setCustomPrompt(e.target.value)}
-              placeholder="Enter your own writing prompt..."
-              className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="Enter your custom prompt here..."
               rows={3}
+              className="w-full p-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:text-white dark:border-gray-600"
             />
             <button
               type="submit"
               className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm font-medium touch-friendly-button"
             >
-              Use Custom Prompt
+              Use This Prompt
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowCustomPrompt(false)}
+              className="ml-2 px-4 py-2 bg-gray-300 text-gray-800 rounded-md hover:bg-gray-400 text-sm font-medium touch-friendly-button"
+            >
+              Cancel
             </button>
           </form>
         )}
 
-        {prompt && (
-          <div className="bg-blue-100 dark:bg-blue-900 p-3 rounded-md text-blue-800 dark:text-blue-200 text-sm">
-            <p className="font-semibold">Writing Prompt:</p>
+        {prompt && !showCustomPrompt && (
+          <div className="bg-blue-50 dark:bg-blue-900 p-3 rounded-md text-blue-800 dark:text-blue-200 text-sm prompt-box">
+            <p className="font-semibold">Prompt:</p>
             <p>{prompt}</p>
           </div>
         )}
       </div>
 
-      <div className="flex flex-1 overflow-hidden">
-        <div className="relative flex-1 flex flex-col">
-          <textarea
-            ref={textareaRef}
-            className="flex-1 w-full p-4 text-lg leading-relaxed resize-none focus:outline-none bg-transparent text-gray-900 dark:text-white overflow-y-auto"
-            value={content}
-            onChange={handleContentChange}
-            onScroll={handleScroll}
-            placeholder={noTypeSelected ? 'Please select a writing type to begin...' : 'Start writing here...'}
-            disabled={noTypeSelected || !prompt}
-            spellCheck="false"
-            autoCorrect="off"
-            autoCapitalize="off"
-            data-testid="writing-area"
-          />
-          <div
-            ref={overlayRef}
-            className="absolute inset-0 p-4 text-lg leading-relaxed pointer-events-none overflow-y-auto"
-            style={{ color: 'transparent' }}
-          >
-            {issues.length > 0 &&
-              content.split(/(\b|\s|\S)/).map((part, i) => {
+      <div className="relative flex-grow flex writing-content-area">
+        <textarea
+          ref={textareaRef}
+          value={currentContent}
+          onChange={handleContentChange}
+          onScroll={handleScroll}
+          placeholder={noTypeSelected ? "Please select a writing type to begin..." : "Start writing your essay here..."}
+          className="flex-grow p-4 text-lg font-serif resize-none outline-none bg-transparent z-10 text-gray-900 dark:text-gray-100 custom-scrollbar"
+          spellCheck="false"
+          disabled={noTypeSelected} // Disable if no type is selected
+        />
+        <div
+          ref={overlayRef}
+          className="absolute inset-0 p-4 text-lg font-serif pointer-events-none overflow-y-scroll custom-scrollbar"
+          aria-hidden="true"
+        >
+          {issues.length > 0 && (
+            <div className="relative">
+              {currentContent.split(/(\s+)/).map((word, i) => {
+                const offset = currentContent.substring(0, currentContent.indexOf(word)).length;
                 const issue = issues.find(
-                  (iss) =>
-                    content.substring(0, content.indexOf(part, i)).length >= iss.start &&
-                    content.substring(0, content.indexOf(part, i)).length < iss.end
+                  (issue) =>
+                    issue.start <= offset &&
+                    issue.end >= offset + word.length
                 );
                 return (
                   <span
                     key={i}
-                    className={issue ? getHighlightStyle(issue.type) + ' cursor-pointer' : ''}
+                    className={`${issue ? getHighlightStyle(issue.type) : ''} ${issue ? 'cursor-pointer' : ''}`}
                     onClick={issue ? (e) => handleIssueClick(issue, e) : undefined}
-                    style={issue ? { pointerEvents: 'auto' } : {}}
                   >
-                    {part}
+                    {word}
                   </span>
                 );
               })}
-          </div>
-          {selectedIssue && (
-            <InlineSuggestionPopup
-              issue={selectedIssue}
-              position={popupPosition}
-              onClose={() => setSelectedIssue(null)}
-              onApply={handleApplySuggestion}
-              onParaphrase={handleParaphrase}
-              onThesaurus={handleThesaurus}
-              isLoadingSuggestions={isLoadingSuggestions}
-              suggestions={suggestions}
-            />
+            </div>
           )}
         </div>
-
-        {/* Collapsible Sidebar for AI Tools */}
-        <div className={`relative bg-gray-50 dark:bg-gray-700 border-l border-gray-200 dark:border-gray-700 flex flex-col overflow-y-auto transition-all duration-300 ease-in-out ${isSidebarOpen ? 'w-80 p-4' : 'w-12'}`}>
-          <button
-            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-            className="absolute top-1/2 -left-3 transform -translate-y-1/2 bg-gray-200 dark:bg-gray-600 p-1 rounded-full shadow-md z-10 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            aria-label={isSidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
-          >
-            {isSidebarOpen ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
-          </button>
-          {isSidebarOpen && (
-            <>
-              <h3 className="text-md font-medium text-gray-900 dark:text-white mb-4">AI Writing Tools</h3>
-              <div className="space-y-4">
-                <button
-                  onClick={handleGetWritingFeedback}
-                  disabled={!content.trim() || !textType || isLoadingSuggestions}
-                  className="w-full px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium touch-friendly-button"
-                >
-                  Get Writing Feedback
-                </button>
-                <button
-                  onClick={handleIdentifyCommonMistakes}
-                  disabled={!content.trim() || !textType || isLoadingSuggestions}
-                  className="w-full px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium touch-friendly-button"
-                >
-                  Identify Common Mistakes
-                </button>
-                <button
-                  onClick={handleGetTextTypeVocabulary}
-                  disabled={!textType || isLoadingSuggestions}
-                  className="w-full px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium touch-friendly-button"
-                >
-                  Get Vocabulary Suggestions
-                </button>
-                <button
-                  onClick={handleGetSpecializedTextTypeFeedback}
-                  disabled={!content.trim() || !textType || isLoadingSuggestions}
-                  className="w-full px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium touch-friendly-button"
-                >
-                  Get Specialized Feedback
-                </button>
-                <button
-                  onClick={handleGetWritingStructure}
-                  disabled={!textType || isLoadingSuggestions}
-                  className="w-full px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium touch-friendly-button"
-                >
-                  Get Writing Structure
-                </button>
-              </div>
-
-              {writingFeedback && (
-                <div className="mt-4 p-3 bg-gray-100 dark:bg-gray-600 rounded-md text-gray-900 dark:text-white text-sm">
-                  <h4 className="font-semibold">Writing Feedback:</h4>
-                  <p><strong>Overall:</strong> {writingFeedback.overallComment}</p>
-                  <ul className="list-disc list-inside">
-                    {writingFeedback.feedbackItems.map((item: string, index: number) => (
-                      <li key={index}>{item}</li>
-                    ))}
-                  </ul>
-                  <p><strong>Focus for next time:</strong> {writingFeedback.focusForNextTime}</p>
-                </div>
-              )}
-
-              {commonMistakes && (
-                <div className="mt-4 p-3 bg-gray-100 dark:bg-gray-600 rounded-md text-gray-900 dark:text-white text-sm">
-                  <h4 className="font-semibold">Common Mistakes:</h4>
-                  <p><strong>Overall Assessment:</strong> {commonMistakes.overallAssessment}</p>
-                  <p><strong>Mistakes Identified:</strong> {commonMistakes.mistakesIdentified}</p>
-                  <p><strong>Pattern Analysis:</strong> {commonMistakes.patternAnalysis}</p>
-                  <p><strong>Priority Fixes:</strong> {commonMistakes.priorityFixes}</p>
-                  <p><strong>Positive Elements:</strong> {commonMistakes.positiveElements}</p>
-                </div>
-              )}
-
-              {vocabularySuggestions && (
-                <div className="mt-4 p-3 bg-gray-100 dark:bg-gray-600 rounded-md text-gray-900 dark:text-white text-sm">
-                  <h4 className="font-semibold">Vocabulary Suggestions:</h4>
-                  <p><strong>Text Type:</strong> {vocabularySuggestions.textType}</p>
-                  {vocabularySuggestions.categories.map((category: any, index: number) => (
-                    <div key={index} className="mb-2">
-                      <p className="font-semibold">{category.category}:</p>
-                      <ul className="list-disc list-inside">
-                        {category.words.map((word: string, i: number) => (
-                          <li key={i}>{word}</li>
-                        ))}
-                      </ul>
-                      <p><em>Examples:</em> {category.examples}</p>
-                    </div>
-                  ))}
-                  <p><strong>Phrases and Expressions:</strong> {vocabularySuggestions.phrasesAndExpressions}</p>
-                  <p><strong>Transition Words:</strong> {vocabularySuggestions.transitionWords}</p>
-                </div>
-              )}
-
-              {specializedFeedback && (
-                <div className="mt-4 p-3 bg-gray-100 dark:bg-gray-600 rounded-md text-gray-900 dark:text-white text-sm">
-                  <h4 className="font-semibold">Specialized Feedback:</h4>
-                  <p><strong>Overall:</strong> {specializedFeedback.overallComment}</p>
-                  <p><strong>Structure:</strong> {specializedFeedback.textTypeSpecificFeedback.structure}</p>
-                  <p><strong>Language:</strong> {specializedFeedback.textTypeSpecificFeedback.language}</p>
-                  <p><strong>Purpose:</strong> {specializedFeedback.textTypeSpecificFeedback.purpose}</p>
-                  <p><strong>Audience:</strong> {specializedFeedback.textTypeSpecificFeedback.audience}</p>
-                  <p><strong>Strengths:</strong> {specializedFeedback.strengthsInTextType}</p>
-                  <p><strong>Improvement Areas:</strong> {specializedFeedback.improvementAreas}</p>
-                  <p><strong>Next Steps:</strong> {specializedFeedback.nextSteps}</p>
-                </div>
-              )}
-
-              {writingStructure && (
-                <div className="mt-4 p-3 bg-gray-100 dark:bg-gray-600 rounded-md text-gray-900 dark:text-white text-sm">
-                  <h4 className="font-semibold">Writing Structure:</h4>
-                  <p><strong>Title:</strong> {writingStructure.title}</p>
-                  <ul className="list-disc list-inside">
-                    {writingStructure.sections.map((section: string, index: number) => (
-                      <li key={index}>{section}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </>
-          )}
-        </div>
+        {selectedIssue && popupPosition && (
+          <InlineSuggestionPopup
+            issue={selectedIssue}
+            position={popupPosition}
+            onClose={() => setSelectedIssue(null)}
+            onApply={handleApplySuggestion}
+            onParaphrase={handleParaphrase}
+            onThesaurus={handleThesaurus}
+            isLoadingSuggestions={isLoadingSuggestions}
+            suggestions={suggestions}
+          />
+        )}
       </div>
 
-      <WritingStatusBar
-        wordCount={content.split(' ').filter(word => word.trim()).length}
-        lastSaved={lastSaved}
-        isSaving={isSaving}
+      <WritingStatusBar 
+        content={currentContent} 
+        textType={textType} 
         onRestore={handleRestoreContent}
-        onSubmit={onSubmit}
       />
+
+      <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex flex-wrap gap-2 justify-between items-center writing-actions-bottom">
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={handleGetWritingFeedback}
+            disabled={!currentContent.trim() || !textType || isLoadingSuggestions}
+            className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium touch-friendly-button"
+          >
+            Get Writing Feedback
+          </button>
+          <button
+            onClick={handleIdentifyCommonMistakes}
+            disabled={!currentContent.trim() || !textType || isLoadingSuggestions}
+            className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium touch-friendly-button"
+          >
+            Identify Common Mistakes
+          </button>
+          <button
+            onClick={handleGetTextTypeVocabulary}
+            disabled={!textType || isLoadingSuggestions}
+            className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium touch-friendly-button"
+          >
+            Get Vocabulary Suggestions
+          </button>
+          <button
+            onClick={handleGetSpecializedTextTypeFeedback}
+            disabled={!currentContent.trim() || !textType || isLoadingSuggestions}
+            className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium touch-friendly-button"
+          >
+            Get Specialized Feedback
+          </button>
+          <button
+            onClick={handleGetWritingStructure}
+            disabled={!textType || isLoadingSuggestions}
+            className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium touch-friendly-button"
+          >
+            Get Writing Structure
+          </button>
+        </div>
+        <button
+          onClick={onSubmit}
+          disabled={!currentContent.trim()}
+          className="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed text-lg font-semibold touch-friendly-button"
+        >
+          Submit Writing
+        </button>
+      </div>
     </div>
   );
 }
