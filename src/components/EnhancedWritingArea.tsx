@@ -1,6 +1,3 @@
-// File: src/components/EnhancedWritingArea.tsx
-// Copy this entire file and replace your existing EnhancedWritingArea.tsx
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { generatePrompt, getSynonyms, rephraseSentence } from '../lib/openai';
 import { AlertCircle } from 'lucide-react';
@@ -16,14 +13,13 @@ interface EnhancedWritingAreaProps {
   onSubmit: () => void;
 }
 
-interface Issue {
+interface WritingIssue {
   id: string;
-  type: 'grammar' | 'spelling' | 'style' | 'vocabulary';
-  text: string;
   start: number;
   end: number;
+  type: 'spelling' | 'grammar' | 'vocabulary' | 'structure' | 'style';
+  message: string;
   suggestion: string;
-  explanation: string;
 }
 
 export function EnhancedWritingArea({ 
@@ -37,8 +33,8 @@ export function EnhancedWritingArea({
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [showCustomPrompt, setShowCustomPrompt] = useState<boolean>(false);
   const [customPrompt, setCustomPrompt] = useState<string>('');
-  const [issues, setIssues] = useState<Issue[]>([]);
-  const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null);
+  const [issues, setIssues] = useState<WritingIssue[]>([]);
+  const [selectedIssue, setSelectedIssue] = useState<WritingIssue | null>(null);
   const [popupPosition, setPopupPosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState<boolean>(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
@@ -55,6 +51,236 @@ export function EnhancedWritingArea({
       setShowPromptButtons(false);
     }
   }, [prompt, onTimerStart]);
+
+  // Enhanced text analysis function from original design
+  const analyzeText = useCallback((text: string) => {
+    const newIssues: WritingIssue[] = [];
+    
+    // Common spelling mistakes (only incorrect spellings)
+    const spellingPatterns = {
+      'softley': 'softly',
+      'recieve': 'receive',
+      'seperate': 'separate',
+      'occured': 'occurred',
+      'accomodate': 'accommodate',
+      'alot': 'a lot',
+      'cant': "can't",
+      'dont': "don't",
+      'wont': "won't",
+      'im': "I'm",
+      'ive': "I've",
+      'id': "I'd",
+      'youre': "you're",
+      'theyre': "they're"
+    };
+
+    // Grammar patterns (only incorrect grammar)
+    const grammarPatterns = {
+      'i am': 'I am',
+      'i have': 'I have',
+      'i will': 'I will',
+      'i was': 'I was'
+    };
+
+    // Vocabulary improvements with multiple suggestions
+    const vocabularyPatterns = {
+      'good': 'excellent, outstanding, remarkable',
+      'bad': 'poor, inadequate, unsatisfactory',
+      'said': 'exclaimed, declared, announced',
+      'nice': 'pleasant, delightful, charming',
+      'big': 'enormous, massive, substantial',
+      'small': 'tiny, minute, compact',
+      'happy': 'joyful, delighted, cheerful',
+      'sad': 'unhappy, gloomy, melancholy',
+      'walk': 'stroll, amble, wander',
+      'run': 'dash, sprint, race',
+      'look': 'gaze, stare, observe',
+      'went': 'traveled, journeyed, ventured',
+      'saw': 'noticed, observed, spotted',
+      'got': 'received, obtained, acquired',
+      'make': 'create, produce, construct',
+      'think': 'believe, consider, ponder',
+      'started': 'began, commenced, initiated'
+    };
+
+    // Check spelling
+    Object.entries(spellingPatterns).forEach(([incorrect, correct]) => {
+      const regex = new RegExp(`\\b${incorrect}\\b`, 'gi');
+      let match;
+      while ((match = regex.exec(text)) !== null) {
+        newIssues.push({
+          id: `spelling-${match.index}`,
+          start: match.index,
+          end: match.index + incorrect.length,
+          type: 'spelling',
+          message: `This word is misspelled. The correct spelling is "${correct}".`,
+          suggestion: correct
+        });
+      }
+    });
+
+    // Check grammar
+    Object.entries(grammarPatterns).forEach(([incorrect, correct]) => {
+      const regex = new RegExp(`\\b${incorrect}\\b`, 'gi');
+      let match;
+      while ((match = regex.exec(text)) !== null) {
+        newIssues.push({
+          id: `grammar-${match.index}`,
+          start: match.index,
+          end: match.index + incorrect.length,
+          type: 'grammar',
+          message: `This needs proper capitalization.`,
+          suggestion: correct
+        });
+      }
+    });
+
+    // Check vocabulary
+    Object.entries(vocabularyPatterns).forEach(([basic, improvements]) => {
+      const regex = new RegExp(`\\b${basic}\\b`, 'gi');
+      let match;
+      while ((match = regex.exec(text)) !== null) {
+        newIssues.push({
+          id: `vocabulary-${match.index}`,
+          start: match.index,
+          end: match.index + basic.length,
+          type: 'vocabulary',
+          message: `Consider using a more descriptive word to make your writing more engaging.`,
+          suggestion: improvements
+        });
+      }
+    });
+
+    // Check for repeated words
+    const words = text.toLowerCase().match(/\\b\\w+\\b/g) || [];
+    const wordCounts: { [key: string]: number } = {};
+    words.forEach((word, index) => {
+      if (word.length > 3) { // Only check words longer than 3 letters
+        if (wordCounts[word]) {
+          if (index - wordCounts[word] < 30) { // Check if words are close together
+            const start = text.toLowerCase().indexOf(word, index);
+            const suggestions = vocabularyPatterns[word as keyof typeof vocabularyPatterns];
+            if (suggestions) {
+              newIssues.push({
+                id: `style-${start}`,
+                start,
+                end: start + word.length,
+                type: 'style',
+                message: `This word appears multiple times nearby. Try using a different word for variety.`,
+                suggestion: suggestions
+              });
+            }
+          }
+        }
+        wordCounts[word] = index;
+      }
+    });
+
+    setIssues(newIssues);
+  }, []);
+
+  // Analyze text when content changes
+  useEffect(() => {
+    if (content.trim()) {
+      analyzeText(content);
+    } else {
+      setIssues([]);
+    }
+  }, [content, analyzeText]);
+
+  // Handle content changes
+  const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const newContent = e.target.value;
+    onChange(newContent);
+  };
+
+  // Handle scroll synchronization
+  const handleScroll = (e: React.UIEvent<HTMLTextAreaElement>) => {
+    if (overlayRef.current) {
+      overlayRef.current.scrollTop = e.currentTarget.scrollTop;
+    }
+  };
+
+  // Handle issue click for suggestions
+  const handleIssueClick = (issue: WritingIssue, event: React.MouseEvent) => {
+    const rect = (event.target as HTMLElement).getBoundingClientRect();
+    const containerRect = containerRef.current?.getBoundingClientRect();
+    
+    if (containerRect) {
+      let x = rect.left - containerRect.left;
+      let y = rect.top - containerRect.top + rect.height;
+
+      const maxX = containerRect.width - 300; // 300px is max-width of popup
+      if (x > maxX) x = maxX;
+      if (x < 0) x = 0;
+
+      // Ensure popup doesn't go below the container
+      const maxY = containerRect.height - 200; // Approximate popup height
+      if (y > maxY) y = rect.top - containerRect.top - 220; // Show above the word
+
+      setPopupPosition({ x, y });
+      setSelectedIssue(issue);
+      setSuggestions([]);
+    }
+  };
+
+  // Apply suggestion to text
+  const handleApplySuggestion = (suggestion: string, start: number, end: number) => {
+    const newContent = content.slice(0, start) + suggestion + content.slice(end);
+    onChange(newContent);
+    setSelectedIssue(null);
+    setSuggestions([]);
+  };
+
+  // Handle paraphrase request
+  const handleParaphrase = async () => {
+    if (selectedIssue) {
+      setIsLoadingSuggestions(true);
+      try {
+        const text = content.slice(selectedIssue.start, selectedIssue.end);
+        const alternatives = await rephraseSentence(text);
+        setSuggestions(Array.isArray(alternatives) ? alternatives : [alternatives]);
+      } catch (error) {
+        console.error('Error getting alternatives:', error);
+      } finally {
+        setIsLoadingSuggestions(false);
+      }
+    }
+  };
+
+  // Handle thesaurus request
+  const handleThesaurus = async () => {
+    if (selectedIssue) {
+      setIsLoadingSuggestions(true);
+      try {
+        const word = content.slice(selectedIssue.start, selectedIssue.end).toLowerCase();
+        const synonyms = await getSynonyms(word);
+        setSuggestions(synonyms);
+      } catch (error) {
+        console.error('Error getting synonyms:', error);
+      } finally {
+        setIsLoadingSuggestions(false);
+      }
+    }
+  };
+
+  // Get highlight style for different issue types
+  const getHighlightStyle = (type: WritingIssue['type']) => {
+    switch (type) {
+      case 'spelling':
+        return 'bg-red-100 border-b-2 border-red-400 cursor-pointer';
+      case 'grammar':
+        return 'bg-yellow-100 border-b-2 border-yellow-400 cursor-pointer';
+      case 'vocabulary':
+        return 'bg-green-100 border-b-2 border-green-400 cursor-pointer';
+      case 'structure':
+        return 'bg-purple-100 border-b-2 border-purple-400 cursor-pointer';
+      case 'style':
+        return 'bg-orange-100 border-b-2 border-orange-400 cursor-pointer';
+      default:
+        return '';
+    }
+  };
 
   // Handle prompt generation
   const handleGeneratePrompt = async () => {
@@ -83,113 +309,10 @@ export function EnhancedWritingArea({
     }
   };
 
-  // Handle content changes
-  const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const newContent = e.target.value;
-    onChange(newContent);
-  };
-
   // Handle essay submission
   const handleSubmitEssay = () => {
     onSubmit();
   };
-
-  // Handle text selection for suggestions
-  const handleTextSelection = useCallback(async () => {
-    if (!textareaRef.current) return;
-
-    const textarea = textareaRef.current;
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-
-    if (start === end) {
-      setSelectedIssue(null);
-      return;
-    }
-
-    const selectedText = content.substring(start, end);
-    if (selectedText.trim().length === 0) return;
-
-    // Calculate popup position
-    const rect = textarea.getBoundingClientRect();
-    const textBeforeSelection = content.substring(0, start);
-    const lines = textBeforeSelection.split('\n');
-    const lineHeight = 20; // Approximate line height
-    const charWidth = 8; // Approximate character width
-    
-    const y = rect.top + (lines.length - 1) * lineHeight + 30;
-    const x = rect.left + (lines[lines.length - 1]?.length || 0) * charWidth;
-
-    setPopupPosition({ x, y });
-    setIsLoadingSuggestions(true);
-
-    try {
-      // Get suggestions for the selected text
-      const synonyms = await getSynonyms(selectedText);
-      const rephrase = await rephraseSentence(selectedText);
-      
-      const mockIssue: Issue = {
-        id: `suggestion-${Date.now()}`,
-        type: 'vocabulary',
-        text: selectedText,
-        start,
-        end,
-        suggestion: synonyms.join(', ') || rephrase,
-        explanation: 'Here are some alternative words or phrases you could use.'
-      };
-
-      setSelectedIssue(mockIssue);
-    } catch (error) {
-      console.error('Error getting suggestions:', error);
-    } finally {
-      setIsLoadingSuggestions(false);
-    }
-  }, [content]);
-
-  // Apply suggestion to text
-  const applySuggestion = useCallback((suggestion: string, start: number, end: number) => {
-    const newContent = content.substring(0, start) + suggestion + content.substring(end);
-    onChange(newContent);
-    setSelectedIssue(null);
-  }, [content, onChange]);
-
-  // Handle paraphrase request
-  const handleParaphrase = useCallback(async () => {
-    if (!selectedIssue) return;
-    
-    setIsLoadingSuggestions(true);
-    try {
-      const rephrase = await rephraseSentence(selectedIssue.text);
-      setSelectedIssue({
-        ...selectedIssue,
-        suggestion: rephrase,
-        explanation: 'Here is a rephrased version of your text.'
-      });
-    } catch (error) {
-      console.error('Error rephrasing:', error);
-    } finally {
-      setIsLoadingSuggestions(false);
-    }
-  }, [selectedIssue]);
-
-  // Handle thesaurus request
-  const handleThesaurus = useCallback(async () => {
-    if (!selectedIssue) return;
-    
-    setIsLoadingSuggestions(true);
-    try {
-      const synonyms = await getSynonyms(selectedIssue.text);
-      setSelectedIssue({
-        ...selectedIssue,
-        suggestion: synonyms.join(', '),
-        explanation: 'Here are some synonyms for the selected word.'
-      });
-    } catch (error) {
-      console.error('Error getting synonyms:', error);
-    } finally {
-      setIsLoadingSuggestions(false);
-    }
-  }, [selectedIssue]);
 
   const noTypeSelected = !textType;
 
@@ -201,26 +324,29 @@ export function EnhancedWritingArea({
           <h2 className="text-lg font-medium text-gray-900 capitalize">
             {textType ? `${textType} Writing` : 'Writing Area'}
           </h2>
+          {noTypeSelected ? (
+            <div className="flex items-center text-amber-600 text-sm">
+              <AlertCircle className="w-4 h-4 mr-2" />
+              Please select a writing type first
+            </div>
+          ) : showPromptButtons && (
+            <div className="flex flex-wrap space-x-2 gap-2">
+              <button
+                onClick={() => setShowCustomPrompt(true)}
+                className="px-4 py-2 bg-blue-600 text-white border border-blue-600 rounded-md hover:bg-blue-700 text-sm font-medium touch-friendly-button"
+              >
+                I have my own prompt
+              </button>
+              <button
+                onClick={handleGeneratePrompt}
+                disabled={isGenerating}
+                className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium touch-friendly-button"
+              >
+                {isGenerating ? 'Generating...' : 'Generate New Prompt'}
+              </button>
+            </div>
+          )}
         </div>
-
-        {/* Prompt Buttons */}
-        {!noTypeSelected && showPromptButtons && (
-          <div className="flex flex-wrap space-x-2 gap-2">
-            <button
-              onClick={() => setShowCustomPrompt(true)}
-              className="px-4 py-2 bg-blue-600 text-white border border-blue-600 rounded-md hover:bg-blue-700 text-sm font-medium touch-friendly-button"
-            >
-              I have my own prompt
-            </button>
-            <button
-              onClick={handleGeneratePrompt}
-              disabled={isGenerating}
-              className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium touch-friendly-button"
-            >
-              {isGenerating ? 'Generating...' : 'Generate New Prompt'}
-            </button>
-          </div>
-        )}
 
         {/* Custom Prompt Form */}
         {showCustomPrompt && !noTypeSelected && (
@@ -260,36 +386,66 @@ export function EnhancedWritingArea({
         )}
       </div>
 
-      {/* Writing Area */}
-      <div className="flex-1 p-4 overflow-y-auto relative">
+      {/* Enhanced Writing Area with Overlay */}
+      <div className="relative flex-1 overflow-hidden writing-area-enhanced">
         <textarea
           ref={textareaRef}
           value={content}
           onChange={handleContentChange}
-          onMouseUp={handleTextSelection}
-          onKeyUp={handleTextSelection}
+          onScroll={handleScroll}
           disabled={noTypeSelected || !prompt}
-          className="w-full h-96 p-4 text-gray-900 resize-none focus:outline-none border rounded-md disabled:bg-gray-100 writing-textarea"
+          className="absolute inset-0 w-full h-full p-4 text-gray-900 resize-none focus:outline-none disabled:bg-gray-50 disabled:cursor-not-allowed overflow-y-auto writing-textarea"
           placeholder={
             noTypeSelected
               ? 'Select a writing type to begin...'
               : !prompt
               ? 'Choose or enter a prompt to start writing...'
-              : 'Begin writing here... (Select text to get suggestions)'
+              : 'Begin writing here... (Click on highlighted text for suggestions)'
           }
+          style={{ 
+            caretColor: 'black',
+            color: 'transparent',
+            background: 'transparent',
+            fontSize: '16px',
+            lineHeight: '1.6'
+          }}
         />
+        
+        {/* Text Overlay for Highlighting */}
+        <div 
+          ref={overlayRef}
+          className="absolute inset-0 pointer-events-none p-4 text-gray-900 overflow-y-hidden"
+          style={{ whiteSpace: 'pre-wrap', wordWrap: 'break-word', fontSize: '16px', lineHeight: '1.6' }}
+        >
+          {content.split('').map((char, index) => {
+            const issue = issues.find(i => index >= i.start && index < i.end);
+            return (
+              <span
+                key={index}
+                className={issue ? `${getHighlightStyle(issue.type)} relative group` : ''}
+                onClick={issue ? (e) => handleIssueClick(issue, e) : undefined}
+                style={{ pointerEvents: issue ? 'auto' : 'none' }}
+              >
+                {char}
+              </span>
+            );
+          })}
+        </div>
 
         {/* Inline Suggestion Popup */}
         {selectedIssue && (
           <InlineSuggestionPopup
-            original={selectedIssue.text}
-            suggestion={selectedIssue.suggestion}
-            explanation={selectedIssue.explanation}
+            original={content.slice(selectedIssue.start, selectedIssue.end)}
+            suggestion={suggestions.length > 0 ? suggestions.join(', ') : selectedIssue.suggestion}
+            explanation={selectedIssue.message}
             position={popupPosition}
-            onApply={applySuggestion}
+            onApply={handleApplySuggestion}
             onParaphrase={handleParaphrase}
             onThesaurus={handleThesaurus}
-            onClose={() => setSelectedIssue(null)}
+            onClose={() => {
+              setSelectedIssue(null);
+              setSuggestions([]);
+            }}
             start={selectedIssue.start}
             end={selectedIssue.end}
             isLoading={isLoadingSuggestions}
@@ -298,26 +454,55 @@ export function EnhancedWritingArea({
       </div>
 
       {/* Footer Section */}
-      <div className="p-4 border-t bg-gray-50 content-spacing flex justify-between items-center">
-        <div className="text-sm text-gray-500">
-          Word count: {content.split(/\s+/).filter(Boolean).length}
-        </div>
-        <div className="flex gap-4 items-center">
-          <AutoSave 
-            content={content} 
-            textType={textType}
-            onRestore={(restoredContent, restoredType) => {
-              onChange(restoredContent);
-              // You might want to also update the text type if needed
-            }}
-          />
-          <button
-            onClick={handleSubmitEssay}
-            disabled={!content.trim()}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 text-sm font-medium touch-friendly-button"
-          >
-            Submit Essay
-          </button>
+      <div className="p-4 border-t bg-gray-50 content-spacing">
+        <div className="space-y-4">
+          <div className="flex justify-between items-center">
+            <div className="text-sm text-gray-500">
+              Word count: {content.split(/\\s+/).filter(Boolean).length}
+            </div>
+            <AutoSave 
+              content={content} 
+              textType={textType}
+              onRestore={(restoredContent, restoredType) => {
+                onChange(restoredContent);
+                // You might want to also update the text type if needed
+              }}
+            />
+          </div>
+
+          {/* Issue Legend and Submit Button */}
+          <div className="flex justify-between items-center">
+            <div className="flex flex-wrap gap-2 text-xs">
+              <div className="flex items-center">
+                <span className="w-3 h-3 bg-red-100 border-b-2 border-red-400 mr-1"></span>
+                <span>Spelling</span>
+              </div>
+              <div className="flex items-center">
+                <span className="w-3 h-3 bg-yellow-100 border-b-2 border-yellow-400 mr-1"></span>
+                <span>Grammar</span>
+              </div>
+              <div className="flex items-center">
+                <span className="w-3 h-3 bg-green-100 border-b-2 border-green-400 mr-1"></span>
+                <span>Vocabulary</span>
+              </div>
+              <div className="flex items-center">
+                <span className="w-3 h-3 bg-purple-100 border-b-2 border-purple-400 mr-1"></span>
+                <span>Structure</span>
+              </div>
+              <div className="flex items-center">
+                <span className="w-3 h-3 bg-orange-100 border-b-2 border-orange-400 mr-1"></span>
+                <span>Style</span>
+              </div>
+            </div>
+            
+            <button
+              onClick={handleSubmitEssay}
+              disabled={!content.trim()}
+              className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium touch-friendly-button"
+            >
+              Submit Essay
+            </button>
+          </div>
         </div>
       </div>
     </div>
