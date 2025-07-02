@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { isEmailVerified, hasAnyAccess, getUserAccessStatus } from '../lib/supabase';
-import { Mail, CheckCircle, Clock, FileText, PenTool, BarChart3, Settings } from 'lucide-react';
+import { Mail, CheckCircle, Clock, FileText, PenTool, BarChart3, Settings, X } from 'lucide-react';
 
 interface DashboardProps {
   user?: any;
@@ -18,6 +18,7 @@ export function Dashboard({ user: propUser, emailVerified: propEmailVerified, pa
   const [tempAccessUntil, setTempAccessUntil] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [userAccessData, setUserAccessData] = useState<any>(null);
+  const [showWelcomeMessage, setShowWelcomeMessage] = useState(false);
 
   // Use prop user if provided, otherwise use context user
   const currentUser = propUser || user;
@@ -40,6 +41,14 @@ export function Dashboard({ user: propUser, emailVerified: propEmailVerified, pa
             if (accessData.payment_verified || accessData.manual_override || accessData.has_access) {
               setIsVerified(true);
               setAccessType('permanent');
+              
+              // Check if this is the first time showing the welcome message
+              const hasSeenWelcome = localStorage.getItem(`welcome_shown_${currentUser.id}`);
+              if (!hasSeenWelcome) {
+                setShowWelcomeMessage(true);
+                localStorage.setItem(`welcome_shown_${currentUser.id}`, 'true');
+              }
+              
               console.log('✅ Dashboard: Permanent access confirmed - payment verified:', accessData.payment_verified);
               setIsLoading(false);
               return;
@@ -110,6 +119,14 @@ export function Dashboard({ user: propUser, emailVerified: propEmailVerified, pa
         if (accessData && (accessData.payment_verified || accessData.manual_override || accessData.has_access)) {
           setIsVerified(true);
           setAccessType('permanent');
+          
+          // Check if this is the first time showing the welcome message after manual refresh
+          const hasSeenWelcome = localStorage.getItem(`welcome_shown_${currentUser.id}`);
+          if (!hasSeenWelcome) {
+            setShowWelcomeMessage(true);
+            localStorage.setItem(`welcome_shown_${currentUser.id}`, 'true');
+          }
+          
           console.log('✅ Refresh: Permanent access confirmed');
         } else if (accessData && accessData.temp_access_until) {
           const tempDate = new Date(accessData.temp_access_until);
@@ -165,6 +182,10 @@ export function Dashboard({ user: propUser, emailVerified: propEmailVerified, pa
     }
   };
 
+  const handleDismissWelcome = () => {
+    setShowWelcomeMessage(false);
+  };
+
   if (!currentUser) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -187,7 +208,54 @@ export function Dashboard({ user: propUser, emailVerified: propEmailVerified, pa
           <p className="text-gray-600 mt-2">Ready to continue your writing journey?</p>
         </div>
 
-        {/* FIXED: Improved verification status display */}
+        {/* One-time Welcome Message for Premium Users */}
+        {showWelcomeMessage && accessType === 'permanent' && (
+          <div className="bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 rounded-lg p-6 mb-8 relative">
+            <button
+              onClick={handleDismissWelcome}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+            >
+              <X className="h-5 w-5" />
+            </button>
+            <div className="flex items-center">
+              <CheckCircle className="h-8 w-8 text-green-600 mr-4" />
+              <div className="flex-1">
+                <h3 className="text-xl font-bold text-green-900 mb-2">🎉 Welcome to Premium!</h3>
+                <p className="text-green-800 mb-3">
+                  Congratulations! Your account is now fully activated. You have access to all premium features including:
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-green-700">
+                  <div className="flex items-center">
+                    <CheckCircle className="h-4 w-4 text-green-600 mr-2" />
+                    AI-powered writing assistance
+                  </div>
+                  <div className="flex items-center">
+                    <CheckCircle className="h-4 w-4 text-green-600 mr-2" />
+                    NSW Selective exam practice
+                  </div>
+                  <div className="flex items-center">
+                    <CheckCircle className="h-4 w-4 text-green-600 mr-2" />
+                    Real-time feedback & suggestions
+                  </div>
+                  <div className="flex items-center">
+                    <CheckCircle className="h-4 w-4 text-green-600 mr-2" />
+                    Progress tracking & analytics
+                  </div>
+                </div>
+                <div className="mt-4">
+                  <button
+                    onClick={handleStartWriting}
+                    className="bg-green-600 text-white px-6 py-2 rounded-md hover:bg-green-700 transition-colors font-medium"
+                  >
+                    Start Writing Now
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Status Messages */}
         {isLoading ? (
           <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 mb-8">
             <div className="flex items-center">
@@ -195,25 +263,6 @@ export function Dashboard({ user: propUser, emailVerified: propEmailVerified, pa
               <div>
                 <h3 className="text-lg font-medium text-gray-900">Checking access status...</h3>
                 <p className="text-gray-600 mt-1">Please wait while we verify your account.</p>
-              </div>
-            </div>
-          </div>
-        ) : accessType === 'permanent' ? (
-          <div className="bg-green-50 border border-green-200 rounded-lg p-6 mb-8">
-            <div className="flex items-center">
-              <CheckCircle className="h-6 w-6 text-green-600 mr-3" />
-              <div className="flex-1">
-                <h3 className="text-lg font-medium text-green-900">✅ Verified - Welcome to Premium!</h3>
-                <p className="text-green-700 mt-1">
-                  Excellent! Your payment has been verified and you have full access to all premium features.
-                </p>
-                {userAccessData && (
-                  <div className="mt-2 text-sm text-green-600">
-                    <p>Email verified: {userAccessData.email_verified ? '✅' : '❌'}</p>
-                    <p>Payment verified: {userAccessData.payment_verified ? '✅' : '❌'}</p>
-                    <p>Access status: {userAccessData.has_access ? '✅ Active' : '❌ Inactive'}</p>
-                  </div>
-                )}
               </div>
             </div>
           </div>
@@ -240,7 +289,7 @@ export function Dashboard({ user: propUser, emailVerified: propEmailVerified, pa
               </button>
             </div>
           </div>
-        ) : (
+        ) : accessType === 'none' ? (
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-8">
             <div className="flex items-center">
               <Mail className="h-6 w-6 text-blue-600 mr-3" />
@@ -272,7 +321,7 @@ export function Dashboard({ user: propUser, emailVerified: propEmailVerified, pa
               </button>
             </div>
           </div>
-        )}
+        ) : null}
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
