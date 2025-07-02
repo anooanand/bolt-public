@@ -1,13 +1,9 @@
-// FIXED VERSION: src/components/Dashboard.tsx
-// Copy-paste this entire file to replace the existing Dashboard.tsx
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { isEmailVerified, hasAnyAccess } from '../lib/supabase';
+import { isEmailVerified, hasAnyAccess, getUserAccessStatus } from '../lib/supabase';
 import { Mail, CheckCircle, Clock, FileText, PenTool, BarChart3, Settings } from 'lucide-react';
 
-// ✅ FIXED: Removed onNavigate prop and use React Router's useNavigate instead
 interface DashboardProps {
   user?: any;
   emailVerified?: boolean;
@@ -16,11 +12,12 @@ interface DashboardProps {
 
 export function Dashboard({ user: propUser, emailVerified: propEmailVerified, paymentCompleted: propPaymentCompleted }: DashboardProps) {
   const { user } = useAuth();
-  const navigate = useNavigate(); // ✅ FIXED: Use React Router navigation
+  const navigate = useNavigate();
   const [isVerified, setIsVerified] = useState(false);
   const [accessType, setAccessType] = useState<'none' | 'temporary' | 'permanent'>('none');
   const [tempAccessUntil, setTempAccessUntil] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [userAccessData, setUserAccessData] = useState<any>(null);
 
   // Use prop user if provided, otherwise use context user
   const currentUser = propUser || user;
@@ -28,11 +25,41 @@ export function Dashboard({ user: propUser, emailVerified: propEmailVerified, pa
   useEffect(() => {
     const checkVerificationStatus = async () => {
       if (currentUser) {
-        console.log('🔍 Dashboard: Checking verification status...');
+        console.log('🔍 Dashboard: Checking verification status for user:', currentUser.id);
         setIsLoading(true);
         
         try {
-          // Check for temporary access first
+          // FIXED: Get detailed user access status from database
+          const accessData = await getUserAccessStatus(currentUser.id);
+          setUserAccessData(accessData);
+          
+          if (accessData) {
+            console.log('📊 User access data:', accessData);
+            
+            // Check if user has permanent access (payment verified or manual override)
+            if (accessData.payment_verified || accessData.manual_override || accessData.has_access) {
+              setIsVerified(true);
+              setAccessType('permanent');
+              console.log('✅ Dashboard: Permanent access confirmed - payment verified:', accessData.payment_verified);
+              setIsLoading(false);
+              return;
+            }
+            
+            // Check if user has valid temporary access
+            if (accessData.temp_access_until) {
+              const tempDate = new Date(accessData.temp_access_until);
+              if (tempDate > new Date()) {
+                setIsVerified(true);
+                setAccessType('temporary');
+                setTempAccessUntil(accessData.temp_access_until);
+                console.log('✅ Dashboard: Temporary access valid until:', tempDate);
+                setIsLoading(false);
+                return;
+              }
+            }
+          }
+          
+          // Fallback: Check for temporary access in localStorage
           const tempAccess = localStorage.getItem('temp_access_granted');
           const tempUntil = localStorage.getItem('temp_access_until');
           
@@ -42,7 +69,7 @@ export function Dashboard({ user: propUser, emailVerified: propEmailVerified, pa
               setIsVerified(true);
               setAccessType('temporary');
               setTempAccessUntil(tempUntil);
-              console.log('✅ Dashboard: Temporary access valid until:', tempDate);
+              console.log('✅ Dashboard: Temporary access from localStorage valid until:', tempDate);
               setIsLoading(false);
               return;
             } else {
@@ -53,19 +80,12 @@ export function Dashboard({ user: propUser, emailVerified: propEmailVerified, pa
             }
           }
           
-          // Check for any access (temporary or permanent)
-          const hasAccess = await hasAnyAccess(currentUser.id);
-          if (hasAccess) {
-            setIsVerified(true);
-            setAccessType('permanent');
-            console.log('✅ Dashboard: Permanent access confirmed');
-          } else {
-            // Check basic email verification
-            const verified = await isEmailVerified(currentUser.id);
-            setIsVerified(verified);
-            setAccessType(verified ? 'permanent' : 'none');
-            console.log('📊 Dashboard: Basic verification result:', verified);
-          }
+          // Check basic email verification
+          const verified = isEmailVerified(currentUser);
+          setIsVerified(verified);
+          setAccessType('none');
+          console.log('📊 Dashboard: Only email verification result:', verified);
+          
         } catch (error) {
           console.error('❌ Error checking verification status:', error);
           setIsVerified(false);
@@ -83,17 +103,28 @@ export function Dashboard({ user: propUser, emailVerified: propEmailVerified, pa
     if (currentUser) {
       setIsLoading(true);
       try {
-        const hasAccess = await hasAnyAccess(currentUser.id);
-        const verified = await isEmailVerified(currentUser.id);
+        // FIXED: Refresh user access status from database
+        const accessData = await getUserAccessStatus(currentUser.id);
+        setUserAccessData(accessData);
         
-        if (hasAccess) {
+        if (accessData && (accessData.payment_verified || accessData.manual_override || accessData.has_access)) {
           setIsVerified(true);
           setAccessType('permanent');
-        } else if (verified) {
-          setIsVerified(true);
-          setAccessType('permanent');
+          console.log('✅ Refresh: Permanent access confirmed');
+        } else if (accessData && accessData.temp_access_until) {
+          const tempDate = new Date(accessData.temp_access_until);
+          if (tempDate > new Date()) {
+            setIsVerified(true);
+            setAccessType('temporary');
+            setTempAccessUntil(accessData.temp_access_until);
+            console.log('✅ Refresh: Temporary access confirmed');
+          } else {
+            setIsVerified(false);
+            setAccessType('none');
+          }
         } else {
-          setIsVerified(false);
+          const verified = isEmailVerified(currentUser);
+          setIsVerified(verified);
           setAccessType('none');
         }
       } catch (error) {
@@ -103,7 +134,6 @@ export function Dashboard({ user: propUser, emailVerified: propEmailVerified, pa
     }
   };
 
-  // ✅ FIXED: Use React Router navigation instead of onNavigate prop
   const handleStartWriting = () => {
     console.log('🚀 Dashboard: Navigating to writing area...');
     navigate('/writing');
@@ -157,7 +187,7 @@ export function Dashboard({ user: propUser, emailVerified: propEmailVerified, pa
           <p className="text-gray-600 mt-2">Ready to continue your writing journey?</p>
         </div>
 
-        {/* Verification Status */}
+        {/* FIXED: Improved verification status display */}
         {isLoading ? (
           <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 mb-8">
             <div className="flex items-center">
@@ -168,30 +198,23 @@ export function Dashboard({ user: propUser, emailVerified: propEmailVerified, pa
               </div>
             </div>
           </div>
-        ) : !isVerified ? (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-8">
+        ) : accessType === 'permanent' ? (
+          <div className="bg-green-50 border border-green-200 rounded-lg p-6 mb-8">
             <div className="flex items-center">
-              <Mail className="h-6 w-6 text-blue-600 mr-3" />
+              <CheckCircle className="h-6 w-6 text-green-600 mr-3" />
               <div className="flex-1">
-                <h3 className="text-lg font-medium text-blue-900">Verify Your Email Address</h3>
-                <p className="text-blue-700 mt-1">
-                  We've sent a verification email to {currentUser?.email}. Please check your inbox and click the verification link to activate your account.
+                <h3 className="text-lg font-medium text-green-900">✅ Verified - Welcome to Premium!</h3>
+                <p className="text-green-700 mt-1">
+                  Excellent! Your payment has been verified and you have full access to all premium features.
                 </p>
-                <p className="text-sm text-blue-600 mt-2">
-                  After verifying your email, you'll need to complete payment to access all premium features.
-                </p>
+                {userAccessData && (
+                  <div className="mt-2 text-sm text-green-600">
+                    <p>Email verified: {userAccessData.email_verified ? '✅' : '❌'}</p>
+                    <p>Payment verified: {userAccessData.payment_verified ? '✅' : '❌'}</p>
+                    <p>Access status: {userAccessData.has_access ? '✅ Active' : '❌ Inactive'}</p>
+                  </div>
+                )}
               </div>
-            </div>
-            <div className="mt-4 flex space-x-3">
-              <button 
-                onClick={handleManualRefresh}
-                className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
-              >
-                I've Verified My Email
-              </button>
-              <button className="bg-gray-200 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-300 transition-colors">
-                Resend Verification Email
-              </button>
             </div>
           </div>
         ) : accessType === 'temporary' ? (
@@ -218,15 +241,35 @@ export function Dashboard({ user: propUser, emailVerified: propEmailVerified, pa
             </div>
           </div>
         ) : (
-          <div className="bg-green-50 border border-green-200 rounded-lg p-6 mb-8">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-8">
             <div className="flex items-center">
-              <CheckCircle className="h-6 w-6 text-green-600 mr-3" />
+              <Mail className="h-6 w-6 text-blue-600 mr-3" />
               <div className="flex-1">
-                <h3 className="text-lg font-medium text-green-900">All Set! Welcome to Premium</h3>
-                <p className="text-green-700 mt-1">
-                  Great! Your email is verified and payment is confirmed. You have full access to all premium features.
+                <h3 className="text-lg font-medium text-blue-900">Verify Your Email Address</h3>
+                <p className="text-blue-700 mt-1">
+                  We've sent a verification email to {currentUser?.email}. Please check your inbox and click the verification link to activate your account.
                 </p>
+                <p className="text-sm text-blue-600 mt-2">
+                  After verifying your email, you'll need to complete payment to access all premium features.
+                </p>
+                {userAccessData && (
+                  <div className="mt-2 text-sm text-blue-600">
+                    <p>Email verified: {userAccessData.email_verified ? '✅' : '❌'}</p>
+                    <p>Payment verified: {userAccessData.payment_verified ? '✅' : '❌'}</p>
+                  </div>
+                )}
               </div>
+            </div>
+            <div className="mt-4 flex space-x-3">
+              <button 
+                onClick={handleManualRefresh}
+                className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
+              >
+                I've Verified My Email
+              </button>
+              <button className="bg-gray-200 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-300 transition-colors">
+                Resend Verification Email
+              </button>
             </div>
           </div>
         )}
@@ -281,7 +324,6 @@ export function Dashboard({ user: propUser, emailVerified: propEmailVerified, pa
           </div>
           <div className="p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* ✅ FIXED: Proper click handler with React Router navigation */}
               <div 
                 className="border border-gray-200 rounded-lg p-6 hover:border-blue-300 hover:shadow-md transition-all cursor-pointer" 
                 onClick={handleStartWriting}
@@ -295,14 +337,13 @@ export function Dashboard({ user: propUser, emailVerified: propEmailVerified, pa
                     <p className="text-gray-600">Create a new document with AI assistance</p>
                   </div>
                 </div>
-                {!isVerified && (
+                {accessType === 'none' && (
                   <div className="bg-yellow-50 border border-yellow-200 rounded p-2">
                     <p className="text-sm text-yellow-800">Payment required</p>
                   </div>
                 )}
               </div>
 
-              {/* ✅ FIXED: Practice Exam with proper navigation */}
               <div 
                 className="border border-gray-200 rounded-lg p-6 hover:border-green-300 hover:shadow-md transition-all cursor-pointer" 
                 onClick={handlePracticeExam}
@@ -316,7 +357,7 @@ export function Dashboard({ user: propUser, emailVerified: propEmailVerified, pa
                     <p className="text-gray-600">Take a NSW Selective practice test</p>
                   </div>
                 </div>
-                {!isVerified && (
+                {accessType === 'none' && (
                   <div className="bg-yellow-50 border border-yellow-200 rounded p-2">
                     <p className="text-sm text-yellow-800">Payment required</p>
                   </div>
