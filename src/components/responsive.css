@@ -1,117 +1,327 @@
-/* CSS for dark mode and responsive writing area */
+/* File: src/components/responsive.css */
+/* Copy this entire file and replace your existing responsive.css */
 
-.dark-mode {
-  background-color: #1a1a1a;
-  color: #e0e0e0;
+/* Base responsive adjustments */
+@media screen and (max-width: 768px) {
+  .lesson-grid {
+    grid-template-columns: 1fr !important;
+  }
+  
+  .writing-tools-container {
+    flex-direction: column !important;
+  }
+  
+  .writing-tools-button {
+    width: 100% !important;
+    margin-bottom: 0.5rem !important;
+  }
+
+  .writing-area-container {
+    margin: 0.5rem !important;
+    border-radius: 0.5rem !important;
+  }
+
+  .content-spacing {
+    padding: 0.75rem !important;
+  }
 }
 
-.dark-mode .writing-textarea::placeholder {
-  color: #666;
+/* Tablet adjustments */
+@media screen and (min-width: 769px) and (max-width: 1024px) {
+  .writing-area-container {
+    margin: 1rem !important;
+  }
+
+  .writing-textarea {
+    min-height: 350px !important;
+  }
+}
+
+/* Chromebook specific adjustments (typical resolution 1366x768) */
+@media screen and (min-width: 1024px) and (max-width: 1366px) and (max-height: 768px) {
+  .lesson-container {
+    max-height: calc(100vh - 200px) !important;
+    overflow-y: auto !important;
+  }
+  
+  .writing-area-container {
+    height: calc(100vh - 250px) !important;
+    max-height: 600px !important;
+  }
+  
+  .writing-textarea {
+    min-height: 300px !important;
+    height: calc(100% - 2rem) !important;
+  }
+}
+
+/* Large screen optimizations */
+@media screen and (min-width: 1367px) {
+  .writing-area-container {
+    max-width: 1200px !important;
+    margin: 0 auto !important;
+  }
+
+  .writing-textarea {
+    min-height: 400px !important;
+  }
+}
+
+/* Small screen adjustments */
+@media screen and (max-width: 640px) {
+  .app-header {
+    padding: 0.5rem !important;
+  }
+  
+  .app-title {
+    font-size: 1.25rem !important;
+  }
+  
+  .lesson-tabs {
+    flex-wrap: wrap !important;
+  }
+  
+  .lesson-tab-button {
+    padding: 0.5rem 0.75rem !important;
+    font-size: 0.875rem !important;
+  }
+  
+  .writing-area-container {
+    padding: 0.75rem !important;
+    margin: 0.25rem !important;
+  }
+
+  .touch-friendly-button {
+    padding: 0.75rem 1rem !important;
+    font-size: 0.875rem !important;
+  }
+}
+
+/* Extra small screens (phones in portrait) */
+@media screen and (max-width: 480px) {
+  .writing-area-container {
+    margin: 0 !important;
+    border-radius: 0 !important;
+    height: 100vh !important;
+  }
+
+  .writing-textarea {
+    height: calc(100vh - 200px) !important;
+    min-height: 300px !important;
+  }
+
+  .content-spacing {
+    padding: 0.5rem !important;
+  }
+
+  .touch-friendly-button {
+    width: 100% !important;
+    margin-bottom: 0.5rem !important;
+  }
+}
+
+/* Writing area enhancements */
+.writing-area-enhanced {
+  min-height: 400px !important;
+  height: calc(100vh - 300px) !important;
+  max-height: 800px !important;
 }
 
 .writing-area-container {
-  transition: all 0.3s ease;
+  transition: all 0.3s ease !important;
 }
 
-.writing-area-container.fullscreen {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 9999;
-  border-radius: 0;
+.writing-textarea {
+  transition: all 0.2s ease !important;
+  font-family: 'Georgia', 'Times New Roman', serif !important;
+  line-height: 1.6 !important;
+  letter-spacing: 0.01em !important;
 }
 
-.writing-area-enhanced {
-  position: relative;
+.writing-textarea:focus {
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+  border-color: #3b82f6 !important;
 }
 
-/* Animations for achievements and milestones */
-@keyframes celebrate {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.1); }
-  100% { transform: scale(1); }
+/* Ensure text is readable on all devices */
+.lesson-content {
+  font-size: clamp(0.875rem, 2vw, 1rem) !important;
+  line-height: 1.6 !important;
 }
 
-.celebration {
-  animation: celebrate 0.5s ease;
-}
-
-/* Responsive adjustments */
-@media (max-width: 768px) {
-  .writing-controls {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-  
-  .writing-controls > div {
-    margin-bottom: 0.5rem;
-  }
-}
-
-/* Accessibility improvements */
-.high-contrast-mode {
-  --text-color: #ffffff;
-  --bg-color: #000000;
-  --highlight-color: #ffff00;
-  
-  background-color: var(--bg-color);
-  color: var(--text-color);
-}
-
-.high-contrast-mode .writing-textarea::placeholder {
-  color: #aaaaaa;
-}
-
-.high-contrast-mode .highlight-spelling {
-  background-color: var(--highlight-color);
-  border-bottom: 2px solid #ff0000;
-}
-
-.high-contrast-mode .highlight-grammar {
-  background-color: var(--highlight-color);
-  border-bottom: 2px solid #ff8800;
-}
-
-.high-contrast-mode .highlight-vocabulary {
-  background-color: var(--highlight-color);
-  border-bottom: 2px solid #00ff00;
-}
-
-/* Touch-friendly buttons for mobile devices */
+/* Improve button accessibility on touch devices */
 .touch-friendly-button {
-  min-height: 44px;
-  min-width: 44px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  min-height: 44px !important;
+  min-width: 44px !important;
+  transition: all 0.2s ease !important;
 }
 
-/* Pomodoro timer styles */
-.pomodoro-timer {
-  font-family: monospace;
-  font-size: 1.2rem;
-  font-weight: bold;
+.touch-friendly-button:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1) !important;
 }
 
-.pomodoro-timer.warning {
-  color: #ff6b6b;
+.touch-friendly-button:active {
+  transform: translateY(0) !important;
 }
 
-/* Word count progress bar animations */
-.word-count-progress {
-  transition: width 0.5s ease-in-out;
+/* Ensure form elements are properly sized for touch */
+input, select, textarea, button {
+  font-size: 16px !important; /* Prevents iOS zoom on focus */
 }
 
-.word-count-milestone {
-  position: relative;
+/* Improve spacing for dense content areas */
+.content-spacing {
+  padding: clamp(0.75rem, 3vw, 1.5rem) !important;
 }
 
-.word-count-milestone::after {
-  content: '🎉';
-  position: absolute;
-  top: -20px;
-  right: 0;
-  animation: celebrate 1s ease;
+/* Animation classes for smooth interactions */
+.animate-in {
+  animation-duration: 0.2s;
+  animation-timing-function: ease-out;
+  animation-fill-mode: both;
 }
+
+.fade-in-0 {
+  animation-name: fadeIn;
+}
+
+.zoom-in-95 {
+  animation-name: zoomIn;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes zoomIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Popup positioning and styling */
+.suggestion-popup {
+  backdrop-filter: blur(4px) !important;
+  background-color: rgba(255, 255, 255, 0.95) !important;
+}
+
+/* Dark mode support (if needed) */
+@media (prefers-color-scheme: dark) {
+  .writing-area-container {
+    background-color: #1f2937 !important;
+    color: #f9fafb !important;
+  }
+
+  .writing-textarea {
+    background-color: #374151 !important;
+    color: #f9fafb !important;
+    border-color: #4b5563 !important;
+  }
+
+  .suggestion-popup {
+    background-color: rgba(31, 41, 55, 0.95) !important;
+    border-color: #4b5563 !important;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .writing-textarea {
+    border-width: 2px !important;
+  }
+
+  .touch-friendly-button {
+    border-width: 2px !important;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .touch-friendly-button,
+  .writing-textarea,
+  .writing-area-container,
+  .animate-in {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+/* Print styles */
+@media print {
+  .writing-area-container {
+    box-shadow: none !important;
+    border: 1px solid #000 !important;
+  }
+
+  .touch-friendly-button {
+    display: none !important;
+  }
+
+  .writing-textarea {
+    border: none !important;
+    background: transparent !important;
+  }
+}
+
+/* Focus styles for accessibility */
+.writing-textarea:focus,
+.touch-friendly-button:focus {
+  outline: 2px solid #3b82f6 !important;
+  outline-offset: 2px !important;
+}
+
+/* Loading states */
+.loading-spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Text selection styles */
+::selection {
+  background-color: rgba(59, 130, 246, 0.3) !important;
+  color: inherit !important;
+}
+
+::-moz-selection {
+  background-color: rgba(59, 130, 246, 0.3) !important;
+  color: inherit !important;
+}
+
+/* Scrollbar styles for webkit browsers */
+.writing-textarea::-webkit-scrollbar {
+  width: 8px;
+}
+
+.writing-textarea::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 4px;
+}
+
+.writing-textarea::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+.writing-textarea::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
