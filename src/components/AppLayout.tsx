@@ -22,7 +22,7 @@ import { DemoPage } from './DemoPage';
 
 // Writing components
 import { SplitScreen } from './SplitScreen';
-import { EnhancedWritingArea } from './EnhancedWritingArea';
+import { WritingArea } from './WritingArea';
 import { CoachPanel } from './CoachPanel';
 import { ParaphrasePanel } from './ParaphrasePanel';
 import { LearningPage } from './LearningPage';
@@ -297,7 +297,7 @@ function AppLayout() {
                         <>
                           <div className="flex-1 container mx-auto px-4">
                             <SplitScreen>
-                              <EnhancedWritingArea 
+                              <WritingArea 
                                 content={content}
                                 onChange={setContent}
                                 textType={textType}
