@@ -15,7 +15,7 @@ import { AuthModal } from './AuthModal';
 import { FAQPage } from './FAQPage';
 import { AboutPage } from './AboutPage';
 import { SettingsPage } from './SettingsPage';
-import { DemoPage } './DemoPage';
+import { DemoPage } from './DemoPage';
 
 // Writing components
 import { ImprovedWritingLayout } from './ImprovedWritingLayout';
@@ -32,7 +32,7 @@ import { EnhancedHeader } from './EnhancedHeader';
 import { SpecializedCoaching } from './text-type-templates/SpecializedCoaching';
 import { BrainstormingTools } from './BrainstormingTools';
 import { WritingAccessCheck } from './WritingAccessCheck';
-import { WritingToolbar } './WritingToolbar';
+import { WritingToolbar } from './WritingToolbar';
 import { PlanningToolModal } from './PlanningToolModal';
 import { EmailVerificationHandler } from './EmailVerificationHandler';
 import { CheckCircle } from 'lucide-react';
@@ -342,3 +342,4 @@ export function AppContent() {
     </div>
   );
 }
+
