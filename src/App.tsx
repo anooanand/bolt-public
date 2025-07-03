@@ -1,43 +1,38 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { ThemeProvider } from './contexts/ThemeContext';
-import { AppProvider } from './contexts/AppContext';
-import { useAuth } from './contexts/AuthContext';
+import { ThemeProvider } from '../contexts/ThemeContext';
+import { AppProvider } from '../contexts/AppContext';
+import { useAuth } from '../contexts/AuthContext';
 
-import { NavBar } from './components/NavBar';
-import { HeroSection } from './components/HeroSection';
-import { FeaturesSection } from './components/FeaturesSection';
-import { ToolsSection } from './components/ToolsSection';
-import { WritingTypesSection } from './components/WritingTypesSection';
-import { Footer } from './components/Footer';
-import { PaymentSuccessPage } from './components/PaymentSuccessPage';
-import { PricingPage } from './components/PricingPage';
-import { Dashboard } from './components/Dashboard';
-import { AuthModal } from './components/AuthModal';
-import { FAQPage } from './components/FAQPage';
-import { AboutPage } from './components/AboutPage';
-import { SettingsPage } from './components/SettingsPage';
-import { DemoPage } from './components/DemoPage';
+import { NavBar } from '../components/NavBar';
+import { HeroSection } from '../components/HeroSection';
+import { FeaturesSection } from '../components/FeaturesSection';
+import { ToolsSection } from '../components/ToolsSection';
+import { WritingTypesSection } from '../components/WritingTypesSection';
+import { Footer } from '../components/Footer';
+import { PaymentSuccessPage } from '../components/PaymentSuccessPage';
+import { PricingPage } from '../components/PricingPage';
+import { Dashboard } from '../components/Dashboard';
+import { AuthModal } from '../components/AuthModal';
+import { FAQPage } from '../components/FAQPage';
+import { AboutPage } from '../components/AboutPage';
+import { SettingsPage } from '../components/SettingsPage';
+import { DemoPage } from '../components/DemoPage';
 
-// Writing components
-import { SplitScreen } from './components/SplitScreen';
-import { EnhancedWritingArea } from './components/EnhancedWritingArea';
-import { CoachPanel } from './components/CoachPanel';
-import { ParaphrasePanel } from './components/ParaphrasePanel';
-import { LearningPage } from './components/LearningPage';
-import { ExamSimulationMode } from './components/ExamSimulationMode';
-import { SupportiveFeatures } from './components/SupportiveFeatures';
-import { HelpCenter } from './components/HelpCenter';
-import { EssayFeedbackPage } from './components/EssayFeedbackPage';
-import { EnhancedHeader } from './components/EnhancedHeader';
-import { SpecializedCoaching } from './components/text-type-templates/SpecializedCoaching';
-import { BrainstormingTools } from './components/BrainstormingTools';
-import { WritingAccessCheck } from './components/WritingAccessCheck';
-import { WritingToolbar } from './components/WritingToolbar';
-import { PlanningToolModal } from './components/PlanningToolModal';
-import { EmailVerificationReminder } from './components/EmailVerificationReminder';
-import { EmailVerificationHandler } from './components/EmailVerificationHandler';
-import { CheckCircle } from 'lucide-react';
+// Original components for other functionality
+import { LearningPage } from '../components/LearningPage';
+import { ExamSimulationMode } from '../components/ExamSimulationMode';
+import { HelpCenter } from '../components/HelpCenter';
+import { EssayFeedbackPage } from '../components/EssayFeedbackPage';
+import { WritingAccessCheck } from '../components/WritingAccessCheck';
+import { WritingToolbar } from '../components/WritingToolbar';
+import { PlanningToolModal } from '../components/PlanningToolModal';
+import { EmailVerificationReminder } from '../components/EmailVerificationReminder';
+import { EmailVerificationHandler } from '../components/EmailVerificationHandler';
+
+// NEW: Improved writing interface components
+import { ImprovedWritingLayout } from './ImprovedWritingLayout';
+import './improved-theme.css';
 
 function App() {
   const { user, loading, paymentCompleted, emailVerified, authSignOut, forceRefreshVerification } = useAuth();
@@ -53,7 +48,6 @@ function App() {
   const [assistanceLevel, setAssistanceLevel] = useState('detailed');
   const [timerStarted, setTimerStarted] = useState(false);
   const [selectedText, setSelectedText] = useState('');
-  const [activePanel, setActivePanel] = useState<'coach' | 'paraphrase'>('coach');
   const [showExamMode, setShowExamMode] = useState(false);
   const [showHelpCenter, setShowHelpCenter] = useState(false);
   const [showPlanningTool, setShowPlanningTool] = useState(false);
@@ -170,7 +164,6 @@ function App() {
       const selection = window.getSelection();
       if (selection && selection.toString().trim().length > 0) {
         setSelectedText(selection.toString());
-        setActivePanel('paraphrase');
       }
     };
 
@@ -245,35 +238,8 @@ function App() {
     }
   };
 
-  const handleStartWriting = () => {
-    handleNavigation("writing");
-  };
-
-  // Writing app state management
-  const appState = {
-    content,
-    textType,
-    assistanceLevel,
-    timerStarted
-  };
-
-  const updateAppState = (updates: Partial<typeof appState>) => {
-    if ('content' in updates) setContent(updates.content || '');
-    if ('textType' in updates) setTextType(updates.textType || '');
-    if ('assistanceLevel' in updates) setAssistanceLevel(updates.assistanceLevel || 'detailed');
-    if ('timerStarted' in updates) setTimerStarted(updates.timerStarted || false);
-  };
-
-  const handlePanelChange = (panel: 'coach' | 'paraphrase') => {
-    setActivePanel(panel);
-  };
-
   const handleSubmit = () => {
     setActivePage('feedback');
-  };
-
-  const handleStartExam = () => {
-    setShowExamMode(true);
   };
 
   const handleSavePlan = (planData: any) => {
@@ -356,152 +322,70 @@ function App() {
                   user ? <SettingsPage onBack={() => setActivePage('dashboard')} /> : <Navigate to="/" />
                 } />
                 
-                {/* FIXED: Added the missing /app route for writing functionality */}
+                {/* IMPROVED: Updated writing routes with new interface */}
                 <Route path="/app" element={
                   <WritingAccessCheck onNavigate={handleNavigation}>
-                    <div className="flex flex-col h-screen">
-                      <EnhancedHeader 
-                        textType={textType}
-                        assistanceLevel={assistanceLevel}
-                        onTextTypeChange={setTextType}
-                        onAssistanceLevelChange={setAssistanceLevel}
-                        onTimerStart={() => setTimerStarted(true)}
+                    {showExamMode ? (
+                      <ExamSimulationMode 
+                        onExit={() => setShowExamMode(false)}
                       />
-                      
-                      <WritingToolbar 
-                        content={content}
-                        textType={textType}
-                        onShowHelpCenter={() => setShowHelpCenter(true)}
-                        onShowPlanningTool={() => setShowPlanningTool(true)}
-                        onTimerStart={() => setTimerStarted(true)}
-                      />
-                      
-                      {showExamMode ? (
-                        <ExamSimulationMode 
-                          onExit={() => setShowExamMode(false)}
+                    ) : (
+                      <>
+                        <WritingToolbar 
+                          content={content}
+                          textType={textType}
+                          onShowHelpCenter={() => setShowHelpCenter(true)}
+                          onShowPlanningTool={() => setShowPlanningTool(true)}
+                          onTimerStart={() => setTimerStarted(true)}
                         />
-                      ) : (
-                        <>
-                          <div className="flex-1 container mx-auto px-4">
-                            <SplitScreen>
-                              <EnhancedWritingArea 
-                                content={content}
-                                onChange={setContent}
-                                textType={textType}
-                                onTimerStart={setTimerStarted}
-                                onSubmit={handleSubmit}
-                              />
-                              {activePanel === 'coach' ? (
-                                <CoachPanel 
-                                  content={content}
-                                  textType={textType}
-                                  assistanceLevel={assistanceLevel}
-                                />
-                              ) : (
-                                <ParaphrasePanel 
-                                  selectedText={selectedText}
-                                  onNavigate={handleNavigation}
-                                />
-                              )}
-                            </SplitScreen>
-                          </div>
-                          
-                          {/* Panel Switcher */}
-                          <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-2 flex justify-center items-center space-x-4">
-                            <button
-                              onClick={() => setActivePanel('coach')}
-                              className={`px-4 py-2 rounded-md text-sm font-medium ${
-                                activePanel === 'coach' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
-                              }`}
-                            >
-                              Coach
-                            </button>
-                            <button
-                              onClick={() => setActivePanel('paraphrase')}
-                              className={`px-4 py-2 rounded-md text-sm font-medium ${
-                                activePanel === 'paraphrase' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
-                              }`}
-                            >
-                              Paraphrase
-                            </button>
-                          </div>
-                        </>
-                      )}
-                    </div>
+                        
+                        <ImprovedWritingLayout
+                          content={content}
+                          onChange={setContent}
+                          textType={textType}
+                          onTextTypeChange={setTextType}
+                          assistanceLevel={assistanceLevel}
+                          onAssistanceLevelChange={setAssistanceLevel}
+                          onTimerStart={() => setTimerStarted(true)}
+                          onSubmit={handleSubmit}
+                          selectedText={selectedText}
+                          onNavigate={handleNavigation}
+                        />
+                      </>
+                    )}
                   </WritingAccessCheck>
                 } />
                 
                 <Route path="/writing" element={
                   <WritingAccessCheck onNavigate={handleNavigation}>
-                    <div className="flex flex-col h-screen">
-                      <EnhancedHeader 
-                        textType={textType}
-                        assistanceLevel={assistanceLevel}
-                        onTextTypeChange={setTextType}
-                        onAssistanceLevelChange={setAssistanceLevel}
-                        onTimerStart={() => setTimerStarted(true)}
+                    {showExamMode ? (
+                      <ExamSimulationMode 
+                        onExit={() => setShowExamMode(false)}
                       />
-                      
-                      <WritingToolbar 
-                        content={content}
-                        textType={textType}
-                        onShowHelpCenter={() => setShowHelpCenter(true)}
-                        onShowPlanningTool={() => setShowPlanningTool(true)}
-                        onTimerStart={() => setTimerStarted(true)}
-                      />
-                      
-                      {showExamMode ? (
-                        <ExamSimulationMode 
-                          onExit={() => setShowExamMode(false)}
+                    ) : (
+                      <>
+                        <WritingToolbar 
+                          content={content}
+                          textType={textType}
+                          onShowHelpCenter={() => setShowHelpCenter(true)}
+                          onShowPlanningTool={() => setShowPlanningTool(true)}
+                          onTimerStart={() => setTimerStarted(true)}
                         />
-                      ) : (
-                        <>
-                          <div className="flex-1 container mx-auto px-4">
-                            <SplitScreen>
-                              <EnhancedWritingArea 
-                                content={content}
-                                onChange={setContent}
-                                textType={textType}
-                                onTimerStart={setTimerStarted}
-                                onSubmit={handleSubmit}
-                              />
-                              {activePanel === 'coach' ? (
-                                <CoachPanel 
-                                  content={content}
-                                  textType={textType}
-                                  assistanceLevel={assistanceLevel}
-                                />
-                              ) : (
-                                <ParaphrasePanel 
-                                  selectedText={selectedText}
-                                  onNavigate={handleNavigation}
-                                />
-                              )}
-                            </SplitScreen>
-                          </div>
-                          
-                          {/* Panel Switcher */}
-                          <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-2 flex justify-center items-center space-x-4">
-                            <button
-                              onClick={() => setActivePanel('coach')}
-                              className={`px-4 py-2 rounded-md text-sm font-medium ${
-                                activePanel === 'coach' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
-                              }`}
-                            >
-                              Coach
-                            </button>
-                            <button
-                              onClick={() => setActivePanel('paraphrase')}
-                              className={`px-4 py-2 rounded-md text-sm font-medium ${
-                                activePanel === 'paraphrase' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
-                              }`}
-                            >
-                              Paraphrase
-                            </button>
-                          </div>
-                        </>
-                      )}
-                    </div>
+                        
+                        <ImprovedWritingLayout
+                          content={content}
+                          onChange={setContent}
+                          textType={textType}
+                          onTextTypeChange={setTextType}
+                          assistanceLevel={assistanceLevel}
+                          onAssistanceLevelChange={setAssistanceLevel}
+                          onTimerStart={() => setTimerStarted(true)}
+                          onSubmit={handleSubmit}
+                          selectedText={selectedText}
+                          onNavigate={handleNavigation}
+                        />
+                      </>
+                    )}
                   </WritingAccessCheck>
                 } />
 
