@@ -1,38 +1,38 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { ThemeProvider } from '../contexts/ThemeContext';
-import { AppProvider } from '../contexts/AppContext';
-import { useAuth } from '../contexts/AuthContext';
+import { ThemeProvider } from './contexts/ThemeContext';
+import { AppProvider } from './contexts/AppContext';
+import { useAuth } from './contexts/AuthContext';
 
-import { NavBar } from '../components/NavBar';
-import { HeroSection } from '../components/HeroSection';
-import { FeaturesSection } from '../components/FeaturesSection';
-import { ToolsSection } from '../components/ToolsSection';
-import { WritingTypesSection } from '../components/WritingTypesSection';
-import { Footer } from '../components/Footer';
-import { PaymentSuccessPage } from '../components/PaymentSuccessPage';
-import { PricingPage } from '../components/PricingPage';
-import { Dashboard } from '../components/Dashboard';
-import { AuthModal } from '../components/AuthModal';
-import { FAQPage } from '../components/FAQPage';
-import { AboutPage } from '../components/AboutPage';
-import { SettingsPage } from '../components/SettingsPage';
-import { DemoPage } from '../components/DemoPage';
+import { NavBar } from './components/NavBar';
+import { HeroSection } from './components/HeroSection';
+import { FeaturesSection } from './components/FeaturesSection';
+import { ToolsSection } from './components/ToolsSection';
+import { WritingTypesSection } from './components/WritingTypesSection';
+import { Footer } from './components/Footer';
+import { PaymentSuccessPage } from './components/PaymentSuccessPage';
+import { PricingPage } from './components/PricingPage';
+import { Dashboard } from './components/Dashboard';
+import { AuthModal } from './components/AuthModal';
+import { FAQPage } from './components/FAQPage';
+import { AboutPage } from './components/AboutPage';
+import { SettingsPage } from './components/SettingsPage';
+import { DemoPage } from './components/DemoPage';
 
 // Original components for other functionality
-import { LearningPage } from '../components/LearningPage';
-import { ExamSimulationMode } from '../components/ExamSimulationMode';
-import { HelpCenter } from '../components/HelpCenter';
-import { EssayFeedbackPage } from '../components/EssayFeedbackPage';
-import { WritingAccessCheck } from '../components/WritingAccessCheck';
-import { WritingToolbar } from '../components/WritingToolbar';
-import { PlanningToolModal } from '../components/PlanningToolModal';
-import { EmailVerificationReminder } from '../components/EmailVerificationReminder';
-import { EmailVerificationHandler } from '../components/EmailVerificationHandler';
+import { LearningPage } from './components/LearningPage';
+import { ExamSimulationMode } from './components/ExamSimulationMode';
+import { HelpCenter } from './components/HelpCenter';
+import { EssayFeedbackPage } from './components/EssayFeedbackPage';
+import { WritingAccessCheck } from './components/WritingAccessCheck';
+import { WritingToolbar } from './components/WritingToolbar';
+import { PlanningToolModal } from './components/PlanningToolModal';
+import { EmailVerificationReminder } from './components/EmailVerificationReminder';
+import { EmailVerificationHandler } from './components/EmailVerificationHandler';
 
 // NEW: Improved writing interface components
-import { ImprovedWritingLayout } from './ImprovedWritingLayout';
-import './improved-theme.css';
+import { ImprovedWritingLayout } from './components/ImprovedWritingLayout';
+import './styles/improved-theme.css';
 
 function App() {
   const { user, loading, paymentCompleted, emailVerified, authSignOut, forceRefreshVerification } = useAuth();
