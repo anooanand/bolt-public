@@ -17,8 +17,8 @@ import { AboutPage } from './AboutPage';
 import { SettingsPage } from './SettingsPage';
 import { DemoPage } from './DemoPage';
 
-// Writing components
-import { ImprovedWritingLayout } from './ImprovedWritingLayout';
+// Writing components - Using Fixed_Project components
+import { WritingStudio } from './WritingStudio';
 import { SplitScreen } from './SplitScreen';
 import { WritingArea } from './WritingArea';
 import { CoachPanel } from './CoachPanel';
@@ -283,22 +283,31 @@ export function AppContent() {
                   onExit={() => setShowExamMode(false)}
                 />
               ) : (
-                <ImprovedWritingLayout
-                  content={content}
-                  onChange={setContent}
-                  textType={textType}
-                  onTextTypeChange={setTextType}
-                  assistanceLevel={assistanceLevel}
-                  onAssistanceLevelChange={setAssistanceLevel}
-                  onTimerStart={() => setTimerStarted(true)}
-                  onSubmit={handleSubmit}
-                  selectedText={selectedText}
-                  onNavigate={handleNavigation}
-                />
+                <WritingStudio onNavigate={handleNavigation} />
               )}
             </WritingAccessCheck>
           } />
-          <Route path="/learning" element={<LearningPage />} />
+          <Route path="/paraphrase" element={
+            <WritingAccessCheck onNavigate={handleNavigation}>
+              <ParaphrasePanel 
+                selectedText={selectedText}
+                onNavigate={handleNavigation}
+              />
+            </WritingAccessCheck>
+          } />
+          <Route path="/brainstorm" element={
+            <WritingAccessCheck onNavigate={handleNavigation}>
+              <BrainstormingTools onNavigate={handleNavigation} />
+            </WritingAccessCheck>
+          } />
+          <Route path="/learn" element={<LearningPage />} />
+          <Route path="/exam" element={
+            <WritingAccessCheck onNavigate={handleNavigation}>
+              <ExamSimulationMode 
+                onExit={() => handleNavigation('writing')}
+              />
+            </WritingAccessCheck>
+          } />
           <Route path="/feedback" element={<EssayFeedbackPage />} />
           <Route path="/payment-success" element={
             showPaymentSuccess ? (
