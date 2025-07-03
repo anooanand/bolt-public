@@ -119,4 +119,3 @@ export function PanelSwitcher({ activePanel, onPanelChange }: PanelSwitcherProps
     </div>
   );
 }
-
