@@ -30,8 +30,11 @@ import { PlanningToolModal } from './components/PlanningToolModal';
 import { EmailVerificationReminder } from './components/EmailVerificationReminder';
 import { EmailVerificationHandler } from './components/EmailVerificationHandler';
 
-// NEW: Improved writing interface components
-import { ImprovedWritingLayout } from './components/ImprovedWritingLayout';
+// REVERTED: Writing interface components
+import { SplitScreen } from './components/SplitScreen';
+import { WritingArea } from './components/WritingArea';
+import { CoachPanel } from './components/CoachPanel';
+import { ParaphrasePanel } from './components/ParaphrasePanel';
 import './styles/improved-theme.css';
 
 function App() {
@@ -51,6 +54,7 @@ function App() {
   const [showExamMode, setShowExamMode] = useState(false);
   const [showHelpCenter, setShowHelpCenter] = useState(false);
   const [showPlanningTool, setShowPlanningTool] = useState(false);
+  const [activePanel, setActivePanel] = useState<'coach' | 'paraphrase'>('coach');
 
   // IMPROVED: Enhanced email verification token detection with better error handling
   useEffect(() => {
@@ -322,7 +326,7 @@ function App() {
                   user ? <SettingsPage onBack={() => setActivePage('dashboard')} /> : <Navigate to="/" />
                 } />
                 
-                {/* IMPROVED: Updated writing routes with new interface */}
+                {/* REVERTED: Updated writing routes with old interface */}
                 <Route path="/app" element={
                   <WritingAccessCheck onNavigate={handleNavigation}>
                     {showExamMode ? (
@@ -339,18 +343,49 @@ function App() {
                           onTimerStart={() => setTimerStarted(true)}
                         />
                         
-                        <ImprovedWritingLayout
-                          content={content}
-                          onChange={setContent}
-                          textType={textType}
-                          onTextTypeChange={setTextType}
-                          assistanceLevel={assistanceLevel}
-                          onAssistanceLevelChange={setAssistanceLevel}
-                          onTimerStart={() => setTimerStarted(true)}
-                          onSubmit={handleSubmit}
-                          selectedText={selectedText}
-                          onNavigate={handleNavigation}
-                        />
+                        <div className="flex-1 container mx-auto px-4">
+                          <SplitScreen>
+                            <WritingArea 
+                              content={content}
+                              onChange={setContent}
+                              textType={textType}
+                              onTimerStart={setTimerStarted}
+                              onSubmit={handleSubmit}
+                            />
+                            {activePanel === 'coach' ? (
+                              <CoachPanel 
+                                content={content}
+                                textType={textType}
+                                assistanceLevel={assistanceLevel}
+                              />
+                            ) : (
+                              <ParaphrasePanel 
+                                selectedText={selectedText}
+                                onNavigate={handleNavigation}
+                              />
+                            )}
+                          </SplitScreen>
+                        </div>
+                        
+                        {/* Panel Switcher */}
+                        <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-2 flex justify-center items-center space-x-4">
+                          <button
+                            onClick={() => setActivePanel('coach')}
+                            className={`px-4 py-2 rounded-md text-sm font-medium ${
+                              activePanel === 'coach' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
+                            }`}
+                          >
+                            Writing Coach
+                          </button>
+                          <button
+                            onClick={() => setActivePanel('paraphrase')}
+                            className={`px-4 py-2 rounded-md text-sm font-medium ${
+                              activePanel === 'paraphrase' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
+                            }`}
+                          >
+                            Paraphrase Tool
+                          </button>
+                        </div>
                       </>
                     )}
                   </WritingAccessCheck>
@@ -372,18 +407,49 @@ function App() {
                           onTimerStart={() => setTimerStarted(true)}
                         />
                         
-                        <ImprovedWritingLayout
-                          content={content}
-                          onChange={setContent}
-                          textType={textType}
-                          onTextTypeChange={setTextType}
-                          assistanceLevel={assistanceLevel}
-                          onAssistanceLevelChange={setAssistanceLevel}
-                          onTimerStart={() => setTimerStarted(true)}
-                          onSubmit={handleSubmit}
-                          selectedText={selectedText}
-                          onNavigate={handleNavigation}
-                        />
+                        <div className="flex-1 container mx-auto px-4">
+                          <SplitScreen>
+                            <WritingArea 
+                              content={content}
+                              onChange={setContent}
+                              textType={textType}
+                              onTimerStart={setTimerStarted}
+                              onSubmit={handleSubmit}
+                            />
+                            {activePanel === 'coach' ? (
+                              <CoachPanel 
+                                content={content}
+                                textType={textType}
+                                assistanceLevel={assistanceLevel}
+                              />
+                            ) : (
+                              <ParaphrasePanel 
+                                selectedText={selectedText}
+                                onNavigate={handleNavigation}
+                              />
+                            )}
+                          </SplitScreen>
+                        </div>
+                        
+                        {/* Panel Switcher */}
+                        <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-2 flex justify-center items-center space-x-4">
+                          <button
+                            onClick={() => setActivePanel('coach')}
+                            className={`px-4 py-2 rounded-md text-sm font-medium ${
+                              activePanel === 'coach' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
+                            }`}
+                          >
+                            Writing Coach
+                          </button>
+                          <button
+                            onClick={() => setActivePanel('paraphrase')}
+                            className={`px-4 py-2 rounded-md text-sm font-medium ${
+                              activePanel === 'paraphrase' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
+                            }`}
+                          >
+                            Paraphrase Tool
+                          </button>
+                        </div>
                       </>
                     )}
                   </WritingAccessCheck>
@@ -475,3 +541,4 @@ function App() {
 }
 
 export default App;
+
