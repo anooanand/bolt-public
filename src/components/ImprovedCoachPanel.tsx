@@ -551,7 +551,7 @@ export function ImprovedCoachPanel({
 
         @media (max-width: 768px) {
           .stats-grid {
-            grid-template-columns: repeat(4, 1fr);
+            grid-template-columns: repeat(2, 1fr);
           }
           
           .vocab-grid {
@@ -562,4 +562,3 @@ export function ImprovedCoachPanel({
     </div>
   );
 }
-
