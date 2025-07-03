@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { ImprovedHeader } from './ImprovedHeader';
 import { ImprovedWritingArea } from './ImprovedWritingArea';
 import { ImprovedCoachPanel } from './ImprovedCoachPanel';
-import { ParaphrasePanel } from '../components/ParaphrasePanel';
+import { ParaphrasePanel } from './ParaphrasePanel';
 import { PanelSwitcher } from './PanelSwitcher';
-import './improved-theme.css';
+import '../styles/improved-theme.css';
 
 interface ImprovedWritingLayoutProps {
   content: string;
