@@ -9,15 +9,16 @@ import { ToolsSection } from './ToolsSection';
 import { WritingTypesSection } from './WritingTypesSection';
 import { Footer } from './Footer';
 import { PaymentSuccessPage } from './PaymentSuccessPage';
-import { PricingPageWithFixedVerification as PricingPage } from './PricingPage';
+import { PricingPage } from './PricingPage';
 import { Dashboard } from './Dashboard';
 import { AuthModal } from './AuthModal';
 import { FAQPage } from './FAQPage';
 import { AboutPage } from './AboutPage';
 import { SettingsPage } from './SettingsPage';
-import { DemoPage } from './DemoPage';
+import { DemoPage } './DemoPage';
 
 // Writing components
+import { ImprovedWritingLayout } from './ImprovedWritingLayout';
 import { SplitScreen } from './SplitScreen';
 import { WritingArea } from './WritingArea';
 import { CoachPanel } from './CoachPanel';
@@ -31,7 +32,7 @@ import { EnhancedHeader } from './EnhancedHeader';
 import { SpecializedCoaching } from './text-type-templates/SpecializedCoaching';
 import { BrainstormingTools } from './BrainstormingTools';
 import { WritingAccessCheck } from './WritingAccessCheck';
-import { WritingToolbar } from './WritingToolbar';
+import { WritingToolbar } './WritingToolbar';
 import { PlanningToolModal } from './PlanningToolModal';
 import { EmailVerificationHandler } from './EmailVerificationHandler';
 import { CheckCircle } from 'lucide-react';
@@ -277,75 +278,24 @@ export function AppContent() {
           } />
           <Route path="/writing" element={
             <WritingAccessCheck onNavigate={handleNavigation}>
-              <div className="flex flex-col h-screen">
-                <EnhancedHeader 
+              {showExamMode ? (
+                <ExamSimulationMode 
+                  onExit={() => setShowExamMode(false)}
+                />
+              ) : (
+                <ImprovedWritingLayout
+                  content={content}
+                  onChange={setContent}
                   textType={textType}
-                  assistanceLevel={assistanceLevel}
                   onTextTypeChange={setTextType}
+                  assistanceLevel={assistanceLevel}
                   onAssistanceLevelChange={setAssistanceLevel}
                   onTimerStart={() => setTimerStarted(true)}
+                  onSubmit={handleSubmit}
+                  selectedText={selectedText}
+                  onNavigate={handleNavigation}
                 />
-                
-                <WritingToolbar 
-                  content={content}
-                  textType={textType}
-                  onShowHelpCenter={() => setShowHelpCenter(true)}
-                  onShowPlanningTool={() => setShowPlanningTool(true)}
-                  onTimerStart={() => setTimerStarted(true)}
-                />
-                
-                {showExamMode ? (
-                  <ExamSimulationMode 
-                    onExit={() => setShowExamMode(false)}
-                  />
-                ) : (
-                  <>
-                    <div className="flex-1 container mx-auto px-4">
-                      <SplitScreen>
-                        <WritingArea 
-                          content={content}
-                          onChange={setContent}
-                          textType={textType}
-                          onTimerStart={setTimerStarted}
-                          onSubmit={handleSubmit}
-                        />
-                        {activePanel === 'coach' ? (
-                          <CoachPanel 
-                            content={content}
-                            textType={textType}
-                            assistanceLevel={assistanceLevel}
-                          />
-                        ) : (
-                          <ParaphrasePanel 
-                            selectedText={selectedText}
-                            onNavigate={handleNavigation}
-                          />
-                        )}
-                      </SplitScreen>
-                    </div>
-                    
-                    {/* Panel Switcher */}
-                    <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-2 flex justify-center items-center space-x-4">
-                      <button
-                        onClick={() => setActivePanel('coach')}
-                        className={`px-4 py-2 rounded-md text-sm font-medium ${
-                          activePanel === 'coach' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
-                        }`}
-                      >
-                        Coach
-                      </button>
-                      <button
-                        onClick={() => setActivePanel('paraphrase')}
-                        className={`px-4 py-2 rounded-md text-sm font-medium ${
-                          activePanel === 'paraphrase' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
-                        }`}
-                      >
-                        Paraphrase
-                      </button>
-                    </div>
-                  </>
-                )}
-              </div>
+              )}
             </WritingAccessCheck>
           } />
           <Route path="/learning" element={<LearningPage />} />
