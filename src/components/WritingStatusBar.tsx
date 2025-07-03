@@ -1,5 +1,3 @@
-// File: src/components/WritingStatusBar.tsx
-
 import React, { useState, useEffect } from 'react';
 import { Save, Clock, FileText, AlertCircle } from 'lucide-react';
 import { AutoSave } from './AutoSave';
@@ -19,9 +17,9 @@ export function WritingStatusBar({ content, textType, onRestore }: WritingStatus
 
   // Calculate statistics
   useEffect(() => {
-    const words = content ? content.trim().split(/\s+/).filter(Boolean) : [];
+    const words = content.trim().split(/\s+/).filter(Boolean);
     setWordCount(words.length);
-    setCharacterCount(content ? content.length : 0);
+    setCharacterCount(content.length);
     setReadingTime(Math.ceil(words.length / 200)); // Average reading speed
     
     // Show warning if word count is too low or too high
@@ -34,7 +32,7 @@ export function WritingStatusBar({ content, textType, onRestore }: WritingStatus
 
   // Simulate auto-save
   useEffect(() => {
-    if (content && content.trim().length > 0) {
+    if (content.trim().length > 0) {
       const timer = setTimeout(() => {
         setLastSaved(new Date());
       }, 5000);
@@ -86,3 +84,4 @@ export function WritingStatusBar({ content, textType, onRestore }: WritingStatus
     </div>
   );
 }
+
