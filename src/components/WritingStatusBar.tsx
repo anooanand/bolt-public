@@ -84,4 +84,3 @@ export function WritingStatusBar({ content, textType, onRestore }: WritingStatus
     </div>
   );
 }
-
