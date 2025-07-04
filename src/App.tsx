@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { AuthProvider } from './contexts/AuthContext';
 import { AppProvider } from './contexts/AppContext';
@@ -12,6 +12,7 @@ function App() {
         <AppProvider>
           <Router>
             <Routes>
+              <Route path="/" element={<Navigate to="/writing" replace />} />
               <Route path="/writing" element={<AppContent />} />
             </Routes>
           </Router>
