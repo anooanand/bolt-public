@@ -319,12 +319,43 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const authSignOut = async () => {
     try {
+      console.log('Starting sign out process...');
+      setLoading(true);
+      
+      // Clear local state first
+      setUser(null);
+      setEmailVerified(false);
+      setPaymentCompleted(false);
+      
+      // Clear any stored data
+      localStorage.removeItem('draft_content');
+      localStorage.removeItem('draft_text_type');
+      localStorage.removeItem('draft_timestamp');
+      localStorage.removeItem('userEmail');
+      localStorage.removeItem('payment_plan');
+      localStorage.removeItem('payment_date');
+      
+      // Sign out from Supabase
       const { error } = await supabase.auth.signOut();
       if (error) {
-        console.error('Sign out error:', error);
+        console.error('Supabase sign out error:', error);
+        // Don't throw error, continue with local cleanup
+      } else {
+        console.log('✅ Successfully signed out from Supabase');
       }
+      
+      // Force refresh auth state
+      await checkUserAndStatus();
+      
     } catch (error) {
       console.error('Sign out error:', error);
+      // Even if there's an error, ensure local state is cleared
+      setUser(null);
+      setEmailVerified(false);
+      setPaymentCompleted(false);
+    } finally {
+      setLoading(false);
+      console.log('Sign out process completed');
     }
   };
 
@@ -353,3 +384,4 @@ export const useAuth = () => {
   }
   return context;
 };
+
