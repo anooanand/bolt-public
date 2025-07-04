@@ -14,9 +14,6 @@ import {
   Eye
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { WritingArea } from './WritingArea';
-import { WritingToolbar } from './WritingToolbar';
-import { CoachPanel } from './CoachPanel';
 
 interface WritingStudioProps {
   onNavigate: (page: string) => void;
@@ -40,12 +37,10 @@ export const WritingStudio: React.FC<WritingStudioProps> = ({ onNavigate }) => {
   const { user, isPaidUser } = useAuth();
   const [content, setContent] = useState<string>('');
   const [title, setTitle] = useState<string>('Untitled Document');
-  const [textType, setTextType] = useState<string>('essay');
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
   const [showAnalysis, setShowAnalysis] = useState<boolean>(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
-  const [timerStarted, setTimerStarted] = useState<boolean>(false);
-  const [showCoachPanel, setShowCoachPanel] = useState<boolean>(true);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const [stats, setStats] = useState<WritingStats>({
     wordCount: 0,
@@ -90,7 +85,6 @@ export const WritingStudio: React.FC<WritingStudioProps> = ({ onNavigate }) => {
       id: Date.now().toString(),
       title,
       content,
-      textType,
       lastModified: new Date().toISOString(),
       wordCount: stats.wordCount
     };
@@ -156,14 +150,6 @@ export const WritingStudio: React.FC<WritingStudioProps> = ({ onNavigate }) => {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-  };
-
-  const handleTimerStart = (shouldStart: boolean) => {
-    setTimerStarted(shouldStart);
-  };
-
-  const handleSubmit = () => {
-    onNavigate('feedback');
   };
 
   const quickActions = [
@@ -252,25 +238,20 @@ export const WritingStudio: React.FC<WritingStudioProps> = ({ onNavigate }) => {
           </div>
         </div>
 
-        {/* Writing Toolbar */}
-        <WritingToolbar 
-          textType={textType}
-          onTextTypeChange={setTextType}
-          onToggleCoach={() => setShowCoachPanel(!showCoachPanel)}
-          showCoachPanel={showCoachPanel}
-        />
-
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mt-6">
-          {/* Main Editor with Enhanced WritingArea */}
-          <div className={showCoachPanel ? "lg:col-span-3" : "lg:col-span-4"}>
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          {/* Main Editor */}
+          <div className="lg:col-span-3">
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm">
-              <WritingArea
-                content={content}
-                onChange={setContent}
-                textType={textType}
-                onTimerStart={handleTimerStart}
-                onSubmit={handleSubmit}
-              />
+              <div className="p-6">
+                <textarea
+                  ref={textareaRef}
+                  value={content}
+                  onChange={(e) => setContent(e.target.value)}
+                  placeholder="Start writing your masterpiece..."
+                  className="w-full h-96 p-4 border border-gray-200 dark:border-gray-700 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  style={{ minHeight: '500px' }}
+                />
+              </div>
               
               {/* Editor Actions */}
               <div className="border-t border-gray-200 dark:border-gray-700 p-4">
@@ -321,69 +302,128 @@ export const WritingStudio: React.FC<WritingStudioProps> = ({ onNavigate }) => {
             </div>
           </div>
 
-          {/* Coach Panel */}
-          {showCoachPanel && (
-            <div className="lg:col-span-1">
-              <CoachPanel 
-                content={content}
-                textType={textType}
-                onNavigate={onNavigate}
-              />
-            </div>
-          )}
-        </div>
-
-        {/* AI Analysis Panel */}
-        {showAnalysis && (
-          <div className="mt-6 bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                AI Analysis Results
+          {/* Sidebar */}
+          <div className="space-y-6">
+            {/* Writing Stats */}
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                Writing Stats
               </h3>
-              <button
-                onClick={() => setShowAnalysis(false)}
-                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-              >
-                ×
-              </button>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="text-center">
-                <div className="text-3xl font-bold text-green-600 mb-2">
-                  {aiAnalysis.score}%
+              <div className="space-y-3">
+                <div className="flex justify-between">
+                  <span className="text-gray-600 dark:text-gray-400">Words</span>
+                  <span className="font-medium text-gray-900 dark:text-white">
+                    {stats.wordCount}
+                  </span>
                 </div>
-                <div className="text-sm text-gray-600 dark:text-gray-400">
-                  Overall Score
+                <div className="flex justify-between">
+                  <span className="text-gray-600 dark:text-gray-400">Characters</span>
+                  <span className="font-medium text-gray-900 dark:text-white">
+                    {stats.characterCount}
+                  </span>
                 </div>
-              </div>
-              
-              <div>
-                <h4 className="font-medium text-gray-900 dark:text-white mb-2">
-                  Strengths
-                </h4>
-                <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
-                  {aiAnalysis.strengths.map((strength, index) => (
-                    <li key={index}>• {strength}</li>
-                  ))}
-                </ul>
-              </div>
-              
-              <div>
-                <h4 className="font-medium text-gray-900 dark:text-white mb-2">
-                  Improvements
-                </h4>
-                <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
-                  {aiAnalysis.improvements.map((improvement, index) => (
-                    <li key={index}>• {improvement}</li>
-                  ))}
-                </ul>
+                <div className="flex justify-between">
+                  <span className="text-gray-600 dark:text-gray-400">Paragraphs</span>
+                  <span className="font-medium text-gray-900 dark:text-white">
+                    {stats.paragraphCount}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600 dark:text-gray-400">Reading Time</span>
+                  <span className="font-medium text-gray-900 dark:text-white">
+                    {stats.readingTime} min
+                  </span>
+                </div>
               </div>
             </div>
+
+            {/* AI Analysis Results */}
+            {showAnalysis && (
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                  AI Analysis
+                </h3>
+                
+                {/* Score */}
+                <div className="mb-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-gray-600 dark:text-gray-400">Overall Score</span>
+                    <span className="text-2xl font-bold text-green-600 dark:text-green-400">
+                      {aiAnalysis.score}%
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                    <div
+                      className="bg-green-600 h-2 rounded-full transition-all duration-500"
+                      style={{ width: `${aiAnalysis.score}%` }}
+                    ></div>
+                  </div>
+                </div>
+
+                {/* Strengths */}
+                <div className="mb-4">
+                  <h4 className="font-medium text-gray-900 dark:text-white mb-2">
+                    Strengths
+                  </h4>
+                  <ul className="space-y-1">
+                    {aiAnalysis.strengths.map((strength, index) => (
+                      <li key={index} className="text-sm text-green-600 dark:text-green-400">
+                        • {strength}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                {/* Improvements */}
+                <div className="mb-4">
+                  <h4 className="font-medium text-gray-900 dark:text-white mb-2">
+                    Areas for Improvement
+                  </h4>
+                  <ul className="space-y-1">
+                    {aiAnalysis.improvements.map((improvement, index) => (
+                      <li key={index} className="text-sm text-orange-600 dark:text-orange-400">
+                        • {improvement}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                {/* Suggestions */}
+                <div>
+                  <h4 className="font-medium text-gray-900 dark:text-white mb-2">
+                    Suggestions
+                  </h4>
+                  <ul className="space-y-1">
+                    {aiAnalysis.suggestions.map((suggestion, index) => (
+                      <li key={index} className="text-sm text-blue-600 dark:text-blue-400">
+                        • {suggestion}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            )}
+
+            {/* Upgrade Prompt for Free Users */}
+            {!isPaidUser && (
+              <div className="bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-900 dark:to-purple-900 rounded-lg p-6 border border-blue-200 dark:border-blue-700">
+                <h3 className="font-semibold text-blue-900 dark:text-blue-100 mb-2">
+                  Unlock Pro Features
+                </h3>
+                <p className="text-sm text-blue-700 dark:text-blue-300 mb-4">
+                  Get unlimited AI analysis, advanced writing tools, and more!
+                </p>
+                <button
+                  onClick={() => onNavigate('pricing')}
+                  className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Upgrade Now
+                </button>
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
     </div>
   );
 };
-
