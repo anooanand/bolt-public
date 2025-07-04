@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { generatePrompt, getSynonyms, rephraseSentence, evaluateEssay } from '../lib/openai';
-import { dbOperations } => from '../lib/database';
+import { dbOperations } from '../lib/database';
 import { useApp } from '../contexts/AppContext';
 import { AlertCircle } from 'lucide-react';
 import { InlineSuggestionPopup } from './InlineSuggestionPopup';
