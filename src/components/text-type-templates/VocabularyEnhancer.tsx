@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { BookOpen, Lightbulb, AlertTriangle } from 'lucide-react';
-import { getTextTypeVocabulary } from '../../lib/openai';
+import openai from '../../lib/openai';
 
 interface VocabularyEnhancerProps {
   textType: string;
@@ -42,7 +42,7 @@ export function VocabularyEnhancer({ textType, content }: VocabularyEnhancerProp
     }
     
     try {
-      const data = await getTextTypeVocabulary(textType, content.substring(0, 500));
+      const data = await openai.getTextTypeVocabulary(textType, content.substring(0, 500));
       setVocabularyData(data);
     } catch (err) {
       console.error('Error loading vocabulary:', err);
@@ -96,7 +96,7 @@ export function VocabularyEnhancer({ textType, content }: VocabularyEnhancerProp
                   <div className="border-b border-gray-200">
                     <nav className="-mb-px flex space-x-8" aria-label="Tabs">
                       <button
-                        onClick={() => setActiveTab('categories')}
+                        onClick={( ) => setActiveTab('categories')}
                         className={`${
                           activeTab === 'categories'
                             ? 'border-indigo-500 text-indigo-600'
