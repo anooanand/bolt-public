@@ -70,3 +70,6 @@
     </div>
   </WritingAccessCheck>
 } />
+
+export default AppContent;
+
