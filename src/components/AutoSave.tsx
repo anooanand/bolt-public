@@ -1,6 +1,3 @@
-// File: src/components/AutoSave.tsx
-// Copy this entire file and replace your existing AutoSave.tsx
-
 import React, { useEffect, useState } from 'react';
 import { Save, CheckCircle, AlertCircle } from 'lucide-react';
 
@@ -10,19 +7,11 @@ interface AutoSaveProps {
   onRestore?: (content: string, textType: string) => void;
 }
 
-interface SaveData {
-  content: string;
-  textType: string;
-  timestamp: string;
-}
-
-type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
-
 export function AutoSave({ content, textType, onRestore }: AutoSaveProps) {
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
-  const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
-  const [showNotification, setShowNotification] = useState<boolean>(false);
-  const [hasSavedContent, setHasSavedContent] = useState<boolean>(false);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [showNotification, setShowNotification] = useState(false);
+  const [hasSavedContent, setHasSavedContent] = useState(false);
 
   // Auto-save content every 30 seconds if there's content to save
   useEffect(() => {
@@ -71,7 +60,7 @@ export function AutoSave({ content, textType, onRestore }: AutoSaveProps) {
       setSaveStatus('saving');
       
       // Create a save object with content, text type, and timestamp
-      const saveData: SaveData = {
+      const saveData = {
         content,
         textType,
         timestamp: new Date().toISOString()
@@ -97,10 +86,10 @@ export function AutoSave({ content, textType, onRestore }: AutoSaveProps) {
     try {
       const savedData = localStorage.getItem('nsw_selective_essay_save');
       if (savedData) {
-        const parsedData: SaveData = JSON.parse(savedData);
-        if (parsedData.content && parsedData.content.trim().length > 0) {
+        const { content, textType, timestamp } = JSON.parse(savedData);
+        if (content && content.trim().length > 0) {
           setHasSavedContent(true);
-          setLastSaved(new Date(parsedData.timestamp));
+          setLastSaved(new Date(timestamp));
         }
       }
     } catch (error) {
@@ -113,8 +102,8 @@ export function AutoSave({ content, textType, onRestore }: AutoSaveProps) {
     try {
       const savedData = localStorage.getItem('nsw_selective_essay_save');
       if (savedData && onRestore) {
-        const parsedData: SaveData = JSON.parse(savedData);
-        onRestore(parsedData.content, parsedData.textType);
+        const { content, textType } = JSON.parse(savedData);
+        onRestore(content, textType);
         setShowNotification(true);
         setSaveStatus('saved');
       }
@@ -125,20 +114,8 @@ export function AutoSave({ content, textType, onRestore }: AutoSaveProps) {
     }
   };
 
-  // Clear saved content
-  const clearSavedContent = () => {
-    try {
-      localStorage.removeItem('nsw_selective_essay_save');
-      setHasSavedContent(false);
-      setLastSaved(null);
-      setSaveStatus('idle');
-    } catch (error) {
-      console.error('Error clearing saved content:', error);
-    }
-  };
-
   // Format the last saved time
-  const formatLastSaved = (): string => {
+  const formatLastSaved = () => {
     if (!lastSaved) return 'Not saved yet';
     
     const now = new Date();
@@ -169,7 +146,7 @@ export function AutoSave({ content, textType, onRestore }: AutoSaveProps) {
         
         <button
           onClick={saveContent}
-          className="ml-2 px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded-md text-gray-700 transition-colors"
+          className="ml-2 px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded-md text-gray-700"
           aria-label="Save now"
           title="Save now (Ctrl+S)"
         >
@@ -179,22 +156,11 @@ export function AutoSave({ content, textType, onRestore }: AutoSaveProps) {
         {hasSavedContent && content.trim().length === 0 && onRestore && (
           <button
             onClick={restoreSavedContent}
-            className="ml-2 px-2 py-1 text-xs bg-blue-100 hover:bg-blue-200 rounded-md text-blue-700 transition-colors"
+            className="ml-2 px-2 py-1 text-xs bg-blue-100 hover:bg-blue-200 rounded-md text-blue-700"
             aria-label="Restore saved content"
             title="Restore your last saved work"
           >
             Restore saved work
-          </button>
-        )}
-
-        {hasSavedContent && (
-          <button
-            onClick={clearSavedContent}
-            className="ml-2 px-2 py-1 text-xs bg-red-100 hover:bg-red-200 rounded-md text-red-700 transition-colors"
-            aria-label="Clear saved content"
-            title="Clear saved work"
-          >
-            Clear saved
           </button>
         )}
       </div>
@@ -202,12 +168,12 @@ export function AutoSave({ content, textType, onRestore }: AutoSaveProps) {
       {/* Save notification */}
       {showNotification && (
         <div 
-          className={`fixed bottom-4 right-4 px-4 py-3 rounded-md shadow-lg flex items-center z-50 transition-all duration-300 ${
+          className={`fixed bottom-4 right-4 px-4 py-3 rounded-md shadow-md flex items-center z-50 ${
             saveStatus === 'saved' 
-              ? 'bg-green-100 text-green-800 border border-green-200' 
+              ? 'bg-green-100 text-green-800' 
               : saveStatus === 'error'
-                ? 'bg-red-100 text-red-800 border border-red-200'
-                : 'bg-blue-100 text-blue-800 border border-blue-200'
+                ? 'bg-red-100 text-red-800'
+                : 'bg-blue-100 text-blue-800'
           }`}
         >
           {saveStatus === 'saved' ? (
@@ -222,7 +188,7 @@ export function AutoSave({ content, textType, onRestore }: AutoSaveProps) {
             </>
           ) : (
             <>
-              <Save className="h-5 w-5 mr-2 animate-pulse" />
+              <Save className="h-5 w-5 mr-2" />
               <span>Saving your work...</span>
             </>
           )}
@@ -231,4 +197,3 @@ export function AutoSave({ content, textType, onRestore }: AutoSaveProps) {
     </div>
   );
 }
-
