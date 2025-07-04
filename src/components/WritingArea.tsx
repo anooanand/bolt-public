@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { generatePrompt, getSynonyms, rephraseSentence, evaluateEssay } from '../lib/openai';
-import { dbOperations } from '../lib/database';
+import { dbOperations } => from '../lib/database';
 import { useApp } from '../contexts/AppContext';
 import { AlertCircle } from 'lucide-react';
 import { InlineSuggestionPopup } from './InlineSuggestionPopup';
@@ -394,7 +394,7 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
               <button
                 type="submit"
                 disabled={!customPrompt.trim()}
-                className="px-3 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 text-sm font-medium touch-friendly-button"
+                className="px-3 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 text-sm font-medium"
               >
                 Set Prompt
               </button>
