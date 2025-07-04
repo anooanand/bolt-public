@@ -16,4 +16,3 @@ export function SplitScreen({ children }: SplitScreenProps) {
     </div>
   );
 }
-
