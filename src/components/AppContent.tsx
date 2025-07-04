@@ -1,241 +1,395 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
-// Simplified components for testing
-const EnhancedHeader: React.FC<{
-  textType: string;
-  assistanceLevel: string;
-  onTextTypeChange: (type: string) => void;
-  onAssistanceLevelChange: (level: string) => void;
-  onTimerStart: () => void;
-}> = ({ textType, assistanceLevel, onTextTypeChange, onAssistanceLevelChange }) => {
-  return (
-    <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold">Writing Assistant</h1>
-        <div className="flex items-center space-x-4">
-          <select 
-            value={textType} 
-            onChange={(e) => onTextTypeChange(e.target.value)}
-            className="px-3 py-1 border rounded"
-          >
-            <option value="Narrative">Narrative</option>
-            <option value="Persuasive">Persuasive</option>
-            <option value="Informative">Informative</option>
-          </select>
-          <select 
-            value={assistanceLevel} 
-            onChange={(e) => onAssistanceLevelChange(e.target.value)}
-            className="px-3 py-1 border rounded"
-          >
-            <option value="Standard">Standard</option>
-            <option value="Advanced">Advanced</option>
-          </select>
-        </div>
-      </div>
-    </header>
-  );
-};
+import { NavBar } from './NavBar';
+import { HeroSection } from './HeroSection';
+import { FeaturesSection } from './FeaturesSection';
+import { ToolsSection } from './ToolsSection';
+import { WritingTypesSection } from './WritingTypesSection';
+import { Footer } from './Footer';
+import { PaymentSuccessPage } from './PaymentSuccessPage';
+import { PricingPage } from './PricingPage';
+import { Dashboard } from './Dashboard';
+import { AuthModal } from './AuthModal';
+import { FAQPage } from './FAQPage';
+import { AboutPage } from './AboutPage';
+import { SettingsPage } from './SettingsPage';
+import { DemoPage } from './DemoPage';
 
-const WritingToolbar: React.FC<{
-  content: string;
-  textType: string;
-  onShowHelpCenter: () => void;
-  onShowPlanningTool: () => void;
-  onTimerStart: () => void;
-}> = () => {
-  return (
-    <div className="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 p-2">
-      <div className="flex items-center space-x-2">
-        <button className="px-3 py-1 bg-blue-600 text-white rounded text-sm">Help</button>
-        <button className="px-3 py-1 bg-green-600 text-white rounded text-sm">Planning</button>
-        <button className="px-3 py-1 bg-purple-600 text-white rounded text-sm">Timer</button>
-      </div>
-    </div>
-  );
-};
+// Writing components
+import { SplitScreen } from './SplitScreen';
+import { WritingArea } from './WritingArea';
+import { CoachPanel } from './CoachPanel';
+import { ParaphrasePanel } from './ParaphrasePanel';
+import { LearningPage } from './LearningPage';
+import { ExamSimulationMode } from './ExamSimulationMode';
+import { SupportiveFeatures } from './SupportiveFeatures';
+import { HelpCenter } from './HelpCenter';
+import { EssayFeedbackPage } from './EssayFeedbackPage';
+import { EnhancedHeader } from './EnhancedHeader';
+import { SpecializedCoaching } from './text-type-templates/SpecializedCoaching';
+import { BrainstormingTools } from './BrainstormingTools';
+import { WritingAccessCheck } from './WritingAccessCheck';
+import { WritingToolbar } from './WritingToolbar';
+import { PlanningToolModal } from './PlanningToolModal';
+import { EmailVerificationHandler } from './EmailVerificationHandler';
+import { CheckCircle } from 'lucide-react';
+import { AdminButton } from './AdminButton';
 
-const SplitScreen: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  return (
-    <div className="flex h-full space-x-4">
-      {children}
-    </div>
-  );
-};
+export function AppContent() {
+  const { user, isLoading, paymentCompleted, emailVerified, authSignOut } = useAuth();
+  const [activePage, setActivePage] = useState('home');
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authModalMode, setAuthModalMode] = useState<'signin' | 'signup'>('signin');
+  const [showPaymentSuccess, setShowPaymentSuccess] = useState(false);
+  const [pendingPaymentPlan, setPendingPaymentPlan] = useState<string | null>(null);
+  const location = useLocation();
 
-const WritingArea: React.FC<{
-  content: string;
-  onChange: (content: string) => void;
-  textType: string;
-  onTimerStart: (started: boolean) => void;
-  onSubmit: (content: string) => void;
-}> = ({ content, onChange, onSubmit }) => {
-  return (
-    <div className="flex-1">
-      <textarea
-        value={content}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder="Start writing here..."
-        className="w-full h-full p-4 border border-gray-300 dark:border-gray-600 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
-      />
-      <div className="mt-2">
-        <button 
-          onClick={() => onSubmit(content)}
-          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-        >
-          Submit
-        </button>
-      </div>
-    </div>
-  );
-};
+  // Writing state
+  const [content, setContent] = useState('');
+  const [textType, setTextType] = useState('');
+  const [assistanceLevel, setAssistanceLevel] = useState('detailed');
+  const [timerStarted, setTimerStarted] = useState(false);
+  const [selectedText, setSelectedText] = useState('');
+  const [activePanel, setActivePanel] = useState<'coach' | 'paraphrase'>('coach');
+  const [showExamMode, setShowExamMode] = useState(false);
+  const [showHelpCenter, setShowHelpCenter] = useState(false);
+  const [showPlanningTool, setShowPlanningTool] = useState(false);
 
-const CoachPanel: React.FC<{
-  content: string;
-  textType: string;
-  assistanceLevel: string;
-}> = ({ content, textType }) => {
-  return (
-    <div className="w-1/3 bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
-      <h3 className="text-lg font-semibold mb-4">Writing Coach</h3>
-      <div className="space-y-2">
-        <p className="text-sm text-gray-600 dark:text-gray-400">
-          Text Type: {textType}
-        </p>
-        <p className="text-sm text-gray-600 dark:text-gray-400">
-          Word Count: {content.split(" ").filter(word => word.length > 0).length}
-        </p>
-        <div className="mt-4">
-          <h4 className="font-medium mb-2">Suggestions:</h4>
-          <ul className="text-sm space-y-1">
-            <li>• Consider adding more descriptive language</li>
-            <li>• Check paragraph structure</li>
-            <li>• Review sentence variety</li>
-          </ul>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const ParaphrasePanel: React.FC<{
-  selectedText: string;
-  onNavigate: (path: string) => void;
-}> = ({ selectedText }) => {
-  return (
-    <div className="w-1/3 bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
-      <h3 className="text-lg font-semibold mb-4">Paraphrase Tool</h3>
-      {selectedText ? (
-        <div>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Selected text:</p>
-          <p className="text-sm bg-white dark:bg-gray-700 p-2 rounded border">
-            {selectedText}
-          </p>
-          <button className="mt-2 px-3 py-1 bg-green-600 text-white rounded text-sm">
-            Paraphrase
-          </button>
-        </div>
-      ) : (
-        <p className="text-sm text-gray-500">Select text to paraphrase</p>
-      )}
-    </div>
-  );
-};
-
-const AppContent: React.FC = () => {
-  const [content, setContent] = useState<string>('');
-  const [textType, setTextType] = useState<string>("Narrative");
-  const [assistanceLevel, setAssistanceLevel] = useState<string>("Standard");
-  const [timerStarted, setTimerStarted] = useState<boolean>(false);
-  const [showHelpCenter, setShowHelpCenter] = useState<boolean>(false);
-  const [showPlanningTool, setShowPlanningTool] = useState<boolean>(false);
-  const [showExamMode, setShowExamMode] = useState<boolean>(false);
-  const [activePanel, setActivePanel] = useState<"coach" | "paraphrase">("coach");
-  const [selectedText, setSelectedText] = useState<string>('');
-
-  const navigate = useNavigate();
-
+  // Check for payment success in URL on mount
   useEffect(() => {
-    const handleTextSelection = () => {
-      setSelectedText(window.getSelection()?.toString() || '');
+    const urlParams = new URLSearchParams(window.location.search);
+    const paymentSuccess = urlParams.get('paymentSuccess') === 'true' || urlParams.get('payment_success') === 'true';
+    const planType = urlParams.get('planType') || urlParams.get('plan');
+    const userEmail = urlParams.get('email');
+    
+    if (paymentSuccess && planType) {
+      console.log('[DEBUG] Payment success detected for plan:', planType);
+      
+      // Store payment info
+      if (userEmail) {
+        localStorage.setItem('userEmail', userEmail);
+      }
+      localStorage.setItem('payment_plan', planType);
+      localStorage.setItem('payment_date', new Date().toISOString());
+      
+      // Clear URL parameters
+      window.history.replaceState({}, document.title, window.location.pathname);
+      
+      setShowPaymentSuccess(true);
+      setPendingPaymentPlan(planType);
+      setActivePage('payment-success');
+    }
+  }, []);
+
+  // Set active page based on current path
+  useEffect(() => {
+    const path = location.pathname.substring(1) || 'home';
+    if (path !== 'auth/callback') { // Don't change active page during auth callback
+      setActivePage(path);
+    }
+  }, [location.pathname]);
+
+  // Text selection logic for writing area
+  useEffect(() => {
+    const handleSelectionChange = () => {
+      const selection = window.getSelection();
+      if (selection && selection.toString().trim().length > 0) {
+        setSelectedText(selection.toString());
+        setActivePanel('paraphrase');
+      }
     };
-    document.addEventListener('mouseup', handleTextSelection);
+
+    document.addEventListener('selectionchange', handleSelectionChange);
     return () => {
-      document.removeEventListener('mouseup', handleTextSelection);
+      document.removeEventListener('selectionchange', handleSelectionChange);
     };
   }, []);
 
-  const handleNavigation = (path: string) => {
-    navigate(path);
+  const handleAuthSuccess = async (user: any) => {
+    setShowAuthModal(false);
+    
+    // After successful signup, redirect to dashboard to show email verification message
+    if (authModalMode === 'signup') {
+      setActivePage('dashboard');
+    } else {
+      // For signin, check email verification and payment status
+      if (!emailVerified) {
+        setActivePage('dashboard'); // Show email verification reminder
+      } else if (paymentCompleted) {
+        setActivePage('writing'); // Full access
+      } else {
+        setActivePage('pricing'); // Need to complete payment
+      }
+    }
   };
 
-  const handleSubmit = (finalContent: string) => {
-    console.log("Submitted content:", finalContent);
-    alert("Content submitted successfully!");
+  const handleForceSignOut = async () => {
+    try {
+      await authSignOut();
+      setActivePage('home');
+      localStorage.clear();
+    } catch (error) {
+      console.error('Error during sign out:', error);
+      // Force reset even if sign out fails
+      setActivePage('home');
+      localStorage.clear();
+    }
   };
+
+  const handleNavigation = async (page: string) => {
+    // Special handling for dashboard - redirect based on verification and payment status
+    if (page === 'dashboard' && user) {
+      if (!emailVerified) {
+        setActivePage('dashboard'); // Show email verification reminder
+      } else if (paymentCompleted) {
+        setActivePage('writing'); // Full access
+      } else {
+        setActivePage('pricing'); // Need to complete payment
+      }
+    } else {
+      setActivePage(page);
+    }
+    setShowAuthModal(false);
+  };
+
+  const handleGetStarted = async () => {
+    if (user) {
+      if (!emailVerified) {
+        setActivePage('dashboard'); // Show email verification reminder
+      } else if (paymentCompleted) {
+        setActivePage('writing'); // Full access
+      } else {
+        setActivePage('pricing'); // Need to complete payment
+      }
+    } else {
+      setAuthModalMode('signup');
+      setShowAuthModal(true);
+    }
+  };
+
+  const handleStartWriting = () => {
+    setActivePage('writing');
+  };
+
+  // Writing app state management
+  const appState = {
+    content,
+    textType,
+    assistanceLevel,
+    timerStarted
+  };
+
+  const updateAppState = (updates: Partial<typeof appState>) => {
+    if ('content' in updates) setContent(updates.content || '');
+    if ('textType' in updates) setTextType(updates.textType || '');
+    if ('assistanceLevel' in updates) setAssistanceLevel(updates.assistanceLevel || 'detailed');
+    if ('timerStarted' in updates) setTimerStarted(updates.timerStarted || false);
+  };
+
+  const handlePanelChange = (panel: 'coach' | 'paraphrase') => {
+    setActivePanel(panel);
+  };
+
+  const handleSubmit = () => {
+    setActivePage('feedback');
+  };
+
+  const handleStartExam = () => {
+    setShowExamMode(true);
+  };
+
+  const handleSavePlan = (planData: any) => {
+    localStorage.setItem('writing_plan', JSON.stringify(planData));
+    setShowPlanningTool(false);
+    alert('Plan saved successfully!');
+  };
+
+  const handleRestoreContent = (restoredContent: string) => {
+    setContent(restoredContent);
+  };
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-400 mb-4">Loading Writing Assistant...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex flex-col h-screen">
-      <EnhancedHeader 
-        textType={textType}
-        assistanceLevel={assistanceLevel}
-        onTextTypeChange={setTextType}
-        onAssistanceLevelChange={setAssistanceLevel}
-        onTimerStart={() => setTimerStarted(true)}
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <NavBar
+        activePage={activePage}
+        onNavigate={handleNavigation}
+        user={user}
+        onSignInClick={() => {
+          setAuthModalMode('signin');
+          setShowAuthModal(true);
+        }}
+        onSignUpClick={() => {
+          setAuthModalMode('signup');
+          setShowAuthModal(true);
+        }}
+        onForceSignOut={handleForceSignOut}
       />
       
-      <WritingToolbar 
+      <div className="mt-16">
+        <Routes>
+          <Route path="/" element={
+            <>
+              <HeroSection onGetStarted={handleGetStarted} />
+              <FeaturesSection />
+              <ToolsSection onOpenTool={handleNavigation} />
+              <WritingTypesSection />
+            </>
+          } />
+          <Route path="/demo" element={<DemoPage />} />
+          <Route path="/features" element={
+            <div>
+              <FeaturesSection />
+              <ToolsSection onOpenTool={() => {}} />
+              <WritingTypesSection />
+            </div>
+          } />
+          <Route path="/pricing" element={<PricingPage />} />
+          <Route path="/faq" element={<FAQPage />} />
+          <Route path="/about" element={<AboutPage />} />
+          <Route path="/dashboard" element={
+            user ? (
+              <Dashboard 
+                user={user} 
+                onNavigate={handleNavigation} 
+                emailVerified={emailVerified}
+                paymentCompleted={paymentCompleted}
+              />
+            ) : (
+              <Navigate to="/" />
+            )
+          } />
+          <Route path="/settings" element={
+            user ? <SettingsPage onBack={() => setActivePage('dashboard')} /> : <Navigate to="/" />
+          } />
+          <Route path="/writing" element={
+            <WritingAccessCheck onNavigate={handleNavigation}>
+              <div className="flex flex-col h-screen">
+                <EnhancedHeader 
+                  textType={textType}
+                  assistanceLevel={assistanceLevel}
+                  onTextTypeChange={setTextType}
+                  onAssistanceLevelChange={setAssistanceLevel}
+                  onTimerStart={() => setTimerStarted(true)}
+                />
+                
+                <WritingToolbar 
+                  content={content}
+                  textType={textType}
+                  onShowHelpCenter={() => setShowHelpCenter(true)}
+                  onShowPlanningTool={() => setShowPlanningTool(true)}
+                  onTimerStart={() => setTimerStarted(true)}
+                />
+                
+                {showExamMode ? (
+                  <ExamSimulationMode 
+                    onExit={() => setShowExamMode(false)}
+                  />
+                ) : (
+                  <>
+                    <div className="flex-1 container mx-auto px-4">
+                      <SplitScreen>
+                        <WritingArea 
+                          content={content}
+                          onChange={setContent}
+                          textType={textType}
+                          onTimerStart={setTimerStarted}
+                          onSubmit={handleSubmit}
+                        />
+                        {activePanel === 'coach' ? (
+                          <CoachPanel 
+                            content={content}
+                            textType={textType}
+                            assistanceLevel={assistanceLevel}
+                          />
+                        ) : (
+                          <ParaphrasePanel 
+                            selectedText={selectedText}
+                            onNavigate={handleNavigation}
+                          />
+                        )}
+                      </SplitScreen>
+                    </div>
+                    
+                    {/* Panel Switcher */}
+                    <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-2 flex justify-center items-center space-x-4">
+                      <button
+                        onClick={() => setActivePanel('coach')}
+                        className={`px-4 py-2 rounded-md text-sm font-medium ${
+                          activePanel === 'coach' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
+                        }`}
+                      >
+                        Coach
+                      </button>
+                      <button
+                        onClick={() => setActivePanel('paraphrase')}
+                        className={`px-4 py-2 rounded-md text-sm font-medium ${
+                          activePanel === 'paraphrase' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
+                        }`}
+                      >
+                        Paraphrase
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            </WritingAccessCheck>
+          } />
+          <Route path="/learning" element={<LearningPage />} />
+          <Route path="/feedback" element={<EssayFeedbackPage />} />
+          <Route path="/payment-success" element={
+            showPaymentSuccess ? (
+              <PaymentSuccessPage
+                plan={pendingPaymentPlan || 'unknown'}
+                onSuccess={handleAuthSuccess}
+                onSignInRequired={(email, plan) => {
+                  localStorage.setItem('userEmail', email);
+                  setPendingPaymentPlan(plan);
+                  setAuthModalMode('signin');
+                  setShowAuthModal(true);
+                }}
+              />
+            ) : <Navigate to="/" />
+          } />
+          <Route path="/auth/callback" element={<EmailVerificationHandler />} />
+        </Routes>
+      </div>
+
+      <Footer />
+
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        onSuccess={handleAuthSuccess}
+        initialMode={authModalMode}
+        onNavigate={handleNavigation}
+      />
+
+      <PlanningToolModal
+        isOpen={showPlanningTool}
+        onClose={() => setShowPlanningTool(false)}
+        onSavePlan={handleSavePlan}
         content={content}
         textType={textType}
-        onShowHelpCenter={() => setShowHelpCenter(true)}
-        onShowPlanningTool={() => setShowPlanningTool(true)}
-        onTimerStart={() => setTimerStarted(true)}
+        onRestoreContent={handleRestoreContent}
       />
       
-      <div className="flex-1 container mx-auto px-4 py-4">
-        <SplitScreen>
-          <WritingArea 
-            content={content}
-            onChange={setContent}
-            textType={textType}
-            onTimerStart={setTimerStarted}
-            onSubmit={handleSubmit}
-          />
-          {activePanel === 'coach' ? (
-            <CoachPanel 
-              content={content}
-              textType={textType}
-              assistanceLevel={assistanceLevel}
-            />
-          ) : (
-            <ParaphrasePanel 
-              selectedText={selectedText}
-              onNavigate={handleNavigation}
-            />
-          )}
-        </SplitScreen>
-      </div>
-      
-      <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-2 flex justify-center items-center space-x-4">
-        <button
-          onClick={() => setActivePanel('coach')}
-          className={`px-4 py-2 rounded-md text-sm font-medium ${
-            activePanel === 'coach' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
-          }`}
-        >
-          Coach
-        </button>
-        <button
-          onClick={() => setActivePanel('paraphrase')}
-          className={`px-4 py-2 rounded-md text-sm font-medium ${
-            activePanel === 'paraphrase' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
-          }`}
-        >
-          Paraphrase
-        </button>
-      </div>
+      {/* Admin Button - only visible in development mode */}
+      {process.env.NODE_ENV === 'development' && <AdminButton />}
     </div>
   );
-};
+}
 
-export default AppContent;
