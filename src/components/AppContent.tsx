@@ -1,13 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useApp } from '../contexts/AppContext';
-import { useAuth } from '../contexts/AuthContext';
 
-// Placeholder components for missing ones
-const WritingAccessCheck: React.FC<{ children: React.ReactNode; onNavigate: (path: string) => void }> = ({ children }) => {
-  return <div>{children}</div>;
-};
-
+// Simplified components for testing
 const EnhancedHeader: React.FC<{
   textType: string;
   assistanceLevel: string;
@@ -61,19 +55,6 @@ const WritingToolbar: React.FC<{
   );
 };
 
-const ExamSimulationMode: React.FC<{ onExit: () => void }> = ({ onExit }) => {
-  return (
-    <div className="flex-1 flex items-center justify-center">
-      <div className="text-center">
-        <h2 className="text-2xl font-bold mb-4">Exam Mode</h2>
-        <button onClick={onExit} className="px-4 py-2 bg-red-600 text-white rounded">
-          Exit Exam Mode
-        </button>
-      </div>
-    </div>
-  );
-};
-
 const SplitScreen: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return (
     <div className="flex h-full space-x-4">
@@ -122,7 +103,7 @@ const CoachPanel: React.FC<{
           Text Type: {textType}
         </p>
         <p className="text-sm text-gray-600 dark:text-gray-400">
-          Word Count: {content.split(' ').filter(word => word.length > 0).length}
+          Word Count: {content.split(" ").filter(word => word.length > 0).length}
         </p>
         <div className="mt-4">
           <h4 className="font-medium mb-2">Suggestions:</h4>
@@ -173,8 +154,6 @@ const AppContent: React.FC = () => {
   const [selectedText, setSelectedText] = useState<string>('');
 
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const { state } = useApp();
 
   useEffect(() => {
     const handleTextSelection = () => {
@@ -192,82 +171,71 @@ const AppContent: React.FC = () => {
 
   const handleSubmit = (finalContent: string) => {
     console.log("Submitted content:", finalContent);
-    // Handle submission logic here, e.g., send to backend
+    alert("Content submitted successfully!");
   };
 
   return (
-    <WritingAccessCheck onNavigate={handleNavigation}>
-      <div className="flex flex-col h-screen">
-        <EnhancedHeader 
-          textType={textType}
-          assistanceLevel={assistanceLevel}
-          onTextTypeChange={setTextType}
-          onAssistanceLevelChange={setAssistanceLevel}
-          onTimerStart={() => setTimerStarted(true)}
-        />
-        
-        <WritingToolbar 
-          content={content}
-          textType={textType}
-          onShowHelpCenter={() => setShowHelpCenter(true)}
-          onShowPlanningTool={() => setShowPlanningTool(true)}
-          onTimerStart={() => setTimerStarted(true)}
-        />
-        
-        {showExamMode ? (
-          <ExamSimulationMode 
-            onExit={() => setShowExamMode(false)}
+    <div className="flex flex-col h-screen">
+      <EnhancedHeader 
+        textType={textType}
+        assistanceLevel={assistanceLevel}
+        onTextTypeChange={setTextType}
+        onAssistanceLevelChange={setAssistanceLevel}
+        onTimerStart={() => setTimerStarted(true)}
+      />
+      
+      <WritingToolbar 
+        content={content}
+        textType={textType}
+        onShowHelpCenter={() => setShowHelpCenter(true)}
+        onShowPlanningTool={() => setShowPlanningTool(true)}
+        onTimerStart={() => setTimerStarted(true)}
+      />
+      
+      <div className="flex-1 container mx-auto px-4 py-4">
+        <SplitScreen>
+          <WritingArea 
+            content={content}
+            onChange={setContent}
+            textType={textType}
+            onTimerStart={setTimerStarted}
+            onSubmit={handleSubmit}
           />
-        ) : (
-          <>
-            <div className="flex-1 container mx-auto px-4">
-              <SplitScreen>
-                <WritingArea 
-                  content={content}
-                  onChange={setContent}
-                  textType={textType}
-                  onTimerStart={setTimerStarted}
-                  onSubmit={handleSubmit}
-                />
-                {activePanel === 'coach' ? (
-                  <CoachPanel 
-                    content={content}
-                    textType={textType}
-                    assistanceLevel={assistanceLevel}
-                  />
-                ) : (
-                  <ParaphrasePanel 
-                    selectedText={selectedText}
-                    onNavigate={handleNavigation}
-                  />
-                )}
-              </SplitScreen>
-            </div>
-            
-            <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-2 flex justify-center items-center space-x-4">
-              <button
-                onClick={() => setActivePanel('coach')}
-                className={`px-4 py-2 rounded-md text-sm font-medium ${
-                  activePanel === 'coach' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
-                }`}
-              >
-                Coach
-              </button>
-              <button
-                onClick={() => setActivePanel('paraphrase')}
-                className={`px-4 py-2 rounded-md text-sm font-medium ${
-                  activePanel === 'paraphrase' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
-                }`}
-              >
-                Paraphrase
-              </button>
-            </div>
-          </>
-        )}
+          {activePanel === 'coach' ? (
+            <CoachPanel 
+              content={content}
+              textType={textType}
+              assistanceLevel={assistanceLevel}
+            />
+          ) : (
+            <ParaphrasePanel 
+              selectedText={selectedText}
+              onNavigate={handleNavigation}
+            />
+          )}
+        </SplitScreen>
       </div>
-    </WritingAccessCheck>
+      
+      <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-2 flex justify-center items-center space-x-4">
+        <button
+          onClick={() => setActivePanel('coach')}
+          className={`px-4 py-2 rounded-md text-sm font-medium ${
+            activePanel === 'coach' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
+          }`}
+        >
+          Coach
+        </button>
+        <button
+          onClick={() => setActivePanel('paraphrase')}
+          className={`px-4 py-2 rounded-md text-sm font-medium ${
+            activePanel === 'paraphrase' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
+          }`}
+        >
+          Paraphrase
+        </button>
+      </div>
+    </div>
   );
 };
 
 export default AppContent;
-
