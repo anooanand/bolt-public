@@ -104,7 +104,7 @@ export function EnhancedWritingArea({ content, onChange, textType, onTimerStart,
               <button
                 type="submit"
                 disabled={!customPrompt.trim()}
-                className="px-3 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 text-sm font-medium touch-friendly-button"
+                className="px-3 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 text-sm font-medium"
               >
                 Set Prompt
               </button>
