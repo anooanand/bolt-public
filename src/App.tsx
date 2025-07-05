@@ -2,8 +2,8 @@ import React from 'react';
 import { BrowserRouter as Router } from 'react-router-dom';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { AuthProvider } from './contexts/AuthContext';
-import { AppProvider } from './contexts/AppContext';
-import AppContent from './components/AppContent'; // Corrected import
+import { AppProvider } from './contexts/AppContext'; // Corrected line
+import AppContent from './components/AppContent';
 
 function App() {
   return (
@@ -20,4 +20,3 @@ function App() {
 }
 
 export default App;
-
