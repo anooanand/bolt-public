@@ -216,17 +216,18 @@ function AppContent() {
           <Route path="/" element={
             <>
               <NavBar 
+                activePage={activePage}
                 onNavigate={handleNavigation}
-                onGetStarted={handleGetStarted}
-                onSignIn={() => {
+                user={user}
+                onSignInClick={() => {
                   setAuthModalMode('signin');
                   setShowAuthModal(true);
                 }}
-                onSignUp={() => {
+                onSignUpClick={() => {
                   setAuthModalMode('signup');
                   setShowAuthModal(true);
                 }}
-                onSignOut={handleForceSignOut}
+                onForceSignOut={handleForceSignOut}
               />
               <HeroSection onGetStarted={handleGetStarted} />
               <FeaturesSection />
