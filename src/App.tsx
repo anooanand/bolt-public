@@ -1,10 +1,22 @@
 import React from 'react';
-import { KidFriendlyApp } from './components/KidFriendlyApp';
-import './index.css';
+import { BrowserRouter as Router } from 'react-router-dom';
+import { ThemeProvider } from './contexts/ThemeContext';
+import { AuthProvider } from './contexts/AuthContext';
+import { AppProvider } from './contexts/AppContext';
+import AppContent from './components/AppContent';
 
 function App() {
-  return <KidFriendlyApp />;
+  return (
+    <ThemeProvider>
+      <AuthProvider>
+        <AppProvider>
+          <Router>
+            <AppContent />
+          </Router>
+        </AppProvider>
+      </AuthProvider>
+    </ThemeProvider>
+  );
 }
 
 export default App;
-
