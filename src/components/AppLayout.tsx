@@ -25,6 +25,7 @@ import { SplitScreen } from './SplitScreen';
 import { WritingArea } from './WritingArea';
 import { CoachPanel } from './CoachPanel';
 import { ParaphrasePanel } from './ParaphrasePanel';
+import { TabbedCoachPanel } from './TabbedCoachPanel';
 import { LearningPage } from './LearningPage';
 import { ExamSimulationMode } from './ExamSimulationMode';
 import { SupportiveFeatures } from './SupportiveFeatures';
@@ -52,7 +53,6 @@ function AppLayout() {
   const [assistanceLevel, setAssistanceLevel] = useState('detailed');
   const [timerStarted, setTimerStarted] = useState(false);
   const [selectedText, setSelectedText] = useState('');
-  const [activePanel, setActivePanel] = useState<'coach' | 'paraphrase'>('coach');
   const [showExamMode, setShowExamMode] = useState(false);
   const [showHelpCenter, setShowHelpCenter] = useState(false);
   const [showPlanningTool, setShowPlanningTool] = useState(false);
@@ -89,7 +89,6 @@ function AppLayout() {
       const selection = window.getSelection();
       if (selection && selection.toString().trim().length > 0) {
         setSelectedText(selection.toString());
-        setActivePanel('paraphrase');
       }
     };
 
@@ -178,10 +177,6 @@ function AppLayout() {
     if ('textType' in updates) setTextType(updates.textType || '');
     if ('assistanceLevel' in updates) setAssistanceLevel(updates.assistanceLevel || 'detailed');
     if ('timerStarted' in updates) setTimerStarted(updates.timerStarted || false);
-  };
-
-  const handlePanelChange = (panel: 'coach' | 'paraphrase') => {
-    setActivePanel(panel);
   };
 
   const handleSubmit = () => {
@@ -304,39 +299,14 @@ function AppLayout() {
                                 onTimerStart={setTimerStarted}
                                 onSubmit={handleSubmit}
                               />
-                              {activePanel === 'coach' ? (
-                                <CoachPanel 
-                                  content={content}
-                                  textType={textType}
-                                  assistanceLevel={assistanceLevel}
-                                />
-                              ) : (
-                                <ParaphrasePanel 
-                                  selectedText={selectedText}
-                                  onNavigate={handleNavigation}
-                                />
-                              )}
+                              <TabbedCoachPanel 
+                                content={content}
+                                textType={textType}
+                                assistanceLevel={assistanceLevel}
+                                selectedText={selectedText}
+                                onNavigate={handleNavigation}
+                              />
                             </SplitScreen>
-                          </div>
-                          
-                          {/* Panel Switcher */}
-                          <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-2 flex justify-center items-center space-x-4">
-                            <button
-                              onClick={() => setActivePanel('coach')}
-                              className={`px-4 py-2 rounded-md text-sm font-medium ${
-                                activePanel === 'coach' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
-                              }`}
-                            >
-                              Coach
-                            </button>
-                            <button
-                              onClick={() => setActivePanel('paraphrase')}
-                              className={`px-4 py-2 rounded-md text-sm font-medium ${
-                                activePanel === 'paraphrase' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
-                              }`}
-                            >
-                              Paraphrase
-                            </button>
                           </div>
                         </>
                       )}
