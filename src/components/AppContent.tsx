@@ -20,8 +20,7 @@ import { DemoPage } from './DemoPage';
 // Writing components
 import { SplitScreen } from './SplitScreen';
 import { WritingArea } from './WritingArea';
-import { CoachPanel } from './CoachPanel';
-import { ParaphrasePanel } from './ParaphrasePanel';
+import { TabbedCoachPanel } from './TabbedCoachPanel';
 import { LearningPage } from './LearningPage';
 import { ExamSimulationMode } from './ExamSimulationMode';
 import { SupportiveFeatures } from './SupportiveFeatures';
@@ -52,7 +51,6 @@ function AppContent() {
   const [assistanceLevel, setAssistanceLevel] = useState('detailed');
   const [timerStarted, setTimerStarted] = useState(false);
   const [selectedText, setSelectedText] = useState('');
-  const [activePanel, setActivePanel] = useState<'coach' | 'paraphrase'>('coach');
   const [showExamMode, setShowExamMode] = useState(false);
   const [showHelpCenter, setShowHelpCenter] = useState(false);
   const [showPlanningTool, setShowPlanningTool] = useState(false);
@@ -97,7 +95,6 @@ function AppContent() {
       const selection = window.getSelection();
       if (selection && selection.toString().trim().length > 0) {
         setSelectedText(selection.toString());
-        setActivePanel('paraphrase');
       }
     };
 
@@ -144,7 +141,6 @@ function AppContent() {
       setAssistanceLevel('detailed');
       setTimerStarted(false);
       setSelectedText('');
-      setActivePanel('coach');
       setShowExamMode(false);
       setShowHelpCenter(false);
       setShowPlanningTool(false);
@@ -198,104 +194,55 @@ function AppContent() {
     }
   };
 
-  const handleStartWriting = () => {
-    setActivePage('writing');
-  };
-
-  // Writing app state management
-  const appState = {
-    content,
-    textType,
-    assistanceLevel,
-    timerStarted
-  };
-
-  const updateAppState = (updates: Partial<typeof appState>) => {
-    if ('content' in updates) setContent(updates.content || '');
-    if ('textType' in updates) setTextType(updates.textType || '');
-    if ('assistanceLevel' in updates) setAssistanceLevel(updates.assistanceLevel || 'detailed');
-    if ('timerStarted' in updates) setTimerStarted(updates.timerStarted || false);
-  };
-
-  const handlePanelChange = (panel: 'coach' | 'paraphrase') => {
-    setActivePanel(panel);
-  };
-
   const handleSubmit = () => {
-    setActivePage('feedback');
+    console.log('Writing submitted:', { content, textType });
   };
 
-  const handleStartExam = () => {
-    setShowExamMode(true);
-  };
-
-  const handleSavePlan = (planData: any) => {
-    localStorage.setItem('writing_plan', JSON.stringify(planData));
-    setShowPlanningTool(false);
-    alert('Plan saved successfully!');
-  };
-
-  const handleRestoreContent = (restoredContent: string) => {
-    setContent(restoredContent);
-  };
-
-  // Loading state
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-400 mb-4">Loading Writing Assistant...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-300">Loading...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <NavBar
-        activePage={activePage}
-        onNavigate={handleNavigation}
-        user={user}
-        onSignInClick={() => {
-          setAuthModalMode('signin');
-          setShowAuthModal(true);
-        }}
-        onSignUpClick={() => {
-          setAuthModalMode('signup');
-          setShowAuthModal(true);
-        }}
-        onForceSignOut={handleForceSignOut}
-      />
-      
-      <div className="mt-16">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
+      <div className="min-h-screen flex flex-col">
         <Routes>
           <Route path="/" element={
             <>
+              <NavBar 
+                onNavigate={handleNavigation}
+                onGetStarted={handleGetStarted}
+                onSignIn={() => {
+                  setAuthModalMode('signin');
+                  setShowAuthModal(true);
+                }}
+                onSignUp={() => {
+                  setAuthModalMode('signup');
+                  setShowAuthModal(true);
+                }}
+                onSignOut={handleForceSignOut}
+              />
               <HeroSection onGetStarted={handleGetStarted} />
               <FeaturesSection />
-              <ToolsSection onOpenTool={handleNavigation} />
+              <ToolsSection />
               <WritingTypesSection />
             </>
           } />
-          <Route path="/demo" element={<DemoPage />} />
-          <Route path="/features" element={
-            <div>
-              <FeaturesSection />
-              <ToolsSection onOpenTool={() => {}} />
-              <WritingTypesSection />
-            </div>
-          } />
-          <Route path="/pricing" element={<PricingPage />} />
-          <Route path="/faq" element={<FAQPage />} />
-          <Route path="/about" element={<AboutPage />} />
+          <Route path="/pricing" element={<PricingPage onNavigate={handleNavigation} />} />
+          <Route path="/faq" element={<FAQPage onNavigate={handleNavigation} />} />
+          <Route path="/about" element={<AboutPage onNavigate={handleNavigation} />} />
+          <Route path="/demo" element={<DemoPage onNavigate={handleNavigation} />} />
           <Route path="/dashboard" element={
             user ? (
               <Dashboard 
-                user={user} 
-                onNavigate={handleNavigation} 
-                emailVerified={emailVerified}
-                paymentCompleted={paymentCompleted}
+                onNavigate={handleNavigation}
+                onSignOut={handleForceSignOut}
               />
             ) : (
               <Navigate to="/" />
@@ -328,51 +275,24 @@ function AppContent() {
                     onExit={() => setShowExamMode(false)}
                   />
                 ) : (
-                  <>
-                    <div className="flex-1 container mx-auto px-4">
-                      <SplitScreen>
-                        <WritingArea 
-                          content={content}
-                          onChange={setContent}
-                          textType={textType}
-                          onTimerStart={setTimerStarted}
-                          onSubmit={handleSubmit}
-                        />
-                        {activePanel === 'coach' ? (
-                          <CoachPanel 
-                            content={content}
-                            textType={textType}
-                            assistanceLevel={assistanceLevel}
-                          />
-                        ) : (
-                          <ParaphrasePanel 
-                            selectedText={selectedText}
-                            onNavigate={handleNavigation}
-                          />
-                        )}
-                      </SplitScreen>
-                    </div>
-                    
-                    {/* Panel Switcher */}
-                    <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-2 flex justify-center items-center space-x-4">
-                      <button
-                        onClick={() => setActivePanel('coach')}
-                        className={`px-4 py-2 rounded-md text-sm font-medium ${
-                          activePanel === 'coach' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
-                        }`}
-                      >
-                        Coach
-                      </button>
-                      <button
-                        onClick={() => setActivePanel('paraphrase')}
-                        className={`px-4 py-2 rounded-md text-sm font-medium ${
-                          activePanel === 'paraphrase' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
-                        }`}
-                      >
-                        Paraphrase
-                      </button>
-                    </div>
-                  </>
+                  <div className="flex-1 container mx-auto px-4">
+                    <SplitScreen>
+                      <WritingArea 
+                        content={content}
+                        onChange={setContent}
+                        textType={textType}
+                        onTimerStart={setTimerStarted}
+                        onSubmit={handleSubmit}
+                      />
+                      <TabbedCoachPanel 
+                        content={content}
+                        textType={textType}
+                        assistanceLevel={assistanceLevel}
+                        selectedText={selectedText}
+                        onNavigate={handleNavigation}
+                      />
+                    </SplitScreen>
+                  </div>
                 )}
               </div>
             </WritingAccessCheck>
@@ -399,28 +319,31 @@ function AppContent() {
 
       <Footer />
 
-      <AuthModal
-        isOpen={showAuthModal}
-        onClose={() => setShowAuthModal(false)}
-        onSuccess={handleAuthSuccess}
-        initialMode={authModalMode}
-        onNavigate={handleNavigation}
-      />
+      {/* Modals */}
+      {showAuthModal && (
+        <AuthModal
+          mode={authModalMode}
+          onClose={() => setShowAuthModal(false)}
+          onSuccess={handleAuthSuccess}
+          onSwitchMode={(mode) => setAuthModalMode(mode)}
+        />
+      )}
 
-      <PlanningToolModal
-        isOpen={showPlanningTool}
-        onClose={() => setShowPlanningTool(false)}
-        onSavePlan={handleSavePlan}
-        content={content}
-        textType={textType}
-        onRestoreContent={handleRestoreContent}
-      />
-      
-      {/* Admin Button - only visible in development mode */}
-      {process.env.NODE_ENV === 'development' && <AdminButton />}
+      {showHelpCenter && (
+        <HelpCenter onClose={() => setShowHelpCenter(false)} />
+      )}
+
+      {showPlanningTool && (
+        <PlanningToolModal 
+          onClose={() => setShowPlanningTool(false)}
+          textType={textType}
+        />
+      )}
+
+      <AdminButton />
     </div>
   );
 }
 
-export default AppContent; // Changed to default export
+export default AppContent;
 
