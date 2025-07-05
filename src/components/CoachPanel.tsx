@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { MessageSquare, Sparkles, ChevronDown, ChevronUp, ThumbsUp, Lightbulb, HelpCircle, Target } from 'lucide-react';
 import { getWritingFeedback } from '../lib/openai';
+import './improved-layout.css';
 
 interface CoachPanelProps {
   content: string;
@@ -119,22 +120,20 @@ export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelPro
   };
 
   return (
-    <div className="h-full bg-white rounded-lg shadow-sm flex flex-col">
-      <div className="p-4 border-b">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <Sparkles className="h-5 w-5 text-blue-600" />
-            <h2 className="text-lg font-medium text-gray-900">Writing Coach</h2>
+    <div className="h-full flex flex-col">
+      {/* Loading indicator */}
+      {isLoading && (
+        <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700">
+          <div className="text-sm text-blue-600 dark:text-blue-400 flex items-center">
+            <div className="loading-spinner mr-2"></div>
+            Thinking...
           </div>
-          {isLoading && (
-            <div className="text-sm text-blue-600 animate-pulse">Thinking...</div>
-          )}
         </div>
-      </div>
+      )}
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="coach-panel-content space-y-3">
         {structuredFeedback?.overallComment && (
-          <div className="mb-4 p-3 bg-indigo-50 text-indigo-700 rounded-lg text-sm">
+          <div className="p-3 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded-lg text-sm">
             <p className="font-medium">A quick thought:</p>
             <p>{structuredFeedback.overallComment}</p>
           </div>
@@ -143,7 +142,7 @@ export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelPro
         {structuredFeedback?.feedbackItems?.map((item, index) => {
           const { icon, bgColor, textColor } = getFeedbackItemStyle(item.type);
           return (
-            <div key={index} className={`rounded-lg p-3 ${bgColor} ${textColor} text-sm flex`}>
+            <div key={index} className={`feedback-item feedback-item-${item.type} flex`}>
               <div>{icon}</div>
               <div className="flex-grow">
                 <p className="font-semibold capitalize">{item.area}</p>
@@ -164,7 +163,7 @@ export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelPro
         })}
 
         {structuredFeedback?.focusForNextTime && structuredFeedback.focusForNextTime.length > 0 && (
-          <div className="mt-4 p-3 bg-gray-100 text-gray-700 rounded-lg text-sm">
+          <div className="p-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg text-sm">
             <p className="font-medium">Keep in mind for next time:</p>
             <ul className="list-disc list-inside mt-1">
               {structuredFeedback.focusForNextTime.map((focus, idx) => (
@@ -175,24 +174,24 @@ export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelPro
         )}
       </div>
 
-      <form onSubmit={handleQuestionSubmit} className="p-4 border-t bg-gray-50 space-y-3">
+      <form onSubmit={handleQuestionSubmit} className="coach-panel-footer space-y-3">
         <button
           type="button"
           onClick={() => setShowPrompts(!showPrompts)}
-          className="w-full flex items-center justify-between px-3 py-2 bg-blue-50 rounded-md text-sm font-medium text-blue-800 hover:bg-blue-100 transition-colors"
+          className="w-full flex items-center justify-between px-3 py-2 bg-blue-50 dark:bg-blue-900/30 rounded-md text-sm font-medium text-blue-800 dark:text-blue-200 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
         >
           <span>Common Writing Questions</span>
           {showPrompts ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
         </button>
 
         {showPrompts && (
-          <div className="space-y-1 pl-2 bg-white rounded-md p-2 border border-gray-100">
+          <div className="space-y-1 bg-white dark:bg-gray-800 rounded-md p-2 border border-gray-100 dark:border-gray-600">
             {commonPrompts.map((prompt, index) => (
               <button
                 type="button"
                 key={index}
                 onClick={() => handlePromptClick(prompt)}
-                className="w-full text-left text-sm px-3 py-1.5 rounded text-gray-700 hover:bg-gray-100 transition-colors"
+                className="w-full text-left text-sm px-3 py-1.5 rounded text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
               >
                 {prompt}
               </button>
@@ -206,12 +205,12 @@ export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelPro
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
             placeholder="Ask your coach a question..."
-            className="flex-1 rounded-md border-0 py-1.5 px-3 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-blue-600 sm:text-sm sm:leading-6"
+            className="flex-1 form-input"
           />
           <button
             type="submit"
             disabled={isLoading || !question.trim()}
-            className="px-4 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+            className="bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed touch-friendly-button"
           >
             Ask
           </button>
