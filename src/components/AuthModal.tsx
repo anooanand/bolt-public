@@ -1,24 +1,22 @@
-// FIXED: Enhanced AuthModal with proper verification handling
+// FIXED AuthModal component with corrected props interface
 import React, { useState, useEffect } from 'react';
 import { X, Mail, Lock, Eye, EyeOff, CheckCircle, AlertCircle, Loader } from 'lucide-react';
 import { supabase, isEmailVerified } from '../lib/supabase';
 
 interface AuthModalProps {
-  isOpen: boolean;
+  mode: 'signin' | 'signup';
   onClose: () => void;
   onSuccess: (user: any) => void;
-  initialMode: 'signin' | 'signup';
-  onNavigate: (page: string) => void;
+  onSwitchMode: (mode: 'signin' | 'signup') => void;
 }
 
 export const AuthModal: React.FC<AuthModalProps> = ({
-  isOpen,
+  mode: initialMode,
   onClose,
   onSuccess,
-  initialMode,
-  onNavigate
+  onSwitchMode
 }) => {
-  const [mode, setMode] = useState<'signin' | 'signup' | 'confirmation'>('signin');
+  const [mode, setMode] = useState<'signin' | 'signup' | 'confirmation'>(initialMode);
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [confirmPassword, setConfirmPassword] = useState<string>('');
@@ -29,28 +27,19 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [confirmationEmail, setConfirmationEmail] = useState<string>('');
   const [verificationChecking, setVerificationChecking] = useState(false);
 
-  // Reset form when modal opens or mode changes
+  // Reset form when mode changes
   useEffect(() => {
-    if (isOpen) {
-      setMode(initialMode);
-      setError('');
-      setSuccess(false);
-      
-      // Try to get email from localStorage
-      const savedEmail = localStorage.getItem('userEmail');
-      if (savedEmail) {
-        setEmail(savedEmail);
-        setConfirmationEmail(savedEmail);
-      }
-    } else {
-      // Reset form when modal closes
-      setEmail('');
-      setPassword('');
-      setConfirmPassword('');
-      setError('');
-      setSuccess(false);
+    setMode(initialMode);
+    setError('');
+    setSuccess(false);
+    
+    // Try to get email from localStorage
+    const savedEmail = localStorage.getItem('userEmail');
+    if (savedEmail) {
+      setEmail(savedEmail);
+      setConfirmationEmail(savedEmail);
     }
-  }, [isOpen, initialMode]);
+  }, [initialMode]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -92,7 +81,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         } else if (data.user) {
           localStorage.setItem('userEmail', email);
           
-          // FIXED: Check email verification status properly
+          // Check email verification status properly
           console.log('🔍 Checking email verification after sign in...');
           const emailVerified = await isEmailVerified();
           
@@ -149,7 +138,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     try {
       console.log('🔍 Manual verification check triggered...');
       
-      // FIXED: Use the simplified verification check
       const emailVerified = await isEmailVerified();
       
       if (emailVerified) {
@@ -175,7 +163,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     }
   };
 
-  // ADDED: Function to handle "Continue Anyway" for already verified users
   const handleContinueAnyway = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -190,8 +177,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       setError('Failed to continue. Please try signing in again.');
     }
   };
-
-  if (!isOpen) return null;
 
   if (mode === 'confirmation') {
     return (
@@ -409,19 +394,18 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             )}
           </button>
 
-          {/* Mode Toggle */}
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              {mode === 'signin' ? "Don't have an account?" : 'Already have an account?'}
+              {mode === 'signin' ? "Don't have an account? " : "Already have an account? "}
               <button
-                type="button"
                 onClick={() => {
-                  setMode(mode === 'signin' ? 'signup' : 'signin');
+                  const newMode = mode === 'signin' ? 'signup' : 'signin';
+                  setMode(newMode);
+                  onSwitchMode(newMode);
                   setError('');
-                  setPassword('');
-                  setConfirmPassword('');
+                  setSuccess(false);
                 }}
-                className="ml-1 text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
+                className="text-blue-600 dark:text-blue-400 hover:underline font-medium"
               >
                 {mode === 'signin' ? 'Sign up' : 'Sign in'}
               </button>
