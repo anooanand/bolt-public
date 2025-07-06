@@ -276,4 +276,3 @@ export function EssayEvaluationModal({ isOpen, onClose, content, textType }: Ess
     </div>
   );
 }
-
