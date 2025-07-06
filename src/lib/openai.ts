@@ -113,7 +113,7 @@ export async function getSpecializedTextTypeFeedback(content: string, textType: 
     return {
       overallComment: "AI specialized feedback is not available at the moment. Your writing shows understanding of the text type requirements.",
       textTypeSpecificFeedback: {
-        structure: "Your writing follows the basic structure expected for this text type.",
+        structure: "Your writing follows the basic structure, but could benefit from clearer organization.",
         language: "You've used appropriate language for this writing style.",
         purpose: "Your writing addresses the main purpose of this text type.",
         audience: "Consider your target audience when writing."
@@ -271,6 +271,51 @@ export async function getWritingStructure(textType: string): Promise<string> {
   }
 }
 
+// New function for grammar and spelling check
+export async function checkGrammarAndSpelling(content: string): Promise<any> {
+  try {
+    return await callAIFunction('checkGrammarAndSpelling', { content });
+  } catch (error) {
+    console.error('Error checking grammar and spelling:', error);
+    return {
+      corrections: [
+        { type: 'grammar', text: 'Example grammar error.', suggestion: 'Example grammar correction.' },
+        { type: 'spelling', text: 'Exampel spelling mistake.', suggestion: 'Example spelling correction.' }
+      ]
+    };
+  }
+}
+
+// New function for sentence structure analysis
+export async function analyzeSentenceStructure(content: string): Promise<any> {
+  try {
+    return await callAIFunction('analyzeSentenceStructure', { content });
+  } catch (error) {
+    console.error('Error analyzing sentence structure:', error);
+    return {
+      analysis: [
+        { type: 'repetitive_beginning', sentence: 'The boy ran. The boy jumped.', suggestion: 'Vary sentence beginnings.' },
+        { type: 'choppy_sentences', sentence: 'He walked. He saw a dog. It barked.', suggestion: 'Combine short sentences.' }
+      ]
+    };
+  }
+}
+
+// New function for vocabulary enhancement
+export async function enhanceVocabulary(content: string): Promise<any> {
+  try {
+    return await callAIFunction('enhanceVocabulary', { content });
+  } catch (error) {
+    console.error('Error enhancing vocabulary:', error);
+    return {
+      suggestions: [
+        { word: 'good', suggestion: 'excellent, superb' },
+        { word: 'very', suggestion: 'exceedingly, remarkably' }
+      ]
+    };
+  }
+}
+
 export default {
   generatePrompt,
   getWritingFeedback,
@@ -281,5 +326,9 @@ export default {
   getTextTypeVocabulary,
   evaluateEssay,
   getWritingStructure,
+  checkGrammarAndSpelling,
+  analyzeSentenceStructure,
+  enhanceVocabulary,
   isOpenAIAvailable
 };
+
