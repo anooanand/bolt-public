@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { AlertTriangle, CheckCircle } from 'lucide-react';
 import { identifyCommonMistakes } from '../../lib/openai';
+import AIErrorHandler from '../../utils/errorHandling';
+import { promptConfig } from '../../config/prompts';
 
 interface MistakeIdentifierProps {
   content: string;
@@ -40,8 +42,29 @@ export function MistakeIdentifier({ content, textType }: MistakeIdentifierProps)
       const data = await identifyCommonMistakes(content, textType);
       setMistakeData(data);
     } catch (err) {
-      console.error('Error analyzing mistakes:', err);
-      setError('Failed to analyze writing for common mistakes. Please try again later.');
+      const aiError = AIErrorHandler.handleError(err, 'mistake analysis');
+      console.error('Error analyzing mistakes:', aiError.userFriendlyMessage);
+      setError(aiError.userFriendlyMessage);
+      
+      // Provide fallback analysis
+      const fallbackAnalysis: MistakeAnalysis = {
+        overallAssessment: `Your ${textType} writing shows good effort! While I can't provide detailed analysis right now, keep practicing the key elements of ${textType} writing.`,
+        mistakesIdentified: [],
+        patternAnalysis: `Focus on the main features of ${textType} writing: clear structure, appropriate vocabulary, and engaging content for your NSW Selective preparation.`,
+        priorityFixes: [
+          `Review the key requirements for ${textType} writing`,
+          'Check your spelling and grammar carefully',
+          'Make sure your writing has a clear beginning, middle, and end',
+          'Use varied sentence structures to make your writing more interesting'
+        ],
+        positiveElements: [
+          'You\'re practicing regularly, which is great!',
+          'Your writing shows understanding of the task',
+          'Keep working on developing your ideas',
+          'You\'re building important writing skills'
+        ]
+      };
+      setMistakeData(fallbackAnalysis);
     } finally {
       setIsLoading(false);
     }
@@ -112,16 +135,19 @@ export function MistakeIdentifier({ content, textType }: MistakeIdentifierProps)
                     <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
                     <p className="ml-3 text-indigo-600">Analyzing your writing for common mistakes...</p>
                   </div>
-                ) : error ? (
-                  <div className="mt-4 bg-red-50 p-4 rounded-md">
+                 ) : error ? (
+                  <div className="mt-4 bg-amber-50 p-4 rounded-md">
                     <div className="flex">
                       <div className="flex-shrink-0">
-                        <AlertTriangle className="h-5 w-5 text-red-400" aria-hidden="true" />
+                        <AlertTriangle className="h-5 w-5 text-amber-400" aria-hidden="true" />
                       </div>
                       <div className="ml-3">
-                        <h3 className="text-sm font-medium text-red-800">Error</h3>
-                        <div className="mt-2 text-sm text-red-700">
+                        <h3 className="text-sm font-medium text-amber-800">Notice</h3>
+                        <div className="mt-2 text-sm text-amber-700">
                           <p>{error}</p>
+                          {mistakeData && (
+                            <p className="mt-1">Don't worry! I've provided some helpful guidance below.</p>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -190,7 +216,7 @@ export function MistakeIdentifier({ content, textType }: MistakeIdentifierProps)
                               <div className="ml-3">
                                 <h3 className="text-sm font-medium text-green-800">No major mistakes found</h3>
                                 <div className="mt-2 text-sm text-green-700">
-                                  <p>Great job! Your writing doesn't contain any common mistakes.</p>
+                                  <p>Great job! Your writing doesn't contain any obvious common mistakes.</p>
                                 </div>
                               </div>
                             </div>
