@@ -5,6 +5,12 @@ import { NSWEssayTypes } from './NSWEssayTypes';
 import { AdaptiveAI } from './AdaptiveAI';
 import { HowItWorks } from './HowItWorks';
 import { ReferralBanner } from './ReferralBanner';
+import { StudentSuccessSection } from './StudentSuccessSection';
+import { AdaptiveLearning } from './AdaptiveLearning';
+import { WritingTypesGrid } from './WritingTypesGrid';
+import { ExamPracticeSimulator } from './ExamPracticeSimulator';
+import { FeatureComparison } from './FeatureComparison';
+import { TestComponent } from './TestComponent';
 
 interface HomePageProps {
   onNavigate: (page: string, type?: string) => void;
@@ -53,10 +59,32 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
 
       {/* Main Content */}
       <main>
+        <TestComponent />
+        
+        {/* Writing Types for NSW Selective Exam */}
         <div id="get-started">
           <EssayCategories onNavigate={onNavigate} />
         </div>
+        
+        {/* NSW Essay Types */}
         <NSWEssayTypes onNavigate={onNavigate} />
+        
+        {/* Writing Types Grid */}
+        <WritingTypesGrid onNavigate={onNavigate} />
+        
+        {/* NSW Selective Exam Practice Simulator */}
+        <ExamPracticeSimulator onNavigate={onNavigate} />
+        
+        {/* AI That Adapts to Your Level */}
+        <AdaptiveLearning />
+        
+        {/* How InstaChat AI Helps Students Succeed */}
+        <StudentSuccessSection />
+        
+        {/* Feature Comparison */}
+        <FeatureComparison />
+        
+        {/* How It Works */}
         <div id="how-it-works">
           <AdaptiveAI />
         </div>
