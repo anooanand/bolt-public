@@ -51,11 +51,11 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
 
   // Initialize popup flow when component mounts or when textType is empty
   useEffect(() => {
-    if (!hasInitialized && !textType) {
+    if (!hasInitialized && !textType && !selectedWritingType) {
       setShowWritingTypeModal(true);
       setHasInitialized(true);
     }
-  }, [textType, hasInitialized]);
+  }, [textType, hasInitialized, selectedWritingType]);
 
   useEffect(() => {
     if (prompt) {
@@ -372,7 +372,14 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
       <div className="p-4 border-b border-gray-200 dark:border-gray-700 space-y-4 content-spacing">
         <div className="flex flex-wrap justify-between items-center gap-2">
           <h2 className="text-lg font-medium text-gray-900 dark:text-white capitalize">
-            {currentTextType ? `${currentTextType} Writing` : 'Select Writing Type'}
+            {currentTextType ? `${currentTextType} Writing` : (
+              <button
+                onClick={() => setShowWritingTypeModal(true)}
+                className="text-blue-600 hover:underline"
+              >
+                Select Writing Type
+              </button>
+            )}
           </h2>
           {noTypeSelected ? (
             <div className="flex items-center text-amber-600 dark:text-amber-400 text-sm">
