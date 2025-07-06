@@ -490,4 +490,3 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
     </div>
   );
 }
-
