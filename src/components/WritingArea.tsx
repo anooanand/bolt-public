@@ -52,11 +52,21 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
 
   // Initialize popup flow when component mounts or when textType is empty
   useEffect(() => {
-    if (!hasInitialized && !textType && !selectedWritingType) {
+    const savedContent = localStorage.getItem('writingContent');
+    const savedWritingType = localStorage.getItem('selectedWritingType');
+
+    if (savedContent) {
+      onChange(savedContent);
+    }
+    if (savedWritingType) {
+      setSelectedWritingType(savedWritingType);
+    }
+
+    if (!hasInitialized && !textType && !selectedWritingType && !savedContent && !savedWritingType) {
       setShowWritingTypeModal(true);
       setHasInitialized(true);
     }
-  }, [textType, hasInitialized, selectedWritingType]);
+  }, [textType, hasInitialized, selectedWritingType, onChange]);
 
   useEffect(() => {
     if (prompt) {
@@ -72,6 +82,15 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
         setPrompt(savedPrompt);
       }
     }
+  }, [selectedWritingType]);
+
+  // Persist content and selectedWritingType to localStorage
+  useEffect(() => {
+    localStorage.setItem('writingContent', content);
+  }, [content]);
+
+  useEffect(() => {
+    localStorage.setItem('selectedWritingType', selectedWritingType);
   }, [selectedWritingType]);
 
   const analyzeText = useCallback((text: string) => {
@@ -546,4 +565,5 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
     </div>
   );
 }
+
 
