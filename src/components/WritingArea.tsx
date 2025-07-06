@@ -37,6 +37,7 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
   const [popupPosition, setPopupPosition] = useState({ x: 0, y: 0 });
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [showHighlights, setShowHighlights] = useState(true);
   
   // New state for popup management
   const [showWritingTypeModal, setShowWritingTypeModal] = useState(false);
@@ -46,7 +47,7 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
   const [hasInitialized, setHasInitialized] = useState(false);
   
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const overlayRef = useRef<HTMLDivElement>(null);
+  const highlightLayerRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Initialize popup flow when component mounts or when textType is empty
@@ -238,30 +239,45 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
   };
 
   const handleScroll = (e: React.UIEvent<HTMLTextAreaElement>) => {
-    if (overlayRef.current) {
-      overlayRef.current.scrollTop = e.currentTarget.scrollTop;
+    if (highlightLayerRef.current) {
+      highlightLayerRef.current.scrollTop = e.currentTarget.scrollTop;
+      highlightLayerRef.current.scrollLeft = e.currentTarget.scrollLeft;
     }
   };
 
-  const handleIssueClick = (issue: WritingIssue, event: React.MouseEvent) => {
-    const rect = (event.target as HTMLElement).getBoundingClientRect();
-    const containerRect = containerRef.current?.getBoundingClientRect();
+  const handleTextareaClick = (e: React.MouseEvent<HTMLTextAreaElement>) => {
+    if (!showHighlights) return;
     
-    if (containerRect) {
-      let x = rect.left - containerRect.left;
-      let y = rect.top - containerRect.top + rect.height;
+    const textarea = e.currentTarget;
+    const rect = textarea.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    // Get cursor position
+    const cursorPosition = textarea.selectionStart;
+    
+    // Find if cursor is on an issue
+    const clickedIssue = issues.find(issue => 
+      cursorPosition >= issue.start && cursorPosition <= issue.end
+    );
+    
+    if (clickedIssue) {
+      const containerRect = containerRef.current?.getBoundingClientRect();
+      if (containerRect) {
+        let popupX = x;
+        let popupY = y + 20;
 
-      const maxX = containerRect.width - 300; // 300px is max-width of popup
-      if (x > maxX) x = maxX;
-      if (x < 0) x = 0;
+        const maxX = containerRect.width - 300;
+        if (popupX > maxX) popupX = maxX;
+        if (popupX < 0) popupX = 0;
 
-      // Ensure popup doesn't go below the container
-      const maxY = containerRect.height - 200; // Approximate popup height
-      if (y > maxY) y = rect.top - containerRect.top - 220; // Show above the word
+        const maxY = containerRect.height - 200;
+        if (popupY > maxY) popupY = y - 220;
 
-      setPopupPosition({ x, y });
-      setSelectedIssue(issue);
-      setSuggestions([]);
+        setPopupPosition({ x: popupX, y: popupY });
+        setSelectedIssue(clickedIssue);
+        setSuggestions([]);
+      }
     }
   };
 
@@ -302,21 +318,52 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
     }
   };
 
-  const getHighlightStyle = (type: WritingIssue['type']) => {
-    switch (type) {
-      case 'spelling':
-        return 'bg-red-100 border-b-2 border-red-400';
-      case 'grammar':
-        return 'bg-yellow-100 border-b-2 border-yellow-400';
-      case 'vocabulary':
-        return 'bg-green-100 border-b-2 border-green-400';
-      case 'structure':
-        return 'bg-purple-100 border-b-2 border-purple-400';
-      case 'style':
-        return 'bg-orange-100 border-b-2 border-orange-400';
-      default:
-        return '';
+  const renderHighlightedText = () => {
+    if (!showHighlights || !content) return null;
+
+    let lastIndex = 0;
+    const elements: React.ReactNode[] = [];
+
+    // Sort issues by start position
+    const sortedIssues = [...issues].sort((a, b) => a.start - b.start);
+
+    sortedIssues.forEach((issue, index) => {
+      // Add text before the issue
+      if (issue.start > lastIndex) {
+        elements.push(
+          <span key={`text-${index}`}>
+            {content.slice(lastIndex, issue.start)}
+          </span>
+        );
+      }
+
+      // Add the highlighted issue
+      const issueText = content.slice(issue.start, issue.end);
+      elements.push(
+        <span
+          key={`issue-${index}`}
+          className={`writing-highlight writing-highlight-${issue.type}`}
+          data-issue-type={issue.type}
+          data-message={issue.message}
+          data-suggestion={issue.suggestion}
+        >
+          {issueText}
+        </span>
+      );
+
+      lastIndex = issue.end;
+    });
+
+    // Add remaining text
+    if (lastIndex < content.length) {
+      elements.push(
+        <span key="text-end">
+          {content.slice(lastIndex)}
+        </span>
+      );
     }
+
+    return elements;
   };
 
   // Handle writing type selection
@@ -381,17 +428,29 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
               </button>
             )}
           </h2>
-          {noTypeSelected ? (
-            <div className="flex items-center text-amber-600 dark:text-amber-400 text-sm">
-              <AlertCircle className="w-4 h-4 mr-2" />
-              Please select a writing type first
-            </div>
-          ) : !prompt && (
-            <div className="flex items-center text-blue-600 dark:text-blue-400 text-sm">
-              <AlertCircle className="w-4 h-4 mr-2" />
-              {isGenerating ? 'Generating prompt...' : 'Choose or enter a prompt to start writing'}
-            </div>
-          )}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowHighlights(!showHighlights)}
+              className={`px-3 py-1 text-sm rounded-md transition-colors ${
+                showHighlights 
+                  ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300' 
+                  : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
+              }`}
+            >
+              {showHighlights ? 'Hide Highlights' : 'Show Highlights'}
+            </button>
+            {noTypeSelected ? (
+              <div className="flex items-center text-amber-600 dark:text-amber-400 text-sm">
+                <AlertCircle className="w-4 h-4 mr-2" />
+                Please select a writing type first
+              </div>
+            ) : !prompt && (
+              <div className="flex items-center text-blue-600 dark:text-blue-400 text-sm">
+                <AlertCircle className="w-4 h-4 mr-2" />
+                {isGenerating ? 'Generating prompt...' : 'Choose or enter a prompt to start writing'}
+              </div>
+            )}
+          </div>
         </div>
 
         {prompt && !noTypeSelected && (
@@ -408,36 +467,33 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
           value={content}
           onChange={handleContentChange}
           onScroll={handleScroll}
+          onClick={handleTextareaClick}
           disabled={noTypeSelected || !prompt}
-          className="absolute inset-0 w-full h-full p-4 text-gray-900 dark:text-white resize-none focus:outline-none disabled:bg-gray-100 dark:disabled:bg-gray-700 disabled:cursor-not-allowed overflow-y-auto writing-textarea"
+          className="absolute inset-0 w-full h-full p-4 text-gray-900 dark:text-white bg-transparent resize-none focus:outline-none disabled:bg-gray-100 dark:disabled:bg-gray-700 disabled:cursor-not-allowed overflow-auto writing-textarea z-10"
           placeholder={noTypeSelected ? "Select a writing type to begin..." : !prompt ? "Choose or enter a prompt to start writing..." : "Begin writing here..."}
           style={{ 
-            caretColor: 'black',
-            color: 'transparent',
-            background: 'transparent',
             fontSize: '16px',
-            lineHeight: '1.6'
+            lineHeight: '1.6',
+            fontFamily: 'inherit'
           }}
         />
-        <div 
-          ref={overlayRef}
-          className="absolute inset-0 pointer-events-none p-4 text-gray-900 dark:text-white overflow-y-hidden"
-          style={{ whiteSpace: 'pre-wrap', wordWrap: 'break-word', fontSize: '16px', lineHeight: '1.6' }}
-        >
-          {content.split('').map((char, index) => {
-            const issue = issues.find(i => index >= i.start && index < i.end);
-            return (
-              <span
-                key={index}
-                className={issue ? `${getHighlightStyle(issue.type)} relative group cursor-pointer` : ''}
-                onClick={issue ? (e) => handleIssueClick(issue, e) : undefined}
-                style={{ pointerEvents: issue ? 'auto' : 'none' }}
-              >
-                {char}
-              </span>
-            );
-          })}
-        </div>
+        
+        {showHighlights && (
+          <div 
+            ref={highlightLayerRef}
+            className="absolute inset-0 p-4 pointer-events-none overflow-hidden z-5"
+            style={{ 
+              whiteSpace: 'pre-wrap', 
+              wordWrap: 'break-word', 
+              fontSize: '16px', 
+              lineHeight: '1.6',
+              fontFamily: 'inherit',
+              color: 'transparent'
+            }}
+          >
+            {renderHighlightedText()}
+          </div>
+        )}
 
         {selectedIssue && (
           <InlineSuggestionPopup
@@ -490,3 +546,4 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
     </div>
   );
 }
+
