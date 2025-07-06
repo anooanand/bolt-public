@@ -46,6 +46,426 @@ async function makeOpenAICall(messages: any[], maxTokens: number = 1000): Promis
   }
 }
 
+// Helper function to analyze content structure and extract key elements
+function analyzeContentStructure(content: string) {
+  const sentences = content.split(/[.!?]+/).filter(s => s.trim().length > 0);
+  const words = content.trim().split(/\s+/).filter(w => w.length > 0);
+  const paragraphs = content.split(/\n\s*\n/).filter(p => p.trim().length > 0);
+  
+  // Extract potential character names (capitalized words that aren't sentence starters)
+  const potentialCharacters = words.filter((word, index) => {
+    const isCapitalized = /^[A-Z][a-z]+$/.test(word);
+    const isNotSentenceStart = index > 0 && !/[.!?]/.test(words[index - 1]);
+    return isCapitalized && isNotSentenceStart;
+  });
+
+  // Identify dialogue (text in quotes)
+  const dialogueMatches = content.match(/"[^"]*"/g) || [];
+  
+  // Identify descriptive language (adjectives and adverbs)
+  const descriptiveWords = words.filter(word => 
+    /ly$/.test(word) || // adverbs ending in -ly
+    /ing$/.test(word) || // present participles
+    /ed$/.test(word) // past participles
+  );
+
+  return {
+    sentenceCount: sentences.length,
+    wordCount: words.length,
+    paragraphCount: paragraphs.length,
+    averageSentenceLength: words.length / sentences.length,
+    potentialCharacters: [...new Set(potentialCharacters)],
+    hasDialogue: dialogueMatches.length > 0,
+    dialogueCount: dialogueMatches.length,
+    descriptiveWords: [...new Set(descriptiveWords)],
+    firstSentence: sentences[0]?.trim() || '',
+    lastSentence: sentences[sentences.length - 1]?.trim() || ''
+  };
+}
+
+// Enhanced function to get contextual writing feedback
+export async function getWritingFeedback(content: string, textType: string, assistanceLevel: string, feedbackHistory: any[]): Promise<any> {
+  try {
+    if (!openai) {
+      throw new Error('OpenAI not available');
+    }
+
+    // Analyze the content structure for contextual insights
+    const contentAnalysis = analyzeContentStructure(content);
+    
+    // Create a detailed analysis prompt based on the actual content
+    const contextualAnalysis = `
+CONTENT ANALYSIS:
+- Word count: ${contentAnalysis.wordCount}
+- Sentence count: ${contentAnalysis.sentenceCount}
+- Paragraph count: ${contentAnalysis.paragraphCount}
+- Average sentence length: ${Math.round(contentAnalysis.averageSentenceLength)} words
+- Opening: "${contentAnalysis.firstSentence}"
+- Closing: "${contentAnalysis.lastSentence}"
+- Characters mentioned: ${contentAnalysis.potentialCharacters.join(', ') || 'None identified'}
+- Contains dialogue: ${contentAnalysis.hasDialogue ? 'Yes (' + contentAnalysis.dialogueCount + ' instances)' : 'No'}
+- Descriptive language used: ${contentAnalysis.descriptiveWords.slice(0, 5).join(', ') || 'Limited'}
+`;
+
+    const messages = [
+      {
+        role: 'system',
+        content: `You are an expert writing coach for NSW selective school writing tests for students aged 9-11 in Australia. 
+
+IMPORTANT: Provide CONTEXTUAL, SPECIFIC feedback based on the actual content the student has written. Avoid generic advice.
+
+Your feedback should be:
+1. **Content-specific**: Reference actual elements from their writing
+2. **Actionable**: Give concrete suggestions they can implement immediately
+3. **Encouraging**: Highlight what they're doing well specifically
+4. **Age-appropriate**: Suitable for 9-11 year olds
+5. **NSW curriculum aligned**: Follow selective school writing standards
+
+ANALYSIS APPROACH:
+- Examine their opening sentence and suggest specific improvements
+- Look at their character development and plot progression
+- Analyze their vocabulary choices and suggest specific alternatives
+- Check their sentence variety and structure patterns
+- Evaluate their ending and how it connects to the beginning
+
+Assistance Level: ${assistanceLevel}
+
+Return your response as a JSON object with this exact structure:
+{
+  "overallComment": "A specific comment about their actual writing, mentioning concrete elements",
+  "feedbackItems": [
+    {
+      "type": "praise|suggestion|question|challenge",
+      "area": "specific area like 'Opening Sentence', 'Character Development', 'Vocabulary Choice', etc.",
+      "text": "specific feedback referencing their actual writing",
+      "exampleFromText": "exact quote from their writing",
+      "suggestionForImprovement": "specific, actionable suggestion with examples"
+    }
+  ],
+  "focusForNextTime": ["specific focus point based on their writing", "another specific point", "third specific point"]
+}`
+      },
+      {
+        role: 'user',
+        content: `Please provide CONTEXTUAL feedback on this ${textType} writing by a student aged 9-11:
+
+"${content}"
+
+${contextualAnalysis}
+
+Text Type: ${textType}
+Assistance Level: ${assistanceLevel}
+
+IMPORTANT: Base your feedback on the actual content above. Reference specific words, phrases, sentences, or elements from their writing. Avoid generic advice - make it personal to what they've written.`
+      }
+    ];
+
+    const result = await makeOpenAICall(messages, 1800);
+    
+    try {
+      const parsedResult = JSON.parse(result);
+      
+      // Enhance the feedback with additional contextual suggestions
+      if (parsedResult.feedbackItems) {
+        parsedResult.feedbackItems = parsedResult.feedbackItems.map((item: any) => {
+          // Add more specific suggestions based on content analysis
+          if (item.area === 'Structure' && contentAnalysis.paragraphCount === 1) {
+            item.suggestionForImprovement += " Try breaking your writing into 2-3 paragraphs to make it easier to read.";
+          }
+          
+          if (item.area === 'Vocabulary' && contentAnalysis.descriptiveWords.length < 3) {
+            item.suggestionForImprovement += " Add more describing words (adjectives and adverbs) to paint a clearer picture.";
+          }
+          
+          if (textType.toLowerCase() === 'narrative' && !contentAnalysis.hasDialogue) {
+            if (item.area === 'Character Development') {
+              item.suggestionForImprovement += " Consider adding dialogue to show what your characters are thinking or feeling.";
+            }
+          }
+          
+          return item;
+        });
+      }
+      
+      return parsedResult;
+    } catch (parseError) {
+      console.error('JSON parsing failed, creating structured response from text');
+      return {
+        overallComment: `Your writing about "${contentAnalysis.firstSentence.substring(0, 50)}..." shows good effort and creativity!`,
+        feedbackItems: [
+          {
+            type: "praise",
+            area: "Content",
+            text: "You've written a solid piece with clear ideas.",
+            exampleFromText: contentAnalysis.firstSentence,
+            suggestionForImprovement: "Continue developing your ideas with more specific details."
+          }
+        ],
+        focusForNextTime: ["Add more descriptive details", "Vary your sentence lengths", "Check your spelling and punctuation"]
+      };
+    }
+  } catch (error) {
+    console.error('Error getting contextual writing feedback:', error);
+    
+    // Provide contextual fallback based on content analysis
+    const analysis = analyzeContentStructure(content);
+    return {
+      overallComment: `Your ${analysis.wordCount}-word ${textType} piece shows good effort! I can see you're developing your ideas.`,
+      feedbackItems: [
+        {
+          type: "praise",
+          area: "Effort",
+          text: `Great job writing ${analysis.wordCount} words and organizing them into ${analysis.sentenceCount} sentences!`,
+          exampleFromText: analysis.firstSentence,
+          suggestionForImprovement: "Keep building on this foundation by adding more descriptive details."
+        },
+        {
+          type: "suggestion",
+          area: "Structure",
+          text: analysis.paragraphCount === 1 ? "Your writing is all in one paragraph." : `You've organized your writing into ${analysis.paragraphCount} paragraphs.`,
+          suggestionForImprovement: analysis.paragraphCount === 1 ? "Try breaking your writing into 2-3 paragraphs for better organization." : "Good paragraph organization! Keep this up."
+        }
+      ],
+      focusForNextTime: [
+        analysis.averageSentenceLength < 8 ? "Try writing some longer, more detailed sentences" : "Good sentence variety!",
+        analysis.descriptiveWords.length < 3 ? "Add more describing words (adjectives)" : "Nice use of descriptive language",
+        "Read your work aloud to check if it flows well"
+      ]
+    };
+  }
+}
+
+// Enhanced function for specialized text type feedback with contextual analysis
+export async function getSpecializedTextTypeFeedback(content: string, textType: string): Promise<any> {
+  try {
+    if (!openai) {
+      throw new Error('OpenAI not available');
+    }
+
+    const contentAnalysis = analyzeContentStructure(content);
+    
+    // Text-type specific analysis
+    let textTypeSpecificAnalysis = '';
+    
+    switch (textType.toLowerCase()) {
+      case 'narrative':
+        textTypeSpecificAnalysis = `
+NARRATIVE ANALYSIS:
+- Story elements: ${contentAnalysis.potentialCharacters.length > 0 ? 'Characters identified' : 'No clear characters yet'}
+- Dialogue usage: ${contentAnalysis.hasDialogue ? 'Present' : 'Missing'}
+- Story progression: ${contentAnalysis.paragraphCount > 1 ? 'Multi-paragraph structure' : 'Single paragraph'}
+- Opening hook: "${contentAnalysis.firstSentence}"
+- Resolution: "${contentAnalysis.lastSentence}"
+`;
+        break;
+      case 'persuasive':
+        textTypeSpecificAnalysis = `
+PERSUASIVE ANALYSIS:
+- Argument structure: ${contentAnalysis.paragraphCount} paragraph(s)
+- Opening statement: "${contentAnalysis.firstSentence}"
+- Conclusion: "${contentAnalysis.lastSentence}"
+- Evidence/examples: ${content.includes('because') || content.includes('for example') ? 'Some present' : 'Limited'}
+`;
+        break;
+      case 'descriptive':
+        textTypeSpecificAnalysis = `
+DESCRIPTIVE ANALYSIS:
+- Sensory details: ${contentAnalysis.descriptiveWords.length} descriptive words identified
+- Imagery: ${contentAnalysis.descriptiveWords.join(', ')}
+- Organization: ${contentAnalysis.paragraphCount} paragraph(s)
+- Focus: "${contentAnalysis.firstSentence}"
+`;
+        break;
+    }
+
+    const messages = [
+      {
+        role: 'system',
+        content: `You are a specialized writing coach for NSW selective school tests focusing on ${textType} writing for students aged 9-11. 
+
+IMPORTANT: Provide SPECIFIC feedback based on the actual content and how well it meets ${textType} writing requirements.
+
+Analyze their writing for:
+- ${textType}-specific structure and organization
+- Appropriate language features for ${textType} writing
+- How well they've achieved the purpose of ${textType} writing
+- Age-appropriate use of ${textType} conventions
+
+Return your response as a JSON object with this structure:
+{
+  "overallComment": "specific comment about their ${textType} writing based on actual content",
+  "textTypeSpecificFeedback": {
+    "structure": "specific feedback about their ${textType} structure with examples from their text",
+    "language": "specific feedback about their language choices with examples",
+    "purpose": "how well they achieved the ${textType} purpose, with specific references",
+    "audience": "feedback about audience awareness with examples from their writing"
+  },
+  "strengthsInTextType": ["specific strength 1 with example", "specific strength 2 with example", "specific strength 3 with example"],
+  "improvementAreas": ["specific area 1 with example from their text", "specific area 2 with example", "specific area 3 with example"],
+  "nextSteps": ["specific step 1 based on their writing", "specific step 2", "specific step 3"]
+}`
+      },
+      {
+        role: 'user',
+        content: `Analyze this ${textType} writing for text-type specific features:
+
+"${content}"
+
+${textTypeSpecificAnalysis}
+
+Focus on how well the student has used the conventions and features specific to ${textType} writing. Reference their actual content in your feedback.`
+      }
+    ];
+
+    const result = await makeOpenAICall(messages, 1500);
+    
+    try {
+      return JSON.parse(result);
+    } catch (parseError) {
+      const analysis = analyzeContentStructure(content);
+      return {
+        overallComment: `Your ${textType} writing shows understanding of the task. I can see you're working with ${analysis.wordCount} words to develop your ideas.`,
+        textTypeSpecificFeedback: {
+          structure: `Your writing has ${analysis.paragraphCount} paragraph(s). ${textType} writing benefits from clear organization.`,
+          language: `You're using appropriate language for ${textType} writing. Your opening "${analysis.firstSentence}" sets the tone.`,
+          purpose: `Your writing addresses the ${textType} purpose. Continue developing this focus.`,
+          audience: "Consider your reader and what they need to understand your ideas."
+        },
+        strengthsInTextType: [
+          `Good attempt at ${textType} writing`,
+          `Appropriate length with ${analysis.wordCount} words`,
+          `Clear opening: "${analysis.firstSentence.substring(0, 30)}..."`
+        ],
+        improvementAreas: [
+          analysis.paragraphCount === 1 ? "Consider using multiple paragraphs" : "Good paragraph structure",
+          analysis.descriptiveWords.length < 3 ? "Add more descriptive language" : "Good use of descriptive words",
+          "Continue practicing this text type"
+        ],
+        nextSteps: [
+          `Study more examples of ${textType} writing`,
+          "Practice the key features of this text type",
+          "Get feedback from teachers or peers"
+        ]
+      };
+    }
+  } catch (error) {
+    console.error('Error getting specialized text type feedback:', error);
+    return {
+      overallComment: `Your ${textType} writing shows understanding of the requirements.`,
+      textTypeSpecificFeedback: {
+        structure: "Your writing follows the basic structure, but could benefit from clearer organization.",
+        language: "You've used appropriate language for this writing style.",
+        purpose: "Your writing addresses the main purpose of this text type.",
+        audience: "Consider your target audience when writing."
+      },
+      strengthsInTextType: [
+        "Shows understanding of the text type",
+        "Appropriate attempt at the required format",
+        "Good effort in addressing the task"
+      ],
+      improvementAreas: [
+        "Continue practicing this text type",
+        "Focus on specific features of this writing style",
+        "Review examples of excellent writing in this format"
+      ],
+      nextSteps: [
+        "Practice more examples of this text type",
+        "Study the key features and structure",
+        "Get feedback from teachers or peers"
+      ]
+    };
+  }
+}
+
+// Enhanced function to identify specific mistakes in context
+export async function identifyCommonMistakes(content: string, textType: string) {
+  try {
+    if (!openai) {
+      throw new Error('OpenAI not available');
+    }
+
+    const contentAnalysis = analyzeContentStructure(content);
+
+    const messages = [
+      {
+        role: 'system',
+        content: `You are a writing coach specializing in identifying specific mistakes in student writing for NSW selective school tests (ages 9-11). 
+
+IMPORTANT: Analyze the actual content and identify SPECIFIC errors with EXACT quotes from their writing.
+
+Look for:
+- Grammar errors with exact examples
+- Spelling mistakes with exact words
+- Punctuation issues with specific instances
+- Sentence structure problems with examples
+- Word choice issues with specific suggestions
+
+Return a JSON object with this structure:
+{
+  "overallAssessment": "specific assessment based on their actual writing",
+  "mistakesIdentified": [
+    {
+      "type": "grammar|spelling|punctuation|structure|vocabulary",
+      "description": "specific description of the mistake",
+      "example": "exact quote from their text showing the error",
+      "correction": "exact correction with explanation",
+      "location": "where in the text this appears"
+    }
+  ],
+  "patternAnalysis": "analysis of patterns in their specific writing",
+  "priorityFixes": ["most important fix based on their writing", "second priority", "third priority"],
+  "positiveElements": ["specific positive element from their text", "another specific positive"]
+}`
+      },
+      {
+        role: 'user',
+        content: `Analyze this ${textType} writing for specific mistakes and patterns:
+
+"${content}"
+
+CONTENT ANALYSIS:
+- ${contentAnalysis.wordCount} words, ${contentAnalysis.sentenceCount} sentences
+- Opening: "${contentAnalysis.firstSentence}"
+- Closing: "${contentAnalysis.lastSentence}"
+
+Identify specific errors with exact quotes from the text above.`
+      }
+    ];
+
+    const result = await makeOpenAICall(messages, 1500);
+    
+    try {
+      return JSON.parse(result);
+    } catch (parseError) {
+      const analysis = analyzeContentStructure(content);
+      return {
+        overallAssessment: `Your ${analysis.wordCount}-word piece shows good effort. I can see you're developing your writing skills.`,
+        mistakesIdentified: [],
+        patternAnalysis: `Your writing shows ${analysis.sentenceCount} sentences with an average length of ${Math.round(analysis.averageSentenceLength)} words. Continue focusing on clear expression.`,
+        priorityFixes: [
+          analysis.averageSentenceLength < 6 ? "Try writing some longer, more detailed sentences" : "Good sentence length variety",
+          "Proofread carefully for spelling and grammar",
+          "Read your work aloud to check if it flows well"
+        ],
+        positiveElements: [
+          `Strong opening: "${analysis.firstSentence.substring(0, 40)}..."`,
+          `Good effort with ${analysis.wordCount} words written`
+        ]
+      };
+    }
+  } catch (error) {
+    console.error('Error identifying common mistakes:', error);
+    return {
+      overallAssessment: "Your writing shows good effort and understanding.",
+      mistakesIdentified: [],
+      patternAnalysis: "Continue focusing on careful proofreading and clear expression.",
+      priorityFixes: ["Proofread carefully", "Check spelling and grammar", "Ensure clear expression"],
+      positiveElements: ["Good effort in completing the task", "Appropriate attempt at the text type"]
+    };
+  }
+}
+
+// Keep all other existing functions unchanged
 export async function generatePrompt(textType: string): Promise<string> {
   try {
     if (!openai) {
@@ -79,251 +499,6 @@ export async function generatePrompt(textType: string): Promise<string> {
     };
     
     return fallbackPrompts[textType.toLowerCase()] || fallbackPrompts.default;
-  }
-}
-
-export async function getWritingFeedback(content: string, textType: string, assistanceLevel: string, feedbackHistory: any[]): Promise<any> {
-  try {
-    if (!openai) {
-      throw new Error('OpenAI not available');
-    }
-
-    const messages = [
-      {
-        role: 'system',
-        content: `You are an expert writing coach for NSW selective school writing tests for students aged 9-11 in Australia. Provide constructive, encouraging feedback that helps students improve their writing skills. Your feedback should be:
-
-1. Age-appropriate and encouraging
-2. Specific and actionable
-3. Aligned with NSW curriculum standards
-4. Focused on both strengths and areas for improvement
-5. Structured with clear categories
-
-Assistance Level: ${assistanceLevel}
-
-Return your response as a JSON object with this exact structure:
-{
-  "overallComment": "A brief, encouraging overall comment about the writing",
-  "feedbackItems": [
-    {
-      "type": "praise|suggestion|question|challenge",
-      "area": "specific area like 'Structure', 'Vocabulary', 'Ideas', etc.",
-      "text": "specific feedback text",
-      "exampleFromText": "quote from their writing if relevant",
-      "suggestionForImprovement": "specific suggestion for improvement"
-    }
-  ],
-  "focusForNextTime": ["specific focus point 1", "specific focus point 2", "specific focus point 3"]
-}`
-      },
-      {
-        role: 'user',
-        content: `Please provide feedback on this ${textType} writing by a student aged 9-11:
-
-"${content}"
-
-Text Type: ${textType}
-Assistance Level: ${assistanceLevel}
-
-Provide structured feedback that encourages the student while helping them improve their writing skills.`
-      }
-    ];
-
-    const result = await makeOpenAICall(messages, 1500);
-    
-    try {
-      return JSON.parse(result);
-    } catch (parseError) {
-      // If JSON parsing fails, create a structured response from the text
-      return {
-        overallComment: result.substring(0, 200) + "...",
-        feedbackItems: [
-          {
-            type: "suggestion",
-            area: "General",
-            text: "Your writing shows good effort! Keep practicing to improve your skills.",
-            suggestionForImprovement: "Continue writing regularly and ask for feedback from teachers."
-          }
-        ],
-        focusForNextTime: ["Continue practicing", "Focus on clear communication", "Review your work before submitting"]
-      };
-    }
-  } catch (error) {
-    console.error('Error getting writing feedback:', error);
-    return {
-      overallComment: "Great job on your writing! Your effort shows and you're making good progress. Keep practicing to build your skills!",
-      feedbackItems: [
-        {
-          type: "praise",
-          area: "Effort",
-          text: "Great job completing your writing task!",
-          suggestionForImprovement: "Continue practicing regularly to build your writing skills."
-        },
-        {
-          type: "suggestion",
-          area: "General",
-          text: "Focus on clear expression of your ideas.",
-          suggestionForImprovement: "Read your work aloud to check if it makes sense."
-        }
-      ],
-      focusForNextTime: ["Continue practicing", "Focus on clear communication", "Review your work before submitting"]
-    };
-  }
-}
-
-export async function getSpecializedTextTypeFeedback(content: string, textType: string): Promise<any> {
-  try {
-    if (!openai) {
-      throw new Error('OpenAI not available');
-    }
-
-    const messages = [
-      {
-        role: 'system',
-        content: `You are a specialized writing coach for NSW selective school tests focusing on ${textType} writing for students aged 9-11. Provide detailed feedback specific to the ${textType} text type, including structure, language features, and purpose.
-
-Return your response as a JSON object with this structure:
-{
-  "overallComment": "overall comment about their understanding of the text type",
-  "textTypeSpecificFeedback": {
-    "structure": "feedback about structure specific to this text type",
-    "language": "feedback about language features for this text type",
-    "purpose": "feedback about how well they achieved the purpose",
-    "audience": "feedback about audience awareness"
-  },
-  "strengthsInTextType": ["strength 1", "strength 2", "strength 3"],
-  "improvementAreas": ["area 1", "area 2", "area 3"],
-  "nextSteps": ["step 1", "step 2", "step 3"]
-}`
-      },
-      {
-        role: 'user',
-        content: `Analyze this ${textType} writing for text-type specific features:
-
-"${content}"
-
-Focus on how well the student has used the conventions and features specific to ${textType} writing.`
-      }
-    ];
-
-    const result = await makeOpenAICall(messages, 1200);
-    
-    try {
-      return JSON.parse(result);
-    } catch (parseError) {
-      return {
-        overallComment: "Your writing shows understanding of the text type requirements.",
-        textTypeSpecificFeedback: {
-          structure: "Your writing follows the basic structure, but could benefit from clearer organization.",
-          language: "You've used appropriate language for this writing style.",
-          purpose: "Your writing addresses the main purpose of this text type.",
-          audience: "Consider your target audience when writing."
-        },
-        strengthsInTextType: [
-          "Shows understanding of the text type",
-          "Appropriate attempt at the required format",
-          "Good effort in addressing the task"
-        ],
-        improvementAreas: [
-          "Continue practicing this text type",
-          "Focus on specific features of this writing style",
-          "Review examples of excellent writing in this format"
-        ],
-        nextSteps: [
-          "Practice more examples of this text type",
-          "Study the key features and structure",
-          "Get feedback from teachers or peers"
-        ]
-      };
-    }
-  } catch (error) {
-    console.error('Error getting specialized text type feedback:', error);
-    return {
-      overallComment: "Your writing shows understanding of the text type requirements.",
-      textTypeSpecificFeedback: {
-        structure: "Your writing follows the basic structure, but could benefit from clearer organization.",
-        language: "You've used appropriate language for this writing style.",
-        purpose: "Your writing addresses the main purpose of this text type.",
-        audience: "Consider your target audience when writing."
-      },
-      strengthsInTextType: [
-        "Shows understanding of the text type",
-        "Appropriate attempt at the required format",
-        "Good effort in addressing the task"
-      ],
-      improvementAreas: [
-        "Continue practicing this text type",
-        "Focus on specific features of this writing style",
-        "Review examples of excellent writing in this format"
-      ],
-      nextSteps: [
-        "Practice more examples of this text type",
-        "Study the key features and structure",
-        "Get feedback from teachers or peers"
-      ]
-    };
-  }
-}
-
-export async function identifyCommonMistakes(content: string, textType: string) {
-  try {
-    if (!openai) {
-      throw new Error('OpenAI not available');
-    }
-
-    const messages = [
-      {
-        role: 'system',
-        content: `You are a writing coach specializing in identifying common mistakes in student writing for NSW selective school tests (ages 9-11). Analyze the writing for common errors and patterns, providing constructive feedback.
-
-Return a JSON object with this structure:
-{
-  "overallAssessment": "brief overall assessment",
-  "mistakesIdentified": [
-    {
-      "type": "grammar|spelling|punctuation|structure|vocabulary",
-      "description": "description of the mistake",
-      "example": "example from the text",
-      "correction": "how to fix it"
-    }
-  ],
-  "patternAnalysis": "analysis of any patterns in mistakes",
-  "priorityFixes": ["most important fix 1", "most important fix 2", "most important fix 3"],
-  "positiveElements": ["positive element 1", "positive element 2"]
-}`
-      },
-      {
-        role: 'user',
-        content: `Analyze this ${textType} writing for common mistakes and patterns:
-
-"${content}"
-
-Identify specific errors and provide constructive guidance for improvement.`
-      }
-    ];
-
-    const result = await makeOpenAICall(messages, 1200);
-    
-    try {
-      return JSON.parse(result);
-    } catch (parseError) {
-      return {
-        overallAssessment: "Your writing shows good effort and understanding.",
-        mistakesIdentified: [],
-        patternAnalysis: "Continue focusing on careful proofreading and clear expression.",
-        priorityFixes: ["Proofread carefully", "Check spelling and grammar", "Ensure clear expression"],
-        positiveElements: ["Good effort in completing the task", "Appropriate attempt at the text type"]
-      };
-    }
-  } catch (error) {
-    console.error('Error identifying common mistakes:', error);
-    return {
-      overallAssessment: "Your writing shows good effort and understanding.",
-      mistakesIdentified: [],
-      patternAnalysis: "Continue focusing on careful proofreading and clear expression.",
-      priorityFixes: ["Proofread carefully", "Check spelling and grammar", "Ensure clear expression"],
-      positiveElements: ["Good effort in completing the task", "Appropriate attempt at the text type"]
-    };
   }
 }
 
