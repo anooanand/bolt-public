@@ -31,14 +31,84 @@ export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelPro
   const [showPrompts, setShowPrompts] = useState(false);
   const [lastProcessedContent, setLastProcessedContent] = useState('');
 
-  const commonPrompts = [
-    "How can I make my introduction more engaging?",
-    "Can you give me some stronger verbs to use?",
-    "How can I show my character's feelings instead of telling?",
-    "What kind of details would make my story more vivid?",
-    "How do I write a satisfying conclusion?",
-    "How can I improve my sentence flow?"
-  ];
+  const getNSWSelectivePrompts = (textType: string) => {
+    const basePrompts = [
+      `How can I make my ${textType} more engaging for NSW Selective assessors?`,
+      `What vocabulary would strengthen my ${textType} response for selective school standards?`,
+      "How can I better incorporate the visual stimulus into my writing?",
+      `What specific techniques should I use for ${textType} writing in the NSW Selective test?`,
+      "How can I improve my opening sentence to hook the assessors?",
+      "What makes a strong conclusion for NSW Selective writing?"
+    ];
+
+    const textTypeSpecificPrompts: { [key: string]: string[] } = {
+      'advertisement': [
+        "How can I create a more compelling headline for my advertisement?",
+        "What persuasive techniques work best for NSW Selective advertisement writing?",
+        "How do I include an effective call to action in my advertisement?"
+      ],
+      'advice sheet': [
+        "How can I make my advice clearer and more helpful?",
+        "What tone should I use for an effective advice sheet?",
+        "How do I organize my advice in a logical sequence?"
+      ],
+      'diary entry': [
+        "How can I make my diary entry more personal and reflective?",
+        "What emotions should I express in my diary writing?",
+        "How do I show character growth in a diary entry?"
+      ],
+      'discussion': [
+        "How do I present balanced arguments in my discussion?",
+        "What evidence should I include to support different viewpoints?",
+        "How can I structure my discussion for maximum impact?"
+      ],
+      'guide': [
+        "How can I make my instructions clearer and easier to follow?",
+        "What format works best for a step-by-step guide?",
+        "How do I anticipate what readers might find confusing?"
+      ],
+      'letter': [
+        "What's the appropriate tone for my letter's purpose?",
+        "How do I structure a formal letter for NSW Selective standards?",
+        "What makes an effective opening and closing for letters?"
+      ],
+      'narrative': [
+        "How can I create more vivid characters in my story?",
+        "What techniques make dialogue sound natural and engaging?",
+        "How do I build tension and excitement in my narrative?"
+      ],
+      'narrative/creative': [
+        "How can I create more vivid characters in my story?",
+        "What techniques make dialogue sound natural and engaging?",
+        "How do I build tension and excitement in my narrative?"
+      ],
+      'news report': [
+        "How do I write an effective lead paragraph for my news report?",
+        "What makes my news writing objective and factual?",
+        "How do I include all the important details (who, what, when, where, why)?"
+      ],
+      'persuasive': [
+        "How can I make my arguments more convincing for NSW assessors?",
+        "What evidence will strengthen my persuasive writing?",
+        "How do I address counterarguments effectively?"
+      ],
+      'review': [
+        "How do I balance personal opinion with objective analysis?",
+        "What criteria should I use to evaluate what I'm reviewing?",
+        "How can I make my recommendation clear and justified?"
+      ],
+      'speech': [
+        "How can I make my speech more engaging for the audience?",
+        "What rhetorical devices work best in speech writing?",
+        "How do I create a memorable opening and powerful conclusion?"
+      ]
+    };
+
+    const specificPrompts = textTypeSpecificPrompts[textType.toLowerCase()] || [];
+    return [...basePrompts, ...specificPrompts];
+  };
+
+  const commonPrompts = getNSWSelectivePrompts(textType);
 
   // Helper function to count words in text
   const countWords = useCallback((text: string): number => {
@@ -152,18 +222,40 @@ export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelPro
   // Calculate current word count for display
   const currentWordCount = countWords(content);
   const wordsNeeded = Math.max(0, 50 - currentWordCount);
+  const targetWordCount = 250;
+  const isNearTarget = currentWordCount >= 200 && currentWordCount <= 300;
+  const isOverTarget = currentWordCount > 300;
+
+  const getWordCountMessage = () => {
+    if (currentWordCount < 50) {
+      return `Write ${wordsNeeded} more word${wordsNeeded !== 1 ? 's' : ''} to get AI feedback (${currentWordCount}/50)`;
+    } else if (currentWordCount < 200) {
+      return `Good start! Aim for ${targetWordCount} words for NSW Selective standards (${currentWordCount}/${targetWordCount})`;
+    } else if (isNearTarget) {
+      return `Excellent length for NSW Selective! Focus on quality (${currentWordCount}/${targetWordCount})`;
+    } else if (isOverTarget) {
+      return `Consider editing for conciseness. NSW Selective values quality over quantity (${currentWordCount}/${targetWordCount})`;
+    }
+    return `Current word count: ${currentWordCount}/${targetWordCount}`;
+  };
+
+  const getWordCountColor = () => {
+    if (currentWordCount < 50) return 'text-gray-600 dark:text-gray-400';
+    if (currentWordCount < 200) return 'text-blue-600 dark:text-blue-400';
+    if (isNearTarget) return 'text-green-600 dark:text-green-400';
+    if (isOverTarget) return 'text-amber-600 dark:text-amber-400';
+    return 'text-gray-600 dark:text-gray-400';
+  };
 
   return (
     <div className="h-full flex flex-col">
       {/* Word count indicator */}
-      {currentWordCount < 50 && (
-        <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700">
-          <div className="text-sm text-gray-600 dark:text-gray-400 flex items-center">
-            <Sparkles className="w-4 h-4 mr-2" />
-            Write {wordsNeeded} more word{wordsNeeded !== 1 ? 's' : ''} to get AI feedback ({currentWordCount}/50)
-          </div>
+      <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700">
+        <div className={`text-sm flex items-center ${getWordCountColor()}`}>
+          <Sparkles className="w-4 h-4 mr-2" />
+          {getWordCountMessage()}
         </div>
-      )}
+      </div>
 
       {/* Loading indicator */}
       {isLoading && (
@@ -232,7 +324,7 @@ export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelPro
           onClick={() => setShowPrompts(!showPrompts)}
           className="w-full flex items-center justify-between px-3 py-2 bg-blue-50 dark:bg-blue-900/30 rounded-md text-sm font-medium text-blue-800 dark:text-blue-200 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
         >
-          <span>Common Writing Questions</span>
+          <span>NSW Selective Writing Questions</span>
           {showPrompts ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
         </button>
 
