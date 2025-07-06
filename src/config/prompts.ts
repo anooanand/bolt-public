@@ -132,4 +132,3 @@ export const vocabularyEnhancements = {
 };
 
 export default promptConfig;
-
