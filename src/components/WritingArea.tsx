@@ -1,13 +1,14 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { generatePrompt, getSynonyms, rephraseSentence, evaluateEssay } from '../lib/openai';
 import { dbOperations } from '../lib/database';
 import { useApp } from '../contexts/AppContext';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Send } from 'lucide-react';
 import { InlineSuggestionPopup } from './InlineSuggestionPopup';
 import { WritingStatusBar } from './WritingStatusBar';
 import { WritingTypeSelectionModal } from './WritingTypeSelectionModal';
 import { PromptOptionsModal } from './PromptOptionsModal';
 import { CustomPromptModal } from './CustomPromptModal';
+import { EssayEvaluationModal } from './EssayEvaluationModal';
 import './responsive.css';
 
 interface WritingAreaProps {
@@ -45,6 +46,7 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
   const [showCustomPromptModal, setShowCustomPromptModal] = useState(false);
   const [selectedWritingType, setSelectedWritingType] = useState('');
   const [hasInitialized, setHasInitialized] = useState(false);
+  const [showEvaluationModal, setShowEvaluationModal] = useState(false);
   
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const highlightLayerRef = useRef<HTMLDivElement>(null);
@@ -423,6 +425,19 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
     setShowCustomPromptModal(false);
   };
 
+  // Handle essay submission for evaluation
+  const handleSubmitEssay = () => {
+    if (content.trim().length >= 50) {
+      setShowEvaluationModal(true);
+    }
+  };
+
+  // Helper function to count words
+  const countWords = (text: string): number => {
+    if (!text || text.trim().length === 0) return 0;
+    return text.trim().split(/\s+/).filter(word => word.length > 0).length;
+  };
+
   const handleRestoreContent = (restoredContent: string, restoredTextType: string) => {
     onChange(restoredContent);
     if (restoredTextType) {
@@ -535,11 +550,28 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
         )}
       </div>
 
-      <WritingStatusBar 
-        content={content} 
-        textType={currentTextType}
-        onRestore={handleRestoreContent}
-      />
+      <div className="flex items-center justify-between gap-4 p-4 bg-gray-50 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
+        <WritingStatusBar 
+          content={content} 
+          textType={currentTextType}
+          onRestore={handleRestoreContent}
+        />
+        
+        <button
+          onClick={handleSubmitEssay}
+          disabled={countWords(content) < 50}
+          className={`flex items-center gap-2 px-6 py-2 rounded-lg font-medium transition-all ${
+            countWords(content) >= 50
+              ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-md hover:shadow-lg'
+              : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+          }`}
+          title={countWords(content) < 50 ? 'Write at least 50 words to submit for evaluation' : 'Submit your essay for detailed evaluation'}
+        >
+          <Send className="w-4 h-4" />
+          Submit for Evaluation
+          <span className="text-xs opacity-75">({countWords(content)} words)</span>
+        </button>
+      </div>
 
       {/* Popup Modals */}
       <WritingTypeSelectionModal
@@ -561,6 +593,13 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
         onClose={() => setShowCustomPromptModal(false)}
         onSubmit={handleCustomPromptSubmit}
         textType={selectedWritingType}
+      />
+
+      <EssayEvaluationModal
+        isOpen={showEvaluationModal}
+        onClose={() => setShowEvaluationModal(false)}
+        content={content}
+        textType={currentTextType}
       />
     </div>
   );
