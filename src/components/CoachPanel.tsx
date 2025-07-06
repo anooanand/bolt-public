@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { MessageSquare, Sparkles, ChevronDown, ChevronUp, ThumbsUp, Lightbulb, HelpCircle, Target } from 'lucide-react';
+import { MessageSquare, Sparkles, ChevronDown, ChevronUp, ThumbsUp, Lightbulb, HelpCircle, Target, AlertCircle } from 'lucide-react';
 import { getWritingFeedback } from '../lib/openai';
+import AIErrorHandler from '../utils/errorHandling';
+import { promptConfig } from '../config/prompts';
 import './improved-layout.css';
 
 interface CoachPanelProps {
@@ -30,6 +32,7 @@ export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelPro
   const [question, setQuestion] = useState('');
   const [showPrompts, setShowPrompts] = useState(false);
   const [lastProcessedContent, setLastProcessedContent] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
   const getNSWSelectivePrompts = (textType: string) => {
     const basePrompts = [
@@ -113,17 +116,16 @@ export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelPro
   // Helper function to count words in text
   const countWords = useCallback((text: string): number => {
     if (!text || text.trim().length === 0) return 0;
-    // Split by whitespace and filter out empty strings
     return text.trim().split(/\s+/).filter(word => word.length > 0).length;
   }, []);
 
   const fetchFeedback = useCallback(async (currentContent: string, currentTextType: string, currentAssistanceLevel: string, currentFeedbackHistory: FeedbackItem[]) => {
     const wordCount = countWords(currentContent);
     
-    // Only process if content has meaningfully changed and meets minimum word count (50 words)
     if (wordCount >= 50 && currentContent !== lastProcessedContent) {
       console.log(`[DEBUG] Triggering AI feedback - Word count: ${wordCount}, Content length: ${currentContent.length}`);
       setIsLoading(true);
+      setError(null);
       
       try {
         const response = await getWritingFeedback(currentContent, currentTextType, currentAssistanceLevel, currentFeedbackHistory);
@@ -140,7 +142,13 @@ export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelPro
         setLastProcessedContent(currentContent);
         console.log('[DEBUG] AI feedback received and processed successfully');
       } catch (error) {
-        console.error('[DEBUG] Error fetching AI feedback:', error);
+        const aiError = AIErrorHandler.handleError(error, 'writing feedback');
+        console.error('[DEBUG] Error fetching AI feedback:', aiError.userFriendlyMessage);
+        setError(aiError.userFriendlyMessage);
+        
+        // Use fallback feedback
+        const fallbackFeedback = AIErrorHandler.createFallbackResponse('feedback', currentTextType);
+        setStructuredFeedback(fallbackFeedback as StructuredFeedback);
       } finally {
         setIsLoading(false);
       }
@@ -152,7 +160,7 @@ export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelPro
   useEffect(() => {
     const debounceTimer = setTimeout(() => {
       fetchFeedback(content, textType, assistanceLevel, feedbackHistory);
-    }, 2000); // Reduced to 2 seconds for faster response
+    }, 2000);
 
     return () => clearTimeout(debounceTimer);
   }, [content, textType, assistanceLevel, feedbackHistory, fetchFeedback]);
@@ -161,6 +169,7 @@ export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelPro
     e.preventDefault();
     if (question.trim()) {
       setIsLoading(true);
+      setError(null);
       console.log('[DEBUG] Processing user question:', question);
       
       try {
@@ -190,7 +199,22 @@ export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelPro
         
         console.log('[DEBUG] User question processed successfully');
       } catch (error) {
-        console.error('[DEBUG] Error processing user question:', error);
+        const aiError = AIErrorHandler.handleError(error, 'question processing');
+        console.error('[DEBUG] Error processing user question:', aiError.userFriendlyMessage);
+        setError(aiError.userFriendlyMessage);
+        
+        // Provide a helpful fallback response
+        const fallbackResponse: FeedbackItem = {
+          type: 'suggestion',
+          area: 'Coach Response',
+          text: `Great question about ${textType} writing! While I can't provide a detailed answer right now, keep practicing and focus on the key elements of ${textType} writing like structure, vocabulary, and engaging your reader.`
+        };
+        
+        setStructuredFeedback(prevFeedback => ({
+          overallComment: prevFeedback?.overallComment || promptConfig.fallbackMessages.generalError,
+          feedbackItems: [fallbackResponse, ...(prevFeedback?.feedbackItems || [])],
+          focusForNextTime: prevFeedback?.focusForNextTime || []
+        }));
       } finally {
         setQuestion('');
         setIsLoading(false);
@@ -256,6 +280,16 @@ export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelPro
           {getWordCountMessage()}
         </div>
       </div>
+
+      {/* Error indicator */}
+      {error && (
+        <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700">
+          <div className="text-sm text-amber-600 dark:text-amber-400 flex items-center">
+            <AlertCircle className="w-4 h-4 mr-2" />
+            {error}
+          </div>
+        </div>
+      )}
 
       {/* Loading indicator */}
       {isLoading && (
@@ -363,4 +397,3 @@ export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelPro
     </div>
   );
 }
-
