@@ -110,23 +110,31 @@ CONTENT ANALYSIS:
     const messages = [
       {
         role: 'system',
-        content: `You are an expert writing coach for NSW selective school writing tests for students aged 9-11 in Australia. 
+        content: `You are an expert writing coach for NSW Selective High School Placement Test writing assessments for students aged 10-12 years in Australia. 
+
+NSW SELECTIVE WRITING TEST CONTEXT:
+- This is preparation for the official NSW Department of Education Selective High School Placement Test
+- Assessment criteria focus on: title (where appropriate), creative ideas, fluent and complex language (sentence variety, vocabulary, punctuation, grammar, spelling), and clear structure (beginning, middle, end)
+- Target length: approximately 250 words with emphasis on quality over quantity
+- Students must demonstrate writing skills appropriate for selective school entry
 
 IMPORTANT: Provide CONTEXTUAL, SPECIFIC feedback based on the actual content the student has written. Avoid generic advice.
 
 Your feedback should be:
-1. **Content-specific**: Reference actual elements from their writing
+1. **Content-specific**: Reference actual elements from their writing with exact quotes
 2. **Actionable**: Give concrete suggestions they can implement immediately
 3. **Encouraging**: Highlight what they're doing well specifically
-4. **Age-appropriate**: Suitable for 9-11 year olds
-5. **NSW curriculum aligned**: Follow selective school writing standards
+4. **Age-appropriate**: Suitable for 10-12 year olds preparing for selective school entry
+5. **NSW curriculum aligned**: Follow official NSW Department of Education assessment criteria
 
 ANALYSIS APPROACH:
 - Examine their opening sentence and suggest specific improvements
-- Look at their character development and plot progression
+- Look at their character development and plot progression (for narratives)
 - Analyze their vocabulary choices and suggest specific alternatives
 - Check their sentence variety and structure patterns
 - Evaluate their ending and how it connects to the beginning
+- Assess title appropriateness (where applicable)
+- Focus on 250-word target and quality writing techniques
 
 Assistance Level: ${assistanceLevel}
 
@@ -185,8 +193,32 @@ IMPORTANT: Base your feedback on the actual content above. Reference specific wo
           
           return item;
         });
-      }
-      
+
+        // Add NSW Selective specific feedback about word count and quality
+        const wordCount = contentAnalysis.wordCount;
+        if (wordCount < 200) {
+          parsedResult.feedbackItems.push({
+            type: "suggestion",
+            area: "Length for NSW Selective",
+            text: `Your writing is ${wordCount} words. NSW Selective assessors look for approximately 250 words.`,
+            suggestionForImprovement: "Develop your ideas further with more specific details, examples, or elaboration to reach the target length while maintaining quality."
+          });
+        } else if (wordCount > 300) {
+          parsedResult.feedbackItems.push({
+            type: "suggestion",
+            area: "Conciseness for NSW Selective",
+            text: `Your writing is ${wordCount} words. NSW Selective values quality over quantity.`,
+            suggestionForImprovement: "Consider editing for conciseness. Remove unnecessary words and focus on making every sentence count."
+          });
+        } else if (wordCount >= 200 && wordCount <= 300) {
+          parsedResult.feedbackItems.push({
+            type: "praise",
+            area: "Length for NSW Selective",
+            text: `Excellent! Your ${wordCount}-word response is ideal for NSW Selective standards.`,
+            suggestionForImprovement: "Now focus on refining the quality of your ideas, vocabulary, and sentence structure."
+          });
+        }
+      }   
       return parsedResult;
     } catch (parseError) {
       console.error('JSON parsing failed, creating structured response from text');
@@ -248,7 +280,63 @@ export async function getSpecializedTextTypeFeedback(content: string, textType: 
     let textTypeSpecificAnalysis = '';
     
     switch (textType.toLowerCase()) {
+      case 'advertisement':
+        textTypeSpecificAnalysis = `
+ADVERTISEMENT ANALYSIS:
+- Headline effectiveness: "${contentAnalysis.firstSentence}"
+- Persuasive elements: ${content.includes('!') ? 'Exclamation marks present' : 'Limited excitement markers'}
+- Call to action: ${content.toLowerCase().includes('buy') || content.toLowerCase().includes('visit') || content.toLowerCase().includes('call') ? 'Present' : 'Missing'}
+- Target audience appeal: ${contentAnalysis.wordCount} words used
+`;
+        break;
+      case 'advice sheet':
+        textTypeSpecificAnalysis = `
+ADVICE SHEET ANALYSIS:
+- Instructional clarity: ${contentAnalysis.sentenceCount} sentences providing guidance
+- Organization: ${contentAnalysis.paragraphCount} paragraph(s)
+- Helpful tone: "${contentAnalysis.firstSentence}"
+- Practical examples: ${content.includes('example') || content.includes('for instance') ? 'Present' : 'Limited'}
+`;
+        break;
+      case 'diary entry':
+        textTypeSpecificAnalysis = `
+DIARY ENTRY ANALYSIS:
+- Personal voice: "${contentAnalysis.firstSentence}"
+- Emotional expression: ${contentAnalysis.descriptiveWords.length} descriptive words
+- Reflective elements: ${content.includes('I felt') || content.includes('I thought') || content.includes('I realized') ? 'Present' : 'Limited'}
+- Chronological structure: ${contentAnalysis.paragraphCount} paragraph(s)
+`;
+        break;
+      case 'discussion':
+        textTypeSpecificAnalysis = `
+DISCUSSION ANALYSIS:
+- Multiple perspectives: ${content.includes('however') || content.includes('on the other hand') || content.includes('alternatively') ? 'Present' : 'Limited'}
+- Balanced analysis: ${contentAnalysis.paragraphCount} paragraph(s)
+- Evidence presentation: ${content.includes('because') || content.includes('evidence') || content.includes('research') ? 'Present' : 'Limited'}
+- Opening statement: "${contentAnalysis.firstSentence}"
+`;
+        break;
+      case 'guide':
+        textTypeSpecificAnalysis = `
+GUIDE ANALYSIS:
+- Step-by-step structure: ${content.includes('first') || content.includes('next') || content.includes('then') || content.includes('finally') ? 'Present' : 'Limited'}
+- Clear instructions: ${contentAnalysis.sentenceCount} instructional sentences
+- User-friendly format: ${contentAnalysis.paragraphCount} paragraph(s)
+- Opening guidance: "${contentAnalysis.firstSentence}"
+`;
+        break;
+      case 'letter':
+        textTypeSpecificAnalysis = `
+LETTER ANALYSIS:
+- Appropriate format: ${content.includes('Dear') ? 'Formal greeting present' : 'Greeting needs attention'}
+- Clear purpose: "${contentAnalysis.firstSentence}"
+- Suitable tone: ${contentAnalysis.wordCount} words used
+- Proper conventions: ${content.includes('Yours') || content.includes('Sincerely') ? 'Closing present' : 'Closing needs attention'}
+`;
+        break;
       case 'narrative':
+      case 'narrative/creative':
+      case 'creative':
         textTypeSpecificAnalysis = `
 NARRATIVE ANALYSIS:
 - Story elements: ${contentAnalysis.potentialCharacters.length > 0 ? 'Characters identified' : 'No clear characters yet'}
@@ -258,22 +346,50 @@ NARRATIVE ANALYSIS:
 - Resolution: "${contentAnalysis.lastSentence}"
 `;
         break;
+      case 'news report':
+        textTypeSpecificAnalysis = `
+NEWS REPORT ANALYSIS:
+- Lead paragraph: "${contentAnalysis.firstSentence}"
+- 5 W's coverage: ${content.includes('who') || content.includes('what') || content.includes('when') || content.includes('where') || content.includes('why') ? 'Some present' : 'Limited'}
+- Objective tone: ${contentAnalysis.wordCount} words used
+- Factual structure: ${contentAnalysis.paragraphCount} paragraph(s)
+`;
+        break;
       case 'persuasive':
         textTypeSpecificAnalysis = `
 PERSUASIVE ANALYSIS:
 - Argument structure: ${contentAnalysis.paragraphCount} paragraph(s)
 - Opening statement: "${contentAnalysis.firstSentence}"
 - Conclusion: "${contentAnalysis.lastSentence}"
-- Evidence/examples: ${content.includes('because') || content.includes('for example') ? 'Some present' : 'Limited'}
+- Evidence/examples: ${content.includes('because') || content.includes('for example') || content.includes('research shows') ? 'Some present' : 'Limited'}
+- Persuasive techniques: ${content.includes('!') || content.includes('must') || content.includes('should') ? 'Present' : 'Limited'}
 `;
         break;
-      case 'descriptive':
+      case 'review':
         textTypeSpecificAnalysis = `
-DESCRIPTIVE ANALYSIS:
-- Sensory details: ${contentAnalysis.descriptiveWords.length} descriptive words identified
-- Imagery: ${contentAnalysis.descriptiveWords.join(', ')}
-- Organization: ${contentAnalysis.paragraphCount} paragraph(s)
-- Focus: "${contentAnalysis.firstSentence}"
+REVIEW ANALYSIS:
+- Critical analysis: ${contentAnalysis.paragraphCount} paragraph(s)
+- Personal opinion: "${contentAnalysis.firstSentence}"
+- Supporting details: ${contentAnalysis.descriptiveWords.length} descriptive elements
+- Recommendation: "${contentAnalysis.lastSentence}"
+`;
+        break;
+      case 'speech':
+        textTypeSpecificAnalysis = `
+SPEECH ANALYSIS:
+- Audience engagement: "${contentAnalysis.firstSentence}"
+- Clear structure: ${contentAnalysis.paragraphCount} paragraph(s)
+- Rhetorical devices: ${content.includes('?') || content.includes('!') || content.includes('we') || content.includes('you') ? 'Present' : 'Limited'}
+- Strong conclusion: "${contentAnalysis.lastSentence}"
+`;
+        break;
+      default:
+        textTypeSpecificAnalysis = `
+GENERAL ANALYSIS:
+- Structure: ${contentAnalysis.paragraphCount} paragraph(s)
+- Opening: "${contentAnalysis.firstSentence}"
+- Closing: "${contentAnalysis.lastSentence}"
+- Word usage: ${contentAnalysis.wordCount} words
 `;
         break;
     }
@@ -281,15 +397,22 @@ DESCRIPTIVE ANALYSIS:
     const messages = [
       {
         role: 'system',
-        content: `You are a specialized writing coach for NSW selective school tests focusing on ${textType} writing for students aged 9-11. 
+        content: `You are a specialized writing coach for NSW Selective High School Placement Test focusing on ${textType} writing for students aged 10-12 years. 
 
-IMPORTANT: Provide SPECIFIC feedback based on the actual content and how well it meets ${textType} writing requirements.
+NSW SELECTIVE WRITING TEST CONTEXT:
+- This is preparation for the official NSW Department of Education Selective High School Placement Test
+- Assessment criteria focus on: title (where appropriate), creative ideas, fluent and complex language (sentence variety, vocabulary, punctuation, grammar, spelling), and clear structure (beginning, middle, end)
+- Target length: approximately 250 words with emphasis on quality over quantity
+- Students must demonstrate ${textType} writing skills appropriate for selective school entry
+
+IMPORTANT: Provide SPECIFIC feedback based on the actual content and how well it meets ${textType} writing requirements for NSW Selective tests.
 
 Analyze their writing for:
-- ${textType}-specific structure and organization
-- Appropriate language features for ${textType} writing
-- How well they've achieved the purpose of ${textType} writing
-- Age-appropriate use of ${textType} conventions
+- ${textType}-specific structure and organization appropriate for selective school assessment
+- Appropriate language features for ${textType} writing at selective school level
+- How well they've achieved the purpose of ${textType} writing for the test context
+- Age-appropriate use of ${textType} conventions for 10-12 year olds
+- Quality and sophistication expected for selective school entry
 
 Return your response as a JSON object with this structure:
 {
@@ -389,16 +512,22 @@ export async function identifyCommonMistakes(content: string, textType: string) 
     const messages = [
       {
         role: 'system',
-        content: `You are a writing coach specializing in identifying specific mistakes in student writing for NSW selective school tests (ages 9-11). 
+        content: `You are a writing coach specializing in identifying specific mistakes in student writing for NSW Selective High School Placement Test (ages 10-12 years). 
+
+NSW SELECTIVE WRITING TEST CONTEXT:
+- This is preparation for the official NSW Department of Education Selective High School Placement Test
+- Assessment criteria focus on: title (where appropriate), creative ideas, fluent and complex language (sentence variety, vocabulary, punctuation, grammar, spelling), and clear structure (beginning, middle, end)
+- Target length: approximately 250 words with emphasis on quality over quantity
+- Mistakes should be identified with selective school writing standards in mind
 
 IMPORTANT: Analyze the actual content and identify SPECIFIC errors with EXACT quotes from their writing.
 
 Look for:
-- Grammar errors with exact examples
+- Grammar errors with exact examples that would impact selective school assessment
 - Spelling mistakes with exact words
 - Punctuation issues with specific instances
 - Sentence structure problems with examples
-- Word choice issues with specific suggestions
+- Word choice issues with specific suggestions for selective school level writing
 
 Return a JSON object with this structure:
 {
@@ -475,11 +604,11 @@ export async function generatePrompt(textType: string): Promise<string> {
     const messages = [
       {
         role: 'system',
-        content: `You are a writing coach for NSW selective school writing tests for students aged 9-11 in Australia. Generate engaging, age-appropriate writing prompts that align with NSW curriculum standards. The prompts should be creative, relatable to children's experiences, and encourage imaginative thinking.`
+        content: `You are a writing coach for NSW Selective High School Placement Test writing assessments for students aged 10-12 years in Australia. Generate engaging, age-appropriate writing prompts that align with NSW Department of Education assessment standards. The prompts should be creative, relatable to children's experiences, encourage imaginative thinking, and be suitable for selective school entry preparation.`
       },
       {
         role: 'user',
-        content: `Generate a creative and engaging ${textType} writing prompt suitable for NSW selective school tests for students aged 9-11. Make it interesting and relatable to children's experiences. Return only the prompt text, no additional formatting.`
+        content: `Generate a creative and engaging ${textType} writing prompt suitable for NSW Selective High School Placement Test for students aged 10-12 years. Make it interesting and relatable to children's experiences while maintaining the sophistication expected for selective school entry. Return only the prompt text, no additional formatting.`
       }
     ];
 
@@ -511,11 +640,11 @@ export async function getSynonyms(word: string): Promise<string[]> {
     const messages = [
       {
         role: 'system',
-        content: 'You are a vocabulary coach for students aged 9-11. Provide age-appropriate synonyms that will help improve their writing. Return only a comma-separated list of 3-5 synonyms, no additional text.'
+        content: 'You are a vocabulary coach for students aged 10-12 years preparing for NSW Selective High School Placement Test. Provide age-appropriate synonyms that will help improve their writing to selective school standards. Return only a comma-separated list of 3-5 synonyms, no additional text.'
       },
       {
         role: 'user',
-        content: `Provide 3-5 age-appropriate synonyms for the word "${word}" suitable for students aged 9-11.`
+        content: `Provide 3-5 age-appropriate synonyms for the word "${word}" suitable for students aged 10-12 years preparing for selective school entry.`
       }
     ];
 
@@ -547,11 +676,11 @@ export async function rephraseSentence(sentence: string): Promise<string> {
     const messages = [
       {
         role: 'system',
-        content: 'You are a writing coach helping students aged 9-11 improve their sentence structure. Provide 2-3 alternative ways to express the same idea, keeping the language age-appropriate. Return only the alternatives separated by " | ", no additional text.'
+        content: 'You are a writing coach helping students aged 10-12 years improve their sentence structure for NSW Selective High School Placement Test preparation. Provide 2-3 alternative ways to express the same idea, keeping the language age-appropriate but sophisticated enough for selective school standards. Return only the alternatives separated by " | ", no additional text.'
       },
       {
         role: 'user',
-        content: `Provide 2-3 alternative ways to rephrase this sentence for a student aged 9-11: "${sentence}"`
+        content: `Provide 2-3 alternative ways to rephrase this sentence for a student aged 10-12 years preparing for selective school entry: "${sentence}"`
       }
     ];
 
@@ -572,7 +701,7 @@ export async function getTextTypeVocabulary(textType: string, contentSample: str
     const messages = [
       {
         role: 'system',
-        content: `You are a vocabulary coach for NSW selective school writing tests. Provide vocabulary specific to ${textType} writing that would help students aged 9-11 improve their writing.
+        content: `You are a vocabulary coach for NSW Selective High School Placement Test. Provide vocabulary specific to ${textType} writing that would help students aged 10-12 years improve their writing to selective school standards.
 
 Return a JSON object with this structure:
 {
@@ -652,7 +781,21 @@ export async function evaluateEssay(content: string, textType: string): Promise<
     const messages = [
       {
         role: 'system',
-        content: `You are an expert evaluator for NSW selective school writing tests for students aged 9-11. Provide a comprehensive evaluation using NSW curriculum standards.
+        content: `You are an expert evaluator for NSW Selective High School Placement Test writing assessments for students aged 10-12 years. 
+
+NSW SELECTIVE WRITING TEST CONTEXT:
+- This is evaluation for the official NSW Department of Education Selective High School Placement Test
+- Assessment criteria focus on: title (where appropriate), creative ideas, fluent and complex language (sentence variety, vocabulary, punctuation, grammar, spelling), and clear structure (beginning, middle, end)
+- Target length: approximately 250 words with emphasis on quality over quantity
+- Evaluation should reflect selective school entry standards
+
+EVALUATION CRITERIA:
+- Ideas and Content: Creativity, originality, development of ideas appropriate for selective school level
+- Structure: Clear beginning, middle, end with logical organization
+- Language: Sentence variety, sophisticated vocabulary for age group, fluent expression
+- Mechanics: Grammar, spelling, punctuation accuracy expected at selective school level
+
+Provide a comprehensive evaluation using NSW Department of Education assessment standards.
 
 Return a JSON object with this structure:
 {
@@ -746,7 +889,7 @@ export async function getWritingStructure(textType: string): Promise<string> {
     const messages = [
       {
         role: 'system',
-        content: `You are a writing structure expert for NSW selective school tests. Provide a comprehensive guide to ${textType} writing structure for students aged 9-11.
+        content: `You are a writing structure expert for NSW Selective High School Placement Test. Provide a comprehensive guide to ${textType} writing structure for students aged 10-12 years preparing for selective school entry.
 
 Return a JSON string with this structure:
 {
@@ -761,7 +904,7 @@ Return a JSON string with this structure:
       },
       {
         role: 'user',
-        content: `Provide a comprehensive structure guide for ${textType} writing suitable for NSW selective school students aged 9-11.`
+        content: `Provide a comprehensive structure guide for ${textType} writing suitable for NSW Selective High School Placement Test students aged 10-12 years.`
       }
     ];
 
@@ -803,7 +946,7 @@ export async function checkGrammarAndSpelling(content: string): Promise<any> {
     const messages = [
       {
         role: 'system',
-        content: `You are a grammar and spelling checker for students aged 9-11. Identify errors and provide corrections in a supportive way.
+        content: `You are a grammar and spelling checker for students aged 10-12 years preparing for NSW Selective High School Placement Test. Identify errors and provide corrections in a supportive way, focusing on standards expected for selective school entry.
 
 Return a JSON object with this structure:
 {
@@ -850,7 +993,7 @@ export async function analyzeSentenceStructure(content: string): Promise<any> {
     const messages = [
       {
         role: 'system',
-        content: `You are a sentence structure analyzer for students aged 9-11. Identify patterns and suggest improvements.
+        content: `You are a sentence structure analyzer for students aged 10-12 years preparing for NSW Selective High School Placement Test. Identify patterns and suggest improvements that meet selective school writing standards.
 
 Return a JSON object with this structure:
 {
@@ -896,7 +1039,7 @@ export async function enhanceVocabulary(content: string): Promise<any> {
     const messages = [
       {
         role: 'system',
-        content: `You are a vocabulary enhancement coach for students aged 9-11. Suggest better word choices that are age-appropriate.
+        content: `You are a vocabulary enhancement coach for students aged 10-12 years preparing for NSW Selective High School Placement Test. Suggest better word choices that are age-appropriate but sophisticated enough for selective school standards.
 
 Return a JSON object with this structure:
 {
