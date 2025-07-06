@@ -1,6 +1,6 @@
 // EnhancedWritingArea.tsx (Full Fixed Version)
 import React, { useState, useEffect, useCallback } from 'react';
-import { generatePrompt, getSynonyms, rephraseSentence } from '../lib/openai';
+import { generatePrompt, getSynonyms, rephraseSentence, checkGrammarAndSpelling, analyzeSentenceStructure, enhanceVocabulary } from '../lib/openai';
 import { AlertCircle } from 'lucide-react';
 import { InlineSuggestionPopup } from './InlineSuggestionPopup';
 import { AutoSave } from './AutoSave';
@@ -17,6 +17,9 @@ export function EnhancedWritingArea({ content, onChange, textType, onTimerStart,
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
   const [suggestions, setSuggestions] = useState([]);
   const [showPromptButtons, setShowPromptButtons] = useState(true);
+  const [grammarFeedback, setGrammarFeedback] = useState([]);
+  const [sentenceFeedback, setSentenceFeedback] = useState([]);
+  const [vocabularyFeedback, setVocabularyFeedback] = useState([]);
   const textareaRef = React.useRef(null);
   const overlayRef = React.useRef(null);
   const containerRef = React.useRef(null);
@@ -54,6 +57,22 @@ export function EnhancedWritingArea({ content, onChange, textType, onTimerStart,
   const handleSubmitEssay = () => {
     onSubmit();
   };
+
+  const handleAnalyzeEssay = useCallback(async () => {
+    if (!content.trim()) return;
+
+    // Grammar and Spelling
+    const grammarResult = await checkGrammarAndSpelling(content);
+    setGrammarFeedback(grammarResult.corrections || []);
+
+    // Sentence Structure and Variety
+    const sentenceResult = await analyzeSentenceStructure(content);
+    setSentenceFeedback(sentenceResult.analysis || []);
+
+    // Vocabulary Enhancement
+    const vocabularyResult = await enhanceVocabulary(content);
+    setVocabularyFeedback(vocabularyResult.suggestions || []);
+  }, [content]);
 
   const noTypeSelected = !textType;
 
@@ -142,6 +161,13 @@ export function EnhancedWritingArea({ content, onChange, textType, onTimerStart,
           Word count: {content.split(/\s+/).filter(Boolean).length}
         </div>
         <div className="flex gap-4">
+          <button
+            onClick={handleAnalyzeEssay}
+            disabled={!content.trim()}
+            className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 text-sm font-medium"
+          >
+            Analyze Essay
+          </button>
           <AutoSave content={content} textType={textType} />
           <button
             onClick={handleSubmitEssay}
@@ -152,6 +178,42 @@ export function EnhancedWritingArea({ content, onChange, textType, onTimerStart,
           </button>
         </div>
       </div>
+
+      {/* Display Feedback Sections */}
+      {grammarFeedback.length > 0 && (
+        <div className="p-4 border-t bg-white mt-4 rounded-lg shadow-sm">
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Grammar and Spelling Feedback:</h3>
+          {grammarFeedback.map((issue, index) => (
+            <p key={index} className="text-sm text-gray-700 mb-1">
+              <span className="font-semibold capitalize">{issue.type}:</span> "{issue.text}" - Suggestion: {issue.suggestion}
+            </p>
+          ))}
+        </div>
+      )}
+
+      {sentenceFeedback.length > 0 && (
+        <div className="p-4 border-t bg-white mt-4 rounded-lg shadow-sm">
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Sentence Structure Feedback:</h3>
+          {sentenceFeedback.map((issue, index) => (
+            <p key={index} className="text-sm text-gray-700 mb-1">
+              <span className="font-semibold capitalize">{issue.type.replace(/_/g, ' ')}:</span> "{issue.sentence}" - Suggestion: {issue.suggestion}
+            </p>
+          ))}
+        </div>
+      )}
+
+      {vocabularyFeedback.length > 0 && (
+        <div className="p-4 border-t bg-white mt-4 rounded-lg shadow-sm">
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Vocabulary Enhancement Suggestions:</h3>
+          {vocabularyFeedback.map((suggestion, index) => (
+            <p key={index} className="text-sm text-gray-700 mb-1">
+              <span className="font-semibold">"{suggestion.word}"</span> - Consider: {suggestion.suggestion}
+            </p>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
+
+
