@@ -93,4 +93,3 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
     </div>
   );
 };
-
