@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { BookOpen, Lightbulb, AlertTriangle } from 'lucide-react';
-import openai from '../../lib/openai';
+import { getTextTypeVocabulary } from '../../lib/openai';
+import AIErrorHandler from '../../utils/errorHandling';
+import { vocabularyEnhancements } from '../../config/prompts';
 
 interface VocabularyEnhancerProps {
   textType: string;
@@ -30,7 +32,6 @@ export function VocabularyEnhancer({ textType, content }: VocabularyEnhancerProp
   const loadVocabulary = async () => {
     if (isLoading) return;
     
-    // Reset states
     setIsLoading(true);
     setError(null);
     
@@ -42,11 +43,49 @@ export function VocabularyEnhancer({ textType, content }: VocabularyEnhancerProp
     }
     
     try {
-      const data = await openai.getTextTypeVocabulary(textType, content.substring(0, 500));
+      const data = await getTextTypeVocabulary(textType, content.substring(0, 500));
       setVocabularyData(data);
     } catch (err) {
-      console.error('Error loading vocabulary:', err);
-      setError('Failed to load vocabulary suggestions. Please try again later.');
+      const aiError = AIErrorHandler.handleError(err, 'vocabulary enhancement');
+      console.error('Error loading vocabulary:', aiError.userFriendlyMessage);
+      setError(aiError.userFriendlyMessage);
+      
+      // Use fallback vocabulary from configuration
+      const fallbackVocab = vocabularyEnhancements[textType.toLowerCase() as keyof typeof vocabularyEnhancements] || vocabularyEnhancements.good;
+      const fallbackData: VocabularyData = {
+        textType: textType,
+        categories: [
+          {
+            name: `${textType} Vocabulary`,
+            words: fallbackVocab,
+            examples: [
+              `Try using these words to make your ${textType} writing more engaging.`,
+              `These vocabulary choices will help strengthen your writing for NSW Selective standards.`
+            ]
+          },
+          {
+            name: 'General Enhancement Words',
+            words: ['excellent', 'remarkable', 'significant', 'compelling', 'fascinating'],
+            examples: [
+              'Use these words to add sophistication to your writing.',
+              'These words show advanced vocabulary skills.'
+            ]
+          }
+        ],
+        phrasesAndExpressions: [
+          'In addition to this...',
+          'Furthermore, it is important to note...',
+          'As a result of this...',
+          'On the other hand...',
+          'In conclusion...',
+          'Most importantly...'
+        ],
+        transitionWords: [
+          'However', 'Therefore', 'Moreover', 'Nevertheless', 'Consequently', 
+          'Furthermore', 'Additionally', 'Meanwhile', 'Subsequently', 'Finally'
+        ]
+      };
+      setVocabularyData(fallbackData);
     } finally {
       setIsLoading(false);
     }
@@ -56,6 +95,15 @@ export function VocabularyEnhancer({ textType, content }: VocabularyEnhancerProp
     setIsOpen(true);
     if (!vocabularyData) {
       loadVocabulary();
+    }
+  };
+
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      // You could add a toast notification here
+    } catch (err) {
+      console.error('Failed to copy text:', err);
     }
   };
 
@@ -134,20 +182,25 @@ export function VocabularyEnhancer({ textType, content }: VocabularyEnhancerProp
                       <p className="ml-3 text-indigo-600">Loading vocabulary suggestions...</p>
                     </div>
                   ) : error ? (
-                    <div className="mt-4 bg-red-50 p-4 rounded-md">
+                    <div className="mt-4 bg-amber-50 p-4 rounded-md">
                       <div className="flex">
                         <div className="flex-shrink-0">
-                          <AlertTriangle className="h-5 w-5 text-red-400" aria-hidden="true" />
+                          <AlertTriangle className="h-5 w-5 text-amber-400" aria-hidden="true" />
                         </div>
                         <div className="ml-3">
-                          <h3 className="text-sm font-medium text-red-800">Error</h3>
-                          <div className="mt-2 text-sm text-red-700">
+                          <h3 className="text-sm font-medium text-amber-800">Notice</h3>
+                          <div className="mt-2 text-sm text-amber-700">
                             <p>{error}</p>
+                            {vocabularyData && (
+                              <p className="mt-1">Don't worry! I've provided some helpful vocabulary suggestions below.</p>
+                            )}
                           </div>
                         </div>
                       </div>
                     </div>
-                  ) : vocabularyData ? (
+                  ) : null}
+
+                  {vocabularyData ? (
                     <div className="mt-4">
                       {activeTab === 'categories' && (
                         <div className="space-y-6">
@@ -158,11 +211,9 @@ export function VocabularyEnhancer({ textType, content }: VocabularyEnhancerProp
                                 {category.words.map((word, wordIndex) => (
                                   <span 
                                     key={wordIndex} 
-                                    className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 cursor-pointer hover:bg-indigo-200"
-                                    onClick={() => {
-                                      navigator.clipboard.writeText(word);
-                                      // Could add a toast notification here
-                                    }}
+                                    className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 cursor-pointer hover:bg-indigo-200 transition-colors"
+                                    onClick={() => copyToClipboard(word)}
+                                    title="Click to copy"
                                   >
                                     {word}
                                   </span>
@@ -188,11 +239,9 @@ export function VocabularyEnhancer({ textType, content }: VocabularyEnhancerProp
                             {vocabularyData.phrasesAndExpressions.map((phrase, index) => (
                               <div 
                                 key={index} 
-                                className="bg-white p-2 rounded text-sm text-gray-700 cursor-pointer hover:bg-indigo-100"
-                                onClick={() => {
-                                  navigator.clipboard.writeText(phrase);
-                                  // Could add a toast notification here
-                                }}
+                                className="bg-white p-2 rounded text-sm text-gray-700 cursor-pointer hover:bg-indigo-100 transition-colors"
+                                onClick={() => copyToClipboard(phrase)}
+                                title="Click to copy"
                               >
                                 {phrase}
                               </div>
@@ -208,11 +257,9 @@ export function VocabularyEnhancer({ textType, content }: VocabularyEnhancerProp
                             {vocabularyData.transitionWords.map((word, index) => (
                               <div 
                                 key={index} 
-                                className="bg-white p-2 rounded text-sm text-gray-700 cursor-pointer hover:bg-indigo-100"
-                                onClick={() => {
-                                  navigator.clipboard.writeText(word);
-                                  // Could add a toast notification here
-                                }}
+                                className="bg-white p-2 rounded text-sm text-gray-700 cursor-pointer hover:bg-indigo-100 transition-colors"
+                                onClick={() => copyToClipboard(word)}
+                                title="Click to copy"
                               >
                                 {word}
                               </div>
@@ -221,7 +268,7 @@ export function VocabularyEnhancer({ textType, content }: VocabularyEnhancerProp
                         </div>
                       )}
                     </div>
-                  ) : (
+                  ) : !isLoading && (
                     <div className="mt-4 flex flex-col items-center justify-center h-64 text-gray-500">
                       <BookOpen className="h-12 w-12 mb-4" />
                       <p>Click the button below to load vocabulary suggestions</p>
