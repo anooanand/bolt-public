@@ -40,28 +40,49 @@ export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelPro
     "How can I improve my sentence flow?"
   ];
 
+  // Helper function to count words in text
+  const countWords = useCallback((text: string): number => {
+    if (!text || text.trim().length === 0) return 0;
+    // Split by whitespace and filter out empty strings
+    return text.trim().split(/\s+/).filter(word => word.length > 0).length;
+  }, []);
+
   const fetchFeedback = useCallback(async (currentContent: string, currentTextType: string, currentAssistanceLevel: string, currentFeedbackHistory: FeedbackItem[]) => {
-    // Only process if content has meaningfully changed and meets minimum length
-    if (currentContent.trim().length >= 50 && currentContent !== lastProcessedContent) {
+    const wordCount = countWords(currentContent);
+    
+    // Only process if content has meaningfully changed and meets minimum word count (50 words)
+    if (wordCount >= 50 && currentContent !== lastProcessedContent) {
+      console.log(`[DEBUG] Triggering AI feedback - Word count: ${wordCount}, Content length: ${currentContent.length}`);
       setIsLoading(true);
-      const response = await getWritingFeedback(currentContent, currentTextType, currentAssistanceLevel, currentFeedbackHistory);
-      if (response && response.feedbackItems) {
-        setStructuredFeedback(response);
-        setFeedbackHistory(prevHistory => [...prevHistory, ...response.feedbackItems.filter(item => 
-          !prevHistory.some(histItem => histItem.text === item.text && histItem.area === item.area)
-        )]);
-      } else if (response && response.overallComment) {
-        setStructuredFeedback(response as StructuredFeedback);
+      
+      try {
+        const response = await getWritingFeedback(currentContent, currentTextType, currentAssistanceLevel, currentFeedbackHistory);
+        
+        if (response && response.feedbackItems) {
+          setStructuredFeedback(response);
+          setFeedbackHistory(prevHistory => [...prevHistory, ...response.feedbackItems.filter(item => 
+            !prevHistory.some(histItem => histItem.text === item.text && histItem.area === item.area)
+          )]);
+        } else if (response && response.overallComment) {
+          setStructuredFeedback(response as StructuredFeedback);
+        }
+        
+        setLastProcessedContent(currentContent);
+        console.log('[DEBUG] AI feedback received and processed successfully');
+      } catch (error) {
+        console.error('[DEBUG] Error fetching AI feedback:', error);
+      } finally {
+        setIsLoading(false);
       }
-      setLastProcessedContent(currentContent);
-      setIsLoading(false);
+    } else if (wordCount < 50) {
+      console.log(`[DEBUG] Not triggering AI feedback - Word count: ${wordCount} (need 50+ words)`);
     }
-  }, [lastProcessedContent]);
+  }, [lastProcessedContent, countWords]);
 
   useEffect(() => {
     const debounceTimer = setTimeout(() => {
       fetchFeedback(content, textType, assistanceLevel, feedbackHistory);
-    }, 3000); // Increased to 3 seconds
+    }, 2000); // Reduced to 2 seconds for faster response
 
     return () => clearTimeout(debounceTimer);
   }, [content, textType, assistanceLevel, feedbackHistory, fetchFeedback]);
@@ -70,32 +91,41 @@ export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelPro
     e.preventDefault();
     if (question.trim()) {
       setIsLoading(true);
-      const userQueryText = `Question about my ${textType} writing: ${question}\n\nCurrent text: ${content}`;
-      const response = await getWritingFeedback(userQueryText, textType, assistanceLevel, feedbackHistory);
+      console.log('[DEBUG] Processing user question:', question);
       
-      if (response && response.feedbackItems) {
-        const questionFeedbackItem: FeedbackItem = {
-            type: 'question',
-            area: 'User Question',
-            text: `You asked: ${question}`
-        };
-        const answerItems = response.feedbackItems.map(item => ({...item, area: `Answer to: ${question}`}));
+      try {
+        const userQueryText = `Question about my ${textType} writing: ${question}\n\nCurrent text: ${content}`;
+        const response = await getWritingFeedback(userQueryText, textType, assistanceLevel, feedbackHistory);
         
-        setStructuredFeedback(prevFeedback => ({
-            overallComment: response.overallComment || (prevFeedback?.overallComment || ''),
-            feedbackItems: [questionFeedbackItem, ...answerItems, ...(prevFeedback?.feedbackItems || [])],
-            focusForNextTime: response.focusForNextTime || (prevFeedback?.focusForNextTime || [])
-        }));
-        setFeedbackHistory(prevHistory => [...prevHistory, questionFeedbackItem, ...answerItems.filter(item => 
-            !prevHistory.some(histItem => histItem.text === item.text && histItem.area === item.area)
-          )]);
+        if (response && response.feedbackItems) {
+          const questionFeedbackItem: FeedbackItem = {
+              type: 'question',
+              area: 'User Question',
+              text: `You asked: ${question}`
+          };
+          const answerItems = response.feedbackItems.map(item => ({...item, area: `Answer To: ${question}`}));
+          
+          setStructuredFeedback(prevFeedback => ({
+              overallComment: response.overallComment || (prevFeedback?.overallComment || ''),
+              feedbackItems: [questionFeedbackItem, ...answerItems, ...(prevFeedback?.feedbackItems || [])],
+              focusForNextTime: response.focusForNextTime || (prevFeedback?.focusForNextTime || [])
+          }));
+          setFeedbackHistory(prevHistory => [...prevHistory, questionFeedbackItem, ...answerItems.filter(item => 
+              !prevHistory.some(histItem => histItem.text === item.text && histItem.area === item.area)
+            )]);
 
-      } else if (response && response.overallComment) {
-        setStructuredFeedback(response as StructuredFeedback);
+        } else if (response && response.overallComment) {
+          setStructuredFeedback(response as StructuredFeedback);
+        }
+        
+        console.log('[DEBUG] User question processed successfully');
+      } catch (error) {
+        console.error('[DEBUG] Error processing user question:', error);
+      } finally {
+        setQuestion('');
+        setIsLoading(false);
+        setShowPrompts(false);
       }
-      setQuestion('');
-      setIsLoading(false);
-      setShowPrompts(false);
     }
   };
 
@@ -119,8 +149,22 @@ export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelPro
     }
   };
 
+  // Calculate current word count for display
+  const currentWordCount = countWords(content);
+  const wordsNeeded = Math.max(0, 50 - currentWordCount);
+
   return (
     <div className="h-full flex flex-col">
+      {/* Word count indicator */}
+      {currentWordCount < 50 && (
+        <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700">
+          <div className="text-sm text-gray-600 dark:text-gray-400 flex items-center">
+            <Sparkles className="w-4 h-4 mr-2" />
+            Write {wordsNeeded} more word{wordsNeeded !== 1 ? 's' : ''} to get AI feedback ({currentWordCount}/50)
+          </div>
+        </div>
+      )}
+
       {/* Loading indicator */}
       {isLoading && (
         <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700">
@@ -161,6 +205,14 @@ export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelPro
             </div>
           );
         })}
+
+        {structuredFeedback?.feedbackItems?.length === 0 && currentWordCount >= 50 && !isLoading && (
+          <div className="p-3 bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded-lg text-sm text-center">
+            <Sparkles className="w-6 h-6 mx-auto mb-2 opacity-50" />
+            <p>AI Coach is analyzing your writing...</p>
+            <p className="text-xs mt-1">This may take a moment</p>
+          </div>
+        )}
 
         {structuredFeedback?.focusForNextTime && structuredFeedback.focusForNextTime.length > 0 && (
           <div className="p-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg text-sm">
@@ -219,3 +271,4 @@ export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelPro
     </div>
   );
 }
+
