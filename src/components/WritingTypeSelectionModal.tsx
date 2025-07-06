@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, PenTool, BookOpen, FileText, MessageSquare, Newspaper, Mail, Calendar } from 'lucide-react';
+import { X, BookOpen, Lightbulb, MessageSquare, Megaphone, ScrollText, Sparkles, Newspaper, Mail, Calendar, Rocket, Puzzle, Wand, Compass, MapPin, Target } from 'lucide-react';
 
 interface WritingTypeSelectionModalProps {
   isOpen: boolean;
@@ -8,16 +8,16 @@ interface WritingTypeSelectionModalProps {
 }
 
 const writingTypes = [
-  { value: 'narrative', label: 'Narrative', icon: PenTool, description: 'Tell engaging stories with characters and plot' },
-  { value: 'persuasive', label: 'Persuasive', icon: MessageSquare, description: 'Convince readers with strong arguments' },
-  { value: 'expository', label: 'Expository / Informative', icon: BookOpen, description: 'Explain topics clearly and factually' },
-  { value: 'reflective', label: 'Reflective', icon: FileText, description: 'Share personal experiences and insights' },
-  { value: 'descriptive', label: 'Descriptive', icon: PenTool, description: 'Paint vivid pictures with detailed descriptions' },
-  { value: 'recount', label: 'Recount', icon: Calendar, description: 'Retell events in chronological order' },
-  { value: 'discursive', label: 'Discursive', icon: MessageSquare, description: 'Explore different viewpoints on a topic' },
-  { value: 'news report', label: 'News Report', icon: Newspaper, description: 'Report facts in journalistic style' },
-  { value: 'letter', label: 'Letter', icon: Mail, description: 'Write formal or informal correspondence' },
-  { value: 'diary entry', label: 'Diary Entry', icon: Calendar, description: 'Express personal thoughts and experiences' }
+  { value: 'narrative', label: 'Story Adventure', icon: Rocket, description: 'Create exciting tales with heroes and twists!' },
+  { value: 'persuasive', label: 'Convince Me!', icon: Megaphone, description: 'Share your strong ideas and get others to agree!' },
+  { value: 'expository', label: 'Explain It All', icon: Lightbulb, description: 'Teach others about cool topics with clear facts!' },
+  { value: 'reflective', label: 'My Thoughts & Feelings', icon: Sparkles, description: 'Explore your own experiences and what you learned!' },
+  { value: 'descriptive', label: 'Paint with Words', icon: Wand, description: 'Use amazing words to describe people, places, and things!' },
+  { value: 'recount', label: 'What Happened Next?', icon: Calendar, description: 'Tell about events in the order they happened!' },
+  { value: 'discursive', label: 'Two Sides of the Story', icon: MessageSquare, description: 'Look at different ideas about a topic, then share your view!' },
+  { value: 'news report', label: 'Breaking News!', icon: Newspaper, description: 'Report the facts like a real journalist!' },
+  { value: 'letter', label: 'Send a Message', icon: Mail, description: 'Write a friendly note or an important message!' },
+  { value: 'diary entry', label: 'Secret Journal', icon: BookOpen, description: 'Write down your daily adventures and feelings!' }
 ];
 
 export function WritingTypeSelectionModal({ isOpen, onClose, onSelectType }: WritingTypeSelectionModalProps) {
@@ -33,7 +33,7 @@ export function WritingTypeSelectionModal({ isOpen, onClose, onSelectType }: Wri
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-            Select Writing Type
+            Choose Your Writing Adventure!
           </h2>
           <button
             onClick={onClose}
@@ -45,7 +45,7 @@ export function WritingTypeSelectionModal({ isOpen, onClose, onSelectType }: Wri
         
         <div className="p-6">
           <p className="text-gray-600 dark:text-gray-300 mb-6">
-            Choose the type of writing you'd like to practice. Each type has specific techniques and structures to help you improve.
+            Pick a writing challenge that sounds fun! Each one helps you become a super writer.
           </p>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -79,4 +79,6 @@ export function WritingTypeSelectionModal({ isOpen, onClose, onSelectType }: Wri
     </div>
   );
 }
+
+
 
