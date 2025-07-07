@@ -3,7 +3,7 @@ import { User } from '@supabase/supabase-js';
 import { useLearning } from '../contexts/LearningContext';
 import { useAuth } from '../contexts/AuthContext'; // FIXED: Added missing import
 import { Link } from 'react-router-dom';
-import { LogOut, Menu, X, AlertCircle, CheckCircle, XCircle, Mail, CreditCard, RefreshCw } from 'lucide-react';
+import { LogOut, Menu, X } from 'lucide-react';
 
 interface NavBarProps {
   activePage: string;
@@ -30,27 +30,17 @@ export function NavBar({
   // Use ref to prevent multiple simultaneous sign out attempts
   const isSigningOut = useRef(false);
 
-  // ENHANCED: Get verification status from auth context
-  const { 
-    emailVerified, 
-    paymentCompleted, 
-    verificationStatus, 
-    authError, 
-    retryAuth, 
-    clearAuthError 
-  } = useAuth();
-
   const navigationItems = [
-    { id: 'home', name: 'Home', href: '/' },
-    { id: 'features', name: 'Features', href: '/features' },
-    { id: 'about', name: 'About', href: '/about' },
-    { id: 'faq', name: 'FAQ', href: '/faq' }
+    { id: 'home', name: '🏠 Home', href: '/' },
+    { id: 'features', name: '✨ Fun Stuff', href: '/features' },
+    { id: 'about', name: '🙋‍♀️ About Us', href: '/about' },
+    { id: 'faq', name: '❓ Questions', href: '/faq' }
   ];
 
   const learningItems = [
-    { id: 'learning', name: '📚 Learning Plan', description: 'Structured 30-day course' },
-    { id: 'progress-dashboard', name: '📊 Progress Dashboard', description: 'Track your achievements' },
-    { id: 'quiz-demo', name: '🧩 Practice Quiz', description: 'Test your knowledge' }
+    { id: 'learning', name: '📚 My Adventures', description: 'Your learning journey' },
+    { id: 'progress-dashboard', name: '🌟 My Progress', description: 'See how far you have come' },
+    { id: 'quiz-demo', name: '🧠 Brain Games', description: 'Test your smarts' }
   ];
 
   const handleSignOut = async (e: React.MouseEvent) => {
@@ -72,11 +62,6 @@ export function NavBar({
       setIsMenuOpen(false);
       setIsLearningMenuOpen(false);
       
-      // Clear any auth errors
-      if (clearAuthError) {
-        clearAuthError();
-      }
-      
       // Call the sign out function
       await onForceSignOut();
       
@@ -90,58 +75,7 @@ export function NavBar({
     }
   };
 
-  // ENHANCED: Verification status component with null checks
-  const VerificationStatusIndicator = () => {
-    if (!user) return null;
 
-    return (
-      <div className="flex items-center space-x-2">
-        {/* Email Verification Status */}
-        {emailVerified === false && (
-          <div className="flex items-center text-yellow-600 dark:text-yellow-400">
-            <Mail className="w-4 h-4 mr-1" />
-            <span className="text-xs hidden sm:inline">Email pending</span>
-          </div>
-        )}
-        
-        {/* Payment Verification Status */}
-        {paymentCompleted === false && emailVerified === true && (
-          <div className="flex items-center text-orange-600 dark:text-orange-400">
-            <CreditCard className="w-4 h-4 mr-1" />
-            <span className="text-xs hidden sm:inline">Payment pending</span>
-          </div>
-        )}
-        
-        {/* Fully Verified Status */}
-        {emailVerified === true && paymentCompleted === true && (
-          <div className="flex items-center text-green-600 dark:text-green-400">
-            <CheckCircle className="w-4 h-4 mr-1" />
-            <span className="text-xs hidden sm:inline">Verified</span>
-          </div>
-        )}
-        
-        {/* Verification Failed */}
-        {verificationStatus === 'failed' && (
-          <div className="flex items-center text-red-600 dark:text-red-400">
-            <XCircle className="w-4 h-4 mr-1" />
-            <span className="text-xs hidden sm:inline">Failed</span>
-          </div>
-        )}
-        
-        {/* Auth Error with Retry */}
-        {authError && retryAuth && (
-          <button
-            onClick={retryAuth}
-            className="flex items-center text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-colors"
-            title={authError}
-          >
-            <RefreshCw className="w-4 h-4 mr-1" />
-            <span className="text-xs hidden sm:inline">Retry</span>
-          </button>
-        )}
-      </div>
-    );
-  };
 
   return (
     <nav className="fixed top-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-b border-gray-200 z-50 dark:bg-gray-900/95 dark:border-gray-700">
@@ -163,7 +97,7 @@ export function NavBar({
               <Link
                 key={item.id}
                 to={item.href}
-                className={`text-sm font-medium transition-colors ${
+                className={`flex items-center space-x-1 text-sm font-medium transition-colors ${
                   activePage === item.id
                     ? 'text-blue-600 border-b-2 border-blue-600 pb-1'
                     : 'text-gray-700 hover:text-blue-600 dark:text-gray-300 dark:hover:text-blue-400'
@@ -176,13 +110,13 @@ export function NavBar({
             {/* Pricing Tab */}
             <Link
               to="/pricing"
-              className={`text-sm font-medium transition-colors ${
+              className={`flex items-center space-x-1 text-sm font-medium transition-colors ${
                 activePage === 'pricing'
                   ? 'text-blue-600 border-b-2 border-blue-600 pb-1'
                   : 'text-gray-700 hover:text-blue-600 dark:text-gray-300 dark:hover:text-blue-400'
               }`}
             >
-              Pricing
+              💰 Plans
             </Link>
 
             {/* Learning Dropdown */}
@@ -195,7 +129,7 @@ export function NavBar({
                     : 'text-gray-700 hover:text-blue-600 dark:text-gray-300 dark:hover:text-blue-400'
                 }`}
               >
-                <span>Learning</span>
+                <span>🎯 My Learning</span>
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
@@ -223,10 +157,10 @@ export function NavBar({
                   
                   {/* Progress Summary */}
                   <div className="border-t border-gray-200 mt-2 pt-2 px-4 dark:border-gray-700">
-                    <div className="text-xs text-gray-500 mb-1 dark:text-gray-400">Your Progress</div>
+                    <div className="text-xs text-gray-500 mb-1 dark:text-gray-400">🌟 Your Journey</div>
                     <div className="flex justify-between text-sm">
-                      <span>Lessons: {progress.completedLessons.length}/30</span>
-                      <span>Points: {progress.totalPoints}</span>
+                      <span>Adventures: {progress.completedLessons.length}/30</span>
+                      <span>Stars: {progress.totalPoints}</span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-1.5 mt-1 dark:bg-gray-700">
                       <div 
@@ -241,14 +175,13 @@ export function NavBar({
 
             {user ? (
               <div className="flex items-center space-x-4 relative">
-                {/* ENHANCED: Verification Status Indicator */}
-                <VerificationStatusIndicator />
+                
                 
                 <Link
                   to="/dashboard"
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                 >
-                  Dashboard
+                  🏠 My Space
                 </Link>
                 <div className="relative">
                   <button
@@ -264,55 +197,27 @@ export function NavBar({
                   
                   {isUserMenuOpen && (
                     <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50 dark:bg-gray-800 dark:border-gray-700">
-                      <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700">
+                  <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700">
                         <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                          {user.email}
+                          Hi, {user.email?.split('@')[0]}!
                         </p>
-                        {/* ENHANCED: Detailed verification status in user menu */}
-                        <div className="mt-2 space-y-1">
-                          <div className="flex items-center justify-between text-xs">
-                            <span className="text-gray-500 dark:text-gray-400">Email:</span>
-                            <span className={emailVerified ? 'text-green-600' : 'text-yellow-600'}>
-                              {emailVerified ? 'Verified' : 'Pending'}
-                            </span>
-                          </div>
-                          <div className="flex items-center justify-between text-xs">
-                            <span className="text-gray-500 dark:text-gray-400">Payment:</span>
-                            <span className={paymentCompleted ? 'text-green-600' : 'text-orange-600'}>
-                              {paymentCompleted ? 'Active' : 'Pending'}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
+                  </div>
                       
-                      {/* ENHANCED: Auth error display in menu */}
-                      {authError && retryAuth && (
-                        <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700">
-                          <div className="text-xs text-red-600 dark:text-red-400 mb-2">
-                            {authError}
-                          </div>
-                          <button
-                            onClick={retryAuth}
-                            className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
-                          >
-                            Retry verification
-                          </button>
-                        </div>
-                      )}
+
                       
                       <Link
                         to="/dashboard"
                         className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
                         onClick={() => setIsUserMenuOpen(false)}
                       >
-                        Dashboard
+                        🏠 My Space
                       </Link>
                       <Link
                         to="/settings"
                         className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
                         onClick={() => setIsUserMenuOpen(false)}
                       >
-                        Settings
+                        ⚙️ Settings
                       </Link>
                       <button
                         onClick={handleSignOut}
@@ -323,7 +228,7 @@ export function NavBar({
                       >
                         <div className="flex items-center">
                           <LogOut className="w-4 h-4 mr-2" />
-                          {isSigningOut.current ? 'Signing out...' : 'Sign Out'}
+                          {isSigningOut.current ? 'Signing out...' : '👋 Sign Out'}
                         </div>
                       </button>
                     </div>
@@ -336,13 +241,13 @@ export function NavBar({
                   onClick={onSignInClick}
                   className="text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors dark:text-gray-300 dark:hover:text-blue-400"
                 >
-                  Sign In
+                  🔑 Sign In
                 </button>
                 <button
                   onClick={onSignUpClick}
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                 >
-                  Get Started
+                  🚀 Get Started
                 </button>
               </div>
             )}
@@ -350,8 +255,7 @@ export function NavBar({
 
           {/* Mobile menu button */}
           <div className="md:hidden flex items-center space-x-2">
-            {/* ENHANCED: Mobile verification status */}
-            {user && <VerificationStatusIndicator />}
+            
             
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
@@ -396,13 +300,13 @@ export function NavBar({
               }`}
               onClick={() => setIsMenuOpen(false)}
             >
-              Pricing
+              💰 Plans
             </Link>          
             
             {/* Mobile Learning Items */}
             <div className="border-t border-gray-200 pt-2 mt-2 dark:border-gray-700">
               <div className="text-xs font-medium text-gray-500 px-3 py-1 uppercase tracking-wide dark:text-gray-400">
-                Learning
+                🎯 My Learning
               </div>
               {learningItems.map((item) => (
                 <Link
@@ -422,38 +326,8 @@ export function NavBar({
                 <div className="space-y-2">
                   <div className="px-3 py-2">
                     <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                      {user.email}
+                      Hi, {user.email?.split("@")[0]}!
                     </p>
-                    {/* ENHANCED: Mobile verification status details */}
-                    <div className="mt-2 space-y-1">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-gray-500 dark:text-gray-400">Email:</span>
-                        <span className={emailVerified ? 'text-green-600' : 'text-yellow-600'}>
-                          {emailVerified ? 'Verified' : 'Pending'}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-gray-500 dark:text-gray-400">Payment:</span>
-                        <span className={paymentCompleted ? 'text-green-600' : 'text-orange-600'}>
-                          {paymentCompleted ? 'Active' : 'Pending'}
-                        </span>
-                      </div>
-                    </div>
-                    
-                    {/* ENHANCED: Mobile auth error display */}
-                    {authError && retryAuth && (
-                      <div className="mt-2">
-                        <div className="text-xs text-red-600 dark:text-red-400 mb-1">
-                          {authError}
-                        </div>
-                        <button
-                          onClick={retryAuth}
-                          className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
-                        >
-                          Retry verification
-                        </button>
-                      </div>
-                    )}
                   </div>
                   
                   <Link
@@ -461,14 +335,14 @@ export function NavBar({
                     className="block w-full text-left px-3 py-2 rounded-md text-sm font-medium bg-blue-600 text-white"
                     onClick={() => setIsMenuOpen(false)}
                   >
-                    Dashboard
+                    🏠 My Space
                   </Link>
                   <Link
                     to="/settings"
                     className="block w-full text-left px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800"
                     onClick={() => setIsMenuOpen(false)}
                   >
-                    Settings
+                    ⚙️ Settings
                   </Link>
                   <button
                     onClick={handleSignOut}
@@ -479,7 +353,7 @@ export function NavBar({
                   >
                     <div className="flex items-center">
                       <LogOut className="w-4 h-4 mr-2" />
-                      {isSigningOut.current ? 'Signing out...' : 'Sign Out'}
+                      {isSigningOut.current ? 'Signing out...' : '👋 Sign Out'}
                     </div>
                   </button>
                 </div>
@@ -492,7 +366,7 @@ export function NavBar({
                     }}
                     className="block w-full text-left px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800"
                   >
-                    Sign In
+                    🔑 Sign In
                   </button>
                   <button
                     onClick={() => {
@@ -501,7 +375,7 @@ export function NavBar({
                     }}
                     className="block w-full text-left px-3 py-2 rounded-md text-sm font-medium bg-blue-600 text-white"
                   >
-                    Get Started
+                    🚀 Get Started
                   </button>
                 </div>
               )}
