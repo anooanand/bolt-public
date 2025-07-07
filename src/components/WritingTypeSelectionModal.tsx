@@ -79,4 +79,3 @@ export function WritingTypeSelectionModal({ isOpen, onClose, onSelectType }: Wri
     </div>
   );
 }
-
