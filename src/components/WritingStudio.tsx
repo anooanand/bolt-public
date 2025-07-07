@@ -11,9 +11,11 @@ import {
   TrendingUp,
   BookOpen,
   Zap,
-  Eye
+  Eye,
+  PlusCircle
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { WritingTypeSelectionModal } from './WritingTypeSelectionModal';
 
 interface WritingStudioProps {
   onNavigate: (page: string) => void;
@@ -40,6 +42,7 @@ export const WritingStudio: React.FC<WritingStudioProps> = ({ onNavigate }) => {
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
   const [showAnalysis, setShowAnalysis] = useState<boolean>(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const [showWritingTypeModal, setShowWritingTypeModal] = useState<boolean>(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const [stats, setStats] = useState<WritingStats>({
@@ -78,6 +81,37 @@ export const WritingStudio: React.FC<WritingStudioProps> = ({ onNavigate }) => {
       return () => clearTimeout(timer);
     }
   }, [content, title]);
+
+  // Handle sign-in behavior - clear content and show modal when user signs in
+  useEffect(() => {
+    // Only trigger this behavior when user changes from null to a user object
+    // This indicates a fresh sign-in
+    if (user && !content) {
+      // User just signed in and there's no content, show the writing type modal
+      setShowWritingTypeModal(true);
+    }
+  }, [user]);
+
+  // Clear content and show modal when user signs in (if there was previous content)
+  useEffect(() => {
+    if (user) {
+      // Check if this is a fresh sign-in by looking at a flag in localStorage
+      const wasSignedOut = localStorage.getItem('wasSignedOut');
+      if (wasSignedOut === 'true') {
+        // Clear the flag
+        localStorage.removeItem('wasSignedOut');
+        // Clear content and show modal
+        setContent('');
+        setTitle('Untitled Document');
+        setShowAnalysis(false);
+        setLastSaved(null);
+        setShowWritingTypeModal(true);
+      }
+    } else {
+      // User is signed out, set the flag
+      localStorage.setItem('wasSignedOut', 'true');
+    }
+  }, [user]);
 
   const handleSave = () => {
     // Simulate saving to localStorage or database
@@ -152,6 +186,20 @@ export const WritingStudio: React.FC<WritingStudioProps> = ({ onNavigate }) => {
     URL.revokeObjectURL(url);
   };
 
+  const handleStartNewEssay = () => {
+    setContent('');
+    setTitle('Untitled Document');
+    setShowAnalysis(false);
+    setLastSaved(null);
+    setShowWritingTypeModal(true);
+  };
+
+  const handleWritingTypeSelect = (type: string) => {
+    // You can add logic here to set up the writing area based on the selected type
+    // For now, we'll just close the modal
+    setShowWritingTypeModal(false);
+  };
+
   const quickActions = [
     {
       label: 'Paraphrase',
@@ -200,6 +248,13 @@ export const WritingStudio: React.FC<WritingStudioProps> = ({ onNavigate }) => {
                   Saved {lastSaved.toLocaleTimeString()}
                 </span>
               )}
+              <button
+                onClick={handleStartNewEssay}
+                className="flex items-center px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+              >
+                <PlusCircle className="w-4 h-4 mr-2" />
+                Start New Essay
+              </button>
               <button
                 onClick={handleSave}
                 className="flex items-center px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
@@ -424,6 +479,13 @@ export const WritingStudio: React.FC<WritingStudioProps> = ({ onNavigate }) => {
           </div>
         </div>
       </div>
+
+      {/* Writing Type Selection Modal */}
+      <WritingTypeSelectionModal
+        isOpen={showWritingTypeModal}
+        onClose={() => setShowWritingTypeModal(false)}
+        onSelectType={handleWritingTypeSelect}
+      />
     </div>
   );
 };
