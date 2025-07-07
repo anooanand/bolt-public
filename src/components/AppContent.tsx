@@ -54,6 +54,9 @@ function AppContent() {
   const [showExamMode, setShowExamMode] = useState(false);
   const [showHelpCenter, setShowHelpCenter] = useState(false);
   const [showPlanningTool, setShowPlanningTool] = useState(false);
+  
+  // New state for popup flow completion
+  const [popupFlowCompleted, setPopupFlowCompleted] = useState(false);
 
   // Check for payment success in URL on mount
   useEffect(() => {
@@ -99,53 +102,37 @@ function AppContent() {
     };
 
     document.addEventListener('selectionchange', handleSelectionChange);
-    return () => {
-      document.removeEventListener('selectionchange', handleSelectionChange);
-    };
+    return () => document.removeEventListener('selectionchange', handleSelectionChange);
   }, []);
 
-  const handleAuthSuccess = async (user: any) => {
+  const handleAuthSuccess = () => {
     setShowAuthModal(false);
-    
-    // After successful signup, redirect to dashboard to show email verification message
-    if (authModalMode === 'signup') {
-      setActivePage('dashboard');
+    if (pendingPaymentPlan) {
+      setActivePage('payment-success');
+      setShowPaymentSuccess(true);
     } else {
-      // For signin, check email verification and payment status
-      if (!emailVerified) {
-        setActivePage('dashboard'); // Show email verification reminder
-      } else if (paymentCompleted) {
-        setActivePage('writing'); // Full access
-      } else {
-        setActivePage('pricing'); // Need to complete payment
-      }
+      setActivePage('dashboard');
     }
   };
 
   const handleForceSignOut = async () => {
     try {
-      console.log('AppContent: Force sign out initiated');
+      console.log('🔄 AppContent: Starting force sign out...');
       
-      // Call the auth context sign out method
-      await authSignOut();
-      
-      // Reset local component state
+      // Reset all local state first
       setActivePage('home');
       setShowAuthModal(false);
       setShowPaymentSuccess(false);
       setPendingPaymentPlan(null);
-      
-      // Clear any writing state
       setContent('');
       setTextType('');
-      setAssistanceLevel('detailed');
-      setTimerStarted(false);
-      setSelectedText('');
-      setShowExamMode(false);
-      setShowHelpCenter(false);
-      setShowPlanningTool(false);
+      setPopupFlowCompleted(false);
       
-      console.log('✅ AppContent: Sign out completed successfully');
+      console.log('✅ AppContent: Local state reset completed');
+      
+      // Then attempt auth sign out
+      await authSignOut();
+      console.log('✅ AppContent: Auth sign out completed');
       
     } catch (error) {
       console.error('AppContent: Error during sign out:', error);
@@ -196,6 +183,16 @@ function AppContent() {
 
   const handleSubmit = () => {
     console.log('Writing submitted:', { content, textType });
+  };
+
+  // Handle text type change from WritingArea popup
+  const handleTextTypeChange = (newTextType: string) => {
+    setTextType(newTextType);
+  };
+
+  // Handle popup flow completion
+  const handlePopupCompleted = () => {
+    setPopupFlowCompleted(true);
   };
 
   if (isLoading) {
@@ -261,6 +258,7 @@ function AppContent() {
                   onTextTypeChange={setTextType}
                   onAssistanceLevelChange={setAssistanceLevel}
                   onTimerStart={() => setTimerStarted(true)}
+                  hideTextTypeSelector={popupFlowCompleted}
                 />
                 
                 <WritingToolbar 
@@ -284,6 +282,8 @@ function AppContent() {
                         textType={textType}
                         onTimerStart={setTimerStarted}
                         onSubmit={handleSubmit}
+                        onTextTypeChange={handleTextTypeChange}
+                        onPopupCompleted={handlePopupCompleted}
                       />
                       <TabbedCoachPanel 
                         content={content}
@@ -347,3 +347,4 @@ function AppContent() {
 }
 
 export default AppContent;
+
