@@ -220,8 +220,7 @@ function AppContent() {
   }
 
   return (
-    <div className="kid-theme min-h-screen bg-gradient-to-br...">
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
+    <div className="kid-theme min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
       {/* Kid-friendly error notification */}
       {errorMessage && (
         <div className="fixed top-4 right-4 z-50 bg-yellow-100 border-l-4 border-yellow-500 p-4 rounded-lg shadow-lg max-w-sm">
