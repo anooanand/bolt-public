@@ -11,6 +11,7 @@ import { Footer } from './Footer';
 import { PaymentSuccessPage } from './PaymentSuccessPage';
 import { PricingPage } from './PricingPage';
 import { Dashboard } from './Dashboard';
+import { KidDashboard } from './KidDashboard';
 import { AuthModal } from './AuthModal';
 import { FAQPage } from './FAQPage';
 import { AboutPage } from './AboutPage';
@@ -260,10 +261,14 @@ function AppContent() {
           <Route path="/demo" element={<DemoPage onNavigate={handleNavigation} />} />
           <Route path="/dashboard" element={
             user ? (
-              <Dashboard 
-                onNavigate={handleNavigation}
-                onSignOut={handleForceSignOut}
-              />
+              user.email && user.email.startsWith("kid") ? (
+                <KidDashboard user={user} />
+              ) : (
+                <Dashboard 
+                  onNavigate={handleNavigation}
+                  onSignOut={handleForceSignOut}
+                />
+              )
             ) : (
               <Navigate to="/" />
             )
