@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { MessageSquare, Sparkles, ChevronDown, ChevronUp, ThumbsUp, Lightbulb, HelpCircle, Target, AlertCircle, Star, Zap, Gift, Heart } from 'lucide-react';
+import { MessageSquare, Sparkles, ChevronDown, ChevronUp, ThumbsUp, Lightbulb, HelpCircle, Target, AlertCircle, Star, Zap, Gift, Heart, Lock } from 'lucide-react';
 import { getWritingFeedback } from '../lib/openai';
 import AIErrorHandler from '../utils/errorHandling';
 import { promptConfig } from '../config/prompts';
