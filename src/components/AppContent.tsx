@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
 import { NavBar } from './NavBar';
@@ -38,7 +38,6 @@ import { AdminButton } from './AdminButton';
 
 function AppContent() {
   const { user, isLoading, paymentCompleted, emailVerified, authSignOut } = useAuth();
-  const navigate = useNavigate();
   const [activePage, setActivePage] = useState('home');
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'signin' | 'signup'>('signin');
@@ -196,11 +195,11 @@ function AppContent() {
   const handleGetStarted = async () => {
     if (user) {
       if (!emailVerified) {
-        navigate('/dashboard'); // Show email verification reminder
+        setActivePage('dashboard'); // Show email verification reminder
       } else if (paymentCompleted) {
-        navigate('/writing'); // Full access
+        setActivePage('writing'); // Full access
       } else {
-        navigate('/pricing'); // Need to complete payment
+        setActivePage('pricing'); // Need to complete payment
       }
     } else {
       setAuthModalMode('signup');

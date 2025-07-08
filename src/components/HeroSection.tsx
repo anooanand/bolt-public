@@ -7,8 +7,7 @@ interface HeroSectionProps {
 
 export function HeroSection({ onGetStarted }: HeroSectionProps) {
   const handleTryDemo = () => {
-    // Use relative path to navigate to demo page
-    window.location.href = './demo';
+    window.location.href = '/demo';
   };
 
   return (
@@ -40,7 +39,7 @@ export function HeroSection({ onGetStarted }: HeroSectionProps) {
 
           <div className="flex flex-col sm:flex-row justify-center gap-6 sm:gap-8">
             <button 
-              onClick={() => onGetStarted()}
+              onClick={onGetStarted}
               className="px-10 py-5 text-xl font-bold rounded-2xl bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 hover:from-blue-600 hover:via-purple-600 hover:to-pink-600 text-white transition-all duration-300 flex items-center justify-center shadow-lg hover:shadow-xl transform hover:scale-105 border-4 border-white"
             >
               Start Your Adventure!

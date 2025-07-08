@@ -4,7 +4,6 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import { AuthProvider } from './contexts/AuthContext';
 import { AppProvider } from './contexts/AppContext';
 import AppContent from './components/AppContent';
-import { KidChatDemo } from './components/KidChatDemo';
 
 function App() {
   return (
@@ -12,7 +11,7 @@ function App() {
       <AuthProvider>
         <AppProvider>
           <Router>
-            <KidChatDemo />
+            <AppContent />
           </Router>
         </AppProvider>
       </AuthProvider>
