@@ -301,14 +301,6 @@ function AppContent() {
                     localStorage.removeItem('writingContent');
                     localStorage.removeItem('selectedWritingType');
                   }}
-                  onStartNewEssay={() => {
-                    setContent('');
-                    setTextType('');
-                    setPopupFlowCompleted(false);
-                    // Clear localStorage to ensure fresh start
-                    localStorage.removeItem('writingContent');
-                    localStorage.removeItem('selectedWritingType');
-                  }}
                 />
                 
                 {showExamMode ? (
@@ -324,8 +316,6 @@ function AppContent() {
                         textType={textType}
                         onTimerStart={setTimerStarted}
                         onSubmit={handleSubmit}
-                        onTextTypeChange={handleTextTypeChange}
-                        onPopupCompleted={handlePopupCompleted}
                         onTextTypeChange={handleTextTypeChange}
                         onPopupCompleted={handlePopupCompleted}
                       />
