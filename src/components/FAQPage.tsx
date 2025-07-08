@@ -25,7 +25,7 @@ interface StructuredFeedback {
   focusForNextTime: string[];
 }
 
-export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelProps) {
+export function FAQPage({ content, textType, assistanceLevel }: CoachPanelProps) {
   const [structuredFeedback, setStructuredFeedback] = useState<StructuredFeedback | null>(null);
   const [feedbackHistory, setFeedbackHistory] = useState<FeedbackItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -416,3 +416,4 @@ export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelPro
     </div>
   );
 }
+export { FAQPage as CoachPanel };
