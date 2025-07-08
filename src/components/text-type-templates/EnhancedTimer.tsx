@@ -109,12 +109,19 @@ export function EnhancedTimer({ onStart, onPause, onReset }: EnhancedTimerProps)
 
   const minutes = Math.floor(timeLeft / 60);
   const seconds = timeLeft % 60;
+
+  const getTimerColor = () => {
+    if (timeLeft > 25 * 60) {
         return 'border-green-300 bg-gradient-to-r from-green-100 to-green-200 text-green-700';
-  // Determine color based on time remaining
+    } else if (timeLeft <= 5 * 60) {
         return 'border-red-300 bg-gradient-to-r from-red-100 to-red-200 text-red-700';
-    if (timeLeft <= 5 * 60) return 'bg-red-50 border-red-300 text-red-700'; // Less than 5 minutes
+    } else if (timeLeft <= 5 * 60) {
+        return 'bg-red-50 border-red-300 text-red-700'; // Less than 5 minutes
+    } else if (timeLeft <= 10 * 60) {
         return 'border-gray-300 bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700';
+    } else {
         return 'border-blue-300 bg-gradient-to-r from-blue-100 to-blue-200 text-blue-700';
+    }
   };
 
   return (
