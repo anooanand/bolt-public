@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { generatePrompt, getSynonyms, rephraseSentence, evaluateEssay } from '../lib/openai';
 import { dbOperations } from '../lib/database';
 import { useApp } from '../contexts/AppContext';
-import { AlertCircle, Send } from 'lucide-react';
+import { AlertCircle, Send, Sparkles } from 'lucide-react';
 import { InlineSuggestionPopup } from './InlineSuggestionPopup';
 import { WritingStatusBar } from './WritingStatusBar';
 import { WritingTypeSelectionModal } from './WritingTypeSelectionModal';
