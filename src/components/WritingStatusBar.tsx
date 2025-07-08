@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Save, Clock, FileText, AlertCircle } from 'lucide-react';
+import { Save, Clock, FileText, AlertCircle, Zap, Star, Sparkles } from 'lucide-react';
 import { AutoSave } from './AutoSave';
 
 interface WritingStatusBarProps {
@@ -41,29 +41,38 @@ export function WritingStatusBar({ content, textType, onRestore }: WritingStatus
   }, [content]);
 
   return (
-    <div className="flex flex-wrap justify-between items-center p-3 bg-gray-50 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 text-sm">
-      <div className="flex items-center space-x-4 text-gray-600 dark:text-gray-300">
-        <div className="flex items-center">
-          <FileText className="w-4 h-4 mr-1" />
-          <span>{wordCount} words</span>
+    <div className="flex flex-wrap justify-between items-center p-4 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 border-t-4 border-blue-200 dark:border-blue-800 rounded-b-xl text-sm">
+      <div className="flex items-center space-x-6 text-gray-700 dark:text-gray-300">
+        <div className="flex items-center bg-white bg-opacity-70 px-3 py-1.5 rounded-full shadow-sm">
+          <FileText className="w-5 h-5 mr-2 text-blue-500" />
+          <span className="font-bold">{wordCount} words</span>
           
           {showWordCountWarning && (
-            <div className="ml-2 flex items-center text-amber-600 dark:text-amber-400">
-              <AlertCircle className="w-4 h-4 mr-1" />
-              <span className="text-xs">
-                {wordCount < 100 ? 'Consider writing more' : 'Approaching word limit'}
-              </span>
+            <div className="ml-2 flex items-center">
+              <div className="bg-amber-100 text-amber-700 px-2 py-1 rounded-full text-xs font-bold flex items-center">
+                <AlertCircle className="w-3 h-3 mr-1" />
+                {wordCount < 100 ? 'Write more!' : 'Almost there!'}
+              </div>
             </div>
           )}
         </div>
         
-        <div className="flex items-center">
-          <span>{characterCount} characters</span>
+        <div className="flex items-center bg-white bg-opacity-70 px-3 py-1.5 rounded-full shadow-sm">
+          <Zap className="w-5 h-5 mr-2 text-purple-500" />
+          <span className="font-bold">{characterCount} characters</span>
         </div>
         
-        <div className="flex items-center">
-          <Clock className="w-4 h-4 mr-1" />
-          <span>{readingTime} min read</span>
+        <div className="flex items-center bg-white bg-opacity-70 px-3 py-1.5 rounded-full shadow-sm">
+          <Clock className="w-5 h-5 mr-2 text-green-500" />
+          <span className="font-bold">{readingTime} min read</span>
+          {readingTime >= 3 && (
+            <div className="ml-2">
+              <span className="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs font-bold flex items-center">
+                <Star className="w-3 h-3 mr-1" />
+                Great job!
+              </span>
+            </div>
+          )}
         </div>
       </div>
       
@@ -75,9 +84,10 @@ export function WritingStatusBar({ content, textType, onRestore }: WritingStatus
         />
         
         {lastSaved && (
-          <div className="flex items-center text-gray-500 dark:text-gray-400 ml-4">
-            <Save className="w-4 h-4 mr-1" />
-            <span>Last saved: {lastSaved.toLocaleTimeString()}</span>
+          <div className="flex items-center bg-white bg-opacity-70 px-3 py-1.5 rounded-full shadow-sm ml-4">
+            <Save className="w-5 h-5 mr-2 text-blue-500" />
+            <span className="font-bold text-gray-700">Saved at: {lastSaved.toLocaleTimeString()}</span>
+            <Sparkles className="w-4 h-4 ml-2 text-yellow-500" />
           </div>
         )}
       </div>

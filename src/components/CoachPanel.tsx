@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { MessageSquare, Sparkles, ChevronDown, ChevronUp, ThumbsUp, Lightbulb, HelpCircle, Target, AlertCircle } from 'lucide-react';
+import { MessageSquare, Sparkles, ChevronDown, ChevronUp, ThumbsUp, Lightbulb, HelpCircle, Target, AlertCircle, Star, Zap, Gift, Heart } from 'lucide-react';
 import { getWritingFeedback } from '../lib/openai';
 import AIErrorHandler from '../utils/errorHandling';
 import { promptConfig } from '../config/prompts';
@@ -231,15 +231,15 @@ export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelPro
   const getFeedbackItemStyle = (type: FeedbackItem['type']) => {
     switch (type) {
       case 'praise':
-        return { icon: <ThumbsUp className="h-5 w-5 text-green-600 mr-2 shrink-0" />, bgColor: 'bg-green-50', textColor: 'text-green-800' };
+        return { icon: <Star className="h-6 w-6 text-yellow-500 mr-3 shrink-0" />, bgColor: 'bg-gradient-to-r from-green-50 to-green-100', textColor: 'text-green-800' };
       case 'suggestion':
-        return { icon: <Lightbulb className="h-5 w-5 text-amber-600 mr-2 shrink-0" />, bgColor: 'bg-amber-50', textColor: 'text-amber-800' };
+        return { icon: <Lightbulb className="h-6 w-6 text-amber-500 mr-3 shrink-0" />, bgColor: 'bg-gradient-to-r from-amber-50 to-amber-100', textColor: 'text-amber-800' };
       case 'question':
-        return { icon: <HelpCircle className="h-5 w-5 text-blue-600 mr-2 shrink-0" />, bgColor: 'bg-blue-50', textColor: 'text-blue-800' };
+        return { icon: <HelpCircle className="h-6 w-6 text-blue-500 mr-3 shrink-0" />, bgColor: 'bg-gradient-to-r from-blue-50 to-blue-100', textColor: 'text-blue-800' };
       case 'challenge':
-        return { icon: <Target className="h-5 w-5 text-purple-600 mr-2 shrink-0" />, bgColor: 'bg-purple-50', textColor: 'text-purple-800' };
+        return { icon: <Zap className="h-6 w-6 text-purple-500 mr-3 shrink-0" />, bgColor: 'bg-gradient-to-r from-purple-50 to-purple-100', textColor: 'text-purple-800' };
       default:
-        return { icon: <Sparkles className="h-5 w-5 text-gray-600 mr-2 shrink-0" />, bgColor: 'bg-gray-50', textColor: 'text-gray-800' };
+        return { icon: <Gift className="h-6 w-6 text-gray-500 mr-3 shrink-0" />, bgColor: 'bg-gradient-to-r from-gray-50 to-gray-100', textColor: 'text-gray-800' };
     }
   };
 
@@ -252,40 +252,41 @@ export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelPro
 
   const getWordCountMessage = () => {
     if (currentWordCount < 50) {
-      return `Write ${wordsNeeded} more word${wordsNeeded !== 1 ? 's' : ''} to get AI feedback (${currentWordCount}/50)`;
+      return `Write ${wordsNeeded} more word${wordsNeeded !== 1 ? 's' : ''} to get help (${currentWordCount}/50)`;
     } else if (currentWordCount < 200) {
-      return `Good start! Aim for ${targetWordCount} words for NSW Selective standards (${currentWordCount}/${targetWordCount})`;
+      return `Great start! Try to write about ${targetWordCount} words (${currentWordCount}/${targetWordCount})`;
     } else if (isNearTarget) {
-      return `Excellent length for NSW Selective! Focus on quality (${currentWordCount}/${targetWordCount})`;
+      return `Perfect length! Your story is just right! (${currentWordCount}/${targetWordCount})`;
     } else if (isOverTarget) {
-      return `Consider editing for conciseness. NSW Selective values quality over quantity (${currentWordCount}/${targetWordCount})`;
+      return `Wow, you wrote a lot! Maybe check if it's too long? (${currentWordCount}/${targetWordCount})`;
     }
-    return `Current word count: ${currentWordCount}/${targetWordCount}`;
+    return `Words so far: ${currentWordCount}/${targetWordCount}`;
   };
 
   const getWordCountColor = () => {
-    if (currentWordCount < 50) return 'text-gray-600 dark:text-gray-400';
-    if (currentWordCount < 200) return 'text-blue-600 dark:text-blue-400';
-    if (isNearTarget) return 'text-green-600 dark:text-green-400';
-    if (isOverTarget) return 'text-amber-600 dark:text-amber-400';
-    return 'text-gray-600 dark:text-gray-400';
+    if (currentWordCount < 50) return 'text-gray-700 dark:text-gray-400';
+    if (currentWordCount < 200) return 'text-blue-700 dark:text-blue-400';
+    if (isNearTarget) return 'text-green-700 dark:text-green-400';
+    if (isOverTarget) return 'text-amber-700 dark:text-amber-400';
+    return 'text-gray-700 dark:text-gray-400';
   };
 
   return (
     <div className="h-full flex flex-col">
       {/* Word count indicator */}
-      <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700">
-        <div className={`text-sm flex items-center ${getWordCountColor()}`}>
-          <Sparkles className="w-4 h-4 mr-2" />
+      <div className="px-4 py-3 border-b-4 border-purple-200 dark:border-purple-800 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20">
+        <div className={`text-base flex items-center font-bold ${getWordCountColor()}`}>
+          <Sparkles className="w-5 h-5 mr-2" />
           {getWordCountMessage()}
+          {isNearTarget && <Star className="w-5 h-5 ml-2 text-yellow-500 fill-current" />}
         </div>
       </div>
 
       {/* Error indicator */}
       {error && (
-        <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700">
-          <div className="text-sm text-amber-600 dark:text-amber-400 flex items-center">
-            <AlertCircle className="w-4 h-4 mr-2" />
+        <div className="px-4 py-3 border-b-4 border-amber-200 dark:border-amber-800 bg-gradient-to-r from-amber-50 to-red-50 dark:from-amber-900/20 dark:to-red-900/20">
+          <div className="text-base text-amber-700 dark:text-amber-400 flex items-center font-bold">
+            <AlertCircle className="w-5 h-5 mr-2" />
             {error}
           </div>
         </div>
@@ -293,38 +294,43 @@ export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelPro
 
       {/* Loading indicator */}
       {isLoading && (
-        <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700">
-          <div className="text-sm text-blue-600 dark:text-blue-400 flex items-center">
-            <div className="loading-spinner mr-2"></div>
-            Thinking...
+        <div className="px-4 py-3 border-b-4 border-blue-200 dark:border-blue-800 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20">
+          <div className="text-base text-blue-700 dark:text-blue-400 flex items-center font-bold">
+            <div className="loading-spinner mr-3"></div>
+            Thinking about your story...
           </div>
         </div>
       )}
 
-      <div className="coach-panel-content space-y-3">
+      <div className="coach-panel-content space-y-4">
         {structuredFeedback?.overallComment && (
-          <div className="p-3 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded-lg text-sm">
-            <p className="font-medium">A quick thought:</p>
-            <p>{structuredFeedback.overallComment}</p>
+          <div className="p-5 bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-900/30 dark:to-blue-900/30 text-indigo-700 dark:text-indigo-300 rounded-2xl text-base border-2 border-indigo-200 dark:border-indigo-800 shadow-md">
+            <div className="flex items-start">
+              <Heart className="w-6 h-6 text-indigo-500 mr-3 mt-1 shrink-0" />
+              <div>
+                <p className="font-bold text-lg mb-2">A friendly thought:</p>
+                <p className="leading-relaxed">{structuredFeedback.overallComment}</p>
+              </div>
+            </div>
           </div>
         )}
 
         {structuredFeedback?.feedbackItems?.map((item, index) => {
           const { icon, bgColor, textColor } = getFeedbackItemStyle(item.type);
           return (
-            <div key={index} className={`feedback-item feedback-item-${item.type} flex`}>
+            <div key={index} className={`feedback-item feedback-item-${item.type} flex transform hover:scale-102 transition-all duration-300`}>
               <div>{icon}</div>
-              <div className="flex-grow">
-                <p className="font-semibold capitalize">{item.area}</p>
-                <p className="mt-1">{item.text}</p>
+              <div className="flex-grow relative">
+                <p className="font-bold text-lg capitalize">{item.area}</p>
+                <p className="mt-2 text-base leading-relaxed">{item.text}</p>
                 {item.exampleFromText && (
-                  <p className="mt-1 text-xs italic border-l-2 border-current pl-2 ml-2 opacity-80">
-                    For example, in your text: "{item.exampleFromText}"
+                  <p className="mt-3 text-sm italic border-l-4 border-current pl-3 ml-2 opacity-90 bg-white bg-opacity-50 p-2 rounded-r-lg">
+                    <span className="font-bold">From your story:</span> "{item.exampleFromText}"
                   </p>
                 )}
                 {item.suggestionForImprovement && (
-                  <p className="mt-1 text-xs border-l-2 border-current pl-2 ml-2 opacity-80">
-                    <span className="font-medium">Try this:</span> {item.suggestionForImprovement}
+                  <p className="mt-3 text-sm border-l-4 border-current pl-3 ml-2 opacity-90 bg-white bg-opacity-50 p-2 rounded-r-lg">
+                    <span className="font-bold">Try this:</span> {item.suggestionForImprovement}
                   </p>
                 )}
               </div>
@@ -333,43 +339,61 @@ export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelPro
         })}
 
         {structuredFeedback?.feedbackItems?.length === 0 && currentWordCount >= 50 && !isLoading && (
-          <div className="p-3 bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded-lg text-sm text-center">
-            <Sparkles className="w-6 h-6 mx-auto mb-2 opacity-50" />
-            <p>AI Coach is analyzing your writing...</p>
-            <p className="text-xs mt-1">This may take a moment</p>
+          <div className="p-6 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 text-gray-700 dark:text-gray-300 rounded-2xl text-base text-center border-2 border-gray-200 dark:border-gray-700 shadow-md">
+            <Sparkles className="w-10 h-10 mx-auto mb-3 text-gray-400 dark:text-gray-500" />
+            <p className="font-bold text-lg mb-2">Your writing buddy is thinking...</p>
+            <p>Keep writing while I look at your story!</p>
+            <div className="mt-4 flex justify-center space-x-1">
+              <div className="w-3 h-3 bg-gray-300 dark:bg-gray-600 rounded-full animate-bounce"></div>
+              <div className="w-3 h-3 bg-gray-300 dark:bg-gray-600 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+              <div className="w-3 h-3 bg-gray-300 dark:bg-gray-600 rounded-full animate-bounce" style={{animationDelay: '0.4s'}}></div>
+            </div>
           </div>
         )}
 
         {structuredFeedback?.focusForNextTime && structuredFeedback.focusForNextTime.length > 0 && (
-          <div className="p-3 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg text-sm">
-            <p className="font-medium">Keep in mind for next time:</p>
-            <ul className="list-disc list-inside mt-1">
+          <div className="p-5 bg-gradient-to-r from-blue-50 to-green-50 dark:from-blue-900/20 dark:to-green-900/20 text-gray-700 dark:text-gray-300 rounded-2xl text-base border-2 border-blue-200 dark:border-blue-800 shadow-md">
+            <div className="flex items-start">
+              <Star className="w-6 h-6 text-blue-500 mr-3 mt-1 shrink-0" />
+              <div>
+                <p className="font-bold text-lg mb-2">For next time:</p>
+                <ul className="list-none space-y-2">
               {structuredFeedback.focusForNextTime.map((focus, idx) => (
-                <li key={idx}>{focus}</li>
+                <li key={idx} className="flex items-start">
+                  <div className="w-5 h-5 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center mr-2 mt-0.5 text-blue-600 dark:text-blue-400 font-bold text-xs">
+                    {idx + 1}
+                  </div>
+                  <span>{focus}</span>
+                </li>
               ))}
-            </ul>
+              </ul>
+            </div>
+            </div>
           </div>
         )}
       </div>
 
-      <form onSubmit={handleQuestionSubmit} className="coach-panel-footer space-y-3">
+      <form onSubmit={handleQuestionSubmit} className="coach-panel-footer space-y-4">
         <button
           type="button"
           onClick={() => setShowPrompts(!showPrompts)}
-          className="w-full flex items-center justify-between px-3 py-2 bg-blue-50 dark:bg-blue-900/30 rounded-md text-sm font-medium text-blue-800 dark:text-blue-200 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
+          className="w-full flex items-center justify-between px-4 py-3 bg-gradient-to-r from-blue-100 to-purple-100 dark:from-blue-900/30 dark:to-purple-900/30 rounded-xl text-base font-bold text-blue-800 dark:text-blue-200 hover:from-blue-200 hover:to-purple-200 dark:hover:from-blue-800/40 dark:hover:to-purple-800/40 transition-all duration-300 shadow-md transform hover:scale-102 border-2 border-blue-200 dark:border-blue-800"
         >
-          <span>NSW Selective Writing Questions</span>
-          {showPrompts ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          <span className="flex items-center">
+            <Star className="w-5 h-5 mr-2 text-yellow-500" />
+            Questions to Ask Your Writing Buddy
+          </span>
+          {showPrompts ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
         </button>
 
         {showPrompts && (
-          <div className="space-y-1 bg-white dark:bg-gray-800 rounded-md p-2 border border-gray-100 dark:border-gray-600">
+          <div className="space-y-2 bg-white dark:bg-gray-800 rounded-xl p-4 border-2 border-blue-100 dark:border-blue-800 shadow-inner">
             {commonPrompts.map((prompt, index) => (
               <button
                 type="button"
                 key={index}
                 onClick={() => handlePromptClick(prompt)}
-                className="w-full text-left text-sm px-3 py-1.5 rounded text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                className="w-full text-left text-base px-4 py-2 rounded-xl text-gray-700 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-all duration-300 font-medium"
               >
                 {prompt}
               </button>
@@ -377,20 +401,21 @@ export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelPro
           </div>
         )}
 
-        <div className="flex space-x-2">
+        <div className="flex space-x-3">
           <input
             type="text"
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
-            placeholder="Ask your coach a question..."
-            className="flex-1 form-input"
+            placeholder="Ask me anything about your writing..."
+            className="flex-1 form-input rounded-xl border-3 border-yellow-300 dark:border-yellow-800 text-base py-3 px-4 shadow-md focus:border-yellow-400 focus:ring-4 focus:ring-yellow-200"
           />
           <button
             type="submit"
             disabled={isLoading || !question.trim()}
-            className="bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed touch-friendly-button"
+            className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white hover:from-yellow-600 hover:to-orange-600 disabled:opacity-50 disabled:cursor-not-allowed touch-friendly-button rounded-xl px-6 py-3 font-bold text-base shadow-md transform hover:scale-105 transition-all duration-300 flex items-center"
           >
-            Ask
+            <Sparkles className="w-5 h-5 mr-2" />
+            Ask Me!
           </button>
         </div>
       </form>

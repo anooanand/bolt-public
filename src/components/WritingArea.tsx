@@ -474,46 +474,86 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
   return (
     <div ref={containerRef} className="h-full flex flex-col bg-white dark:bg-gray-800 rounded-lg shadow-sm writing-area-container">
       <div className="p-4 border-b border-gray-200 dark:border-gray-700 space-y-4 content-spacing">
-        <div className="flex flex-wrap justify-between items-center gap-2">
-          <h2 className="text-lg font-medium text-gray-900 dark:text-white capitalize">
-            {currentTextType ? `${currentTextType} Writing` : (
+        <div className="flex flex-wrap justify-between items-center gap-3">
+          <h2 className="text-xl font-bold text-gray-900 capitalize flex items-center">
+            {textType ? (
+              <>
+                <span className="text-2xl mr-2">
+                  {textType === 'narrative' ? '🚀' : 
+                   textType === 'persuasive' ? '🔊' : 
+                   textType === 'expository' ? '📚' : 
+                   textType === 'reflective' ? '✨' : 
+                   textType === 'descriptive' ? '🎨' : 
+                   textType === 'recount' ? '📆' : 
+                   textType === 'discursive' ? '🤔' : 
+                   textType === 'news report' ? '📰' : 
+                   textType === 'letter' ? '✉️' : 
+                   textType === 'diary entry' ? '📔' : 
+                   textType === 'speech' ? '🎤' : '📝'}
+                </span>
+                <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">
+                  {textType === 'narrative' ? 'Adventure Story' : 
+                   textType === 'persuasive' ? 'Convince Others' : 
+                   textType === 'expository' ? 'Explain & Teach' : 
+                   textType === 'reflective' ? 'My Thoughts & Feelings' : 
+                   textType === 'descriptive' ? 'Describe with Details' : 
+                   textType === 'recount' ? 'Tell What Happened' : 
+                   textType === 'discursive' ? 'Explore Different Ideas' : 
+                   textType === 'news report' ? 'News Reporter' : 
+                   textType === 'letter' ? 'Write a Letter' : 
+                   textType === 'diary entry' ? 'Dear Diary' : 
+                   textType === 'speech' ? 'Give a Speech' : 
+                   `${textType} Writing`}
+                </span>
+              </>
+            ) : (
               <button
                 onClick={() => setShowWritingTypeModal(true)}
-                className="text-blue-600 hover:underline"
+                className="text-blue-600 hover:underline flex items-center bg-blue-100 px-4 py-2 rounded-xl hover:bg-blue-200 transition-all duration-300"
               >
-                Select Writing Type
+                <span className="text-xl mr-2">📝</span>
+                <span className="font-bold">Choose Your Story Type</span>
               </button>
             )}
           </h2>
           <div className="flex items-center gap-2">
             <button
               onClick={() => setShowHighlights(!showHighlights)}
-              className={`px-3 py-1 text-sm rounded-md transition-colors ${
+              className={`px-4 py-2 text-sm font-bold rounded-xl transition-all duration-300 ${
                 showHighlights 
-                  ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300' 
-                  : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
+                  ? 'bg-gradient-to-r from-blue-200 to-blue-300 text-blue-700 dark:from-blue-800 dark:to-blue-700 dark:text-blue-200 shadow-md transform scale-105' 
+                  : 'bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 dark:from-gray-800 dark:to-gray-700 dark:text-gray-300'
               }`}
             >
-              {showHighlights ? 'Hide Highlights' : 'Show Highlights'}
+              {showHighlights ? '🌟 Hide Magic Highlights' : '✨ Show Magic Highlights'}
             </button>
             {noTypeSelected ? (
-              <div className="flex items-center text-amber-600 dark:text-amber-400 text-sm">
-                <AlertCircle className="w-4 h-4 mr-2" />
-                Please select a writing type first
+              <div className="flex items-center text-amber-700 dark:text-amber-400 text-sm font-bold bg-amber-100 dark:bg-amber-900/30 px-4 py-2 rounded-xl">
+                <AlertCircle className="w-5 h-5 mr-2" />
+                Please choose a story type first!
               </div>
             ) : !prompt && (
-              <div className="flex items-center text-blue-600 dark:text-blue-400 text-sm">
-                <AlertCircle className="w-4 h-4 mr-2" />
-                {isGenerating ? 'Generating prompt...' : 'Choose or enter a prompt to start writing'}
+              <div className="flex items-center text-blue-700 dark:text-blue-400 text-sm font-bold bg-blue-100 dark:bg-blue-900/30 px-4 py-2 rounded-xl">
+                <AlertCircle className="w-5 h-5 mr-2" />
+                {isGenerating ? '🪄 Creating a writing prompt...' : '✏️ Choose a writing prompt to start!'}
               </div>
             )}
           </div>
         </div>
 
         {prompt && !noTypeSelected && (
-          <div className="bg-blue-50 dark:bg-blue-900/30 p-4 rounded-md">
-            <h3 className="font-medium text-blue-900 dark:text-blue-100 mb-2">Writing Prompt:</h3>
-            <p className="text-blue-800 dark:text-blue-200">{prompt}</p>
+          <div className="bg-gradient-to-r from-blue-100 to-purple-100 dark:from-blue-900/30 dark:to-purple-900/30 p-5 rounded-xl border-3 border-blue-300 dark:border-blue-800 shadow-md">
+            <div className="flex">
+              <div className="flex-shrink-0 mr-4">
+                <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center shadow-md">
+                  <Sparkles className="w-6 h-6 text-white" />
+                </div>
+              </div>
+              <div>
+                <h3 className="font-bold text-xl text-blue-900 dark:text-blue-100 mb-3">Your Writing Adventure:</h3>
+                <p className="text-blue-800 dark:text-blue-200 text-lg leading-relaxed">{prompt}</p>
+              </div>
+            </div>
           </div>
         )}
       </div>

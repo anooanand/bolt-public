@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Bot, RefreshCw } from 'lucide-react';
+import { Bot, RefreshCw, Sparkles, Wand, Star } from 'lucide-react';
 import { CoachPanel } from './CoachPanel';
 import { ParaphrasePanel } from './ParaphrasePanel';
 import './improved-layout.css';
@@ -26,38 +26,41 @@ export function TabbedCoachPanel({
   const tabs = [
     {
       id: 'coach' as TabType,
-      label: 'AI Coach',
+      label: 'Writing Buddy',
       icon: Bot,
-      description: 'Get writing feedback and guidance'
+      description: 'Get help with your writing'
     },
     {
       id: 'paraphrase' as TabType,
-      label: 'Paraphrase',
+      label: 'Word Magic',
       icon: RefreshCw,
-      description: 'Rephrase and improve text'
+      description: 'Make your words sound amazing'
     }
   ];
 
   return (
     <div className="h-full coach-panel-container">
       {/* Tab Navigation */}
-      <div className="coach-panel-header border-b-0">
-        <div className="flex space-x-1 bg-gray-100 dark:bg-gray-700 p-1 rounded-lg">
+      <div className="coach-panel-header border-b-0 bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30">
+        <div className="flex space-x-2 bg-white dark:bg-gray-800 p-2 rounded-2xl shadow-md">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             return (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
+                className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-base font-bold transition-all duration-300 ${
                   activeTab === tab.id
-                    ? 'bg-white dark:bg-gray-600 text-blue-600 dark:text-blue-400 shadow-sm'
-                    : 'text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-600'
+                    ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg transform scale-105'
+                    : 'bg-gradient-to-r from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 text-gray-700 dark:text-gray-300 hover:from-gray-200 hover:to-gray-300 dark:hover:from-gray-600 dark:hover:to-gray-700'
                 }`}
                 title={tab.description}
               >
-                <Icon className="w-4 h-4" />
-                <span className="hidden sm:inline">{tab.label}</span>
+                <Icon className="w-5 h-5" />
+                <span>{tab.label}</span>
+                {activeTab === tab.id && (
+                  <Sparkles className="w-4 h-4 ml-1 animate-pulse" />
+                )}
               </button>
             );
           })}
@@ -65,7 +68,17 @@ export function TabbedCoachPanel({
       </div>
 
       {/* Tab Content */}
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 overflow-hidden relative">
+        {activeTab === 'coach' && (
+          <div className="absolute top-2 right-2 z-10">
+            <Star className="w-6 h-6 text-yellow-400 fill-current animate-pulse" />
+          </div>
+        )}
+        {activeTab === 'paraphrase' && (
+          <div className="absolute top-2 right-2 z-10">
+            <Wand className="w-6 h-6 text-purple-400 animate-pulse" />
+          </div>
+        )}
         {activeTab === 'coach' ? (
           <CoachPanel 
             content={content}

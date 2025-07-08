@@ -1,5 +1,5 @@
 import React from 'react';
-import { BookOpen, Clock, AlertCircle } from 'lucide-react';
+import { BookOpen, Clock, AlertCircle, Zap, Star } from 'lucide-react';
 
 interface EnhancedTimerProps {
   onStart: () => void;
@@ -109,43 +109,51 @@ export function EnhancedTimer({ onStart, onPause, onReset }: EnhancedTimerProps)
 
   const minutes = Math.floor(timeLeft / 60);
   const seconds = timeLeft % 60;
-  
+        return 'border-green-300 bg-gradient-to-r from-green-100 to-green-200 text-green-700';
   // Determine color based on time remaining
-  const getTimerColor = () => {
+        return 'border-red-300 bg-gradient-to-r from-red-100 to-red-200 text-red-700';
     if (timeLeft <= 5 * 60) return 'bg-red-50 border-red-300 text-red-700'; // Less than 5 minutes
-    if (timeLeft <= 10 * 60) return 'bg-yellow-50 border-yellow-300 text-yellow-700'; // Less than 10 minutes
-    return 'bg-blue-50 border-blue-300 text-blue-700'; // More than 10 minutes
+        return 'border-gray-300 bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700';
+        return 'border-blue-300 bg-gradient-to-r from-blue-100 to-blue-200 text-blue-700';
   };
 
   return (
     <div className="relative">
       <button
         onClick={handleToggle}
-        className={`inline-flex items-center space-x-2 px-3 py-1.5 rounded-md border ${
-          active ? getTimerColor() : 'bg-white border-gray-300 text-gray-700'
-        } hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500`}
+        className={`inline-flex items-center space-x-2 px-4 py-2 text-sm font-bold rounded-xl border-3 ${
+          active 
+            ? `${getTimerColor()} shadow-md transform scale-105` 
+            : 'border-red-300 bg-gradient-to-r from-red-100 to-red-200 text-red-700 hover:from-red-200 hover:to-red-300'
+        } transition-all duration-300 hover:scale-105 shadow-md`}
       >
-        <Clock className={`h-4 w-4 ${active ? 'text-blue-500' : 'text-gray-500'}`} />
-        <span className="text-sm font-medium">
+        <Clock className="h-5 w-5 mr-2" />
+        <span>
           {String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}
         </span>
+        {active && seconds <= 30 && (
+          <Zap className="h-4 w-4 ml-1 text-yellow-500 animate-pulse" />
+        )}
       </button>
       
       {active && (
-        <div className="absolute right-0 mt-1 flex space-x-1">
+        <div className="absolute right-0 mt-2 flex space-x-2">
           <button
             onClick={handleReset}
-            className="text-xs bg-gray-200 hover:bg-gray-300 text-gray-700 px-2 py-0.5 rounded"
+            className="text-xs bg-gradient-to-r from-gray-200 to-gray-300 text-gray-700 px-3 py-1 rounded-lg font-bold hover:from-gray-300 hover:to-gray-400 transition-all duration-300 shadow-sm"
             title="Reset Timer"
           >
             Reset
           </button>
           <button
             onClick={() => setShowTimelineModal(true)}
-            className="text-xs bg-blue-100 hover:bg-blue-200 text-blue-700 px-2 py-0.5 rounded"
+            className="text-xs bg-gradient-to-r from-blue-200 to-blue-300 text-blue-700 px-3 py-1 rounded-lg font-bold hover:from-blue-300 hover:to-blue-400 transition-all duration-300 shadow-sm"
             title="Show Timeline"
           >
-            Timeline
+            <span className="flex items-center">
+              <Star className="h-3 w-3 mr-1" />
+              Timeline
+            </span>
           </button>
         </div>
       )}
