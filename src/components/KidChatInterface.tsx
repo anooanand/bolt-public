@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { X, Send, Smile, Star, Sparkles } from 'lucide-react';
+import { ChatBubble } from './ChatBubble';
 
 interface Message {
   id: string;
@@ -111,45 +112,14 @@ export function KidChatInterface({ initialMessages = [], onSendMessage }: KidCha
           </div>
         ) : (
           messages.map((message) => (
-            <div 
+            <ChatBubble
               key={message.id} 
-              className={`relative mb-4 max-w-[85%] ${
-                message.sender === 'user' 
-                  ? 'ml-auto bg-blue-500 text-white rounded-t-2xl rounded-bl-2xl' 
-                  : 'mr-auto bg-white dark:bg-gray-700 text-gray-800 dark:text-white rounded-t-2xl rounded-br-2xl border-2 border-purple-200 dark:border-purple-800'
-              } p-4 shadow-md`}
-            >
-              {/* Close Button */}
-              <button 
-                onClick={() => handleRemoveMessage(message.id)}
-                className={`absolute -top-2 -right-2 w-8 h-8 flex items-center justify-center rounded-full shadow-md transition-all duration-300 transform hover:scale-110 z-10 ${
-                  message.sender === 'user'
-                    ? 'bg-red-500 text-white hover:bg-red-600 border-2 border-white'
-                    : 'bg-red-500 text-white hover:bg-red-600 border-2 border-white'
-                }`}
-                aria-label="Remove message"
-              >
-                <X className="h-5 w-5" />
-              </button>
-              
-              {/* Message Content */}
-              <p className="break-words">{message.text}</p>
-              
-              {/* Message Footer */}
-              <div className={`text-xs mt-2 ${
-                message.sender === 'user' 
-                  ? 'text-blue-200' 
-                  : 'text-gray-400 dark:text-gray-500'
-              }`}>
-                {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                {message.sender === 'assistant' && (
-                  <span className="ml-2 inline-flex items-center">
-                    <Star className="h-3 w-3 text-yellow-500 mr-1" />
-                    Writing Buddy
-                  </span>
-                )}
-              </div>
-            </div>
+              id={message.id}
+              text={message.text}
+              sender={message.sender}
+              timestamp={message.timestamp}
+              onRemove={handleRemoveMessage}
+            />
           ))
         )}
         <div ref={messagesEndRef} />

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Lightbulb, Star, Sparkles } from 'lucide-react';
 
+// Improved close button styling
 interface Tip {
   id: string;
   text: string;
@@ -92,7 +93,7 @@ export function ChatTips({ onClose }: ChatTipsProps) {
               {/* Close Button */}
               <button 
                 onClick={() => handleRemoveTip(tip.id)}
-                className="absolute -top-2 -right-2 w-8 h-8 flex items-center justify-center rounded-full shadow-md transition-all duration-300 transform hover:scale-110 bg-red-500 text-white hover:bg-red-600 border-2 border-white z-10"
+                className="absolute -top-2 -right-2 w-8 h-8 flex items-center justify-center rounded-full bg-red-500 text-white hover:bg-red-600 border-2 border-white shadow-md transition-all duration-300 transform hover:scale-110 z-10"
                 aria-label="Remove tip"
               >
                 <X className="h-5 w-5" />
