@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { 
   BookOpen, Clock, Lightbulb, HelpCircle, Award, PenTool,
   Sparkles, Download, Save, Share2, PlusCircle, Rocket,
-  Wand, Target, Zap, Star, Gift
+  Wand, Target, Zap, Star, Gift 
 } from 'lucide-react';
 import { TextTypeGuide } from './text-type-templates/TextTypeGuide';
 import { EnhancedTimer } from './text-type-templates/EnhancedTimer';
@@ -31,7 +31,7 @@ export function WritingToolbar({
   const [showVocabularyTool, setShowVocabularyTool] = useState(false);
   const [showModelResponses, setShowModelResponses] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
-  const [showMistakeIdentifier, setShowMistakeIdentifier] = useState(false);
+  const [showMistakeIdentifier, setShowMistakeIdentifier] = useState(false); 
 
   const handleSaveDocument = () => {
     // Save document to localStorage
@@ -67,7 +67,7 @@ export function WritingToolbar({
       <button
         onClick={onShowPlanningTool}
         className="inline-flex items-center px-4 py-2 text-sm font-bold rounded-xl border-3 border-blue-300 bg-gradient-to-r from-blue-100 to-blue-200 text-blue-700 hover:from-blue-200 hover:to-blue-300 transition-all duration-300 transform hover:scale-105 shadow-md"
-        title="Planning Tool"
+        title="Plan My Story"
       >
         <Rocket className="h-5 w-5 mr-2" />
         Plan My Story
@@ -157,7 +157,8 @@ export function WritingToolbar({
       {/* Modals */}
       {showModelResponses && (
         <ModelResponsesLibrary 
-          textType={textType} 
+          textType={textType}
+          onClose={() => setShowModelResponses(false)}
         />
       )}
       
@@ -165,6 +166,7 @@ export function WritingToolbar({
         <VocabularyEnhancer 
           textType={textType} 
           content={content} 
+          onClose={() => setShowVocabularyTool(false)}
         />
       )}
       
@@ -172,6 +174,7 @@ export function WritingToolbar({
         <AlignedFeedback 
           content={content} 
           textType={textType} 
+          onClose={() => setShowFeedback(false)}
         />
       )}
       
@@ -179,6 +182,7 @@ export function WritingToolbar({
         <MistakeIdentifier 
           content={content} 
           textType={textType} 
+          onClose={() => setShowMistakeIdentifier(false)}
         />
       )}
     </div>
