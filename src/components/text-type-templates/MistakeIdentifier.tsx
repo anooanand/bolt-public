@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AlertTriangle, CheckCircle, Target, Star, Sparkles, Zap, Gift } from 'lucide-react';
 import { identifyCommonMistakes } from '../../lib/openai';
 import AIErrorHandler from '../../utils/errorHandling';
