@@ -9,7 +9,8 @@ import {
   Sparkles,
   Download,
   Save,
-  Share2
+  Share2,
+  PlusCircle
 } from 'lucide-react';
 import { TextTypeGuide } from './text-type-templates/TextTypeGuide';
 import { EnhancedTimer } from './text-type-templates/EnhancedTimer';
@@ -24,14 +25,16 @@ interface WritingToolbarProps {
   onShowHelpCenter: () => void;
   onShowPlanningTool: () => void;
   onTimerStart: () => void;
+  onStartNewEssay: () => void;
 }
 
-export function WritingToolbar({ 
-  content, 
-  textType, 
+export function WritingToolbar({
+  content,
+  textType,
   onShowHelpCenter,
   onShowPlanningTool,
-  onTimerStart
+  onTimerStart,
+  onStartNewEssay
 }: WritingToolbarProps) {
   const [showVocabularyTool, setShowVocabularyTool] = useState(false);
   const [showModelResponses, setShowModelResponses] = useState(false);
@@ -117,6 +120,15 @@ export function WritingToolbar({
       </button>
       
       <div className="flex-grow"></div>
+      
+      <button
+        onClick={onStartNewEssay}
+        className="inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md bg-green-600 text-white hover:bg-green-700 transition-colors"
+        title="Start New Essay"
+      >
+        <PlusCircle className="h-4 w-4 mr-1.5" />
+        Start New Essay
+      </button>
       
       <button
         onClick={handleSaveDocument}
