@@ -4,6 +4,7 @@ import App from './App';
 import './index.css';
 import './darkmode.css';
 import './styles/kid-theme.css';
+import './styles/minimalist-theme.css';
 import { AuthProvider } from './contexts/AuthContext';
 import { LearningProvider } from './contexts/LearningContext';
 

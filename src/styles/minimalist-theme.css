@@ -1,0 +1,394 @@
+/* ===================================
+   MINIMALIST THEME STYLESHEET
+   ================================= */
+
+:root {
+  /* Refined Color Palette */
+  --minimalist-primary: #4361ee;
+  --minimalist-secondary: #3a0ca3;
+  --minimalist-accent: #4cc9f0;
+  --minimalist-success: #2ec4b6;
+  --minimalist-warning: #ff9f1c;
+  --minimalist-error: #e63946;
+  
+  /* Neutral Colors */
+  --minimalist-black: #1a1a2e;
+  --minimalist-dark-gray: #2c2c3e;
+  --minimalist-gray: #4a4a68;
+  --minimalist-light-gray: #e5e5e5;
+  --minimalist-white: #ffffff;
+  
+  /* Gradients */
+  --minimalist-gradient-primary: linear-gradient(135deg, var(--minimalist-primary), var(--minimalist-secondary));
+  --minimalist-gradient-accent: linear-gradient(135deg, var(--minimalist-accent), var(--minimalist-primary));
+  
+  /* Spacing */
+  --minimalist-spacing-xs: 0.5rem;
+  --minimalist-spacing-sm: 0.75rem;
+  --minimalist-spacing-md: 1.25rem;
+  --minimalist-spacing-lg: 2rem;
+  --minimalist-spacing-xl: 3rem;
+  
+  /* Border Radius */
+  --minimalist-radius-sm: 0.375rem;
+  --minimalist-radius-md: 0.5rem;
+  --minimalist-radius-lg: 0.75rem;
+  --minimalist-radius-xl: 1rem;
+  
+  /* Shadows */
+  --minimalist-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --minimalist-shadow-md: 0 4px 6px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0, 0, 0, 0.1);
+  --minimalist-shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.05), 0 4px 6px rgba(0, 0, 0, 0.05);
+  
+  /* Transitions */
+  --minimalist-transition-fast: 150ms ease;
+  --minimalist-transition-normal: 300ms ease;
+  --minimalist-transition-slow: 500ms ease;
+}
+
+/* ===================================
+   GLOBAL STYLES
+   ================================= */
+
+.minimalist-theme {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  color: var(--minimalist-black);
+  line-height: 1.5;
+  background-color: var(--minimalist-white);
+}
+
+/* ===================================
+   TYPOGRAPHY
+   ================================= */
+
+.minimalist-h1 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  line-height: 1.2;
+  margin-bottom: var(--minimalist-spacing-lg);
+  color: var(--minimalist-black);
+}
+
+.minimalist-h2 {
+  font-size: 2rem;
+  font-weight: 600;
+  line-height: 1.3;
+  margin-bottom: var(--minimalist-spacing-md);
+  color: var(--minimalist-black);
+}
+
+.minimalist-h3 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.4;
+  margin-bottom: var(--minimalist-spacing-md);
+  color: var(--minimalist-black);
+}
+
+.minimalist-text {
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--minimalist-gray);
+  margin-bottom: var(--minimalist-spacing-md);
+}
+
+/* ===================================
+   BUTTONS
+   ================================= */
+
+.minimalist-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 1.5rem;
+  border-radius: var(--minimalist-radius-md);
+  font-weight: 500;
+  font-size: 0.875rem;
+  transition: all var(--minimalist-transition-normal);
+  cursor: pointer;
+  border: none;
+  box-shadow: var(--minimalist-shadow-sm);
+}
+
+.minimalist-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--minimalist-shadow-md);
+}
+
+.minimalist-btn:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.3);
+}
+
+.minimalist-btn-primary {
+  background-color: var(--minimalist-primary);
+  color: var(--minimalist-white);
+}
+
+.minimalist-btn-primary:hover {
+  background-color: #3b54d3;
+}
+
+.minimalist-btn-secondary {
+  background-color: var(--minimalist-white);
+  color: var(--minimalist-primary);
+  border: 1px solid var(--minimalist-primary);
+}
+
+.minimalist-btn-secondary:hover {
+  background-color: rgba(67, 97, 238, 0.05);
+}
+
+.minimalist-btn-ghost {
+  background-color: transparent;
+  color: var(--minimalist-primary);
+  box-shadow: none;
+}
+
+.minimalist-btn-ghost:hover {
+  background-color: rgba(67, 97, 238, 0.05);
+  box-shadow: none;
+}
+
+/* ===================================
+   CARDS
+   ================================= */
+
+.minimalist-card {
+  background-color: var(--minimalist-white);
+  border-radius: var(--minimalist-radius-lg);
+  padding: var(--minimalist-spacing-lg);
+  box-shadow: var(--minimalist-shadow-md);
+  transition: all var(--minimalist-transition-normal);
+}
+
+.minimalist-card:hover {
+  box-shadow: var(--minimalist-shadow-lg);
+}
+
+/* ===================================
+   FORMS
+   ================================= */
+
+.minimalist-input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--minimalist-light-gray);
+  border-radius: var(--minimalist-radius-md);
+  font-size: 0.875rem;
+  transition: all var(--minimalist-transition-fast);
+}
+
+.minimalist-input:focus {
+  outline: none;
+  border-color: var(--minimalist-primary);
+  box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.2);
+}
+
+.minimalist-label {
+  display: block;
+  margin-bottom: var(--minimalist-spacing-xs);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--minimalist-gray);
+}
+
+/* ===================================
+   NAVIGATION
+   ================================= */
+
+.minimalist-nav {
+  display: flex;
+  align-items: center;
+  padding: var(--minimalist-spacing-md) var(--minimalist-spacing-lg);
+  background-color: var(--minimalist-white);
+  box-shadow: var(--minimalist-shadow-sm);
+}
+
+.minimalist-nav-link {
+  padding: var(--minimalist-spacing-sm) var(--minimalist-spacing-md);
+  color: var(--minimalist-gray);
+  font-weight: 500;
+  text-decoration: none;
+  transition: color var(--minimalist-transition-fast);
+  position: relative;
+}
+
+.minimalist-nav-link:hover {
+  color: var(--minimalist-primary);
+}
+
+.minimalist-nav-link.active {
+  color: var(--minimalist-primary);
+}
+
+.minimalist-nav-link.active::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: var(--minimalist-spacing-md);
+  right: var(--minimalist-spacing-md);
+  height: 2px;
+  background-color: var(--minimalist-primary);
+}
+
+/* ===================================
+   LAYOUT
+   ================================= */
+
+.minimalist-container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 var(--minimalist-spacing-md);
+}
+
+.minimalist-section {
+  padding: var(--minimalist-spacing-xl) 0;
+}
+
+.minimalist-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: var(--minimalist-spacing-lg);
+}
+
+/* ===================================
+   UTILITIES
+   ================================= */
+
+.minimalist-text-center {
+  text-align: center;
+}
+
+.minimalist-flex {
+  display: flex;
+}
+
+.minimalist-flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.minimalist-flex-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.minimalist-flex-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.minimalist-gap-sm {
+  gap: var(--minimalist-spacing-sm);
+}
+
+.minimalist-gap-md {
+  gap: var(--minimalist-spacing-md);
+}
+
+.minimalist-gap-lg {
+  gap: var(--minimalist-spacing-lg);
+}
+
+/* ===================================
+   ANIMATIONS
+   ================================= */
+
+@keyframes minimalist-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes minimalist-slide-up {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.minimalist-animate-fade-in {
+  animation: minimalist-fade-in 0.5s ease forwards;
+}
+
+.minimalist-animate-slide-up {
+  animation: minimalist-slide-up 0.5s ease forwards;
+}
+
+/* ===================================
+   RESPONSIVE DESIGN
+   ================================= */
+
+@media (max-width: 768px) {
+  .minimalist-h1 {
+    font-size: 2rem;
+  }
+  
+  .minimalist-h2 {
+    font-size: 1.75rem;
+  }
+  
+  .minimalist-h3 {
+    font-size: 1.25rem;
+  }
+  
+  .minimalist-section {
+    padding: var(--minimalist-spacing-lg) 0;
+  }
+  
+  .minimalist-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ===================================
+   DARK MODE
+   ================================= */
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --minimalist-black: #f8f9fa;
+    --minimalist-dark-gray: #e9ecef;
+    --minimalist-gray: #ced4da;
+    --minimalist-light-gray: #495057;
+    --minimalist-white: #212529;
+  }
+  
+  .minimalist-card {
+    background-color: #2c2c3e;
+  }
+  
+  .minimalist-btn-secondary {
+    background-color: #2c2c3e;
+  }
+  
+  .minimalist-nav {
+    background-color: #212529;
+  }
+}
+
+/* ===================================
+   ACCESSIBILITY
+   ================================= */
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+.minimalist-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}

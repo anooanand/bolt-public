@@ -78,16 +78,16 @@ export function NavBar({
 
 
   return (
-    <nav className="fixed top-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-b border-gray-200 z-50 dark:bg-gray-900/95 dark:border-gray-700">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
+    <nav className="fixed top-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-b border-gray-100 z-50 dark:bg-gray-900/95 dark:border-gray-800 shadow-sm">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between items-center h-14">
           {/* Logo */}
           <div className="flex items-center">
             <Link to="/" className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">AI</span>
+              <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-md flex items-center justify-center">
+                <span className="text-white font-medium text-sm">AI</span>
               </div>
-              <span className="text-xl font-bold text-gray-900 dark:text-white">InstaChat AI</span>
+              <span className="text-lg font-semibold text-gray-900 dark:text-white tracking-tight">InstaChat AI</span>
             </Link>
           </div>
 
@@ -97,10 +97,10 @@ export function NavBar({
               <Link
                 key={item.id}
                 to={item.href}
-                className={`flex items-center space-x-1 text-sm font-medium transition-colors ${
+                className={`flex items-center space-x-1 text-sm font-medium transition-colors tracking-wide ${
                   activePage === item.id
-                    ? 'text-blue-600 border-b-2 border-blue-600 pb-1'
-                    : 'text-gray-700 hover:text-blue-600 dark:text-gray-300 dark:hover:text-blue-400'
+                    ? 'text-blue-600 border-b border-blue-600 pb-1'
+                    : 'text-gray-600 hover:text-blue-600 dark:text-gray-300 dark:hover:text-blue-400'
                 }`}
               >
                 {item.name}
@@ -113,10 +113,10 @@ export function NavBar({
             <div className="relative">
               <button
                 onClick={() => setIsLearningMenuOpen(!isLearningMenuOpen)}
-                className={`flex items-center space-x-1 text-sm font-medium transition-colors ${
+                className={`flex items-center space-x-1 text-sm font-medium transition-colors tracking-wide ${
                   ['learning', 'progress-dashboard', 'quiz-demo', 'lesson'].includes(activePage)
-                    ? 'text-blue-600 border-b-2 border-blue-600 pb-1'
-                    : 'text-gray-700 hover:text-blue-600 dark:text-gray-300 dark:hover:text-blue-400'
+                    ? 'text-blue-600 border-b border-blue-600 pb-1'
+                    : 'text-gray-600 hover:text-blue-600 dark:text-gray-300 dark:hover:text-blue-400'
                 }`}
               >
                 <span>🎯 My Learning</span>
@@ -132,7 +132,7 @@ export function NavBar({
 
               {/* Learning Dropdown Menu */}
               {isLearningMenuOpen && (
-                <div className="absolute top-full left-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50 dark:bg-gray-800 dark:border-gray-700">
+                <div className="absolute top-full left-0 mt-2 w-64 bg-white rounded-md shadow-md border border-gray-100 py-2 z-50 dark:bg-gray-800 dark:border-gray-700">
                   {learningItems.map((item) => (
                     <Link
                       key={item.id}
@@ -169,7 +169,7 @@ export function NavBar({
                 
                 <Link
                   to="/dashboard"
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors shadow-sm"
                 >
                   🏠 My Space
                 </Link>
@@ -186,8 +186,8 @@ export function NavBar({
                   </button>
                   
                   {isUserMenuOpen && (
-                    <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50 dark:bg-gray-800 dark:border-gray-700">
-                  <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700">
+                    <div className="absolute right-0 mt-2 w-64 bg-white rounded-md shadow-md border border-gray-100 py-2 z-50 dark:bg-gray-800 dark:border-gray-700">
+                  <div className="px-4 py-2 border-b border-gray-100 dark:border-gray-700">
                         <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
                           Hi, {user.email?.split('@')[0]}!
                         </p>
@@ -229,13 +229,13 @@ export function NavBar({
               <div className="flex items-center space-x-4">
                 <button
                   onClick={onSignInClick}
-                  className="text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors dark:text-gray-300 dark:hover:text-blue-400"
+                  className="text-sm font-medium text-gray-600 hover:text-blue-600 transition-colors dark:text-gray-300 dark:hover:text-blue-400"
                 >
                   🔑 Sign In
                 </button>
                 <button
                   onClick={onSignUpClick}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors shadow-sm"
                 >
                   🚀 Get Started
                 </button>
@@ -270,9 +270,9 @@ export function NavBar({
                 key={item.id}
                 to={item.href}
                 className={`block w-full text-left px-3 py-2 rounded-md text-sm font-medium ${
-                  activePage === item.id
-                    ? 'text-blue-600 bg-blue-50 dark:bg-blue-900/30 dark:text-blue-400'
-                    : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-gray-800'
+                  activePage === item.id 
+                    ? 'text-blue-600 bg-blue-50/80 dark:bg-blue-900/20 dark:text-blue-400'
+                    : 'text-gray-600 hover:text-blue-600 hover:bg-gray-50/80 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-gray-800/50'
                 }`}
                 onClick={() => setIsMenuOpen(false)}
               >
@@ -291,7 +291,7 @@ export function NavBar({
                 <Link
                   key={item.id}
                   to={`/${item.id}`}
-                  className="block w-full text-left px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-gray-800"
+                  className="block w-full text-left px-3 py-2 rounded-md text-sm font-medium text-gray-600 hover:text-blue-600 hover:bg-gray-50/80 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-gray-800/50"
                   onClick={() => setIsMenuOpen(false)}
                 >
                   {item.name}
@@ -311,7 +311,7 @@ export function NavBar({
                   
                   <Link
                     to="/dashboard"
-                    className="block w-full text-left px-3 py-2 rounded-md text-sm font-medium bg-blue-600 text-white"
+                    className="block w-full text-left px-3 py-2 rounded-md text-sm font-medium bg-blue-600 text-white shadow-sm"
                     onClick={() => setIsMenuOpen(false)}
                   >
                     🏠 My Space
@@ -352,7 +352,7 @@ export function NavBar({
                       onSignUpClick();
                       setIsMenuOpen(false);
                     }}
-                    className="block w-full text-left px-3 py-2 rounded-md text-sm font-medium bg-blue-600 text-white"
+                    className="block w-full text-left px-3 py-2 rounded-md text-sm font-medium bg-blue-600 text-white shadow-sm"
                   >
                     🚀 Get Started
                   </button>

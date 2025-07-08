@@ -63,10 +63,10 @@ export function WritingToolbar({
   };
 
   return (
-    <div className="flex flex-wrap gap-3 p-3 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 border-b-4 border-blue-200 dark:border-blue-800 rounded-xl shadow-inner">
+    <div className="flex flex-wrap gap-2 p-3 bg-gray-50 dark:from-gray-900/50 dark:to-gray-800/50 border-b border-gray-100 dark:border-gray-700 shadow-sm">
       <button
         onClick={onShowPlanningTool}
-        className="inline-flex items-center px-4 py-2 text-sm font-bold rounded-xl border-3 border-blue-300 bg-gradient-to-r from-blue-100 to-blue-200 text-blue-700 hover:from-blue-200 hover:to-blue-300 transition-all duration-300 transform hover:scale-105 shadow-md"
+        className="inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 transition-all duration-200 shadow-sm"
         title="Plan My Story"
       >
         <Rocket className="h-5 w-5 mr-2" />
@@ -75,7 +75,7 @@ export function WritingToolbar({
       
       <button
         onClick={() => setShowModelResponses(true)}
-        className="inline-flex items-center px-4 py-2 text-sm font-bold rounded-xl border-3 border-purple-300 bg-gradient-to-r from-purple-100 to-purple-200 text-purple-700 hover:from-purple-200 hover:to-purple-300 transition-all duration-300 transform hover:scale-105 shadow-md"
+        className="inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 transition-all duration-200 shadow-sm"
         title="Model Responses"
       >
         <Star className="h-5 w-5 mr-2" />
@@ -84,14 +84,11 @@ export function WritingToolbar({
       
       <div className="relative">
         <EnhancedTimer onStart={onTimerStart} />
-        <div className="absolute -top-1 -right-1 w-5 h-5 bg-green-400 rounded-full flex items-center justify-center animate-pulse">
-          <Sparkles className="w-3 h-3 text-white" />
-        </div>
       </div>
       
       <button
         onClick={() => setShowVocabularyTool(true)}
-        className="inline-flex items-center px-4 py-2 text-sm font-bold rounded-xl border-3 border-yellow-300 bg-gradient-to-r from-yellow-100 to-yellow-200 text-yellow-700 hover:from-yellow-200 hover:to-yellow-300 transition-all duration-300 transform hover:scale-105 shadow-md"
+        className="inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 transition-all duration-200 shadow-sm"
         title="Vocabulary Helper"
       >
         <Wand className="h-5 w-5 mr-2" />
@@ -100,7 +97,7 @@ export function WritingToolbar({
       
       <button
         onClick={() => setShowMistakeIdentifier(true)}
-        className="inline-flex items-center px-4 py-2 text-sm font-bold rounded-xl border-3 border-green-300 bg-gradient-to-r from-green-100 to-green-200 text-green-700 hover:from-green-200 hover:to-green-300 transition-all duration-300 transform hover:scale-105 shadow-md"
+        className="inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 transition-all duration-200 shadow-sm"
         title="Check for Mistakes"
       >
         <Target className="h-5 w-5 mr-2" />
@@ -109,7 +106,7 @@ export function WritingToolbar({
       
       <button
         onClick={() => setShowFeedback(true)}
-        className="inline-flex items-center px-4 py-2 text-sm font-bold rounded-xl border-3 border-pink-300 bg-gradient-to-r from-pink-100 to-pink-200 text-pink-700 hover:from-pink-200 hover:to-pink-300 transition-all duration-300 transform hover:scale-105 shadow-md"
+        className="inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 transition-all duration-200 shadow-sm"
         title="Get Feedback"
       >
         <Zap className="h-5 w-5 mr-2" />
@@ -120,7 +117,7 @@ export function WritingToolbar({
       
       <button
         onClick={onStartNewEssay}
-        className="inline-flex items-center px-4 py-2 text-sm font-bold rounded-xl bg-gradient-to-r from-green-500 to-teal-500 text-white hover:from-green-600 hover:to-teal-600 transition-all duration-300 transform hover:scale-105 shadow-md"
+        className="inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-all duration-200 shadow-sm"
         title="Start New Essay"
       >
         <Gift className="h-5 w-5 mr-2" />
@@ -129,7 +126,7 @@ export function WritingToolbar({
       
       <button
         onClick={handleSaveDocument}
-        className="inline-flex items-center px-4 py-2 text-sm font-bold rounded-xl border-3 border-orange-300 bg-gradient-to-r from-orange-100 to-orange-200 text-orange-700 hover:from-orange-200 hover:to-orange-300 transition-all duration-300 transform hover:scale-105 shadow-md"
+        className="inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 transition-all duration-200 shadow-sm"
         title="Save Document"
       >
         <Save className="h-5 w-5 mr-2" />
@@ -138,7 +135,7 @@ export function WritingToolbar({
       
       <button
         onClick={handleExportDocument}
-        className="inline-flex items-center px-4 py-2 text-sm font-bold rounded-xl border-3 border-indigo-300 bg-gradient-to-r from-indigo-100 to-indigo-200 text-indigo-700 hover:from-indigo-200 hover:to-indigo-300 transition-all duration-300 transform hover:scale-105 shadow-md"
+        className="inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 transition-all duration-200 shadow-sm"
         title="Export Document"
       >
         <Download className="h-5 w-5 mr-2" />
@@ -147,7 +144,7 @@ export function WritingToolbar({
       
       <button
         onClick={onShowHelpCenter}
-        className="inline-flex items-center px-4 py-2 text-sm font-bold rounded-xl border-3 border-red-300 bg-gradient-to-r from-red-100 to-red-200 text-red-700 hover:from-red-200 hover:to-red-300 transition-all duration-300 transform hover:scale-105 shadow-md help-button"
+        className="inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-md border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 transition-all duration-200 shadow-sm help-button"
         title="Help Center"
       >
         <HelpCircle className="h-5 w-5 mr-2" />
