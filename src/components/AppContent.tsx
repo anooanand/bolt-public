@@ -284,17 +284,19 @@ function AppContent() {
                 />
                 
                 <WritingToolbar 
-                  content={content}
-                  textType={textType}
-                  onShowHelpCenter={() => setShowHelpCenter(true)}
-                  onShowPlanningTool={() => setShowPlanningTool(true)}
-                  onTimerStart={() => setTimerStarted(true)}
-                  onStartNewEssay={() => {
-                    setContent('');
-                    setTextType('');
-                    setPopupFlowCompleted(false);
-                  }}
-                />
+  content={content}
+  textType={textType}
+  onShowHelpCenter={() => setShowHelpCenter(true)}
+  onShowPlanningTool={() => setShowPlanningTool(true)}
+  onTimerStart={() => setTimerStarted(true)}
+  onStartNewEssay={() => {
+    setContent('');
+    setTextType('');
+    setPopupFlowCompleted(false);
+    localStorage.removeItem('writingContent');
+    localStorage.removeItem('selectedWritingType');
+  }}
+/>
                 
                 {showExamMode ? (
                   <ExamSimulationMode 
