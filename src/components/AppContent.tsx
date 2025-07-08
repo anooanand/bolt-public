@@ -70,6 +70,10 @@ function AppContent() {
       setTextType('');
       setPopupFlowCompleted(false);
       
+      // Clear localStorage to ensure fresh start
+      localStorage.removeItem('writingContent');
+      localStorage.removeItem('selectedWritingType');
+      
       // If we're on the writing page, this will trigger the writing type modal
       if (activePage === 'writing') {
         // The WritingArea component will handle showing the modal
@@ -284,19 +288,20 @@ function AppContent() {
                 />
                 
                 <WritingToolbar 
-  content={content}
-  textType={textType}
-  onShowHelpCenter={() => setShowHelpCenter(true)}
-  onShowPlanningTool={() => setShowPlanningTool(true)}
-  onTimerStart={() => setTimerStarted(true)}
-  onStartNewEssay={() => {
-    setContent('');
-    setTextType('');
-    setPopupFlowCompleted(false);
-    localStorage.removeItem('writingContent');
-    localStorage.removeItem('selectedWritingType');
-  }}
-/>
+                  content={content}
+                  textType={textType}
+                  onShowHelpCenter={() => setShowHelpCenter(true)}
+                  onShowPlanningTool={() => setShowPlanningTool(true)}
+                  onTimerStart={() => setTimerStarted(true)}
+                  onStartNewEssay={() => {
+                    setContent('');
+                    setTextType('');
+                    setPopupFlowCompleted(false);
+                    // Clear localStorage to ensure fresh start
+                    localStorage.removeItem('writingContent');
+                    localStorage.removeItem('selectedWritingType');
+                  }}
+                />
                 
                 {showExamMode ? (
                   <ExamSimulationMode 
