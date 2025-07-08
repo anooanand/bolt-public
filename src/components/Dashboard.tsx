@@ -1,549 +1,418 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
-import { isEmailVerified, hasAnyAccess, getUserAccessStatus } from '../lib/supabase';
-import { 
-  Mail, 
-  CheckCircle, 
-  Clock, 
-  FileText, 
-  PenTool, 
-  BarChart3, 
-  Settings, 
-  X,
-  Star,
-  BookOpen,
-  Zap,
-  Heart,
-  Trophy,
-  Sparkles,
-  Smile,
-  Target,
-  Gift
-} from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { MessageSquare, Sparkles, ChevronDown, ChevronUp, ThumbsUp, Lightbulb, HelpCircle, Target, AlertCircle, Star, Zap, Gift, Heart } from 'lucide-react';
+import { getWritingFeedback } from '../lib/openai';
+import AIErrorHandler from '../utils/errorHandling';
+import { promptConfig } from '../config/prompts';
+import './improved-layout.css';
 
-interface DashboardProps {
-  user?: any;
-  emailVerified?: boolean;
-  paymentCompleted?: boolean;
+interface CoachPanelProps {
+  content: string;
+  textType: string;
+  assistanceLevel: string;
 }
 
-export function Dashboard({ user: propUser, emailVerified: propEmailVerified, paymentCompleted: propPaymentCompleted }: DashboardProps) {
-  const { user } = useAuth();
-  const navigate = useNavigate();
-  const [isVerified, setIsVerified] = useState(false);
-  const [accessType, setAccessType] = useState<'none' | 'temporary' | 'permanent'>('none');
-  const [tempAccessUntil, setTempAccessUntil] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [userAccessData, setUserAccessData] = useState<any>(null);
-  const [showWelcomeMessage, setShowWelcomeMessage] = useState(false);
+interface FeedbackItem {
+  type: 'praise' | 'suggestion' | 'question' | 'challenge';
+  area: string;
+  text: string;
+  exampleFromText?: string;
+  suggestionForImprovement?: string;
+}
 
-  // Use prop user if provided, otherwise use context user
-  const currentUser = propUser || user;
+interface StructuredFeedback {
+  overallComment: string;
+  feedbackItems: FeedbackItem[];
+  focusForNextTime: string[];
+}
 
-  useEffect(() => {
-    const checkVerificationStatus = async () => {
-      if (currentUser) {
-        console.log('🔍 Dashboard: Checking verification status for user:', currentUser.id);
-        setIsLoading(true);
-        
-        try {
-          // Get detailed user access status from database
-          const accessData = await getUserAccessStatus(currentUser.id);
-          setUserAccessData(accessData);
-          
-          if (accessData) {
-            console.log('📊 User access data:', accessData);
-            
-            // Check if user has permanent access (payment verified or manual override)
-            if (accessData.payment_verified || accessData.manual_override || accessData.has_access) {
-              setIsVerified(true);
-              setAccessType('permanent');
-              
-              // Check if this is the first time showing the welcome message
-              const hasSeenWelcome = localStorage.getItem(`welcome_shown_${currentUser.id}`);
-              if (!hasSeenWelcome) {
-                setShowWelcomeMessage(true);
-                localStorage.setItem(`welcome_shown_${currentUser.id}`, 'true');
-              }
-              
-              console.log('✅ Dashboard: Permanent access confirmed - payment verified:', accessData.payment_verified);
-              setIsLoading(false);
-              return;
-            }
-            
-            // Check if user has valid temporary access
-            if (accessData.temp_access_until) {
-              const tempDate = new Date(accessData.temp_access_until);
-              if (tempDate > new Date()) {
-                setIsVerified(true);
-                setAccessType('temporary');
-                setTempAccessUntil(accessData.temp_access_until);
-                console.log('✅ Dashboard: Temporary access valid until:', tempDate);
-                setIsLoading(false);
-                return;
-              }
-            }
-          }
-          
-          // Fallback: Check for temporary access in localStorage
-          const tempAccess = localStorage.getItem('temp_access_granted');
-          const tempUntil = localStorage.getItem('temp_access_until');
-          
-          if (tempAccess === 'true' && tempUntil) {
-            const tempDate = new Date(tempUntil);
-            if (tempDate > new Date()) {
-              setIsVerified(true);
-              setAccessType('temporary');
-              setTempAccessUntil(tempUntil);
-              console.log('✅ Dashboard: Temporary access from localStorage valid until:', tempDate);
-              setIsLoading(false);
-              return;
-            } else {
-              // Clean up expired temporary access
-              localStorage.removeItem('temp_access_granted');
-              localStorage.removeItem('temp_access_until');
-              localStorage.removeItem('temp_access_plan');
-            }
-          }
-          
-          // Check basic email verification
-          const verified = isEmailVerified(currentUser);
-          setIsVerified(verified);
-          setAccessType('none');
-          console.log('📊 Dashboard: Only email verification result:', verified);
-          
-        } catch (error) {
-          console.error('❌ Error checking verification status:', error);
-          setIsVerified(false);
-          setAccessType('none');
-        }
-        
-        setIsLoading(false);
-      }
+export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelProps) {
+  const [structuredFeedback, setStructuredFeedback] = useState<StructuredFeedback | null>(null);
+  const [feedbackHistory, setFeedbackHistory] = useState<FeedbackItem[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [question, setQuestion] = useState('');
+  const [showPrompts, setShowPrompts] = useState(false);
+  const [lastProcessedContent, setLastProcessedContent] = useState('');
+  const [error, setError] = useState<string | null>(null);
+
+  const getNSWSelectivePrompts = (textType: string) => {
+    const basePrompts = [
+      `How can I make my ${textType} more engaging for NSW Selective assessors?`,
+      `What vocabulary would strengthen my ${textType} response for selective school standards?`,
+      "How can I better incorporate the visual stimulus into my writing?",
+      `What specific techniques should I use for ${textType} writing in the NSW Selective test?`,
+      "How can I improve my opening sentence to hook the assessors?",
+      "What makes a strong conclusion for NSW Selective writing?"
+    ];
+
+    const textTypeSpecificPrompts: { [key: string]: string[] } = {
+      'advertisement': [
+        "How can I create a more compelling headline for my advertisement?",
+        "What persuasive techniques work best for NSW Selective advertisement writing?",
+        "How do I include an effective call to action in my advertisement?"
+      ],
+      'advice sheet': [
+        "How can I make my advice clearer and more helpful?",
+        "What tone should I use for an effective advice sheet?",
+        "How do I organize my advice in a logical sequence?"
+      ],
+      'diary entry': [
+        "How can I make my diary entry more personal and reflective?",
+        "What emotions should I express in my diary writing?",
+        "How do I show character growth in a diary entry?"
+      ],
+      'discussion': [
+        "How do I present balanced arguments in my discussion?",
+        "What evidence should I include to support different viewpoints?",
+        "How can I structure my discussion for maximum impact?"
+      ],
+      'guide': [
+        "How can I make my instructions clearer and easier to follow?",
+        "What format works best for a step-by-step guide?",
+        "How do I anticipate what readers might find confusing?"
+      ],
+      'letter': [
+        "What's the appropriate tone for my letter's purpose?",
+        "How do I structure a formal letter for NSW Selective standards?",
+        "What makes an effective opening and closing for letters?"
+      ],
+      'narrative': [
+        "How can I create more vivid characters in my story?",
+        "What techniques make dialogue sound natural and engaging?",
+        "How do I build tension and excitement in my narrative?"
+      ],
+      'narrative/creative': [
+        "How can I create more vivid characters in my story?",
+        "What techniques make dialogue sound natural and engaging?",
+        "How do I build tension and excitement in my narrative?"
+      ],
+      'news report': [
+        "How do I write an effective lead paragraph for my news report?",
+        "What makes my news writing objective and factual?",
+        "How do I include all the important details (who, what, when, where, why)?"
+      ],
+      'persuasive': [
+        "How can I make my arguments more convincing for NSW assessors?",
+        "What evidence will strengthen my persuasive writing?",
+        "How do I address counterarguments effectively?"
+      ],
+      'review': [
+        "How do I balance personal opinion with objective analysis?",
+        "What criteria should I use to evaluate what I'm reviewing?",
+        "How can I make my recommendation clear and justified?"
+      ],
+      'speech': [
+        "How can I make my speech more engaging for the audience?",
+        "What rhetorical devices work best in speech writing?",
+        "How do I create a memorable opening and powerful conclusion?"
+      ]
     };
 
-    checkVerificationStatus();
-  }, [currentUser]);
+    const specificPrompts = textTypeSpecificPrompts[textType.toLowerCase()] || [];
+    return [...basePrompts, ...specificPrompts];
+  };
 
-  const handleManualRefresh = async () => {
-    if (currentUser) {
+  const commonPrompts = getNSWSelectivePrompts(textType);
+
+  // Helper function to count words in text
+  const countWords = useCallback((text: string): number => {
+    if (!text || text.trim().length === 0) return 0;
+    return text.trim().split(/\s+/).filter(word => word.length > 0).length;
+  }, []);
+
+  const fetchFeedback = useCallback(async (currentContent: string, currentTextType: string, currentAssistanceLevel: string, currentFeedbackHistory: FeedbackItem[]) => {
+    const wordCount = countWords(currentContent);
+    
+    if (wordCount >= 50 && currentContent !== lastProcessedContent) {
+      console.log(`[DEBUG] Triggering AI feedback - Word count: ${wordCount}, Content length: ${currentContent.length}`);
       setIsLoading(true);
+      setError(null);
+      
       try {
-        // Refresh user access status from database
-        const accessData = await getUserAccessStatus(currentUser.id);
-        setUserAccessData(accessData);
+        const response = await getWritingFeedback(currentContent, currentTextType, currentAssistanceLevel, currentFeedbackHistory);
         
-        if (accessData && (accessData.payment_verified || accessData.manual_override || accessData.has_access)) {
-          setIsVerified(true);
-          setAccessType('permanent');
-          
-          // Check if this is the first time showing the welcome message after manual refresh
-          const hasSeenWelcome = localStorage.getItem(`welcome_shown_${currentUser.id}`);
-          if (!hasSeenWelcome) {
-            setShowWelcomeMessage(true);
-            localStorage.setItem(`welcome_shown_${currentUser.id}`, 'true');
-          }
-          
-          console.log('✅ Refresh: Permanent access confirmed');
-        } else if (accessData && accessData.temp_access_until) {
-          const tempDate = new Date(accessData.temp_access_until);
-          if (tempDate > new Date()) {
-            setIsVerified(true);
-            setAccessType('temporary');
-            setTempAccessUntil(accessData.temp_access_until);
-            console.log('✅ Refresh: Temporary access confirmed');
-          } else {
-            setIsVerified(false);
-            setAccessType('none');
-          }
-        } else {
-          const verified = isEmailVerified(currentUser);
-          setIsVerified(verified);
-          setAccessType('none');
+        if (response && response.feedbackItems) {
+          setStructuredFeedback(response);
+          setFeedbackHistory(prevHistory => [...prevHistory, ...response.feedbackItems.filter(item => 
+            !prevHistory.some(histItem => histItem.text === item.text && histItem.area === item.area)
+          )]);
+        } else if (response && response.overallComment) {
+          setStructuredFeedback(response as StructuredFeedback);
         }
+        
+        setLastProcessedContent(currentContent);
+        console.log('[DEBUG] AI feedback received and processed successfully');
       } catch (error) {
-        console.error('❌ Error refreshing status:', error);
+        const aiError = AIErrorHandler.handleError(error, 'writing feedback');
+        console.error('[DEBUG] Error fetching AI feedback:', aiError.userFriendlyMessage);
+        setError(aiError.userFriendlyMessage);
+        
+        // Use fallback feedback
+        const fallbackFeedback = AIErrorHandler.createFallbackResponse('feedback', currentTextType);
+        setStructuredFeedback(fallbackFeedback as StructuredFeedback);
+      } finally {
+        setIsLoading(false);
       }
-      setIsLoading(false);
+    } else if (wordCount < 50) {
+      console.log(`[DEBUG] Not triggering AI feedback - Word count: ${wordCount} (need 50+ words)`);
+    }
+  }, [lastProcessedContent, countWords]);
+
+  useEffect(() => {
+    const debounceTimer = setTimeout(() => {
+      fetchFeedback(content, textType, assistanceLevel, feedbackHistory);
+    }, 2000);
+
+    return () => clearTimeout(debounceTimer);
+  }, [content, textType, assistanceLevel, feedbackHistory, fetchFeedback]);
+
+  const handleQuestionSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (question.trim()) {
+      setIsLoading(true);
+      setError(null);
+      console.log('[DEBUG] Processing user question:', question);
+      
+      try {
+        const userQueryText = `Question about my ${textType} writing: ${question}\n\nCurrent text: ${content}`;
+        const response = await getWritingFeedback(userQueryText, textType, assistanceLevel, feedbackHistory);
+        
+        if (response && response.feedbackItems) {
+          const questionFeedbackItem: FeedbackItem = {
+              type: 'question',
+              area: 'User Question',
+              text: `You asked: ${question}`
+          };
+          const answerItems = response.feedbackItems.map(item => ({...item, area: `Answer To: ${question}`}));
+          
+          setStructuredFeedback(prevFeedback => ({
+              overallComment: response.overallComment || (prevFeedback?.overallComment || ''),
+              feedbackItems: [questionFeedbackItem, ...answerItems, ...(prevFeedback?.feedbackItems || [])],
+              focusForNextTime: response.focusForNextTime || (prevFeedback?.focusForNextTime || [])
+          }));
+          setFeedbackHistory(prevHistory => [...prevHistory, questionFeedbackItem, ...answerItems.filter(item => 
+              !prevHistory.some(histItem => histItem.text === item.text && histItem.area === item.area)
+            )]);
+
+        } else if (response && response.overallComment) {
+          setStructuredFeedback(response as StructuredFeedback);
+        }
+        
+        console.log('[DEBUG] User question processed successfully');
+      } catch (error) {
+        const aiError = AIErrorHandler.handleError(error, 'question processing');
+        console.error('[DEBUG] Error processing user question:', aiError.userFriendlyMessage);
+        setError(aiError.userFriendlyMessage);
+        
+        // Provide a helpful fallback response
+        const fallbackResponse: FeedbackItem = {
+          type: 'suggestion',
+          area: 'Coach Response',
+          text: `Great question about ${textType} writing! While I can't provide a detailed answer right now, keep practicing and focus on the key elements of ${textType} writing like structure, vocabulary, and engaging your reader.`
+        };
+        
+        setStructuredFeedback(prevFeedback => ({
+          overallComment: prevFeedback?.overallComment || promptConfig.fallbackMessages.generalError,
+          feedbackItems: [fallbackResponse, ...(prevFeedback?.feedbackItems || [])],
+          focusForNextTime: prevFeedback?.focusForNextTime || []
+        }));
+      } finally {
+        setQuestion('');
+        setIsLoading(false);
+        setShowPrompts(false);
+      }
     }
   };
 
-  const handleStartWriting = () => {
-    console.log('🚀 Dashboard: Navigating to writing area...');
-    navigate('/writing');
+  const handlePromptClick = (promptText: string) => {
+    setQuestion(promptText);
+    setShowPrompts(false);
   };
 
-  const handlePracticeExam = () => {
-    console.log('🚀 Dashboard: Navigating to practice exam...');
-    navigate('/exam');
-  };
-
-  const formatDateTime = (dateString: string) => {
-    return new Date(dateString).toLocaleString();
-  };
-
-  const getTimeRemaining = (dateString: string) => {
-    const now = new Date();
-    const target = new Date(dateString);
-    const diff = target.getTime() - now.getTime();
-    
-    if (diff <= 0) return 'Expired';
-    
-    const hours = Math.floor(diff / (1000 * 60 * 60));
-    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-    
-    if (hours > 0) {
-      return `${hours}h ${minutes}m remaining`;
-    } else {
-      return `${minutes}m remaining`;
+  const getFeedbackItemStyle = (type: FeedbackItem['type']) => {
+    switch (type) {
+      case 'praise':
+        return { icon: <Star className="h-6 w-6 text-yellow-500 mr-3 shrink-0" />, bgColor: 'bg-gradient-to-r from-green-50 to-green-100', textColor: 'text-green-800' };
+      case 'suggestion':
+        return { icon: <Lightbulb className="h-6 w-6 text-amber-500 mr-3 shrink-0" />, bgColor: 'bg-gradient-to-r from-amber-50 to-amber-100', textColor: 'text-amber-800' };
+      case 'question':
+        return { icon: <HelpCircle className="h-6 w-6 text-blue-500 mr-3 shrink-0" />, bgColor: 'bg-gradient-to-r from-blue-50 to-blue-100', textColor: 'text-blue-800' };
+      case 'challenge':
+        return { icon: <Zap className="h-6 w-6 text-purple-500 mr-3 shrink-0" />, bgColor: 'bg-gradient-to-r from-purple-50 to-purple-100', textColor: 'text-purple-800' };
+      default:
+        return { icon: <Gift className="h-6 w-6 text-gray-500 mr-3 shrink-0" />, bgColor: 'bg-gradient-to-r from-gray-50 to-gray-100', textColor: 'text-gray-800' };
     }
   };
 
-  const handleDismissWelcome = () => {
-    setShowWelcomeMessage(false);
-  };
+  // Calculate current word count for display
+  const currentWordCount = countWords(content);
+  const wordsNeeded = Math.max(0, 50 - currentWordCount);
+  const targetWordCount = 250;
+  const isNearTarget = currentWordCount >= 200 && currentWordCount <= 300;
+  const isOverTarget = currentWordCount > 300;
 
-  // Get user's first name from email
-  const getUserName = () => {
-    if (currentUser?.email) {
-      const emailPart = currentUser.email.split('@')[0];
-      // Capitalize first letter
-      return emailPart.charAt(0).toUpperCase() + emailPart.slice(1);
+  const getWordCountMessage = () => {
+    if (currentWordCount < 50) {
+      return `Write ${wordsNeeded} more word${wordsNeeded !== 1 ? 's' : ''} to get help (${currentWordCount}/50)`;
+    } else if (currentWordCount < 200) {
+      return `Great start! Try to write about ${targetWordCount} words (${currentWordCount}/${targetWordCount})`;
+    } else if (isNearTarget) {
+      return `Perfect length! Your story is just right! (${currentWordCount}/${targetWordCount})`;
+    } else if (isOverTarget) {
+      return `Wow, you wrote a lot! Maybe check if it's too long? (${currentWordCount}/${targetWordCount})`;
     }
-    return 'Friend';
+    return `Words so far: ${currentWordCount}/${targetWordCount}`;
   };
 
-  if (!currentUser) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex items-center justify-center">
-        <div className="text-center bg-white rounded-3xl p-12 shadow-xl max-w-md mx-4">
-          <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <BookOpen className="h-10 w-10 text-blue-600" />
-          </div>
-          <h2 className="text-3xl font-bold text-gray-900 mb-4">Oops!</h2>
-          <p className="text-gray-600 text-lg">You need to sign in first to start your writing adventure!</p>
-        </div>
-      </div>
-    );
-  }
+  const getWordCountColor = () => {
+    if (currentWordCount < 50) return 'text-gray-700 dark:text-gray-400';
+    if (currentWordCount < 200) return 'text-blue-700 dark:text-blue-400';
+    if (isNearTarget) return 'text-green-700 dark:text-green-400';
+    if (isOverTarget) return 'text-amber-700 dark:text-amber-400';
+    return 'text-gray-700 dark:text-gray-400';
+  };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        
-        {/* Kid-Friendly Header with Mascot */}
-        <div className="mb-8 text-center">
-          <div className="flex items-center justify-center mb-4">
-            <div className="w-16 h-16 bg-gradient-to-r from-yellow-400 to-orange-400 rounded-full flex items-center justify-center mr-4 shadow-lg">
-              <Sparkles className="h-8 w-8 text-white" />
-            </div>
-            <div className="text-left">
-              <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                Hi there, {getUserName()}! 🌟
-              </h1>
-              <p className="text-xl text-gray-700 mt-1">Let's write something awesome today!</p>
-            </div>
+    <div className="h-full flex flex-col bg-white dark:bg-gray-800">
+      {/* Word count indicator */}
+      <div className="px-3 py-2 border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50">
+        <div className={`text-sm flex items-center font-medium ${getWordCountColor()}`}>
+          <Sparkles className="w-4 h-4 mr-1.5" />
+          {getWordCountMessage()}
+          {isNearTarget && <Star className="w-4 h-4 ml-1.5 text-yellow-500 fill-current" />}
+        </div>
+      </div>
+
+      {/* Error indicator */}
+      {error && (
+        <div className="px-3 py-2 border-b border-amber-100 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20">
+          <div className="text-sm text-amber-700 dark:text-amber-400 flex items-center font-medium">
+            <AlertCircle className="w-4 h-4 mr-1.5" />
+            {error}
           </div>
         </div>
+      )}
 
-        {/* Celebration Welcome Message for Premium Users */}
-        {showWelcomeMessage && accessType === 'permanent' && (
-          <div className="bg-gradient-to-r from-green-100 via-blue-100 to-purple-100 border-2 border-green-300 rounded-3xl p-8 mb-8 relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-yellow-200 rounded-full -mr-16 -mt-16 opacity-50"></div>
-            <div className="absolute bottom-0 left-0 w-24 h-24 bg-pink-200 rounded-full -ml-12 -mb-12 opacity-50"></div>
-            
-            <button
-              onClick={handleDismissWelcome}
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 bg-white rounded-full p-2 shadow-md"
-            >
-              <X className="h-5 w-5" />
-            </button>
-            
-            <div className="flex items-center relative z-10">
-              <div className="w-20 h-20 bg-gradient-to-r from-green-400 to-blue-400 rounded-full flex items-center justify-center mr-6 shadow-lg">
-                <Trophy className="h-10 w-10 text-white" />
+      {/* Loading indicator */}
+      {isLoading && (
+        <div className="px-3 py-2 border-b border-blue-100 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20">
+          <div className="text-sm text-blue-700 dark:text-blue-400 flex items-center font-medium">
+            <div className="loading-spinner mr-3"></div>
+            Analyzing your writing...
+          </div>
+        </div>
+      )}
+
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {structuredFeedback?.overallComment && (
+          <div className="p-4 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-md text-sm border border-blue-100 dark:border-blue-800">
+            <p className="font-medium mb-1">Overall Feedback:</p>
+            <p>{structuredFeedback.overallComment}</p>
+          </div>
+        )}
+
+        {structuredFeedback?.feedbackItems?.map((item, index) => {
+          const { icon, bgColor, textColor } = getFeedbackItemStyle(item.type);
+          return (
+            <div key={index} className={`p-4 border-l-2 border-${item.type === 'praise' ? 'green' : item.type === 'suggestion' ? 'amber' : item.type === 'question' ? 'blue' : 'purple'}-500 bg-${item.type === 'praise' ? 'green' : item.type === 'suggestion' ? 'amber' : item.type === 'question' ? 'blue' : 'purple'}-50 dark:bg-${item.type === 'praise' ? 'green' : item.type === 'suggestion' ? 'amber' : item.type === 'question' ? 'blue' : 'purple'}-900/20 rounded-md mb-4 flex`}>
+              <div>{icon}</div>
+              <div className="flex-grow">
+                <p className="font-medium text-base capitalize">{item.area}</p>
+                <p className="mt-1 text-sm">{item.text}</p>
+                {item.exampleFromText && (
+                  <p className="mt-2 text-xs italic border-l-2 border-current pl-2 ml-2 bg-white bg-opacity-30 p-1.5 rounded">
+                  </p>
+                )}
+                {item.suggestionForImprovement && (
+                  <p className="mt-3 text-sm border-l-4 border-current pl-3 ml-2 opacity-90 bg-white bg-opacity-50 p-2 rounded-r-lg">
+                    <span className="font-bold">Try this:</span> {item.suggestionForImprovement}
+                  </p>
+                )}
               </div>
-              <div className="flex-1">
-                <h3 className="text-3xl font-bold text-green-900 mb-3">🎉 Hooray! You're All Set!</h3>
-                <p className="text-green-800 mb-4 text-lg">
-                  Welcome to your writing adventure! You now have access to all the cool features:
-                </p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-green-700 mb-6">
-                  <div className="flex items-center bg-white bg-opacity-50 rounded-lg p-3">
-                    <Zap className="h-5 w-5 text-green-600 mr-3" />
-                    <span className="font-medium">Smart Writing Helper</span>
-                  </div>
-                  <div className="flex items-center bg-white bg-opacity-50 rounded-lg p-3">
-                    <Target className="h-5 w-5 text-green-600 mr-3" />
-                    <span className="font-medium">Fun Practice Tests</span>
-                  </div>
-                  <div className="flex items-center bg-white bg-opacity-50 rounded-lg p-3">
-                    <Heart className="h-5 w-5 text-green-600 mr-3" />
-                    <span className="font-medium">Helpful Feedback</span>
-                  </div>
-                  <div className="flex items-center bg-white bg-opacity-50 rounded-lg p-3">
-                    <Star className="h-5 w-5 text-green-600 mr-3" />
-                    <span className="font-medium">Progress Tracking</span>
-                  </div>
-                </div>
-                <button
-                  onClick={handleStartWriting}
-                  className="bg-gradient-to-r from-green-500 to-blue-500 text-white px-8 py-4 rounded-2xl hover:from-green-600 hover:to-blue-600 transition-all duration-300 font-bold text-lg shadow-lg transform hover:scale-105"
-                >
-                  🚀 Start Writing Now!
-                </button>
-              </div>
+            </div>
+          );
+        })}
+
+        {structuredFeedback?.feedbackItems?.length === 0 && currentWordCount >= 50 && !isLoading && (
+          <div className="p-6 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 text-gray-700 dark:text-gray-300 rounded-2xl text-base text-center border-2 border-gray-200 dark:border-gray-700 shadow-md">
+            <Sparkles className="w-10 h-10 mx-auto mb-3 text-gray-400 dark:text-gray-500" />
+            <p className="font-bold text-lg mb-2">Your writing buddy is thinking...</p>
+            <p>Keep writing while I look at your story!</p>
+            <div className="mt-4 flex justify-center space-x-1">
+              <div className="w-3 h-3 bg-gray-300 dark:bg-gray-600 rounded-full animate-bounce"></div>
+              <div className="w-3 h-3 bg-gray-300 dark:bg-gray-600 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+              <div className="w-3 h-3 bg-gray-300 dark:bg-gray-600 rounded-full animate-bounce" style={{animationDelay: '0.4s'}}></div>
             </div>
           </div>
         )}
 
-        {/* Simplified Status Messages */}
-        {isLoading ? (
-          <div className="bg-white border-2 border-blue-200 rounded-3xl p-8 mb-8 shadow-lg">
-            <div className="flex items-center justify-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-200 border-t-blue-600 mr-4"></div>
-              <div className="text-center">
-                <h3 className="text-2xl font-bold text-gray-900 mb-2">Getting things ready...</h3>
-                <p className="text-gray-600 text-lg">Just a moment while we set up your writing space!</p>
-              </div>
-            </div>
-          </div>
-        ) : accessType === 'temporary' ? (
-          <div className="bg-gradient-to-r from-yellow-100 to-orange-100 border-2 border-yellow-300 rounded-3xl p-8 mb-8 shadow-lg">
-            <div className="flex items-center">
-              <div className="w-16 h-16 bg-gradient-to-r from-yellow-400 to-orange-400 rounded-full flex items-center justify-center mr-6 shadow-lg">
-                <Clock className="h-8 w-8 text-white" />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-2xl font-bold text-yellow-900 mb-2">Almost ready! ⏰</h3>
-                <p className="text-yellow-800 text-lg mb-3">
-                  You can start writing now while we finish setting up your account!
-                </p>
-                <p className="text-yellow-700 font-medium">
-                  Time left: <strong>{getTimeRemaining(tempAccessUntil!)}</strong>
-                </p>
-              </div>
-            </div>
-            <div className="mt-6">
-              <button 
-                onClick={handleManualRefresh}
-                className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white px-6 py-3 rounded-2xl hover:from-yellow-600 hover:to-orange-600 transition-all duration-300 font-bold shadow-lg"
-              >
-                Check if I'm Ready!
-              </button>
-            </div>
-          </div>
-        ) : accessType === 'none' ? (
-          <div className="bg-gradient-to-r from-blue-100 to-purple-100 border-2 border-blue-300 rounded-3xl p-8 mb-8 shadow-lg">
-            <div className="flex items-center">
-              <div className="w-16 h-16 bg-gradient-to-r from-blue-400 to-purple-400 rounded-full flex items-center justify-center mr-6 shadow-lg">
-                <Mail className="h-8 w-8 text-white" />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-2xl font-bold text-blue-900 mb-2">One more step! 📧</h3>
-                <p className="text-blue-800 text-lg mb-3">
-                  We sent you a special email! Please check your inbox and click the magic link.
-                </p>
-                <p className="text-blue-700">
-                  Email: <strong>{currentUser?.email}</strong>
-                </p>
-              </div>
-            </div>
-            <div className="mt-6 flex flex-wrap gap-3">
-              <button 
-                onClick={handleManualRefresh}
-                className="bg-gradient-to-r from-blue-500 to-purple-500 text-white px-6 py-3 rounded-2xl hover:from-blue-600 hover:to-purple-600 transition-all duration-300 font-bold shadow-lg"
-              >
-                I clicked the link!
-              </button>
-              <button className="bg-gray-200 text-gray-800 px-6 py-3 rounded-2xl hover:bg-gray-300 transition-all duration-300 font-bold shadow-lg">
-                Send it again
-              </button>
-            </div>
-          </div>
-        ) : null}
-
-        {/* Kid-Friendly Progress Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          
-          {/* Writing Streak */}
-          <div className="bg-white rounded-3xl shadow-lg p-6 border-2 border-orange-200 hover:border-orange-300 transition-all duration-300 hover:shadow-xl">
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-12 h-12 bg-gradient-to-r from-orange-400 to-red-400 rounded-2xl flex items-center justify-center">
-                <Zap className="h-6 w-6 text-white" />
-              </div>
-              <div className="flex space-x-1">
-                <Star className="h-5 w-5 text-yellow-400 fill-current" />
-                <Star className="h-5 w-5 text-yellow-400 fill-current" />
-                <Star className="h-5 w-5 text-yellow-400 fill-current" />
-              </div>
-            </div>
-            <h3 className="text-lg font-bold text-gray-900 mb-1">Writing Streak</h3>
-            <p className="text-3xl font-bold text-orange-600 mb-2">3 days</p>
-            <p className="text-sm text-gray-600">Keep it up! 🔥</p>
-          </div>
-          
-          {/* Stories Created */}
-          <div className="bg-white rounded-3xl shadow-lg p-6 border-2 border-blue-200 hover:border-blue-300 transition-all duration-300 hover:shadow-xl">
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-12 h-12 bg-gradient-to-r from-blue-400 to-purple-400 rounded-2xl flex items-center justify-center">
-                <BookOpen className="h-6 w-6 text-white" />
-              </div>
-              <Gift className="h-6 w-6 text-blue-400" />
-            </div>
-            <h3 className="text-lg font-bold text-gray-900 mb-1">Stories Created</h3>
-            <p className="text-3xl font-bold text-blue-600 mb-2">5</p>
-            <p className="text-sm text-gray-600">Amazing work! 📚</p>
-          </div>
-          
-          {/* Words Adventure */}
-          <div className="bg-white rounded-3xl shadow-lg p-6 border-2 border-green-200 hover:border-green-300 transition-all duration-300 hover:shadow-xl">
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-12 h-12 bg-gradient-to-r from-green-400 to-teal-400 rounded-2xl flex items-center justify-center">
-                <PenTool className="h-6 w-6 text-white" />
-              </div>
-              <div className="text-right">
-                <div className="w-16 h-2 bg-green-200 rounded-full">
-                  <div className="w-12 h-2 bg-green-500 rounded-full"></div>
-                </div>
-              </div>
-            </div>
-            <h3 className="text-lg font-bold text-gray-900 mb-1">Words Written</h3>
-            <p className="text-3xl font-bold text-green-600 mb-2">1,250</p>
-            <p className="text-sm text-gray-600">You're on fire! ✨</p>
-          </div>
-          
-          {/* Fun Level */}
-          <div className="bg-white rounded-3xl shadow-lg p-6 border-2 border-purple-200 hover:border-purple-300 transition-all duration-300 hover:shadow-xl">
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-12 h-12 bg-gradient-to-r from-purple-400 to-pink-400 rounded-2xl flex items-center justify-center">
-                <Smile className="h-6 w-6 text-white" />
-              </div>
-              <div className="flex space-x-1">
-                <div className="w-3 h-3 bg-purple-400 rounded-full"></div>
-                <div className="w-3 h-3 bg-purple-400 rounded-full"></div>
-                <div className="w-3 h-3 bg-purple-300 rounded-full"></div>
-              </div>
-            </div>
-            <h3 className="text-lg font-bold text-gray-900 mb-1">Fun Level</h3>
-            <p className="text-3xl font-bold text-purple-600 mb-2">Super!</p>
-            <p className="text-sm text-gray-600">Keep having fun! 🎉</p>
-          </div>
-        </div>
-
-        {/* Big Action Buttons */}
-        <div className="bg-white rounded-3xl shadow-xl mb-8 overflow-hidden border-2 border-gray-100">
-          <div className="bg-gradient-to-r from-blue-500 to-purple-500 px-8 py-6">
-            <h2 className="text-2xl font-bold text-white flex items-center">
-              <Sparkles className="h-7 w-7 mr-3" />
-              What would you like to do?
-            </h2>
-          </div>
-          <div className="p-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              
-              {/* Start Writing Button */}
-              <div 
-                className="group bg-gradient-to-br from-blue-50 to-purple-50 border-3 border-blue-200 rounded-3xl p-8 hover:border-blue-300 hover:shadow-2xl transition-all duration-300 cursor-pointer transform hover:scale-105" 
-                onClick={handleStartWriting}
-              >
-                <div className="flex items-center mb-6">
-                  <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-500 rounded-3xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300">
-                    <PenTool className="h-8 w-8 text-white" />
+        {structuredFeedback?.focusForNextTime && structuredFeedback.focusForNextTime.length > 0 && (
+          <div className="p-5 bg-gradient-to-r from-blue-50 to-green-50 dark:from-blue-900/20 dark:to-green-900/20 text-gray-700 dark:text-gray-300 rounded-2xl text-base border-2 border-blue-200 dark:border-blue-800 shadow-md">
+            <div className="flex items-start">
+              <Star className="w-6 h-6 text-blue-500 mr-3 mt-1 shrink-0" />
+              <div>
+                <p className="font-bold text-lg mb-2">For next time:</p>
+                <ul className="list-none space-y-2">
+              {structuredFeedback.focusForNextTime.map((focus, idx) => (
+                <li key={idx} className="flex items-start">
+                  <div className="w-5 h-5 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center mr-2 mt-0.5 text-blue-600 dark:text-blue-400 font-bold text-xs">
+                    {idx + 1}
                   </div>
-                  <div className="ml-6">
-                    <h3 className="text-2xl font-bold text-gray-900 mb-2">Start Writing!</h3>
-                    <p className="text-gray-600 text-lg">Create amazing stories with help from your AI friend</p>
-                  </div>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex space-x-2">
-                    <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">✨ AI Helper</span>
-                    <span className="bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-sm font-medium">📝 Stories</span>
-                  </div>
-                  {accessType === 'none' && (
-                    <div className="bg-yellow-100 border border-yellow-300 rounded-2xl px-4 py-2">
-                      <p className="text-sm text-yellow-800 font-medium">Almost ready!</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Practice Exam Button */}
-              <div 
-                className="group bg-gradient-to-br from-green-50 to-teal-50 border-3 border-green-200 rounded-3xl p-8 hover:border-green-300 hover:shadow-2xl transition-all duration-300 cursor-pointer transform hover:scale-105" 
-                onClick={handlePracticeExam}
-              >
-                <div className="flex items-center mb-6">
-                  <div className="w-16 h-16 bg-gradient-to-r from-green-500 to-teal-500 rounded-3xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300">
-                    <Target className="h-8 w-8 text-white" />
-                  </div>
-                  <div className="ml-6">
-                    <h3 className="text-2xl font-bold text-gray-900 mb-2">Practice Fun!</h3>
-                    <p className="text-gray-600 text-lg">Take fun practice tests and improve your skills</p>
-                  </div>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex space-x-2">
-                    <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">🎯 Practice</span>
-                    <span className="bg-teal-100 text-teal-800 px-3 py-1 rounded-full text-sm font-medium">🏆 Skills</span>
-                  </div>
-                  {accessType === 'none' && (
-                    <div className="bg-yellow-100 border border-yellow-300 rounded-2xl px-4 py-2">
-                      <p className="text-sm text-yellow-800 font-medium">Almost ready!</p>
-                    </div>
-                  )}
-                </div>
-              </div>
+                  <span>{focus}</span>
+                </li>
+              ))}
+              </ul>
+            </div>
             </div>
           </div>
-        </div>
-
-        {/* My Writing Adventures */}
-        <div className="bg-white rounded-3xl shadow-xl border-2 border-gray-100 overflow-hidden">
-          <div className="bg-gradient-to-r from-orange-400 to-pink-400 px-8 py-6">
-            <h2 className="text-2xl font-bold text-white flex items-center">
-              <BookOpen className="h-7 w-7 mr-3" />
-              My Writing Adventures
-            </h2>
-          </div>
-          <div className="p-8">
-            <div className="text-center py-12">
-              <div className="w-24 h-24 bg-gradient-to-r from-orange-100 to-pink-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Sparkles className="h-12 w-12 text-orange-500" />
-              </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-4">Ready for your first adventure?</h3>
-              <p className="text-gray-600 text-lg mb-8 max-w-md mx-auto">
-                Start writing your first story and it will appear here! You can see all your amazing work and track your progress.
-              </p>
-              <button 
-                onClick={handleStartWriting}
-                className="bg-gradient-to-r from-orange-500 to-pink-500 text-white px-8 py-4 rounded-2xl hover:from-orange-600 hover:to-pink-600 transition-all duration-300 font-bold text-lg shadow-lg transform hover:scale-105"
-              >
-                🚀 Start My First Story!
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Encouragement Section */}
-        <div className="mt-8 text-center">
-          <div className="bg-gradient-to-r from-yellow-100 via-pink-100 to-purple-100 rounded-3xl p-8 border-2 border-yellow-200">
-            <div className="flex items-center justify-center mb-4">
-              <Heart className="h-8 w-8 text-pink-500 mr-2" />
-              <Star className="h-6 w-6 text-yellow-500 fill-current" />
-              <Heart className="h-8 w-8 text-pink-500 ml-2" />
-            </div>
-            <h3 className="text-2xl font-bold text-gray-900 mb-3">You're doing great!</h3>
-            <p className="text-gray-700 text-lg max-w-2xl mx-auto">
-              Every great writer started with their first word. Keep practicing, stay curious, and remember - 
-              every story you write makes you a better writer! 🌟
-            </p>
-          </div>
-        </div>
+        )}
       </div>
+
+      <form onSubmit={handleQuestionSubmit} className="coach-panel-footer space-y-4">
+        <button
+          type="button"
+          onClick={() => setShowPrompts(!showPrompts)}
+          className="w-full flex items-center justify-between px-4 py-3 bg-gradient-to-r from-blue-100 to-purple-100 dark:from-blue-900/30 dark:to-purple-900/30 rounded-xl text-base font-bold text-blue-800 dark:text-blue-200 hover:from-blue-200 hover:to-purple-200 dark:hover:from-blue-800/40 dark:hover:to-purple-800/40 transition-all duration-300 shadow-md transform hover:scale-102 border-2 border-blue-200 dark:border-blue-800"
+        >
+          <span className="flex items-center">
+            <Star className="w-5 h-5 mr-2 text-yellow-500" />
+            Questions to Ask Your Writing Buddy
+          </span>
+          {showPrompts ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+        </button>
+
+        {showPrompts && (
+          <div className="space-y-2 bg-white dark:bg-gray-800 rounded-xl p-4 border-2 border-blue-100 dark:border-blue-800 shadow-inner">
+            {commonPrompts.map((prompt, index) => (
+              <button
+                type="button"
+                key={index}
+                onClick={() => handlePromptClick(prompt)}
+                className="w-full text-left text-base px-4 py-2 rounded-xl text-gray-700 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-all duration-300 font-medium"
+              >
+                {prompt}
+              </button>
+            ))}
+          </div>
+        )}
+
+        <div className="flex space-x-3">
+          <input
+            type="text"
+            value={question}
+            onChange={(e) => setQuestion(e.target.value)}
+            placeholder="Ask me anything about your writing..."
+            className="flex-1 form-input rounded-xl border-3 border-yellow-300 dark:border-yellow-800 text-base py-3 px-4 shadow-md focus:border-yellow-400 focus:ring-4 focus:ring-yellow-200"
+          />
+          <button
+            type="submit"
+            disabled={isLoading || !question.trim()}
+            className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white hover:from-yellow-600 hover:to-orange-600 disabled:opacity-50 disabled:cursor-not-allowed touch-friendly-button rounded-xl px-6 py-3 font-bold text-base shadow-md transform hover:scale-105 transition-all duration-300 flex items-center"
+          >
+            <Sparkles className="w-5 h-5 mr-2" />
+            Ask Me!
+          </button>
+        </div>
+      </form>
     </div>
   );
 }
-

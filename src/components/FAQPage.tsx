@@ -1,356 +1,418 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { MessageSquare, Sparkles, ChevronDown, ChevronUp, ThumbsUp, Lightbulb, HelpCircle, Target, AlertCircle, Star, Zap, Gift, Heart } from 'lucide-react';
+import { getWritingFeedback } from '../lib/openai';
+import AIErrorHandler from '../utils/errorHandling';
+import { promptConfig } from '../config/prompts';
+import './improved-layout.css';
 
-interface FAQItemProps {
-  question: string;
-  answer: React.ReactNode;
+interface CoachPanelProps {
+  content: string;
+  textType: string;
+  assistanceLevel: string;
 }
 
-const FAQItem: React.FC<FAQItemProps> = ({ question, answer }) => {
-  const [isOpen, setIsOpen] = useState(false);
+interface FeedbackItem {
+  type: 'praise' | 'suggestion' | 'question' | 'challenge';
+  area: string;
+  text: string;
+  exampleFromText?: string;
+  suggestionForImprovement?: string;
+}
+
+interface StructuredFeedback {
+  overallComment: string;
+  feedbackItems: FeedbackItem[];
+  focusForNextTime: string[];
+}
+
+export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelProps) {
+  const [structuredFeedback, setStructuredFeedback] = useState<StructuredFeedback | null>(null);
+  const [feedbackHistory, setFeedbackHistory] = useState<FeedbackItem[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [question, setQuestion] = useState('');
+  const [showPrompts, setShowPrompts] = useState(false);
+  const [lastProcessedContent, setLastProcessedContent] = useState('');
+  const [error, setError] = useState<string | null>(null);
+
+  const getNSWSelectivePrompts = (textType: string) => {
+    const basePrompts = [
+      `How can I make my ${textType} more engaging for NSW Selective assessors?`,
+      `What vocabulary would strengthen my ${textType} response for selective school standards?`,
+      "How can I better incorporate the visual stimulus into my writing?",
+      `What specific techniques should I use for ${textType} writing in the NSW Selective test?`,
+      "How can I improve my opening sentence to hook the assessors?",
+      "What makes a strong conclusion for NSW Selective writing?"
+    ];
+
+    const textTypeSpecificPrompts: { [key: string]: string[] } = {
+      'advertisement': [
+        "How can I create a more compelling headline for my advertisement?",
+        "What persuasive techniques work best for NSW Selective advertisement writing?",
+        "How do I include an effective call to action in my advertisement?"
+      ],
+      'advice sheet': [
+        "How can I make my advice clearer and more helpful?",
+        "What tone should I use for an effective advice sheet?",
+        "How do I organize my advice in a logical sequence?"
+      ],
+      'diary entry': [
+        "How can I make my diary entry more personal and reflective?",
+        "What emotions should I express in my diary writing?",
+        "How do I show character growth in a diary entry?"
+      ],
+      'discussion': [
+        "How do I present balanced arguments in my discussion?",
+        "What evidence should I include to support different viewpoints?",
+        "How can I structure my discussion for maximum impact?"
+      ],
+      'guide': [
+        "How can I make my instructions clearer and easier to follow?",
+        "What format works best for a step-by-step guide?",
+        "How do I anticipate what readers might find confusing?"
+      ],
+      'letter': [
+        "What's the appropriate tone for my letter's purpose?",
+        "How do I structure a formal letter for NSW Selective standards?",
+        "What makes an effective opening and closing for letters?"
+      ],
+      'narrative': [
+        "How can I create more vivid characters in my story?",
+        "What techniques make dialogue sound natural and engaging?",
+        "How do I build tension and excitement in my narrative?"
+      ],
+      'narrative/creative': [
+        "How can I create more vivid characters in my story?",
+        "What techniques make dialogue sound natural and engaging?",
+        "How do I build tension and excitement in my narrative?"
+      ],
+      'news report': [
+        "How do I write an effective lead paragraph for my news report?",
+        "What makes my news writing objective and factual?",
+        "How do I include all the important details (who, what, when, where, why)?"
+      ],
+      'persuasive': [
+        "How can I make my arguments more convincing for NSW assessors?",
+        "What evidence will strengthen my persuasive writing?",
+        "How do I address counterarguments effectively?"
+      ],
+      'review': [
+        "How do I balance personal opinion with objective analysis?",
+        "What criteria should I use to evaluate what I'm reviewing?",
+        "How can I make my recommendation clear and justified?"
+      ],
+      'speech': [
+        "How can I make my speech more engaging for the audience?",
+        "What rhetorical devices work best in speech writing?",
+        "How do I create a memorable opening and powerful conclusion?"
+      ]
+    };
+
+    const specificPrompts = textTypeSpecificPrompts[textType.toLowerCase()] || [];
+    return [...basePrompts, ...specificPrompts];
+  };
+
+  const commonPrompts = getNSWSelectivePrompts(textType);
+
+  // Helper function to count words in text
+  const countWords = useCallback((text: string): number => {
+    if (!text || text.trim().length === 0) return 0;
+    return text.trim().split(/\s+/).filter(word => word.length > 0).length;
+  }, []);
+
+  const fetchFeedback = useCallback(async (currentContent: string, currentTextType: string, currentAssistanceLevel: string, currentFeedbackHistory: FeedbackItem[]) => {
+    const wordCount = countWords(currentContent);
+    
+    if (wordCount >= 50 && currentContent !== lastProcessedContent) {
+      console.log(`[DEBUG] Triggering AI feedback - Word count: ${wordCount}, Content length: ${currentContent.length}`);
+      setIsLoading(true);
+      setError(null);
+      
+      try {
+        const response = await getWritingFeedback(currentContent, currentTextType, currentAssistanceLevel, currentFeedbackHistory);
+        
+        if (response && response.feedbackItems) {
+          setStructuredFeedback(response);
+          setFeedbackHistory(prevHistory => [...prevHistory, ...response.feedbackItems.filter(item => 
+            !prevHistory.some(histItem => histItem.text === item.text && histItem.area === item.area)
+          )]);
+        } else if (response && response.overallComment) {
+          setStructuredFeedback(response as StructuredFeedback);
+        }
+        
+        setLastProcessedContent(currentContent);
+        console.log('[DEBUG] AI feedback received and processed successfully');
+      } catch (error) {
+        const aiError = AIErrorHandler.handleError(error, 'writing feedback');
+        console.error('[DEBUG] Error fetching AI feedback:', aiError.userFriendlyMessage);
+        setError(aiError.userFriendlyMessage);
+        
+        // Use fallback feedback
+        const fallbackFeedback = AIErrorHandler.createFallbackResponse('feedback', currentTextType);
+        setStructuredFeedback(fallbackFeedback as StructuredFeedback);
+      } finally {
+        setIsLoading(false);
+      }
+    } else if (wordCount < 50) {
+      console.log(`[DEBUG] Not triggering AI feedback - Word count: ${wordCount} (need 50+ words)`);
+    }
+  }, [lastProcessedContent, countWords]);
+
+  useEffect(() => {
+    const debounceTimer = setTimeout(() => {
+      fetchFeedback(content, textType, assistanceLevel, feedbackHistory);
+    }, 2000);
+
+    return () => clearTimeout(debounceTimer);
+  }, [content, textType, assistanceLevel, feedbackHistory, fetchFeedback]);
+
+  const handleQuestionSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (question.trim()) {
+      setIsLoading(true);
+      setError(null);
+      console.log('[DEBUG] Processing user question:', question);
+      
+      try {
+        const userQueryText = `Question about my ${textType} writing: ${question}\n\nCurrent text: ${content}`;
+        const response = await getWritingFeedback(userQueryText, textType, assistanceLevel, feedbackHistory);
+        
+        if (response && response.feedbackItems) {
+          const questionFeedbackItem: FeedbackItem = {
+              type: 'question',
+              area: 'User Question',
+              text: `You asked: ${question}`
+          };
+          const answerItems = response.feedbackItems.map(item => ({...item, area: `Answer To: ${question}`}));
+          
+          setStructuredFeedback(prevFeedback => ({
+              overallComment: response.overallComment || (prevFeedback?.overallComment || ''),
+              feedbackItems: [questionFeedbackItem, ...answerItems, ...(prevFeedback?.feedbackItems || [])],
+              focusForNextTime: response.focusForNextTime || (prevFeedback?.focusForNextTime || [])
+          }));
+          setFeedbackHistory(prevHistory => [...prevHistory, questionFeedbackItem, ...answerItems.filter(item => 
+              !prevHistory.some(histItem => histItem.text === item.text && histItem.area === item.area)
+            )]);
+
+        } else if (response && response.overallComment) {
+          setStructuredFeedback(response as StructuredFeedback);
+        }
+        
+        console.log('[DEBUG] User question processed successfully');
+      } catch (error) {
+        const aiError = AIErrorHandler.handleError(error, 'question processing');
+        console.error('[DEBUG] Error processing user question:', aiError.userFriendlyMessage);
+        setError(aiError.userFriendlyMessage);
+        
+        // Provide a helpful fallback response
+        const fallbackResponse: FeedbackItem = {
+          type: 'suggestion',
+          area: 'Coach Response',
+          text: `Great question about ${textType} writing! While I can't provide a detailed answer right now, keep practicing and focus on the key elements of ${textType} writing like structure, vocabulary, and engaging your reader.`
+        };
+        
+        setStructuredFeedback(prevFeedback => ({
+          overallComment: prevFeedback?.overallComment || promptConfig.fallbackMessages.generalError,
+          feedbackItems: [fallbackResponse, ...(prevFeedback?.feedbackItems || [])],
+          focusForNextTime: prevFeedback?.focusForNextTime || []
+        }));
+      } finally {
+        setQuestion('');
+        setIsLoading(false);
+        setShowPrompts(false);
+      }
+    }
+  };
+
+  const handlePromptClick = (promptText: string) => {
+    setQuestion(promptText);
+    setShowPrompts(false);
+  };
+
+  const getFeedbackItemStyle = (type: FeedbackItem['type']) => {
+    switch (type) {
+      case 'praise':
+        return { icon: <Star className="h-6 w-6 text-yellow-500 mr-3 shrink-0" />, bgColor: 'bg-gradient-to-r from-green-50 to-green-100', textColor: 'text-green-800' };
+      case 'suggestion':
+        return { icon: <Lightbulb className="h-6 w-6 text-amber-500 mr-3 shrink-0" />, bgColor: 'bg-gradient-to-r from-amber-50 to-amber-100', textColor: 'text-amber-800' };
+      case 'question':
+        return { icon: <HelpCircle className="h-6 w-6 text-blue-500 mr-3 shrink-0" />, bgColor: 'bg-gradient-to-r from-blue-50 to-blue-100', textColor: 'text-blue-800' };
+      case 'challenge':
+        return { icon: <Zap className="h-6 w-6 text-purple-500 mr-3 shrink-0" />, bgColor: 'bg-gradient-to-r from-purple-50 to-purple-100', textColor: 'text-purple-800' };
+      default:
+        return { icon: <Gift className="h-6 w-6 text-gray-500 mr-3 shrink-0" />, bgColor: 'bg-gradient-to-r from-gray-50 to-gray-100', textColor: 'text-gray-800' };
+    }
+  };
+
+  // Calculate current word count for display
+  const currentWordCount = countWords(content);
+  const wordsNeeded = Math.max(0, 50 - currentWordCount);
+  const targetWordCount = 250;
+  const isNearTarget = currentWordCount >= 200 && currentWordCount <= 300;
+  const isOverTarget = currentWordCount > 300;
+
+  const getWordCountMessage = () => {
+    if (currentWordCount < 50) {
+      return `Write ${wordsNeeded} more word${wordsNeeded !== 1 ? 's' : ''} to get help (${currentWordCount}/50)`;
+    } else if (currentWordCount < 200) {
+      return `Great start! Try to write about ${targetWordCount} words (${currentWordCount}/${targetWordCount})`;
+    } else if (isNearTarget) {
+      return `Perfect length! Your story is just right! (${currentWordCount}/${targetWordCount})`;
+    } else if (isOverTarget) {
+      return `Wow, you wrote a lot! Maybe check if it's too long? (${currentWordCount}/${targetWordCount})`;
+    }
+    return `Words so far: ${currentWordCount}/${targetWordCount}`;
+  };
+
+  const getWordCountColor = () => {
+    if (currentWordCount < 50) return 'text-gray-700 dark:text-gray-400';
+    if (currentWordCount < 200) return 'text-blue-700 dark:text-blue-400';
+    if (isNearTarget) return 'text-green-700 dark:text-green-400';
+    if (isOverTarget) return 'text-amber-700 dark:text-amber-400';
+    return 'text-gray-700 dark:text-gray-400';
+  };
 
   return (
-    <div className="border-b border-gray-200 dark:border-gray-700">
-      <button
-        className="flex justify-between items-center w-full py-4 px-2 text-left focus:outline-none"
-        onClick={() => setIsOpen(!isOpen)}
-      >
-        <span className="text-lg font-medium text-gray-800 dark:text-white">{question}</span>
-        <svg
-          className={`w-5 h-5 text-indigo-600 dark:text-indigo-400 transition-transform duration-300 ${
-            isOpen ? 'transform rotate-180' : ''
-          }`}
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
+    <div className="h-full flex flex-col bg-white dark:bg-gray-800">
+      {/* Word count indicator */}
+      <div className="px-3 py-2 border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50">
+        <div className={`text-sm flex items-center font-medium ${getWordCountColor()}`}>
+          <Sparkles className="w-4 h-4 mr-1.5" />
+          {getWordCountMessage()}
+          {isNearTarget && <Star className="w-4 h-4 ml-1.5 text-yellow-500 fill-current" />}
+        </div>
+      </div>
+
+      {/* Error indicator */}
+      {error && (
+        <div className="px-3 py-2 border-b border-amber-100 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20">
+          <div className="text-sm text-amber-700 dark:text-amber-400 flex items-center font-medium">
+            <AlertCircle className="w-4 h-4 mr-1.5" />
+            {error}
+          </div>
+        </div>
+      )}
+
+      {/* Loading indicator */}
+      {isLoading && (
+        <div className="px-3 py-2 border-b border-blue-100 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20">
+          <div className="text-sm text-blue-700 dark:text-blue-400 flex items-center font-medium">
+            <div className="loading-spinner mr-3"></div>
+            Analyzing your writing...
+          </div>
+        </div>
+      )}
+
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {structuredFeedback?.overallComment && (
+          <div className="p-4 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-md text-sm border border-blue-100 dark:border-blue-800">
+            <p className="font-medium mb-1">Overall Feedback:</p>
+            <p>{structuredFeedback.overallComment}</p>
+          </div>
+        )}
+
+        {structuredFeedback?.feedbackItems?.map((item, index) => {
+          const { icon, bgColor, textColor } = getFeedbackItemStyle(item.type);
+          return (
+            <div key={index} className={`p-4 border-l-2 border-${item.type === 'praise' ? 'green' : item.type === 'suggestion' ? 'amber' : item.type === 'question' ? 'blue' : 'purple'}-500 bg-${item.type === 'praise' ? 'green' : item.type === 'suggestion' ? 'amber' : item.type === 'question' ? 'blue' : 'purple'}-50 dark:bg-${item.type === 'praise' ? 'green' : item.type === 'suggestion' ? 'amber' : item.type === 'question' ? 'blue' : 'purple'}-900/20 rounded-md mb-4 flex`}>
+              <div>{icon}</div>
+              <div className="flex-grow">
+                <p className="font-medium text-base capitalize">{item.area}</p>
+                <p className="mt-1 text-sm">{item.text}</p>
+                {item.exampleFromText && (
+                  <p className="mt-2 text-xs italic border-l-2 border-current pl-2 ml-2 bg-white bg-opacity-30 p-1.5 rounded">
+                  </p>
+                )}
+                {item.suggestionForImprovement && (
+                  <p className="mt-3 text-sm border-l-4 border-current pl-3 ml-2 opacity-90 bg-white bg-opacity-50 p-2 rounded-r-lg">
+                    <span className="font-bold">Try this:</span> {item.suggestionForImprovement}
+                  </p>
+                )}
+              </div>
+            </div>
+          );
+        })}
+
+        {structuredFeedback?.feedbackItems?.length === 0 && currentWordCount >= 50 && !isLoading && (
+          <div className="p-6 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 text-gray-700 dark:text-gray-300 rounded-2xl text-base text-center border-2 border-gray-200 dark:border-gray-700 shadow-md">
+            <Sparkles className="w-10 h-10 mx-auto mb-3 text-gray-400 dark:text-gray-500" />
+            <p className="font-bold text-lg mb-2">Your writing buddy is thinking...</p>
+            <p>Keep writing while I look at your story!</p>
+            <div className="mt-4 flex justify-center space-x-1">
+              <div className="w-3 h-3 bg-gray-300 dark:bg-gray-600 rounded-full animate-bounce"></div>
+              <div className="w-3 h-3 bg-gray-300 dark:bg-gray-600 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+              <div className="w-3 h-3 bg-gray-300 dark:bg-gray-600 rounded-full animate-bounce" style={{animationDelay: '0.4s'}}></div>
+            </div>
+          </div>
+        )}
+
+        {structuredFeedback?.focusForNextTime && structuredFeedback.focusForNextTime.length > 0 && (
+          <div className="p-5 bg-gradient-to-r from-blue-50 to-green-50 dark:from-blue-900/20 dark:to-green-900/20 text-gray-700 dark:text-gray-300 rounded-2xl text-base border-2 border-blue-200 dark:border-blue-800 shadow-md">
+            <div className="flex items-start">
+              <Star className="w-6 h-6 text-blue-500 mr-3 mt-1 shrink-0" />
+              <div>
+                <p className="font-bold text-lg mb-2">For next time:</p>
+                <ul className="list-none space-y-2">
+              {structuredFeedback.focusForNextTime.map((focus, idx) => (
+                <li key={idx} className="flex items-start">
+                  <div className="w-5 h-5 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center mr-2 mt-0.5 text-blue-600 dark:text-blue-400 font-bold text-xs">
+                    {idx + 1}
+                  </div>
+                  <span>{focus}</span>
+                </li>
+              ))}
+              </ul>
+            </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <form onSubmit={handleQuestionSubmit} className="coach-panel-footer space-y-4">
+        <button
+          type="button"
+          onClick={() => setShowPrompts(!showPrompts)}
+          className="w-full flex items-center justify-between px-4 py-3 bg-gradient-to-r from-blue-100 to-purple-100 dark:from-blue-900/30 dark:to-purple-900/30 rounded-xl text-base font-bold text-blue-800 dark:text-blue-200 hover:from-blue-200 hover:to-purple-200 dark:hover:from-blue-800/40 dark:hover:to-purple-800/40 transition-all duration-300 shadow-md transform hover:scale-102 border-2 border-blue-200 dark:border-blue-800"
         >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-        </svg>
-      </button>
-      <div
-        className={`overflow-hidden transition-all duration-300 ${
-          isOpen ? 'max-h-96 pb-4' : 'max-h-0'
-        }`}
-      >
-        <div className="px-2 text-gray-700 dark:text-gray-300">{answer}</div>
-      </div>
+          <span className="flex items-center">
+            <Star className="w-5 h-5 mr-2 text-yellow-500" />
+            Questions to Ask Your Writing Buddy
+          </span>
+          {showPrompts ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+        </button>
+
+        {showPrompts && (
+          <div className="space-y-2 bg-white dark:bg-gray-800 rounded-xl p-4 border-2 border-blue-100 dark:border-blue-800 shadow-inner">
+            {commonPrompts.map((prompt, index) => (
+              <button
+                type="button"
+                key={index}
+                onClick={() => handlePromptClick(prompt)}
+                className="w-full text-left text-base px-4 py-2 rounded-xl text-gray-700 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-all duration-300 font-medium"
+              >
+                {prompt}
+              </button>
+            ))}
+          </div>
+        )}
+
+        <div className="flex space-x-3">
+          <input
+            type="text"
+            value={question}
+            onChange={(e) => setQuestion(e.target.value)}
+            placeholder="Ask me anything about your writing..."
+            className="flex-1 form-input rounded-xl border-3 border-yellow-300 dark:border-yellow-800 text-base py-3 px-4 shadow-md focus:border-yellow-400 focus:ring-4 focus:ring-yellow-200"
+          />
+          <button
+            type="submit"
+            disabled={isLoading || !question.trim()}
+            className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white hover:from-yellow-600 hover:to-orange-600 disabled:opacity-50 disabled:cursor-not-allowed touch-friendly-button rounded-xl px-6 py-3 font-bold text-base shadow-md transform hover:scale-105 transition-all duration-300 flex items-center"
+          >
+            <Sparkles className="w-5 h-5 mr-2" />
+            Ask Me!
+          </button>
+        </div>
+      </form>
     </div>
   );
-};
-
-export const FAQPage: React.FC = () => {
-  return (
-    <div className="bg-gradient-to-b from-white to-gray-50 dark:from-gray-900 dark:to-gray-800 min-h-screen py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-4xl font-bold text-center mb-8 bg-clip-text text-transparent bg-gradient-to-r from-purple-600 to-pink-600 dark:from-purple-400 dark:to-pink-400">
-          Frequently Asked Questions
-        </h1>
-        <p className="text-center text-lg text-gray-700 dark:text-gray-300 mb-12">
-          Learn about NSW Selective exams and how our AI-powered writing assistant helps students excel
-        </p>
-        
-        <div className="bg-white dark:bg-gray-800 shadow-lg rounded-lg p-6 mb-8">
-          <h2 className="text-2xl font-semibold mb-4 text-gray-800 dark:text-white">AI Writing Assistant</h2>
-          
-          <FAQItem
-            question="Does the AI write essays for me?"
-            answer={
-              <div>
-                <p className="mb-2">
-                  No, our AI never writes essays for you. This is important for several reasons:
-                </p>
-                <ul className="list-disc pl-5 space-y-1 mb-4">
-                  <li>Learning: You need to develop your own writing skills to succeed in exams and beyond</li>
-                  <li>Authenticity: Examiners can detect AI-generated content</li>
-                  <li>Ethics: Using AI to write essays for you is considered cheating</li>
-                </ul>
-                <p className="mb-2">Instead, our AI:</p>
-                <ul className="list-disc pl-5 space-y-1">
-                  <li>Guides you through the writing process step by step</li>
-                  <li>Helps you brainstorm and organize your ideas</li>
-                  <li>Provides feedback on your writing</li>
-                  <li>Suggests improvements for grammar, structure, and style</li>
-                  <li>Teaches you writing techniques you can use in exams</li>
-                </ul>
-              </div>
-            }
-          />
-          
-          <FAQItem
-            question="How does the AI improve writing skills?"
-            answer={
-              <div>
-                <p className="mb-2">
-                  Our AI enhances writing skills through multiple approaches:
-                </p>
-                <ul className="list-disc pl-5 space-y-1">
-                  <li>Interactive guidance through the writing process</li>
-                  <li>Constructive feedback on your work</li>
-                  <li>Teaching writing techniques and strategies</li>
-                  <li>Helping you identify areas for improvement</li>
-                  <li>Providing examples of effective writing techniques</li>
-                </ul>
-                <p className="mt-2">
-                  The AI adapts to your skill level and provides increasingly advanced suggestions as you progress.
-                </p>
-              </div>
-            }
-          />
-          
-          <FAQItem
-            question="Can AI detect plagiarism?"
-            answer={
-              <div>
-                <p className="mb-2">
-                  Yes, our AI system includes advanced plagiarism detection:
-                </p>
-                <ul className="list-disc pl-5 space-y-1">
-                  <li>Checks against a vast database of texts</li>
-                  <li>Identifies copied content and paraphrasing</li>
-                  <li>Ensures originality in student work</li>
-                  <li>Provides reports on content authenticity</li>
-                </ul>
-                <p className="mt-2 font-medium">
-                  Note: Plagiarism is strictly prohibited and may result in account suspension.
-                </p>
-              </div>
-            }
-          />
-          
-          <FAQItem
-            question="What is InstaChat AI Writing Mate?"
-            answer={
-              <p>
-                InstaChat AI Writing Mate is an AI-powered writing coach specifically designed to help students prepare for NSW Selective School exams. It provides personalized guidance, real-time feedback, and structured practice for various writing types required in the exam.
-              </p>
-            }
-          />
-          
-          <FAQItem
-            question="How does InstaChat AI differ from other AI writing tools?"
-            answer={
-              <div>
-                <p className="mb-2">
-                  Unlike generic AI chatbots that simply generate content, InstaChat AI:
-                </p>
-                <ul className="list-disc pl-5 space-y-1">
-                  <li>Provides step-by-step writing guidance following NSW curriculum standards</li>
-                  <li>Offers real-time feedback on grammar, structure, and content</li>
-                  <li>Adapts to each student's skill level</li>
-                  <li>Focuses on teaching writing skills rather than just generating answers</li>
-                  <li>Includes exam-specific strategies and practice environments</li>
-                </ul>
-              </div>
-            }
-          />
-        </div>
-        
-        <div className="bg-white dark:bg-gray-800 shadow-lg rounded-lg p-6 mb-8">
-          <h2 className="text-2xl font-semibold mb-4 text-gray-800 dark:text-white">NSW Selective Exam Preparation</h2>
-          
-          <FAQItem
-            question="What writing types are covered for NSW Selective exams?"
-            answer={
-              <div>
-                <p className="mb-2">Our platform covers all major writing types that may appear in NSW Selective exams:</p>
-                <ul className="list-disc pl-5 space-y-1">
-                  <li>Narrative Writing - Stories with plots, characters, and descriptive elements</li>
-                  <li>Persuasive Writing - Arguments using the PEEL method</li>
-                  <li>Informative Writing - Clear explanations of topics</li>
-                  <li>Reflective Writing - Personal insights and experiences</li>
-                  <li>Imaginative Writing - Creative and fantastical stories</li>
-                  <li>Discursive Writing - Exploring different viewpoints</li>
-                  <li>Descriptive Writing - Creating vivid imagery with words</li>
-                  <li>Recount Writing - Sharing personal or historical experiences</li>
-                  <li>Diary Entry Writing - Personal thoughts and feelings</li>
-                </ul>
-              </div>
-            }
-          />
-          
-          <FAQItem
-            question="How does the exam simulation work?"
-            answer={
-              <div>
-                <p className="mb-2">
-                  The NSW Selective Exam Practice Simulator creates a realistic exam environment with:
-                </p>
-                <ul className="list-disc pl-5 space-y-1">
-                  <li>Timed writing sessions that match actual exam conditions</li>
-                  <li>Real-time word count tracking</li>
-                  <li>Post-session review and feedback</li>
-                  <li>Assessment based on NSW marking criteria</li>
-                </ul>
-                <p className="mt-2">
-                  This helps students practice under pressure and get familiar with exam conditions while receiving feedback aligned with NSW marking standards.
-                </p>
-              </div>
-            }
-          />
-          
-          <FAQItem
-            question="What marking criteria are used for assessment?"
-            answer={
-              <div>
-                <p className="mb-2">
-                  Our assessment follows the official NSW Selective School marking criteria, including:
-                </p>
-                <ul className="list-disc pl-5 space-y-1">
-                  <li>Content and ideas - Originality, relevance, and development</li>
-                  <li>Structure and organization - Logical flow and paragraph structure</li>
-                  <li>Language and expression - Vocabulary, grammar, and sentence variety</li>
-                  <li>Mechanics - Spelling, punctuation, and formatting</li>
-                  <li>Text type requirements - Specific elements for each writing type</li>
-                </ul>
-                <p className="mt-2">
-                  Feedback is provided for each criterion to help students understand their strengths and areas for improvement.
-                </p>
-              </div>
-            }
-          />
-          
-          <FAQItem
-            question="How should students prepare for the NSW Selective exam?"
-            answer={
-              <div>
-                <p className="mb-2">
-                  We recommend a structured approach to preparation:
-                </p>
-                <ol className="list-decimal pl-5 space-y-1">
-                  <li>Start early - Begin preparation at least 6-12 months before the exam</li>
-                  <li>Understand the requirements - Learn what each writing type requires</li>
-                  <li>Regular practice - Write consistently using our platform</li>
-                  <li>Timed practice - Get comfortable writing under time constraints</li>
-                  <li>Seek feedback - Use our AI coach to improve your writing</li>
-                  <li>Review and revise - Learn from mistakes and implement improvements</li>
-                  <li>Practice exam conditions - Use our simulator for realistic practice</li>
-                </ol>
-                <p className="mt-2">
-                  Consistent practice with guidance is the key to success in the NSW Selective exam.
-                </p>
-              </div>
-            }
-          />
-        </div>
-        
-        <div className="bg-white dark:bg-gray-800 shadow-lg rounded-lg p-6 mb-8">
-          <h2 className="text-2xl font-semibold mb-4 text-gray-800 dark:text-white">Using the Platform</h2>
-          
-          <FAQItem
-            question="How do I get started with InstaChat AI Writing Mate?"
-            answer={
-              <div>
-                <p className="mb-2">Getting started is easy:</p>
-                <ol className="list-decimal pl-5 space-y-1">
-                  <li>Create an account or sign in</li>
-                  <li>Select a writing type (narrative, persuasive, etc.)</li>
-                  <li>Choose your assistance level</li>
-                  <li>Start writing with AI guidance</li>
-                </ol>
-              </div>
-            }
-          />
-          
-          <FAQItem
-            question="How does the step-by-step writing guidance work?"
-            answer={
-              <div>
-                <p className="mb-2">
-                  Our AI provides structured guidance through each stage of the writing process:
-                </p>
-                <ol className="list-decimal pl-5 space-y-1">
-                  <li>Understanding the prompt - Analyzing what the question asks</li>
-                  <li>Planning - Organizing your ideas and creating an outline</li>
-                  <li>Introduction - Crafting an engaging opening</li>
-                  <li>Body paragraphs - Developing your arguments or narrative</li>
-                  <li>Conclusion - Creating an effective ending</li>
-                  <li>Revision - Improving your work based on feedback</li>
-                </ol>
-                <p className="mt-2">
-                  The AI adapts its guidance based on your writing type and skill level, providing appropriate scaffolding and examples.
-                </p>
-              </div>
-            }
-          />
-          
-          <FAQItem
-            question="Can I save my work and continue later?"
-            answer={
-              <p>
-                Yes, the platform automatically saves your work as you write. You can leave and return to continue working on your essays at any time. Your progress, feedback, and writing history are all preserved in your account.
-              </p>
-            }
-          />
-          
-          <FAQItem
-            question="Is there a word limit for essays?"
-            answer={
-              <p>
-                The platform supports essays of any length, but we recommend following NSW Selective exam guidelines, which typically suggest 350-500 words depending on the writing type. The word counter feature helps you track your progress and stay within recommended limits.
-              </p>
-            }
-          />
-        </div>
-        
-        <div className="bg-white dark:bg-gray-800 shadow-lg rounded-lg p-6">
-          <h2 className="text-2xl font-semibold mb-4 text-gray-800 dark:text-white">Technical Questions</h2>
-          
-          <FAQItem
-            question="Is my child's writing data secure?"
-            answer={
-              <p>
-                Yes, we take data security seriously. All writing data is encrypted and stored securely. We do not share student writing with third parties, and all data is used solely for providing feedback and improving the platform's educational capabilities.
-              </p>
-            }
-          />
-          
-          <FAQItem
-            question="Can I access InstaChat AI Writing Mate on mobile devices?"
-            answer={
-              <p>
-                Yes, InstaChat AI Writing Mate is fully responsive and works on smartphones, tablets, and computers. Students can practice their writing skills on any device with an internet connection.
-              </p>
-            }
-          />
-          
-          <FAQItem
-            question="Do I need to install any software?"
-            answer={
-              <p>
-                No, InstaChat AI Writing Mate is a web-based platform that runs in your browser. There's no need to install any software or apps – simply sign in and start writing.
-              </p>
-            }
-          />
-          
-          <FAQItem
-            question="What subscription plans are available?"
-            answer={
-              <p>
-                We offer flexible subscription plans to meet different needs, including monthly and annual options. Please visit our Pricing page for the most current information on available plans and features.
-              </p>
-            }
-          />
-          
-          <FAQItem
-            question="Is there a free trial available?"
-            answer={
-              <p>
-                Yes, we offer a limited free trial so you can experience the platform before subscribing. The free trial gives access to basic features and allows you to see how the AI coaching works.
-              </p>
-            }
-          />
-          
-          <FAQItem
-            question="How can I get help if I have questions?"
-            answer={
-              <p>
-                Our support team is available to help with any questions. You can contact us through the Help Center in your account, or email support@instachatai.co for assistance.
-              </p>
-            }
-          />
-        </div>
-      </div>
-    </div>
-  );
-};
-
-export default FAQPage;
+}
