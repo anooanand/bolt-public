@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
 import { NavBar } from './NavBar';
@@ -38,6 +38,7 @@ import { AdminButton } from './AdminButton';
 
 function AppContent() {
   const { user, isLoading, paymentCompleted, emailVerified, authSignOut } = useAuth();
+  const navigate = useNavigate();
   const [activePage, setActivePage] = useState('home');
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'signin' | 'signup'>('signin');
