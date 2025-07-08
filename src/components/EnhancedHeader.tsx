@@ -15,8 +15,8 @@ export function EnhancedHeader({
   assistanceLevel,
   onTextTypeChange,
   onAssistanceLevelChange,
-  onTimerStart
- hideTextTypeSelector
+  onTimerStart,
+  hideTextTypeSelector
 }: EnhancedHeaderProps) {
   return (
     <div className="mb-4 px-4 py-3 bg-gradient-to-r from-blue-100 to-purple-100 dark:from-blue-900/30 dark:to-purple-900/30 border-b-4 border-blue-300 dark:border-blue-700 rounded-t-xl shadow-md">
