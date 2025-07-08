@@ -121,4 +121,9 @@ export function ChatInterface({ initialMessages = [], onSendMessage }: ChatInter
               timestamp={message.timestamp}
               onRemove={handleRemoveMessage}
             />
+          ))
+        )}
+      </div>
+    </div>
+  );
 }
