@@ -82,37 +82,6 @@ export const WritingStudio: React.FC<WritingStudioProps> = ({ onNavigate }) => {
     }
   }, [content, title]);
 
-  // Handle sign-in behavior - clear content and show modal when user signs in
-  useEffect(() => {
-    // Only trigger this behavior when user changes from null to a user object
-    // This indicates a fresh sign-in
-    if (user && !content) {
-      // User just signed in and there's no content, show the writing type modal
-      setShowWritingTypeModal(true);
-    }
-  }, [user]);
-
-  // Clear content and show modal when user signs in (if there was previous content)
-  useEffect(() => {
-    if (user) {
-      // Check if this is a fresh sign-in by looking at a flag in localStorage
-      const wasSignedOut = localStorage.getItem('wasSignedOut');
-      if (wasSignedOut === 'true') {
-        // Clear the flag
-        localStorage.removeItem('wasSignedOut');
-        // Clear content and show modal
-        setContent('');
-        setTitle('Untitled Document');
-        setShowAnalysis(false);
-        setLastSaved(null);
-        setShowWritingTypeModal(true);
-      }
-    } else {
-      // User is signed out, set the flag
-      localStorage.setItem('wasSignedOut', 'true');
-    }
-  }, [user]);
-
   const handleSave = () => {
     // Simulate saving to localStorage or database
     const document = {
@@ -187,17 +156,31 @@ export const WritingStudio: React.FC<WritingStudioProps> = ({ onNavigate }) => {
   };
 
   const handleStartNewEssay = () => {
+    // Clear content and title
     setContent('');
     setTitle('Untitled Document');
     setShowAnalysis(false);
     setLastSaved(null);
+    
+    // Clear localStorage
+    localStorage.removeItem('writingContent');
+    localStorage.removeItem('selectedWritingType');
+    
+    // Show writing type selection modal
     setShowWritingTypeModal(true);
   };
 
   const handleWritingTypeSelect = (type: string) => {
-    // You can add logic here to set up the writing area based on the selected type
-    // For now, we'll just close the modal
+    // Store the selected writing type in localStorage
+    localStorage.setItem('selectedWritingType', type);
     setShowWritingTypeModal(false);
+    
+    // Focus on the textarea after selection
+    setTimeout(() => {
+      if (textareaRef.current) {
+        textareaRef.current.focus();
+      }
+    }, 100);
   };
 
   const quickActions = [
