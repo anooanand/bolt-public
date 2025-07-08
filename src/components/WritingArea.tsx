@@ -17,6 +17,8 @@ interface WritingAreaProps {
   textType: string;
   onTimerStart: (shouldStart: boolean) => void;
   onSubmit: () => void;
+  onTextTypeChange?: (textType: string) => void;
+  onPopupCompleted?: () => void;
 }
 
 interface WritingIssue {
@@ -27,7 +29,7 @@ interface WritingIssue {
   suggestion: string;
 }
 
-export function WritingArea({ content, onChange, textType, onTimerStart, onSubmit }: WritingAreaProps) {
+export function WritingArea({ content, onChange, textType, onTimerStart, onSubmit, onTextTypeChange, onPopupCompleted }: WritingAreaProps) {
   const { state, addWriting } = useApp();
   const [prompt, setPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
@@ -45,7 +47,6 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
   const [showPromptOptionsModal, setShowPromptOptionsModal] = useState(false);
   const [showCustomPromptModal, setShowCustomPromptModal] = useState(false);
   const [selectedWritingType, setSelectedWritingType] = useState('');
-  const [hasInitialized, setHasInitialized] = useState(false);
   const [showEvaluationModal, setShowEvaluationModal] = useState(false);
   
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -64,11 +65,18 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
       setSelectedWritingType(savedWritingType);
     }
 
-    if (!hasInitialized && !textType && !selectedWritingType && !savedContent && !savedWritingType) {
+    // Show modal when textType is empty and no saved writing type exists
+    if (!textType && !selectedWritingType && !savedWritingType) {
       setShowWritingTypeModal(true);
-      setHasInitialized(true);
     }
-  }, [textType, hasInitialized, selectedWritingType, onChange]);
+  }, [textType, onChange]);
+
+  // Show modal when textType becomes empty (e.g., when starting a new essay)
+  useEffect(() => {
+    if (!textType && !selectedWritingType) {
+      setShowWritingTypeModal(true);
+    }
+  }, [textType, selectedWritingType]);
 
   useEffect(() => {
     if (prompt) {
@@ -392,6 +400,11 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
     setSelectedWritingType(type);
     setShowWritingTypeModal(false);
     setShowPromptOptionsModal(true);
+    
+    // Call the callback to update parent component
+    if (onTextTypeChange) {
+      onTextTypeChange(type);
+    }
   };
 
   // Handle prompt generation
@@ -407,6 +420,11 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
       }
     }
     setIsGenerating(false);
+    
+    // Call the callback to indicate popup flow is completed
+    if (onPopupCompleted) {
+      onPopupCompleted();
+    }
   };
 
   // Handle custom prompt option
@@ -423,6 +441,11 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
       localStorage.setItem(`${selectedWritingType}_prompt`, customPrompt);
     }
     setShowCustomPromptModal(false);
+    
+    // Call the callback to indicate popup flow is completed
+    if (onPopupCompleted) {
+      onPopupCompleted();
+    }
   };
 
   // Handle essay submission for evaluation
@@ -604,5 +627,3 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
     </div>
   );
 }
-
-
