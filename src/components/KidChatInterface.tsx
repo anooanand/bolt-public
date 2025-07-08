@@ -122,14 +122,14 @@ export function KidChatInterface({ initialMessages = [], onSendMessage }: KidCha
               {/* Close Button */}
               <button 
                 onClick={() => handleRemoveMessage(message.id)}
-                className={`absolute -top-2 -right-2 w-6 h-6 flex items-center justify-center rounded-full shadow-md transition-all duration-300 transform hover:scale-110 ${
+                className={`absolute -top-2 -right-2 w-8 h-8 flex items-center justify-center rounded-full shadow-md transition-all duration-300 transform hover:scale-110 z-10 ${
                   message.sender === 'user'
-                    ? 'bg-blue-700 text-white hover:bg-blue-800'
-                    : 'bg-purple-500 text-white hover:bg-purple-600'
+                    ? 'bg-red-500 text-white hover:bg-red-600 border-2 border-white'
+                    : 'bg-red-500 text-white hover:bg-red-600 border-2 border-white'
                 }`}
                 aria-label="Remove message"
               >
-                <X className="h-4 w-4" />
+                <X className="h-5 w-5" />
               </button>
               
               {/* Message Content */}

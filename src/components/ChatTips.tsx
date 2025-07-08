@@ -92,10 +92,10 @@ export function ChatTips({ onClose }: ChatTipsProps) {
               {/* Close Button */}
               <button 
                 onClick={() => handleRemoveTip(tip.id)}
-                className="absolute -top-2 -right-2 w-6 h-6 flex items-center justify-center rounded-full shadow-md transition-all duration-300 transform hover:scale-110 bg-yellow-500 text-white hover:bg-yellow-600"
+                className="absolute -top-2 -right-2 w-8 h-8 flex items-center justify-center rounded-full shadow-md transition-all duration-300 transform hover:scale-110 bg-red-500 text-white hover:bg-red-600 border-2 border-white z-10"
                 aria-label="Remove tip"
               >
-                <X className="h-4 w-4" />
+                <X className="h-5 w-5" />
               </button>
               
               {/* Tip Content */}
