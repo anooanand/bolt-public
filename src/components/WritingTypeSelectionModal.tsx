@@ -1,4 +1,5 @@
 import React from 'react';
+import { X, BookOpen, Lightbulb, MessageSquare, Megaphone, ScrollText, Sparkles, Newspaper, Mail, Calendar, Rocket, Puzzle, Wand, Compass, MapPin, Target, Mic } from 'lucide-react';
 import { X, BookOpen, Lightbulb, MessageSquare, Megaphone, ScrollText, Sparkles, Newspaper, Mail, Calendar, Rocket, Puzzle, Wand, Compass, MapPin, Target } from 'lucide-react';
 
 interface WritingTypeSelectionModalProps {
@@ -17,7 +18,8 @@ const writingTypes = [
   { value: 'discursive', label: 'Discursive', icon: MessageSquare, description: 'Look at different ideas about a topic, then share your view!' },
   { value: 'news report', label: 'News Report', icon: Newspaper, description: 'Report the facts like a real journalist!' },
   { value: 'letter', label: 'Letter', icon: Mail, description: 'Write a friendly note or an important message!' },
-  { value: 'diary entry', label: 'Diary Entry', icon: BookOpen, description: 'Write down your daily adventures and feelings!' }
+  { value: 'diary entry', label: 'Diary Entry', icon: BookOpen, description: 'Write down your daily adventures and feelings!' },
+  { value: 'speech', label: 'Speech', icon: Mic, description: 'Deliver a powerful speech to inspire and engage your audience!' }
 ];
 
 export function WritingTypeSelectionModal({ isOpen, onClose, onSelectType }: WritingTypeSelectionModalProps) {
