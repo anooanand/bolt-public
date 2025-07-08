@@ -44,6 +44,7 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
   
   // New state for popup management
   const [popupFlowCompleted, setPopupFlowCompleted] = useState(false); 
+  const [showWritingTypeModal, setShowWritingTypeModal] = useState(false);
   const [showPromptOptionsModal, setShowPromptOptionsModal] = useState(false);
   const [showCustomPromptModal, setShowCustomPromptModal] = useState(false);
   const [selectedWritingType, setSelectedWritingType] = useState('');
