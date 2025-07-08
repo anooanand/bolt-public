@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { generatePrompt, getSynonyms, rephraseSentence, evaluateEssay } from '../lib/openai';
 import { dbOperations } from '../lib/database';
 import { useApp } from '../contexts/AppContext';
-import { AlertCircle, Send, Sparkles } from 'lucide-react';
+import { AlertCircle, Send } from 'lucide-react';
 import { InlineSuggestionPopup } from './InlineSuggestionPopup';
 import { WritingStatusBar } from './WritingStatusBar';
 import { WritingTypeSelectionModal } from './WritingTypeSelectionModal';
@@ -480,9 +480,9 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
   const currentTextType = textType || selectedWritingType;
 
   return (
-    <div ref={containerRef} className="h-full flex flex-col bg-white dark:bg-gray-800 rounded-md shadow-sm writing-area-container">
-      <div className="p-4 border-b border-gray-100 dark:border-gray-700 space-y-4 content-spacing">
-        <div className="flex flex-wrap justify-between items-center gap-2">
+    <div ref={containerRef} className="h-full flex flex-col bg-white dark:bg-gray-800 rounded-lg shadow-sm writing-area-container">
+      <div className="p-4 border-b border-gray-200 dark:border-gray-700 space-y-4 content-spacing">
+        <div className="flex flex-wrap justify-between items-center gap-3">
           <h2 className="text-xl font-bold text-gray-900 capitalize flex items-center">
             {textType ? (
               <>
@@ -527,35 +527,41 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
           <div className="flex items-center gap-2">
             <button
               onClick={() => setShowHighlights(!showHighlights)}
-              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all duration-200 ${
+              className={`px-4 py-2 text-sm font-bold rounded-xl transition-all duration-300 ${
                 showHighlights 
-                  ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-200' 
-                  : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
+                  ? 'bg-gradient-to-r from-blue-200 to-blue-300 text-blue-700 dark:from-blue-800 dark:to-blue-700 dark:text-blue-200 shadow-md transform scale-105' 
+                  : 'bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 dark:from-gray-800 dark:to-gray-700 dark:text-gray-300'
               }`}
             >
-              {showHighlights ? 'Hide Highlights' : 'Show Highlights'}
+              {showHighlights ? '🌟 Hide Magic Highlights' : '✨ Show Magic Highlights'}
             </button>
             {noTypeSelected ? (
-              <div className="flex items-center text-amber-700 dark:text-amber-400 text-sm font-medium bg-amber-50 dark:bg-amber-900/20 px-3 py-1.5 rounded-md">
-                <AlertCircle className="w-4 h-4 mr-2" />
+              <div className="flex items-center text-amber-700 dark:text-amber-400 text-sm font-bold bg-amber-100 dark:bg-amber-900/30 px-4 py-2 rounded-xl">
+                <AlertCircle className="w-5 h-5 mr-2" />
                 Please choose a story type first!
               </div>
             ) : !prompt && (
-              <div className="flex items-center text-blue-700 dark:text-blue-400 text-sm font-medium bg-blue-50 dark:bg-blue-900/20 px-3 py-1.5 rounded-md">
-                <AlertCircle className="w-4 h-4 mr-2" />
-                {isGenerating ? 'Creating a writing prompt...' : 'Choose a writing prompt to start!'}
+              <div className="flex items-center text-blue-700 dark:text-blue-400 text-sm font-bold bg-blue-100 dark:bg-blue-900/30 px-4 py-2 rounded-xl">
+                <AlertCircle className="w-5 h-5 mr-2" />
+                {isGenerating ? '🪄 Creating a writing prompt...' : '✏️ Choose a writing prompt to start!'}
               </div>
             )}
           </div>
         </div>
 
         {prompt && !noTypeSelected && (
-          <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-md border border-blue-100 dark:border-blue-800 shadow-sm">
-            <h3 className="font-medium text-blue-900 dark:text-blue-100 mb-2 flex items-center">
-              <Sparkles className="w-4 h-4 text-blue-500 mr-2" />
-              Writing Prompt:
-            </h3>
-            <p className="text-blue-800 dark:text-blue-200">{prompt}</p>
+          <div className="bg-gradient-to-r from-blue-100 to-purple-100 dark:from-blue-900/30 dark:to-purple-900/30 p-5 rounded-xl border-3 border-blue-300 dark:border-blue-800 shadow-md">
+            <div className="flex">
+              <div className="flex-shrink-0 mr-4">
+                <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center shadow-md">
+                  <Sparkles className="w-6 h-6 text-white" />
+                </div>
+              </div>
+              <div>
+                <h3 className="font-bold text-xl text-blue-900 dark:text-blue-100 mb-3">Your Writing Adventure:</h3>
+                <p className="text-blue-800 dark:text-blue-200 text-lg leading-relaxed">{prompt}</p>
+              </div>
+            </div>
           </div>
         )}
       </div>
@@ -615,7 +621,7 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
         )}
       </div>
 
-      <div className="flex items-center justify-between gap-4 p-4 bg-gray-50 dark:bg-gray-800 border-t border-gray-100 dark:border-gray-700">
+      <div className="flex items-center justify-between gap-4 p-4 bg-gray-50 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
         <WritingStatusBar 
           content={content} 
           textType={currentTextType}
@@ -625,9 +631,9 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
         <button
           onClick={handleSubmitEssay}
           disabled={countWords(content) < 50}
-          className={`flex items-center gap-2 px-5 py-2 rounded-md font-medium transition-all ${
+          className={`flex items-center gap-2 px-6 py-2 rounded-lg font-medium transition-all ${
             countWords(content) >= 50
-              ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-sm'
+              ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-md hover:shadow-lg'
               : 'bg-gray-300 text-gray-500 cursor-not-allowed'
           }`}
           title={countWords(content) < 50 ? 'Write at least 50 words to submit for evaluation' : 'Submit your essay for detailed evaluation'}
