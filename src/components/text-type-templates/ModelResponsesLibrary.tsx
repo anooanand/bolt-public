@@ -1,5 +1,5 @@
 import React from 'react';
-import { BookOpen, Award, ThumbsUp, AlertTriangle, X } from 'lucide-react';
+import { BookOpen, Award, ThumbsUp, AlertTriangle, X, Star, Gift, Sparkles, Zap } from 'lucide-react';
 
 interface ModelResponsesLibraryProps {
   textType: string;
