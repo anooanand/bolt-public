@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { CheckCircle, AlertCircle, HelpCircle } from 'lucide-react';
-import { evaluateEssay } from '../../lib/openai';
+import { CheckCircle, Clock, FileText, AlertCircle, X } from 'lucide-react';
 
 interface AlignedFeedbackProps {
   content: string;

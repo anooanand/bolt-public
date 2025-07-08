@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { BookOpen, Lightbulb, AlertTriangle, Sparkles, Wand, Star, Zap, Gift } from 'lucide-react';
+import { BookOpen, Lightbulb, AlertTriangle, Sparkles, Wand, Star, Zap, Gift, X } from 'lucide-react';
 import { getTextTypeVocabulary } from '../../lib/openai';
 import AIErrorHandler from '../../utils/errorHandling';
 import { vocabularyEnhancements } from '../../config/prompts';
