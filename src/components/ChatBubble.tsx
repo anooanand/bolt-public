@@ -18,14 +18,10 @@ export function ChatBubble({ id, text, sender, timestamp, onRemove }: ChatBubble
           : 'mr-auto bg-white dark:bg-gray-700 text-gray-800 dark:text-white rounded-t-2xl rounded-br-2xl border-2 border-purple-200 dark:border-purple-800'
       } p-4 shadow-md`}
     >
-      {/* Close Button */}
+      {/* Close Button - Improved visibility */}
       <button 
         onClick={() => onRemove(id)}
-        className={`absolute -top-2 -right-2 w-8 h-8 flex items-center justify-center rounded-full shadow-md transition-all duration-300 transform hover:scale-110 z-10 ${
-          sender === 'user'
-            ? 'bg-red-500 text-white hover:bg-red-600 border-2 border-white'
-            : 'bg-red-500 text-white hover:bg-red-600 border-2 border-white'
-        }`}
+        className="absolute -top-2 -right-2 w-8 h-8 flex items-center justify-center rounded-full bg-red-500 text-white hover:bg-red-600 border-2 border-white shadow-md transition-all duration-300 transform hover:scale-110 z-10"
         aria-label="Remove message"
       >
         <X className="h-5 w-5" />
