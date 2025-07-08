@@ -49,7 +49,7 @@ export function WritingTypeSelectionModal({ isOpen, onClose, onSelectType }: Wri
               className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors bg-white dark:bg-gray-700 p-2 rounded-full shadow-md hover:shadow-lg transform hover:scale-110 transition-all duration-300"
             >
               <X className="w-6 h-6" />
-            </p>
+            </button>
           </div>
         </div>
         
