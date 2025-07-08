@@ -121,4 +121,9 @@ export function KidChatInterface({ initialMessages = [], onSendMessage }: KidCha
               timestamp={message.timestamp}
               onRemove={handleRemoveMessage}
             />
+          ))
+        )}
+      </div>
+    </div>
+  );
 }
