@@ -195,11 +195,11 @@ function AppContent() {
   const handleGetStarted = async () => {
     if (user) {
       if (!emailVerified) {
-        setActivePage('dashboard'); // Show email verification reminder
+        navigate('/dashboard'); // Show email verification reminder
       } else if (paymentCompleted) {
-        setActivePage('writing'); // Full access
+        navigate('/writing'); // Full access
       } else {
-        setActivePage('pricing'); // Need to complete payment
+        navigate('/pricing'); // Need to complete payment
       }
     } else {
       setAuthModalMode('signup');
