@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { X, Send, Smile, Star, Sparkles } from 'lucide-react';
 import { ChatBubble } from './ChatBubble';
+import { ChatBubble } from './ChatBubble';
 
 interface Message {
   id: string;
@@ -120,31 +121,4 @@ export function ChatInterface({ initialMessages = [], onSendMessage }: ChatInter
               timestamp={message.timestamp}
               onRemove={handleRemoveMessage}
             />
-          ))
-        )}
-        <div ref={messagesEndRef} />
-      </div>
-      
-      {/* Input Area */}
-      <div className="p-4 bg-white dark:bg-gray-800 border-t-4 border-blue-300 dark:border-blue-700">
-        <div className="flex items-center">
-          <textarea
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder="Type your message here..."
-            className="flex-1 border-3 border-blue-300 dark:border-blue-700 rounded-2xl py-3 px-4 focus:outline-none focus:ring-4 focus:ring-blue-200 dark:focus:ring-blue-900 focus:border-blue-400 bg-blue-50 dark:bg-gray-700 text-gray-800 dark:text-white resize-none"
-            rows={2}
-          />
-          <button
-            onClick={handleSendMessage}
-            disabled={!inputValue.trim()}
-            className="ml-3 bg-gradient-to-r from-blue-500 to-purple-500 text-white p-3 rounded-full shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 transform hover:scale-110"
-          >
-            <Send className="h-6 w-6" />
-          </button>
-        </div>
-      </div>
-    </div>
-  );
 }
