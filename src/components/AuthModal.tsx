@@ -4,17 +4,17 @@ import { X, Mail, Lock, Eye, EyeOff, CheckCircle, AlertCircle, Loader, Star, Hea
 import { supabase, isEmailVerified } from '../lib/supabase';
 
 interface AuthModalProps {
+  isOpen: boolean;
   mode: 'signin' | 'signup';
   onClose: () => void;
-  onSuccess: (user: any) => void;
-  onSwitchMode: (mode: 'signin' | 'signup') => void;
+  onAuthSuccess: (user: any) => void;
 }
 
 export const AuthModal: React.FC<AuthModalProps> = ({
+  isOpen,
   mode: initialMode,
   onClose,
-  onSuccess,
-  onSwitchMode
+  onAuthSuccess
 }) => {
   const [mode, setMode] = useState<'signin' | 'signup' | 'confirmation'>(initialMode);
   const [email, setEmail] = useState<string>('');
@@ -117,7 +117,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             setSuccess(true);
             setCurrentStep(3);
             setTimeout(() => {
-              onSuccess(data.user);
+              onAuthSuccess(data.user);
             }, 1500);
           } else {
             setConfirmationEmail(email);
@@ -173,7 +173,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
           setTimeout(() => {
-            onSuccess(user);
+            onAuthSuccess(user);
           }, 1500);
         }
       } else {
@@ -190,7 +190,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        onSuccess(user);
+        // Always call onAuthSuccess to close the modal and proceed
+        onAuthSuccess(user);
       } else {
         setError("Let's try signing in again! 🔄");
       }
@@ -230,6 +231,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       </div>
     </div>
   );
+
+  if (!isOpen) {
+    return null;
+  }
 
   if (mode === 'confirmation') {
     return (
@@ -493,7 +498,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 onClick={() => {
                   const newMode = mode === 'signin' ? 'signup' : 'signin';
                   setMode(newMode);
-                  onSwitchMode(newMode);
                   setError('');
                   setSuccess(false);
                   setCurrentStep(1);
