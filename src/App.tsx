@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router } from 'react-router-dom';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { KidChatDemo } from './components/KidChatDemo';
 import { AuthProvider } from './contexts/AuthContext';
 import { AppProvider } from './contexts/AppContext';
 import AppContent from './components/AppContent';
@@ -10,9 +11,9 @@ function App() {
     <ThemeProvider>
       <AuthProvider>
         <AppProvider>
-          <Router>
-            <AppContent />
-          </Router>
+          <div>
+            <KidChatDemo />
+          </div>
         </AppProvider>
       </AuthProvider>
     </ThemeProvider>
