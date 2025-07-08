@@ -83,14 +83,7 @@ export function Footer({ onNavigate }: FooterProps) {
                   Features
                 </button>
               </li>
-              <li>
-                <button
-                  onClick={() => handleNavigation('pricing')}
-                  className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white text-sm transition-colors"
-                >
-                  Pricing
-                </button>
-              </li>
+
               <li>
                 <button
                   onClick={() => handleNavigation('writing')}
@@ -242,7 +235,7 @@ export function Footer({ onNavigate }: FooterProps) {
                 </p>
               </div>
               <button
-                onClick={() => handleNavigation('pricing')}
+                onClick={() => handleNavigation('home')}
                 className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md transition-colors"
               >
                 Get Started
