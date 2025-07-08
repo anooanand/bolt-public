@@ -101,6 +101,20 @@ function AppLayout() {
   const handleAuthSuccess = async (user: any) => {
     setShowAuthModal(false);
     
+    // Clear writing content and localStorage when signing in
+    if (authModalMode === 'signin') {
+      setContent('');
+      setTextType('');
+      localStorage.removeItem('writingContent');
+      localStorage.removeItem('selectedWritingType');
+      
+      // Clear any saved prompts
+      const writingTypes = ['narrative', 'persuasive', 'expository', 'reflective', 'descriptive', 'recount', 'discursive', 'news report', 'letter', 'diary entry'];
+      writingTypes.forEach(type => {
+        localStorage.removeItem(`${type}_prompt`);
+      });
+    }
+    
     // After successful signup, redirect to dashboard to show email verification message
     if (authModalMode === 'signup') {
       setActivePage('dashboard');
