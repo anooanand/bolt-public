@@ -43,7 +43,7 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
   const [showHighlights, setShowHighlights] = useState(true);
   
   // New state for popup management
-  const [showWritingTypeModal, setShowWritingTypeModal] = useState(false);
+  const [popupFlowCompleted, setPopupFlowCompleted] = useState(false); 
   const [showPromptOptionsModal, setShowPromptOptionsModal] = useState(false);
   const [showCustomPromptModal, setShowCustomPromptModal] = useState(false);
   const [selectedWritingType, setSelectedWritingType] = useState('');
@@ -64,19 +64,12 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
     if (savedWritingType) {
       setSelectedWritingType(savedWritingType);
     }
-
-    // Show modal when textType is empty and no saved writing type exists
-    if (!textType && !selectedWritingType && !savedWritingType) {
-      setShowWritingTypeModal(true);
-    }
-  }, [textType, onChange]);
-
-  // Show modal when textType becomes empty (e.g., when starting a new essay)
-  useEffect(() => {
+    
+    // Initialize the writing type selection flow
     if (!textType && !selectedWritingType) {
       setShowWritingTypeModal(true);
     }
-  }, [textType, selectedWritingType]);
+  }, [textType, selectedWritingType, onChange]);
 
   useEffect(() => {
     if (prompt) {
@@ -398,6 +391,7 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
   // Handle writing type selection
   const handleWritingTypeSelect = (type: string) => {
     setSelectedWritingType(type);
+    localStorage.setItem('selectedWritingType', type);
     setShowWritingTypeModal(false);
     setShowPromptOptionsModal(true);
     
@@ -411,12 +405,17 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
   const handleGeneratePrompt = async () => {
     setShowPromptOptionsModal(false);
     setIsGenerating(true);
-    const newPrompt = await generatePrompt(selectedWritingType);
+    
+    // Use the current text type (either from props or local state)
+    const currentTextType = textType || selectedWritingType;
+    const newPrompt = await generatePrompt(currentTextType);
+    
     if (newPrompt) {
       setPrompt(newPrompt);
-      // Save prompt to localStorage
-      if (selectedWritingType) {
-        localStorage.setItem(`${selectedWritingType}_prompt`, newPrompt);
+      
+      // Save prompt to localStorage using the current text type
+      if (currentTextType) {
+        localStorage.setItem(`${currentTextType}_prompt`, newPrompt);
       }
     }
     setIsGenerating(false);
@@ -436,9 +435,13 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
   // Handle custom prompt submission
   const handleCustomPromptSubmit = (customPrompt: string) => {
     setPrompt(customPrompt);
-    // Save prompt to localStorage
-    if (selectedWritingType) {
-      localStorage.setItem(`${selectedWritingType}_prompt`, customPrompt);
+    
+    // Use the current text type (either from props or local state)
+    const currentTextType = textType || selectedWritingType;
+    
+    // Save prompt to localStorage using the current text type
+    if (currentTextType) {
+      localStorage.setItem(`${currentTextType}_prompt`, customPrompt);
     }
     setShowCustomPromptModal(false);
     
@@ -462,14 +465,18 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
   };
 
   const handleRestoreContent = (restoredContent: string, restoredTextType: string) => {
+    console.log('Restoring content with type:', restoredTextType);
     onChange(restoredContent);
     if (restoredTextType) {
       setSelectedWritingType(restoredTextType);
+      if (onTextTypeChange) {
+        onTextTypeChange(restoredTextType);
+      }
     }
   };
 
   const noTypeSelected = !selectedWritingType;
-  const currentTextType = selectedWritingType || textType;
+  const currentTextType = textType || selectedWritingType;
 
   return (
     <div ref={containerRef} className="h-full flex flex-col bg-white dark:bg-gray-800 rounded-lg shadow-sm writing-area-container">

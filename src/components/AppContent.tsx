@@ -56,7 +56,7 @@ function AppContent() {
   const [showPlanningTool, setShowPlanningTool] = useState(false);
   
   // New state for popup flow completion
-  const [popupFlowCompleted, setPopupFlowCompleted] = useState(false);
+  const [popupFlowCompleted, setPopupFlowCompleted] = useState(false); 
   const [hasSignedIn, setHasSignedIn] = useState(false);
 
   // Handle sign-in behavior - clear content and show modal when user signs in
@@ -214,6 +214,7 @@ function AppContent() {
   // Handle text type change from WritingArea popup
   const handleTextTypeChange = (newTextType: string) => {
     setTextType(newTextType);
+    console.log('Text type changed to:', newTextType);
   };
 
   // Handle popup flow completion
@@ -313,7 +314,7 @@ function AppContent() {
                       <WritingArea 
                         content={content}
                         onChange={setContent}
-                        textType={textType}
+                        textType={textType} 
                         onTimerStart={setTimerStarted}
                         onSubmit={handleSubmit}
                         onTextTypeChange={handleTextTypeChange}

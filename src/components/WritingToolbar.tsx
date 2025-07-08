@@ -18,6 +18,7 @@ interface WritingToolbarProps {
   onShowPlanningTool: () => void;
   onTimerStart: () => void;
   onStartNewEssay: () => void;
+  onStartNewEssay: () => void;
 }
 
 export function WritingToolbar({
@@ -26,6 +27,7 @@ export function WritingToolbar({
   onShowHelpCenter,
   onShowPlanningTool,
   onTimerStart,
+  onStartNewEssay
   onStartNewEssay
 }: WritingToolbarProps) {
   const [showVocabularyTool, setShowVocabularyTool] = useState(false);

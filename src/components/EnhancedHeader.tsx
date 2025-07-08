@@ -18,6 +18,15 @@ export function EnhancedHeader({
   onTimerStart,
   hideTextTypeSelector
 }: EnhancedHeaderProps) {
+  // Handle text type change
+  const handleTextTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newTextType = e.target.value;
+    onTextTypeChange(newTextType);
+    
+    // Save to localStorage for persistence
+    localStorage.setItem('selectedWritingType', newTextType);
+  };
+
   return (
     <div className="mb-4 px-4 py-3 bg-gradient-to-r from-blue-100 to-purple-100 dark:from-blue-900/30 dark:to-purple-900/30 border-b-4 border-blue-300 dark:border-blue-700 rounded-t-xl shadow-md">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0 relative">
@@ -37,7 +46,7 @@ export function EnhancedHeader({
           {!hideTextTypeSelector && (
             <select
               value={textType}
-              onChange={(e) => onTextTypeChange(e.target.value)}
+              onChange={handleTextTypeChange}
               className="block rounded-xl border-3 border-blue-300 py-2 pl-4 pr-10 text-gray-900 dark:text-gray-100 dark:bg-gray-700 focus:ring-4 focus:ring-blue-200 focus:border-blue-500 text-base font-medium shadow-sm transition-all duration-200 hover:border-blue-400"
             >
               <option value="">📝 Choose your story type...</option>
