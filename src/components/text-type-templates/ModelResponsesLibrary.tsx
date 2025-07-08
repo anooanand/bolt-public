@@ -1,5 +1,5 @@
 import React from 'react';
-import { BookOpen, Award, ThumbsUp, AlertTriangle } from 'lucide-react';
+import { BookOpen, Award, ThumbsUp, AlertTriangle, Star, Sparkles, Gift } from 'lucide-react';
 
 interface ModelResponsesLibraryProps {
   textType: string;
@@ -352,26 +352,31 @@ I like my room because it is quiet and I can be alone there. It is comfortable a
     <div className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+        className="flex items-center px-4 py-2 text-sm font-bold rounded-xl border-3 border-purple-300 bg-gradient-to-r from-purple-100 to-purple-200 text-purple-700 hover:from-purple-200 hover:to-purple-300 transition-all duration-300 transform hover:scale-105 shadow-md"
       >
-        <Award className="w-4 h-4 mr-2" />
-        Model Responses
+        <Star className="w-5 h-5 mr-2" />
+        See Examples
       </button>
 
       {isOpen && (
-        <div className="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div className="fixed inset-0 z-50 overflow-y-auto backdrop-blur-sm" aria-labelledby="modal-title" role="dialog" aria-modal="true">
           <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true"></div>
+            <div className="fixed inset-0 bg-gradient-to-br from-purple-500/50 to-pink-500/50 transition-opacity" aria-hidden="true"></div>
             <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-5xl sm:w-full">
-              <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+            <div className="inline-block align-bottom bg-white dark:bg-gray-800 rounded-3xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-5xl sm:w-full border-4 border-purple-300 dark:border-purple-700">
+              <div className="bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30 px-6 pt-5 pb-4 sm:p-8">
                 <div className="flex justify-between items-start">
-                  <h3 className="text-lg leading-6 font-medium text-gray-900" id="modal-title">
-                    {examples.title}
-                  </h3>
+                  <div className="flex items-center">
+                    <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center mr-4 shadow-lg">
+                      <Award className="h-6 w-6 text-white" />
+                    </div>
+                    <h3 className="text-2xl leading-6 font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600 dark:from-purple-400 dark:to-pink-400" id="modal-title">
+                      {examples.title}
+                    </h3>
+                  </div>
                   <button
                     type="button"
-                    className="bg-white rounded-md text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                    className="bg-white dark:bg-gray-700 rounded-full text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 p-2 shadow-md hover:shadow-lg transform hover:scale-110 transition-all duration-300"
                     onClick={() => setIsOpen(false)}
                   >
                     <span className="sr-only">Close</span>
@@ -379,53 +384,62 @@ I like my room because it is quiet and I can be alone there. It is comfortable a
                   </button>
                 </div>
                 <div className="mt-2">
-                  <p className="text-sm text-gray-500">{examples.description}</p>
+                  <p className="text-base text-gray-700 dark:text-gray-300 font-medium">{examples.description}</p>
                 </div>
 
-                <div className="mt-4 flex space-x-2">
+                <div className="mt-6 flex space-x-4 justify-center">
                   <button
                     onClick={() => setSelectedQuality('excellent')}
-                    className={`px-3 py-1.5 text-sm font-medium rounded-md ${
+                    className={`px-5 py-3 text-base font-bold rounded-xl ${
                       selectedQuality === 'excellent'
-                        ? 'bg-green-100 text-green-800 border border-green-300'
-                        : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                        ? 'bg-gradient-to-r from-green-200 to-green-300 text-green-800 border-3 border-green-400 shadow-md transform scale-105'
+                        : 'bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 border-3 border-gray-300 hover:from-gray-200 hover:to-gray-300 hover:border-gray-400'
                     }`}
                   >
-                    <ThumbsUp className="w-4 h-4 inline mr-1" />
-                    Excellent Example
+                    <div className="flex items-center">
+                      <Star className="w-5 h-5 text-yellow-500 mr-2" />
+                      Amazing Example
+                    </div>
                   </button>
                   <button
                     onClick={() => setSelectedQuality('good')}
-                    className={`px-3 py-1.5 text-sm font-medium rounded-md ${
+                    className={`px-5 py-3 text-base font-bold rounded-xl ${
                       selectedQuality === 'good'
-                        ? 'bg-blue-100 text-blue-800 border border-blue-300'
-                        : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                        ? 'bg-gradient-to-r from-blue-200 to-blue-300 text-blue-800 border-3 border-blue-400 shadow-md transform scale-105'
+                        : 'bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 border-3 border-gray-300 hover:from-gray-200 hover:to-gray-300 hover:border-gray-400'
                     }`}
                   >
-                    <ThumbsUp className="w-4 h-4 inline mr-1" />
-                    Good Example
+                    <div className="flex items-center">
+                      <Gift className="w-5 h-5 text-blue-500 mr-2" />
+                      Good Example
+                    </div>
                   </button>
                   <button
                     onClick={() => setSelectedQuality('basic')}
-                    className={`px-3 py-1.5 text-sm font-medium rounded-md ${
+                    className={`px-5 py-3 text-base font-bold rounded-xl ${
                       selectedQuality === 'basic'
-                        ? 'bg-yellow-100 text-yellow-800 border border-yellow-300'
-                        : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                        ? 'bg-gradient-to-r from-yellow-200 to-yellow-300 text-yellow-800 border-3 border-yellow-400 shadow-md transform scale-105'
+                        : 'bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 border-3 border-gray-300 hover:from-gray-200 hover:to-gray-300 hover:border-gray-400'
                     }`}
                   >
-                    <AlertTriangle className="w-4 h-4 inline mr-1" />
-                    Basic Example
+                    <div className="flex items-center">
+                      <Sparkles className="w-5 h-5 text-yellow-500 mr-2" />
+                      Starter Example
+                    </div>
                   </button>
                   <div className="flex-grow"></div>
                   <button
                     onClick={() => setShowAnnotations(!showAnnotations)}
-                    className={`px-3 py-1.5 text-sm font-medium rounded-md ${
+                    className={`px-5 py-3 text-base font-bold rounded-xl ${
                       showAnnotations
-                        ? 'bg-purple-100 text-purple-800 border border-purple-300'
-                        : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                        ? 'bg-gradient-to-r from-purple-200 to-purple-300 text-purple-800 border-3 border-purple-400 shadow-md'
+                        : 'bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 border-3 border-gray-300 hover:from-gray-200 hover:to-gray-300 hover:border-gray-400'
                     }`}
                   >
-                    {showAnnotations ? 'Hide Annotations' : 'Show Annotations'}
+                    <div className="flex items-center">
+                      <Zap className="w-5 h-5 mr-2" />
+                      {showAnnotations ? 'Hide Notes' : 'Show Notes'}
+                    </div>
                   </button>
                 </div>
 

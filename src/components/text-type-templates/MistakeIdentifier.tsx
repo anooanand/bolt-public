@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { AlertTriangle, CheckCircle } from 'lucide-react';
+import { AlertTriangle, CheckCircle, Target, Star, Sparkles, Zap, Gift } from 'lucide-react';
 import { identifyCommonMistakes } from '../../lib/openai';
 import AIErrorHandler from '../../utils/errorHandling';
 import { promptConfig } from '../../config/prompts';
@@ -101,26 +101,31 @@ export function MistakeIdentifier({ content, textType }: MistakeIdentifierProps)
     <div className="relative">
       <button
         onClick={handleOpen}
-        className="flex items-center px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+        className="flex items-center px-4 py-2 text-sm font-bold rounded-xl border-3 border-green-300 bg-gradient-to-r from-green-100 to-green-200 text-green-700 hover:from-green-200 hover:to-green-300 transition-all duration-300 transform hover:scale-105 shadow-md"
       >
-        <AlertTriangle className="w-4 h-4 mr-2" />
-        Check Common Mistakes
+        <Target className="w-5 h-5 mr-2" />
+        Check My Work
       </button>
 
       {isOpen && (
-        <div className="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div className="fixed inset-0 z-50 overflow-y-auto backdrop-blur-sm" aria-labelledby="modal-title" role="dialog" aria-modal="true">
           <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true"></div>
+            <div className="fixed inset-0 bg-gradient-to-br from-green-500/50 to-teal-500/50 transition-opacity" aria-hidden="true"></div>
             <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
-              <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+            <div className="inline-block align-bottom bg-white dark:bg-gray-800 rounded-3xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full border-4 border-green-300 dark:border-green-700">
+              <div className="bg-gradient-to-r from-green-100 to-teal-100 dark:from-green-900/30 dark:to-teal-900/30 px-6 pt-5 pb-4 sm:p-8">
                 <div className="flex justify-between items-start">
-                  <h3 className="text-lg leading-6 font-medium text-gray-900" id="modal-title">
-                    Common Mistakes Analysis for {textType} Writing
-                  </h3>
+                  <div className="flex items-center">
+                    <div className="w-12 h-12 bg-gradient-to-r from-green-500 to-teal-500 rounded-full flex items-center justify-center mr-4 shadow-lg">
+                      <Target className="h-6 w-6 text-white" />
+                    </div>
+                    <h3 className="text-2xl leading-6 font-bold text-transparent bg-clip-text bg-gradient-to-r from-green-600 to-teal-600 dark:from-green-400 dark:to-teal-400" id="modal-title">
+                      Let's Check Your {textType} Writing!
+                    </h3>
+                  </div>
                   <button
                     type="button"
-                    className="bg-white rounded-md text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                    className="bg-white dark:bg-gray-700 rounded-full text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 p-2 shadow-md hover:shadow-lg transform hover:scale-110 transition-all duration-300"
                     onClick={() => setIsOpen(false)}
                   >
                     <span className="sr-only">Close</span>

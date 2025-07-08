@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, CheckCircle, AlertCircle, Target, BookOpen, Lightbulb } from 'lucide-react';
+import { X, CheckCircle, AlertCircle, Target, BookOpen, Lightbulb, Star, Trophy, Sparkles, Heart, Gift } from 'lucide-react';
 import { evaluateEssay } from '../lib/openai';
 
 interface EssayEvaluationModalProps {
@@ -78,35 +78,50 @@ export function EssayEvaluationModal({ isOpen, onClose, content, textType }: Ess
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-            Essay Evaluation - {textType}
-          </h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-          >
-            <X className="w-6 h-6" />
-          </button>
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+      <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto border-4 border-blue-300 dark:border-blue-700">
+        <div className="bg-gradient-to-r from-blue-100 to-purple-100 dark:from-blue-900/30 dark:to-purple-900/30 p-6 border-b-4 border-blue-300 dark:border-blue-700">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center mr-4 shadow-lg">
+                <Trophy className="h-6 w-6 text-white" />
+              </div>
+              <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400">
+                Your Writing Report Card!
+              </h2>
+            </div>
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors bg-white dark:bg-gray-700 p-2 rounded-full shadow-md hover:shadow-lg transform hover:scale-110 transition-all duration-300"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
         </div>
 
-        <div className="p-6">
+        <div className="p-8">
           {isLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-              <span className="ml-4 text-lg text-gray-600 dark:text-gray-300">
-                Evaluating your essay...
+            <div className="flex flex-col items-center justify-center py-16">
+              <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-200 border-t-blue-600 mb-6"></div>
+              <span className="text-xl font-bold text-blue-600 dark:text-blue-400 mb-2">
+                Reading your amazing story...
               </span>
+              <p className="text-gray-600 dark:text-gray-300 text-center max-w-md">
+                Our friendly AI teacher is looking at your writing and getting ready to give you helpful feedback!
+              </p>
             </div>
           ) : error ? (
-            <div className="text-center py-12">
-              <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-              <p className="text-red-600 dark:text-red-400 text-lg">{error}</p>
+            <div className="text-center py-16">
+              <div className="w-20 h-20 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-6">
+                <AlertCircle className="w-10 h-10 text-red-500" />
+              </div>
+              <h3 className="text-2xl font-bold text-red-600 dark:text-red-400 mb-4">Oops! Something went wrong</h3>
+              <p className="text-gray-700 dark:text-gray-300 text-lg mb-6 max-w-md mx-auto">
+                We couldn't read your story right now. Let's try again in a moment!
+              </p>
               <button
                 onClick={evaluateEssayContent}
-                className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                className="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-xl hover:from-blue-600 hover:to-purple-600 transition-all duration-300 font-bold text-lg shadow-lg transform hover:scale-105"
               >
                 Try Again
               </button>
@@ -114,21 +129,23 @@ export function EssayEvaluationModal({ isOpen, onClose, content, textType }: Ess
           ) : evaluation ? (
             <div className="space-y-6">
               {/* Overall Score */}
-              <div className={`p-6 rounded-lg ${getScoreBackground(evaluation.overallScore)}`}>
+              <div className={`p-8 rounded-2xl ${getScoreBackground(evaluation.overallScore)} border-4 border-blue-200 dark:border-blue-800 shadow-lg`}>
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
-                      Overall Score
+                    <h3 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center">
+                      <Trophy className="w-7 h-7 text-yellow-500 mr-3" />
+                      Your Score
                     </h3>
-                    <p className="text-gray-600 dark:text-gray-300">
-                      NSW Selective Writing Standards
+                    <p className="text-gray-700 dark:text-gray-300 text-lg mt-1">
+                      Based on NSW Selective Writing
                     </p>
                   </div>
                   <div className="text-right">
-                    <div className={`text-4xl font-bold ${getScoreColor(evaluation.overallScore)}`}>
-                      {evaluation.overallScore}/10
+                    <div className={`text-5xl font-bold ${getScoreColor(evaluation.overallScore)}`}>
+                      {evaluation.overallScore}
+                      <span className="text-2xl font-normal text-gray-500">/10</span>
                     </div>
-                    <div className="text-sm text-gray-600 dark:text-gray-300">
+                    <div className="text-base text-gray-600 dark:text-gray-300 mt-1">
                       {evaluation.gradeLevel}
                     </div>
                   </div>
@@ -136,48 +153,58 @@ export function EssayEvaluationModal({ isOpen, onClose, content, textType }: Ess
               </div>
 
               {/* Quick Stats */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="bg-blue-50 dark:bg-blue-900/30 p-4 rounded-lg">
-                  <div className="flex items-center">
-                    <BookOpen className="w-5 h-5 text-blue-600 dark:text-blue-400 mr-2" />
-                    <span className="font-medium text-gray-900 dark:text-white">Word Count</span>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="bg-gradient-to-r from-blue-100 to-blue-200 dark:from-blue-900/30 dark:to-blue-800/30 p-5 rounded-2xl border-3 border-blue-300 dark:border-blue-700 shadow-md">
+                  <div className="flex items-center mb-3">
+                    <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center mr-3 shadow-md">
+                      <BookOpen className="w-5 h-5 text-white" />
+                    </div>
+                    <span className="font-bold text-lg text-blue-800 dark:text-blue-200">Word Count</span>
                   </div>
-                  <div className="mt-1">
-                    <span className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                  <div className="text-center">
+                    <span className="text-3xl font-bold text-blue-700 dark:text-blue-300">
                       {evaluation.wordCount}
                     </span>
-                    <span className="text-sm text-gray-600 dark:text-gray-300 ml-2">
-                      ({evaluation.targetLength})
+                    <span className="text-base text-blue-600 dark:text-blue-400 ml-2 font-medium">
+                      {evaluation.targetLength === 'Ideal' && <span className="flex items-center justify-center mt-1"><Star className="w-5 h-5 text-yellow-500 mr-1" /> Perfect length!</span>}
+                      {evaluation.targetLength === 'Too Short' && <span className="flex items-center justify-center mt-1"><AlertCircle className="w-5 h-5 text-amber-500 mr-1" /> A bit short</span>}
+                      {evaluation.targetLength === 'Too Long' && <span className="flex items-center justify-center mt-1"><AlertCircle className="w-5 h-5 text-amber-500 mr-1" /> A bit long</span>}
                     </span>
                   </div>
                 </div>
 
-                <div className="bg-green-50 dark:bg-green-900/30 p-4 rounded-lg">
-                  <div className="flex items-center">
-                    <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400 mr-2" />
-                    <span className="font-medium text-gray-900 dark:text-white">Strengths</span>
+                <div className="bg-gradient-to-r from-green-100 to-green-200 dark:from-green-900/30 dark:to-green-800/30 p-5 rounded-2xl border-3 border-green-300 dark:border-green-700 shadow-md">
+                  <div className="flex items-center mb-3">
+                    <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center mr-3 shadow-md">
+                      <CheckCircle className="w-5 h-5 text-white" />
+                    </div>
+                    <span className="font-bold text-lg text-green-800 dark:text-green-200">Strengths</span>
                   </div>
-                  <div className="mt-1">
-                    <span className="text-2xl font-bold text-green-600 dark:text-green-400">
+                  <div className="text-center">
+                    <span className="text-3xl font-bold text-green-700 dark:text-green-300">
                       {evaluation.strengths.length}
                     </span>
-                    <span className="text-sm text-gray-600 dark:text-gray-300 ml-2">
-                      identified
+                    <span className="text-base text-green-600 dark:text-green-400 ml-2 font-medium flex items-center justify-center mt-1">
+                      <Star className="w-5 h-5 text-yellow-500 mr-1" />
+                      Great things!
                     </span>
                   </div>
                 </div>
 
-                <div className="bg-amber-50 dark:bg-amber-900/30 p-4 rounded-lg">
-                  <div className="flex items-center">
-                    <Target className="w-5 h-5 text-amber-600 dark:text-amber-400 mr-2" />
-                    <span className="font-medium text-gray-900 dark:text-white">Focus Areas</span>
+                <div className="bg-gradient-to-r from-amber-100 to-amber-200 dark:from-amber-900/30 dark:to-amber-800/30 p-5 rounded-2xl border-3 border-amber-300 dark:border-amber-700 shadow-md">
+                  <div className="flex items-center mb-3">
+                    <div className="w-10 h-10 bg-amber-500 rounded-full flex items-center justify-center mr-3 shadow-md">
+                      <Target className="w-5 h-5 text-white" />
+                    </div>
+                    <span className="font-bold text-lg text-amber-800 dark:text-amber-200">To Improve</span>
                   </div>
-                  <div className="mt-1">
-                    <span className="text-2xl font-bold text-amber-600 dark:text-amber-400">
+                  <div className="text-center">
+                    <span className="text-3xl font-bold text-amber-700 dark:text-amber-300">
                       {evaluation.areasForImprovement.length}
                     </span>
-                    <span className="text-sm text-gray-600 dark:text-gray-300 ml-2">
-                      to improve
+                    <span className="text-base text-amber-600 dark:text-amber-400 ml-2 font-medium flex items-center justify-center mt-1">
+                      <Gift className="w-5 h-5 text-purple-500 mr-1" />
+                      Next goals
                     </span>
                   </div>
                 </div>

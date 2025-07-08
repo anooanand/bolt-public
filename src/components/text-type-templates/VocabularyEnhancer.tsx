@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { BookOpen, Lightbulb, AlertTriangle } from 'lucide-react';
+import { BookOpen, Lightbulb, AlertTriangle, Sparkles, Wand, Star, Zap, Gift } from 'lucide-react';
 import { getTextTypeVocabulary } from '../../lib/openai';
 import AIErrorHandler from '../../utils/errorHandling';
 import { vocabularyEnhancements } from '../../config/prompts';
@@ -111,26 +111,31 @@ export function VocabularyEnhancer({ textType, content }: VocabularyEnhancerProp
     <div className="relative">
       <button
         onClick={handleOpen}
-        className="flex items-center px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+        className="flex items-center px-4 py-2 text-sm font-bold rounded-xl border-3 border-yellow-300 bg-gradient-to-r from-yellow-100 to-yellow-200 text-yellow-700 hover:from-yellow-200 hover:to-yellow-300 transition-all duration-300 transform hover:scale-105 shadow-md"
       >
-        <BookOpen className="w-4 h-4 mr-2" />
-        Vocabulary Helper
+        <Wand className="w-5 h-5 mr-2" />
+        Magic Words
       </button>
 
       {isOpen && (
-        <div className="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        <div className="fixed inset-0 z-50 overflow-y-auto backdrop-blur-sm" aria-labelledby="modal-title" role="dialog" aria-modal="true">
           <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true"></div>
+            <div className="fixed inset-0 bg-gradient-to-br from-yellow-500/50 to-orange-500/50 transition-opacity" aria-hidden="true"></div>
             <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-3xl sm:w-full">
-              <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+            <div className="inline-block align-bottom bg-white dark:bg-gray-800 rounded-3xl text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-3xl sm:w-full border-4 border-yellow-300 dark:border-yellow-700">
+              <div className="bg-gradient-to-r from-yellow-100 to-orange-100 dark:from-yellow-900/30 dark:to-orange-900/30 px-6 pt-5 pb-4 sm:p-8">
                 <div className="flex justify-between items-start">
-                  <h3 className="text-lg leading-6 font-medium text-gray-900" id="modal-title">
-                    {textType} Vocabulary Helper
-                  </h3>
+                  <div className="flex items-center">
+                    <div className="w-12 h-12 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-full flex items-center justify-center mr-4 shadow-lg">
+                      <Wand className="h-6 w-6 text-white" />
+                    </div>
+                    <h3 className="text-2xl leading-6 font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-600 to-orange-600 dark:from-yellow-400 dark:to-orange-400" id="modal-title">
+                      Magic Words for {textType} Writing
+                    </h3>
+                  </div>
                   <button
                     type="button"
-                    className="bg-white rounded-md text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                    className="bg-white dark:bg-gray-700 rounded-full text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500 p-2 shadow-md hover:shadow-lg transform hover:scale-110 transition-all duration-300"
                     onClick={() => setIsOpen(false)}
                   >
                     <span className="sr-only">Close</span>
@@ -141,37 +146,40 @@ export function VocabularyEnhancer({ textType, content }: VocabularyEnhancerProp
                 </div>
 
                 <div className="mt-4">
-                  <div className="border-b border-gray-200">
-                    <nav className="-mb-px flex space-x-8" aria-label="Tabs">
+                  <div className="border-b-4 border-yellow-200 dark:border-yellow-800">
+                    <nav className="-mb-px flex space-x-8 justify-center" aria-label="Tabs">
                       <button
                         onClick={( ) => setActiveTab('categories')}
                         className={`${
                           activeTab === 'categories'
-                            ? 'border-indigo-500 text-indigo-600'
-                            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                        } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+                            ? 'border-yellow-500 text-yellow-700 dark:text-yellow-300 bg-yellow-50 dark:bg-yellow-900/30'
+                            : 'border-transparent text-gray-600 hover:text-gray-800 hover:border-gray-300 dark:text-gray-300 dark:hover:text-gray-100'
+                        } whitespace-nowrap py-4 px-6 border-b-4 font-bold text-base rounded-t-xl transition-all duration-300 flex items-center`}
                       >
-                        Word Categories
+                        <Star className="w-5 h-5 mr-2 text-yellow-500" />
+                        Word Treasure Chest
                       </button>
                       <button
                         onClick={() => setActiveTab('phrases')}
                         className={`${
                           activeTab === 'phrases'
-                            ? 'border-indigo-500 text-indigo-600'
-                            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                        } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+                            ? 'border-yellow-500 text-yellow-700 dark:text-yellow-300 bg-yellow-50 dark:bg-yellow-900/30'
+                            : 'border-transparent text-gray-600 hover:text-gray-800 hover:border-gray-300 dark:text-gray-300 dark:hover:text-gray-100'
+                        } whitespace-nowrap py-4 px-6 border-b-4 font-bold text-base rounded-t-xl transition-all duration-300 flex items-center`}
                       >
-                        Useful Phrases
+                        <Sparkles className="w-5 h-5 mr-2 text-purple-500" />
+                        Magic Phrases
                       </button>
                       <button
                         onClick={() => setActiveTab('transitions')}
                         className={`${
                           activeTab === 'transitions'
-                            ? 'border-indigo-500 text-indigo-600'
-                            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                        } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+                            ? 'border-yellow-500 text-yellow-700 dark:text-yellow-300 bg-yellow-50 dark:bg-yellow-900/30'
+                            : 'border-transparent text-gray-600 hover:text-gray-800 hover:border-gray-300 dark:text-gray-300 dark:hover:text-gray-100'
+                        } whitespace-nowrap py-4 px-6 border-b-4 font-bold text-base rounded-t-xl transition-all duration-300 flex items-center`}
                       >
-                        Transition Words
+                        <Zap className="w-5 h-5 mr-2 text-blue-500" />
+                        Connector Words
                       </button>
                     </nav>
                   </div>
