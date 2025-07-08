@@ -11,7 +11,6 @@ import { Footer } from './Footer';
 import { PaymentSuccessPage } from './PaymentSuccessPage';
 import { PricingPage } from './PricingPage';
 import { Dashboard } from './Dashboard';
-import { KidDashboard } from './KidDashboard';
 import { AuthModal } from './AuthModal';
 import { FAQPage } from './FAQPage';
 import { AboutPage } from './AboutPage';
@@ -34,16 +33,8 @@ import { WritingAccessCheck } from './WritingAccessCheck';
 import { WritingToolbar } from './WritingToolbar';
 import { PlanningToolModal } from './PlanningToolModal';
 import { EmailVerificationHandler } from './EmailVerificationHandler';
-import { CheckCircle, AlertCircle } from 'lucide-react';
+import { CheckCircle } from 'lucide-react';
 import { AdminButton } from './AdminButton';
-
-// Kid-friendly error messages
-const KID_FRIENDLY_MESSAGES = {
-  loading: "Getting everything ready for you! 🌟",
-  authError: "Oops! Something went wrong. Let's try that again! 😊",
-  networkError: "Looks like the internet is being slow. Let's wait a moment! 🌐",
-  generalError: "Don't worry! We're fixing this right away! 🔧"
-};
 
 function AppContent() {
   const { user, isLoading, paymentCompleted, emailVerified, authSignOut } = useAuth();
@@ -52,7 +43,6 @@ function AppContent() {
   const [authModalMode, setAuthModalMode] = useState<'signin' | 'signup'>('signin');
   const [showPaymentSuccess, setShowPaymentSuccess] = useState(false);
   const [pendingPaymentPlan, setPendingPaymentPlan] = useState<string | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const location = useLocation();
 
   // Writing state
@@ -64,32 +54,67 @@ function AppContent() {
   const [showExamMode, setShowExamMode] = useState(false);
   const [showHelpCenter, setShowHelpCenter] = useState(false);
   const [showPlanningTool, setShowPlanningTool] = useState(false);
+  
+  // New state for popup flow completion
+  const [popupFlowCompleted, setPopupFlowCompleted] = useState(false);
+  const [hasSignedIn, setHasSignedIn] = useState(false);
 
-  // Simplified payment success detection
+  // Handle sign-in behavior - clear content and show modal when user signs in
+  useEffect(() => {
+    if (user && !hasSignedIn) {
+      // User just signed in
+      setHasSignedIn(true);
+      
+      // Clear content and reset state
+      setContent('');
+      setTextType('');
+      setPopupFlowCompleted(false);
+      
+      // If we're on the writing page, this will trigger the writing type modal
+      if (activePage === 'writing') {
+        // The WritingArea component will handle showing the modal
+      }
+    } else if (!user && hasSignedIn) {
+      // User signed out
+      setHasSignedIn(false);
+    }
+  }, [user, hasSignedIn, activePage]);
+
+  // Check for payment success in URL on mount
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const paymentSuccess = urlParams.get('paymentSuccess') === 'true' || urlParams.get('payment_success') === 'true';
     const planType = urlParams.get('planType') || urlParams.get('plan');
+    const userEmail = urlParams.get('email');
     
     if (paymentSuccess && planType) {
-      setPendingPaymentPlan(planType);
-      setShowPaymentSuccess(true);
-      setActivePage('payment-success');
+      console.log('[DEBUG] Payment success detected for plan:', planType);
       
-      // Clean URL without affecting navigation
+      // Store payment info
+      if (userEmail) {
+        localStorage.setItem('userEmail', userEmail);
+      }
+      localStorage.setItem('payment_plan', planType);
+      localStorage.setItem('payment_date', new Date().toISOString());
+      
+      // Clear URL parameters
       window.history.replaceState({}, document.title, window.location.pathname);
+      
+      setShowPaymentSuccess(true);
+      setPendingPaymentPlan(planType);
+      setActivePage('payment-success');
     }
   }, []);
 
-  // Simplified page routing
+  // Set active page based on current path
   useEffect(() => {
     const path = location.pathname.substring(1) || 'home';
-    if (path !== 'auth/callback') {
+    if (path !== 'auth/callback') { // Don't change active page during auth callback
       setActivePage(path);
     }
   }, [location.pathname]);
 
-  // Text selection for writing area
+  // Text selection logic for writing area
   useEffect(() => {
     const handleSelectionChange = () => {
       const selection = window.getSelection();
@@ -102,94 +127,75 @@ function AppContent() {
     return () => document.removeEventListener('selectionchange', handleSelectionChange);
   }, []);
 
-  // Kid-friendly error handler
-  const handleError = (error: any, context: string = 'general') => {
-    console.error(`Error in ${context}:`, error);
-    
-    let friendlyMessage = KID_FRIENDLY_MESSAGES.generalError;
-    
-    if (context === 'auth') {
-      friendlyMessage = KID_FRIENDLY_MESSAGES.authError;
-    } else if (error?.message?.includes('network') || error?.message?.includes('fetch')) {
-      friendlyMessage = KID_FRIENDLY_MESSAGES.networkError;
-    }
-    
-    setErrorMessage(friendlyMessage);
-    
-    // Auto-clear error after 5 seconds
-    setTimeout(() => setErrorMessage(null), 5000);
-  };
-
-  // Simplified authentication success handler
   const handleAuthSuccess = () => {
     setShowAuthModal(false);
-    setErrorMessage(null);
-    
     if (pendingPaymentPlan) {
       setActivePage('payment-success');
       setShowPaymentSuccess(true);
     } else {
-      // Direct navigation to writing if user has access, otherwise dashboard
-      if (user && paymentCompleted) {
-        setActivePage('writing');
-      } else {
-        setActivePage('dashboard');
-      }
+      setActivePage('dashboard');
     }
   };
 
-  // Simplified sign out handler
   const handleForceSignOut = async () => {
     try {
-      // Reset state immediately for better UX
+      console.log('🔄 AppContent: Starting force sign out...');
+      
+      // Reset all local state first
       setActivePage('home');
       setShowAuthModal(false);
       setShowPaymentSuccess(false);
       setPendingPaymentPlan(null);
       setContent('');
       setTextType('');
-      setErrorMessage(null);
+      setPopupFlowCompleted(false);
       
+      console.log('✅ AppContent: Local state reset completed');
+      
+      // Then attempt auth sign out
       await authSignOut();
+      console.log('✅ AppContent: Auth sign out completed');
+      
     } catch (error) {
-      handleError(error, 'auth');
+      console.error('AppContent: Error during sign out:', error);
       
       // Force reset even if sign out fails
       setActivePage('home');
       setShowAuthModal(false);
+      setShowPaymentSuccess(false);
+      setPendingPaymentPlan(null);
+      
+      // Clear localStorage as fallback
       localStorage.clear();
+      
+      console.log('⚠️ AppContent: Forced local state reset due to sign out error');
     }
   };
 
-  // Streamlined navigation handler
-  const handleNavigation = (page: string) => {
-    setErrorMessage(null); // Clear any existing errors
-    
-    // Simplified logic - no complex verification checks
+  const handleNavigation = async (page: string) => {
+    // Special handling for dashboard - redirect based on verification and payment status
     if (page === 'dashboard' && user) {
-      setActivePage('dashboard');
-    } else if (page === 'writing' && user && paymentCompleted) {
-      setActivePage('writing');
-    } else if (page === 'writing' && user && !paymentCompleted) {
-      setActivePage('pricing'); // Need payment
-    } else if (page === 'writing' && !user) {
-      setAuthModalMode('signup');
-      setShowAuthModal(true);
-      return; // Don't change page yet
+      if (!emailVerified) {
+        setActivePage('dashboard'); // Show email verification reminder
+      } else if (paymentCompleted) {
+        setActivePage('writing'); // Full access
+      } else {
+        setActivePage('pricing'); // Need to complete payment
+      }
     } else {
       setActivePage(page);
     }
-    
     setShowAuthModal(false);
   };
 
-  // Simplified get started handler
-  const handleGetStarted = () => {
+  const handleGetStarted = async () => {
     if (user) {
-      if (paymentCompleted) {
-        setActivePage('writing');
+      if (!emailVerified) {
+        setActivePage('dashboard'); // Show email verification reminder
+      } else if (paymentCompleted) {
+        setActivePage('writing'); // Full access
       } else {
-        setActivePage('pricing');
+        setActivePage('pricing'); // Need to complete payment
       }
     } else {
       setAuthModalMode('signup');
@@ -201,36 +207,29 @@ function AppContent() {
     console.log('Writing submitted:', { content, textType });
   };
 
+  // Handle text type change from WritingArea popup
   const handleTextTypeChange = (newTextType: string) => {
     setTextType(newTextType);
   };
 
-  // Loading screen with kid-friendly message
+  // Handle popup flow completion
+  const handlePopupCompleted = () => {
+    setPopupFlowCompleted(true);
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-300 text-lg font-medium">
-            {KID_FRIENDLY_MESSAGES.loading}
-          </p>
+          <p className="text-gray-600 dark:text-gray-300">Loading...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="kid-theme min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
-      {/* Kid-friendly error notification */}
-      {errorMessage && (
-        <div className="fixed top-4 right-4 z-50 bg-yellow-100 border-l-4 border-yellow-500 p-4 rounded-lg shadow-lg max-w-sm">
-          <div className="flex items-center">
-            <AlertCircle className="h-5 w-5 text-yellow-500 mr-2" />
-            <p className="text-yellow-800 font-medium">{errorMessage}</p>
-          </div>
-        </div>
-      )}
-
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
       <div className="min-h-screen flex flex-col">
         <Routes>
           <Route path="/" element={
@@ -261,14 +260,10 @@ function AppContent() {
           <Route path="/demo" element={<DemoPage onNavigate={handleNavigation} />} />
           <Route path="/dashboard" element={
             user ? (
-              user.email && user.email.startsWith("kid") ? (
-                <KidDashboard user={user} />
-              ) : (
-                <Dashboard 
-                  onNavigate={handleNavigation}
-                  onSignOut={handleForceSignOut}
-                />
-              )
+              <Dashboard 
+                onNavigate={handleNavigation}
+                onSignOut={handleForceSignOut}
+              />
             ) : (
               <Navigate to="/" />
             )
@@ -285,7 +280,7 @@ function AppContent() {
                   onTextTypeChange={setTextType}
                   onAssistanceLevelChange={setAssistanceLevel}
                   onTimerStart={() => setTimerStarted(true)}
-                  hideTextTypeSelector={false}
+                  hideTextTypeSelector={popupFlowCompleted}
                 />
                 
                 <WritingToolbar 
@@ -294,6 +289,11 @@ function AppContent() {
                   onShowHelpCenter={() => setShowHelpCenter(true)}
                   onShowPlanningTool={() => setShowPlanningTool(true)}
                   onTimerStart={() => setTimerStarted(true)}
+                  onStartNewEssay={() => {
+                    setContent('');
+                    setTextType('');
+                    setPopupFlowCompleted(false);
+                  }}
                 />
                 
                 {showExamMode ? (
@@ -310,7 +310,7 @@ function AppContent() {
                         onTimerStart={setTimerStarted}
                         onSubmit={handleSubmit}
                         onTextTypeChange={handleTextTypeChange}
-                        onPopupCompleted={() => {}} // Removed popup flow complexity
+                        onPopupCompleted={handlePopupCompleted}
                       />
                       <TabbedCoachPanel 
                         content={content}
@@ -325,53 +325,38 @@ function AppContent() {
               </div>
             </WritingAccessCheck>
           } />
+
           <Route path="/learning" element={<LearningPage />} />
-          <Route path="/feedback" element={<EssayFeedbackPage />} />
-          <Route path="/payment-success" element={
-            showPaymentSuccess ? (
-              <PaymentSuccessPage
-                plan={pendingPaymentPlan || 'unknown'}
-                onSuccess={handleAuthSuccess}
-                onSignInRequired={(email, plan) => {
-                  localStorage.setItem('userEmail', email);
-                  setPendingPaymentPlan(plan);
-                  setAuthModalMode('signin');
-                  setShowAuthModal(true);
-                }}
-              />
-            ) : <Navigate to="/" />
-          } />
-          <Route path="/auth/callback" element={<EmailVerificationHandler />} />
+          <Route path="/exam" element={<ExamSimulationMode onExit={() => setActivePage('writing')} />} />
+          <Route path="/supportive-features" element={<SupportiveFeatures />} />
+          <Route path="/help-center" element={<HelpCenter />} />
+          <Route path="/essay-feedback" element={<EssayFeedbackPage />} />
+          <Route path="/specialized-coaching" element={<SpecializedCoaching />} />
+          <Route path="/brainstorming-tools" element={<BrainstormingTools />} />
+          <Route path="/email-verification" element={<EmailVerificationHandler />} />
+
+          <Route path="*" element={<Navigate to="/" />} />
         </Routes>
-      </div>
 
-      <Footer />
+        <Footer />
 
-      {/* Modals */}
-      {showAuthModal && (
         <AuthModal
-          mode={authModalMode}
+          isOpen={showAuthModal}
           onClose={() => setShowAuthModal(false)}
-          onSuccess={handleAuthSuccess}
-          onSwitchMode={(mode) => setAuthModalMode(mode)}
+          mode={authModalMode}
+          onAuthSuccess={handleAuthSuccess}
         />
-      )}
 
-      {showHelpCenter && (
-        <HelpCenter onClose={() => setShowHelpCenter(false)} />
-      )}
-
-      {showPlanningTool && (
-        <PlanningToolModal 
-          onClose={() => setShowPlanningTool(false)}
-          textType={textType}
-        />
-      )}
-
+        {showPaymentSuccess && (
+          <PaymentSuccessPage
+            onClose={() => setShowPaymentSuccess(false)}
+            planType={pendingPaymentPlan || 'unknown'}
+          />
+        )}
+      </div>
       <AdminButton />
     </div>
   );
 }
 
 export default AppContent;
-
