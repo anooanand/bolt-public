@@ -62,11 +62,9 @@ export function EnhancedHeader({
               <option value="diary entry">📔 Dear Diary</option>
               <option value="speech">🎤 Give a Speech</option>
             </select>
-          </div>
+          )}
         </div>
       </div>
-    )
-    }
     </div>
   );
 }
