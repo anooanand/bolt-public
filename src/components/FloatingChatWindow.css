@@ -1,0 +1,198 @@
+/* Floating Chat Window Styles */
+.floating-chat-container {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 400px;
+  max-width: calc(100vw - 40px);
+  height: 500px;
+  max-height: calc(100vh - 40px);
+  z-index: 1000;
+  border-radius: 16px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+.floating-chat-container.minimized {
+  height: 60px;
+  width: 300px;
+}
+
+.floating-chat-container.hidden {
+  transform: translateY(100%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.dark .floating-chat-container {
+  background: rgba(30, 41, 59, 0.95);
+  border-color: rgba(148, 163, 184, 0.3);
+}
+
+.floating-chat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 16px 16px 0 0;
+  cursor: move;
+  user-select: none;
+}
+
+.floating-chat-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: white !important;
+}
+
+.floating-chat-controls {
+  display: flex;
+  gap: 8px;
+}
+
+.floating-chat-control-btn {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  border-radius: 6px;
+  padding: 6px;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.floating-chat-control-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(1.05);
+}
+
+.floating-chat-content {
+  height: calc(100% - 60px);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.floating-chat-container.minimized .floating-chat-content {
+  display: none;
+}
+
+.floating-chat-toggle {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  color: white;
+  cursor: pointer;
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+}
+
+.floating-chat-toggle:hover {
+  transform: scale(1.1);
+  box-shadow: 0 12px 35px rgba(102, 126, 234, 0.6);
+}
+
+.floating-chat-toggle.hidden {
+  display: none;
+}
+
+/* Dragging styles */
+.floating-chat-container.dragging {
+  cursor: grabbing;
+  transform: rotate(2deg);
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .floating-chat-container {
+    width: calc(100vw - 20px);
+    height: calc(100vh - 100px);
+    bottom: 10px;
+    right: 10px;
+    left: 10px;
+    border-radius: 12px;
+  }
+  
+  .floating-chat-container.minimized {
+    width: 250px;
+    height: 50px;
+    left: auto;
+  }
+  
+  .floating-chat-toggle {
+    width: 50px;
+    height: 50px;
+    bottom: 15px;
+    right: 15px;
+  }
+}
+
+/* Animation for showing/hiding */
+@keyframes slideInUp {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOutDown {
+  from {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+}
+
+.floating-chat-container.show {
+  animation: slideInUp 0.3s ease-out;
+}
+
+.floating-chat-container.hide {
+  animation: slideOutDown 0.3s ease-in;
+}
+
+/* Ensure chat content doesn't interfere with main content */
+.main-content-with-floating-chat {
+  padding-right: 0 !important;
+}
+
+/* Override split screen when floating chat is enabled */
+.split-screen-container.with-floating-chat {
+  display: block !important;
+}
+
+.split-screen-container.with-floating-chat .split-screen-right {
+  display: none !important;
+}
+
+.split-screen-container.with-floating-chat .split-screen-left {
+  flex: 1 !important;
+  border-radius: 8px !important;
+}
+
