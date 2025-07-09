@@ -15,6 +15,8 @@ import { ExpositoryWritingTemplate } from './ExpositoryWritingTemplate';
 import { ReflectiveWritingTemplate } from './ReflectiveWritingTemplate';
 import { DescriptiveWritingTemplate } from './DescriptiveWritingTemplate';
 import { RecountWritingTemplate } from './RecountWritingTemplate';
+import { DiscursiveWritingTemplate } from './DiscursiveWritingTemplate';
+import { NewsReportWritingTemplate } from './NewsReportWritingTemplate';
 import './responsive.css';
 
 interface WritingAreaProps {
@@ -557,6 +559,30 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
   if (textType === 'recount') {
     return (
       <RecountWritingTemplate
+        content={content}
+        onChange={onChange}
+        onTimerStart={onTimerStart}
+        onSubmit={onSubmit}
+      />
+    );
+  }
+
+  // If discursive writing is selected, show the discursive template
+  if (textType === 'discursive') {
+    return (
+      <DiscursiveWritingTemplate
+        content={content}
+        onChange={onChange}
+        onTimerStart={onTimerStart}
+        onSubmit={onSubmit}
+      />
+    );
+  }
+
+  // If news report writing is selected, show the news report template
+  if (textType === 'news_report') {
+    return (
+      <NewsReportWritingTemplate
         content={content}
         onChange={onChange}
         onTimerStart={onTimerStart}
