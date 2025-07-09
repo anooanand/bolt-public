@@ -322,7 +322,7 @@ export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelPro
           <div className="p-5 bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-900/30 dark:to-blue-900/30 text-indigo-700 dark:text-indigo-300 rounded-2xl text-base border-2 border-indigo-200 dark:border-indigo-800 shadow-md relative">
             <button 
               onClick={handleHideOverallComment}
-              className="absolute top-2 right-2 p-1 rounded-full bg-white dark:bg-gray-700 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+              className="absolute top-2 right-2 p-1 rounded-full bg-white dark:bg-gray-700 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors cursor-pointer"
               aria-label="Close feedback"
             >
               <X className="w-4 h-4" />
@@ -344,7 +344,7 @@ export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelPro
             <div key={originalIndex} className={`feedback-item feedback-item-${item.type} flex transform hover:scale-102 transition-all duration-300 relative`}>
               <button 
                 onClick={() => handleHideFeedbackItem(originalIndex)}
-                className="absolute top-2 right-2 p-1 rounded-full bg-white dark:bg-gray-700 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+                className="absolute top-2 right-2 p-1 rounded-full bg-white dark:bg-gray-700 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors cursor-pointer"
                 aria-label="Close feedback"
               >
                 <X className="w-4 h-4" />
@@ -387,7 +387,7 @@ export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelPro
           <div className="p-5 bg-gradient-to-r from-blue-50 to-green-50 dark:from-blue-900/20 dark:to-green-900/20 text-gray-700 dark:text-gray-300 rounded-2xl text-base border-2 border-blue-200 dark:border-blue-800 shadow-md relative">
             <button 
               onClick={handleHideFocusForNextTime}
-              className="absolute top-2 right-2 p-1 rounded-full bg-white dark:bg-gray-700 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+              className="absolute top-2 right-2 p-1 rounded-full bg-white dark:bg-gray-700 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors cursor-pointer"
               aria-label="Close feedback"
             >
               <X className="w-4 h-4" />
