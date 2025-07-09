@@ -11,6 +11,10 @@ import { CustomPromptModal } from './CustomPromptModal';
 import { EssayEvaluationModal } from './EssayEvaluationModal';
 import { NarrativeWritingTemplate } from './NarrativeWritingTemplate';
 import { PersuasiveWritingTemplate } from './PersuasiveWritingTemplate';
+import { ExpositoryWritingTemplate } from './ExpositoryWritingTemplate';
+import { ReflectiveWritingTemplate } from './ReflectiveWritingTemplate';
+import { DescriptiveWritingTemplate } from './DescriptiveWritingTemplate';
+import { RecountWritingTemplate } from './RecountWritingTemplate';
 import './responsive.css';
 
 interface WritingAreaProps {
@@ -489,8 +493,8 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
   const noTypeSelected = !textType && !selectedWritingType;
   const currentTextType = textType || selectedWritingType;
 
-  // If narrative writing is selected, use the special template
-  if (currentTextType === 'narrative' || currentTextType === 'narrative_creative') {
+  // If narrative writing is selected, show the narrative template
+  if (textType === 'narrative') {
     return (
       <NarrativeWritingTemplate
         content={content}
@@ -501,10 +505,58 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
     );
   }
 
-  // If persuasive writing is selected, use the special template
-  if (currentTextType === 'persuasive' || currentTextType === 'persuasive_formal' || currentTextType === 'persuasive_informal') {
+  // If persuasive writing is selected, show the persuasive template
+  if (textType === 'persuasive') {
     return (
       <PersuasiveWritingTemplate
+        content={content}
+        onChange={onChange}
+        onTimerStart={onTimerStart}
+        onSubmit={onSubmit}
+      />
+    );
+  }
+
+  // If expository writing is selected, show the expository template
+  if (textType === 'expository') {
+    return (
+      <ExpositoryWritingTemplate
+        content={content}
+        onChange={onChange}
+        onTimerStart={onTimerStart}
+        onSubmit={onSubmit}
+      />
+    );
+  }
+
+  // If reflective writing is selected, show the reflective template
+  if (textType === 'reflective') {
+    return (
+      <ReflectiveWritingTemplate
+        content={content}
+        onChange={onChange}
+        onTimerStart={onTimerStart}
+        onSubmit={onSubmit}
+      />
+    );
+  }
+
+  // If descriptive writing is selected, show the descriptive template
+  if (textType === 'descriptive') {
+    return (
+      <DescriptiveWritingTemplate
+        content={content}
+        onChange={onChange}
+        onTimerStart={onTimerStart}
+        onSubmit={onSubmit}
+      />
+    );
+  }
+
+  // If recount writing is selected, show the recount template
+  if (textType === 'recount') {
+    return (
+      <RecountWritingTemplate
         content={content}
         onChange={onChange}
         onTimerStart={onTimerStart}
