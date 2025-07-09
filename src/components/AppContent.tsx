@@ -21,6 +21,7 @@ import { DemoPage } from './DemoPage';
 import { SplitScreen } from './SplitScreen';
 import { WritingArea } from './WritingArea';
 import { TabbedCoachPanel } from './TabbedCoachPanel';
+import { FloatingChatWindow } from './FloatingChatWindow';
 import { LearningPage } from './LearningPage';
 import { ExamSimulationMode } from './ExamSimulationMode';
 import { SupportiveFeatures } from './SupportiveFeatures';
@@ -310,7 +311,7 @@ function AppContent() {
                   />
                 ) : (
                   <div className="flex-1 container mx-auto px-4">
-                    <SplitScreen>
+                    <SplitScreen useFloatingChat={true}>
                       <WritingArea 
                         content={content}
                         onChange={setContent}
@@ -320,14 +321,15 @@ function AppContent() {
                         onTextTypeChange={handleTextTypeChange}
                         onPopupCompleted={handlePopupCompleted}
                       />
-                      <TabbedCoachPanel 
-                        content={content}
-                        textType={textType}
-                        assistanceLevel={assistanceLevel}
-                        selectedText={selectedText}
-                        onNavigate={handleNavigation}
-                      />
                     </SplitScreen>
+                    
+                    <FloatingChatWindow
+                      content={content}
+                      textType={textType}
+                      assistanceLevel={assistanceLevel}
+                      selectedText={selectedText}
+                      onNavigate={handleNavigation}
+                    />
                   </div>
                 )}
               </div>
