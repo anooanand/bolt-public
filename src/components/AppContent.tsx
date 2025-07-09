@@ -21,7 +21,6 @@ import { DemoPage } from './DemoPage';
 import { SplitScreen } from './SplitScreen';
 import { WritingArea } from './WritingArea';
 import { TabbedCoachPanel } from './TabbedCoachPanel';
-import { FloatingChatWindow } from './FloatingChatWindow';
 import { LearningPage } from './LearningPage';
 import { ExamSimulationMode } from './ExamSimulationMode';
 import { SupportiveFeatures } from './SupportiveFeatures';
