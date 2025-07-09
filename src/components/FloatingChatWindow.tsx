@@ -23,7 +23,6 @@ export function FloatingChatWindow({
   const [isDragging, setIsDragging] = useState(false);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
-  const [localAssistanceLevel, setLocalAssistanceLevel] = useState<string>(assistanceLevel);
   
   const chatRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLDivElement>(null);
@@ -144,15 +143,6 @@ export function FloatingChatWindow({
     setIsVisible(false);
   };
 
-  // Update local assistance level when prop changes
-  useEffect(() => {
-    setLocalAssistanceLevel(assistanceLevel);
-  }, [assistanceLevel]);
-
-  const handleAssistanceLevelChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setLocalAssistanceLevel(e.target.value);
-  };
-
   if (!isVisible) {
     return (
       <button
@@ -185,7 +175,7 @@ export function FloatingChatWindow({
       >
         <div className="flex items-center gap-2">
           <MessageSquare className="w-5 h-5" />
-          <h3>Questions to Ask Your Writing Buddy</h3>
+          <h3>Writing Buddy</h3>
           <Move className="w-4 h-4 opacity-60" />
         </div>
         
@@ -213,7 +203,7 @@ export function FloatingChatWindow({
         <TabbedCoachPanel
           content={content}
           textType={textType}
-          assistanceLevel={localAssistanceLevel}
+          assistanceLevel={assistanceLevel}
           selectedText={selectedText}
           onNavigate={onNavigate}
         />

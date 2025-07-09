@@ -22,6 +22,7 @@ import { SplitScreen } from './SplitScreen';
 import { WritingArea } from './WritingArea';
 import { TabbedCoachPanel } from './TabbedCoachPanel';
 import { FloatingChatWindow } from './FloatingChatWindow';
+import { FloatingChatWindow } from './FloatingChatWindow';
 import { LearningPage } from './LearningPage';
 import { ExamSimulationMode } from './ExamSimulationMode';
 import { SupportiveFeatures } from './SupportiveFeatures';
@@ -314,14 +315,15 @@ function AppContent() {
                     <SplitScreen useFloatingChat={true}>
                       <WritingArea 
                         content={content}
-                        onChange={setContent}
-                        textType={textType} 
-                        onTimerStart={setTimerStarted}
-                        onSubmit={handleSubmit}
-                        onTextTypeChange={handleTextTypeChange}
-                        onPopupCompleted={handlePopupCompleted}
-                      />
                     </SplitScreen>
+                    
+                    <FloatingChatWindow
+                      content={content}
+                      textType={textType}
+                      assistanceLevel={assistanceLevel}
+                      selectedText={selectedText}
+                      onNavigate={handleNavigation}
+                    />
                     
                     <FloatingChatWindow
                       content={content}
