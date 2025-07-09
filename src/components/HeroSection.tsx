@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Check, Wand, Star, Sparkles } from 'lucide-react';
+import { X, Check, Wand, Star, Sparkles, ArrowRight, Play, Users, Award, BookOpen } from 'lucide-react';
 
 interface CustomPromptModalProps {
   isOpen: boolean;
@@ -95,6 +95,89 @@ export function CustomPromptModal({
             </button>
           </div>
         </form>
+      </div>
+    </div>
+  );
+}
+
+interface HeroSectionProps {
+  onGetStarted: () => void;
+}
+
+export function HeroSection({ onGetStarted }: HeroSectionProps) {
+  return (
+    <div className="relative overflow-hidden">
+      {/* Background gradient */}
+      <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900"></div>
+      
+      {/* Content */}
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-16">
+        <div className="text-center">
+          {/* Badge */}
+          <div className="inline-flex items-center px-4 py-2 rounded-full bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 text-sm font-medium mb-8">
+            <Award className="w-4 h-4 mr-2" />
+            Trusted by 10,000+ Students
+          </div>
+
+          {/* Main heading */}
+          <h1 className="text-4xl md:text-6xl font-bold mb-6">
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600">
+              Master Writing
+            </span>
+            <br />
+            <span className="text-gray-900 dark:text-white">
+              with AI-Powered Coaching
+            </span>
+          </h1>
+
+          {/* Subtitle */}
+          <p className="text-xl md:text-2xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto mb-8 leading-relaxed">
+            Get personalized feedback, improve your skills, and excel in NSW Selective exams with our intelligent writing assistant.
+          </p>
+
+          {/* CTA buttons */}
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12">
+            <button
+              onClick={onGetStarted}
+              className="group px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 flex items-center space-x-2"
+            >
+              <span>Start Writing Now</span>
+              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+            </button>
+            
+            <button className="group px-8 py-4 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-semibold rounded-xl border-2 border-gray-200 dark:border-gray-600 hover:border-indigo-300 dark:hover:border-indigo-500 transition-all duration-300 flex items-center space-x-2">
+              <Play className="w-5 h-5" />
+              <span>Watch Demo</span>
+            </button>
+          </div>
+
+          {/* Stats */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
+            <div className="text-center">
+              <div className="flex items-center justify-center mb-2">
+                <Users className="w-6 h-6 text-indigo-600 dark:text-indigo-400 mr-2" />
+                <span className="text-3xl font-bold text-gray-900 dark:text-white">10,000+</span>
+              </div>
+              <p className="text-gray-600 dark:text-gray-400">Students Helped</p>
+            </div>
+            
+            <div className="text-center">
+              <div className="flex items-center justify-center mb-2">
+                <BookOpen className="w-6 h-6 text-indigo-600 dark:text-indigo-400 mr-2" />
+                <span className="text-3xl font-bold text-gray-900 dark:text-white">50,000+</span>
+              </div>
+              <p className="text-gray-600 dark:text-gray-400">Essays Reviewed</p>
+            </div>
+            
+            <div className="text-center">
+              <div className="flex items-center justify-center mb-2">
+                <Award className="w-6 h-6 text-indigo-600 dark:text-indigo-400 mr-2" />
+                <span className="text-3xl font-bold text-gray-900 dark:text-white">95%</span>
+              </div>
+              <p className="text-gray-600 dark:text-gray-400">Success Rate</p>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
