@@ -323,21 +323,16 @@ function AppContent() {
                       />
                     </SplitScreen>
                     
-                    <FloatingChatWindow
-                      content={content}
-                      textType={textType}
-                      assistanceLevel={assistanceLevel}
-                      selectedText={selectedText}
-                      onNavigate={handleNavigation}
-                    />
-                    
-                    <FloatingChatWindow
-                      content={content}
-                      textType={textType}
-                      assistanceLevel={assistanceLevel}
-                      selectedText={selectedText}
-                      onNavigate={handleNavigation}
-                    />
+                    {/* Only show FloatingChatWindow after popup flow is completed */}
+                    {popupFlowCompleted && (
+                      <FloatingChatWindow
+                        content={content}
+                        textType={textType}
+                        assistanceLevel={assistanceLevel}
+                        selectedText={selectedText}
+                        onNavigate={handleNavigation}
+                      />
+                    )}
                   </div>
                 )}
               </div>
