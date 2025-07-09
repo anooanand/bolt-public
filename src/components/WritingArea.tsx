@@ -9,6 +9,7 @@ import { WritingTypeSelectionModal } from './WritingTypeSelectionModal';
 import { PromptOptionsModal } from './PromptOptionsModal';
 import { CustomPromptModal } from './CustomPromptModal';
 import { EssayEvaluationModal } from './EssayEvaluationModal';
+import { NarrativeWritingTemplate } from './NarrativeWritingTemplate';
 import './responsive.css';
 
 interface WritingAreaProps {
@@ -486,6 +487,18 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
 
   const noTypeSelected = !textType && !selectedWritingType;
   const currentTextType = textType || selectedWritingType;
+
+  // If narrative writing is selected, use the special template
+  if (currentTextType === 'narrative' || currentTextType === 'narrative_creative') {
+    return (
+      <NarrativeWritingTemplate
+        content={content}
+        onChange={onChange}
+        onTimerStart={onTimerStart}
+        onSubmit={onSubmit}
+      />
+    );
+  }
 
   return (
     <div ref={containerRef} className="h-full flex flex-col bg-white dark:bg-gray-800 rounded-md shadow-sm writing-area-container">
