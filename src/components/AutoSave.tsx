@@ -16,12 +16,14 @@ export function AutoSave({ content, textType, onRestore }: AutoSaveProps) {
   // Auto-save content every 30 seconds if there's content to save
   useEffect(() => {
     if (content && content.trim().length > 0) {
-      if (content.trim().length > 0) {
-        saveContent();
-      }
-    }, 30000); // 30 seconds
+      const autoSaveInterval = setInterval(() => {
+        if (content.trim().length > 0) {
+          saveContent();
+        }
+      }, 30000); // 30 seconds
 
-    return () => clearInterval(autoSaveInterval);
+      return () => clearInterval(autoSaveInterval);
+    }
   }, [content, textType]);
 
   // Check for saved content on component mount
