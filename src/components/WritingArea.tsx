@@ -54,7 +54,6 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
   const [showHighlights, setShowHighlights] = useState(true);
   
   // New state for popup management
-  const [popupFlowCompleted, setPopupFlowCompleted] = useState(false);
   const [showWritingTypeModal, setShowWritingTypeModal] = useState(false);
   const [showPromptOptionsModal, setShowPromptOptionsModal] = useState(false);
   const [showCustomPromptModal, setShowCustomPromptModal] = useState(false);
@@ -201,103 +200,68 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
           start: match.index,
           end: match.index + basic.length,
           type: 'vocabulary',
-          message: `Consider using a more descriptive word to make your writing more engaging.`,
-          suggestion: improvements
+          message: `Consider using a more descriptive word instead of "${basic}".`,
+          suggestion: improvements.split(', ')[0] // Use first suggestion as primary
         });
-      }
-    });
-
-    // Check for repeated words
-    const words = text.toLowerCase().match(/\b\w+\b/g) || [];
-    const wordCounts: { [key: string]: number } = {};
-    words.forEach((word, index) => {
-      if (word.length > 3) { // Only check words longer than 3 letters
-        if (wordCounts[word]) {
-          if (index - wordCounts[word] < 30) { // Check if words are close together
-            const start = text.toLowerCase().indexOf(word, index);
-            const suggestions = vocabularyPatterns[word as keyof typeof vocabularyPatterns];
-            if (suggestions) {
-              newIssues.push({
-                start,
-                end: start + word.length,
-                type: 'style',
-                message: `This word appears multiple times nearby. Try using a different word for variety.`,
-                suggestion: suggestions
-              });
-            }
-          }
-        }
-        wordCounts[word] = index;
       }
     });
 
     setIssues(newIssues);
   }, []);
 
-  // Auto-save functionality
   useEffect(() => {
-    if (content.trim() && selectedWritingType && state.user) {
-      const saveTimer = setTimeout(async () => {
-        setIsSaving(true);
-        try {
-          const wordCount = content.split(' ').filter(word => word.trim()).length;
-          const title = content.split('\n')[0].substring(0, 50) || `${selectedWritingType} Writing`;
-          
-          const { data, error } = await dbOperations.writings.createWriting({
-            title,
-            content,
-            text_type: selectedWritingType,
-            word_count: wordCount
-          });
-          
-          if (data && !error) {
-            addWriting(data);
-            setLastSaved(new Date());
-          }
-        } catch (error) {
-          console.error('Auto-save failed:', error);
-        } finally {
-          setIsSaving(false);
-        }
-      }, 30000); // Auto-save every 30 seconds
-
-      return () => clearTimeout(saveTimer);
-    }
-  }, [content, selectedWritingType, state.user, addWriting]);
-
-  useEffect(() => {
-    if (content.trim()) {
-      analyzeText(content);
+    if (content) {
+      const timeoutId = setTimeout(() => {
+        analyzeText(content);
+      }, 1000);
+      return () => clearTimeout(timeoutId);
     }
   }, [content, analyzeText]);
 
-  const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const newContent = e.target.value;
-    onChange(newContent);
+  const saveContent = useCallback(async () => {
+    if (!content.trim() || isSaving) return;
+    
+    setIsSaving(true);
+    try {
+      await dbOperations.saveWriting({
+        content,
+        textType: textType || selectedWritingType,
+        prompt,
+        wordCount: countWords(content),
+        createdAt: new Date()
+      });
+      setLastSaved(new Date());
+    } catch (error) {
+      console.error('Failed to save content:', error);
+    } finally {
+      setIsSaving(false);
+    }
+  }, [content, textType, selectedWritingType, prompt, isSaving]);
+
+  useEffect(() => {
+    const interval = setInterval(saveContent, 30000);
+    return () => clearInterval(interval);
+  }, [saveContent]);
+
+  const countWords = (text: string): number => {
+    return text.trim().split(/\s+/).filter(word => word.length > 0).length;
   };
 
-  const handleScroll = (e: React.UIEvent<HTMLTextAreaElement>) => {
-    if (highlightLayerRef.current) {
-      highlightLayerRef.current.scrollTop = e.currentTarget.scrollTop;
-      highlightLayerRef.current.scrollLeft = e.currentTarget.scrollLeft;
-    }
+  const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    onChange(e.target.value);
   };
 
   const handleTextareaClick = (e: React.MouseEvent<HTMLTextAreaElement>) => {
-    if (!showHighlights) return;
-    
     const textarea = e.currentTarget;
     const rect = textarea.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
     
-    // Get cursor position
-    const cursorPosition = textarea.selectionStart;
-    
-    // Find if cursor is on an issue
-    const clickedIssue = issues.find(issue => 
-      cursorPosition >= issue.start && cursorPosition <= issue.end
-    );
+    const clickedIssue = issues.find(issue => {
+      const start = getTextPosition(textarea, issue.start);
+      const end = getTextPosition(textarea, issue.end);
+      return x >= start.x && x <= end.x && y >= start.y && y <= end.y;
+    });
     
     if (clickedIssue) {
       const containerRect = containerRef.current?.getBoundingClientRect();
@@ -317,6 +281,18 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
         setSuggestions([]);
       }
     }
+  };
+
+  const getTextPosition = (textarea: HTMLTextAreaElement, index: number) => {
+    const text = textarea.value;
+    const lines = text.substring(0, index).split('\n');
+    const lineHeight = 24;
+    const charWidth = 8;
+    
+    return {
+      x: lines[lines.length - 1].length * charWidth,
+      y: (lines.length - 1) * lineHeight
+    };
   };
 
   const handleApplySuggestion = (suggestion: string, start: number, end: number) => {
@@ -409,11 +385,13 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
     setSelectedWritingType(type);
     localStorage.setItem('selectedWritingType', type);
     
-    // Add a small delay before showing the prompt options modal
+    // Close the writing type modal and show prompt options modal
+    setShowWritingTypeModal(false);
+    
+    // Add a small delay to ensure smooth transition
     setTimeout(() => {
-      setShowWritingTypeModal(false);
       setShowPromptOptionsModal(true);
-    }, 300);
+    }, 100);
     
     // Call the callback to update parent component
     if (onTextTypeChange) {
@@ -471,253 +449,132 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
     }
   };
 
-  // Handle essay submission for evaluation
-  const handleSubmitEssay = () => {
-    if (content.trim().length >= 50) {
-      setShowEvaluationModal(true);
+  const handleEvaluateEssay = () => {
+    setShowEvaluationModal(true);
+  };
+
+  const renderWritingTemplate = () => {
+    const currentTextType = textType || selectedWritingType;
+    
+    switch (currentTextType) {
+      case 'narrative':
+        return <NarrativeWritingTemplate />;
+      case 'persuasive':
+        return <PersuasiveWritingTemplate />;
+      case 'expository':
+        return <ExpositoryWritingTemplate />;
+      case 'reflective':
+        return <ReflectiveWritingTemplate />;
+      case 'descriptive':
+        return <DescriptiveWritingTemplate />;
+      case 'recount':
+        return <RecountWritingTemplate />;
+      case 'discursive':
+        return <DiscursiveWritingTemplate />;
+      case 'news report':
+        return <NewsReportWritingTemplate />;
+      case 'letter':
+        return <LetterWritingTemplate />;
+      case 'diary entry':
+        return <DiaryWritingTemplate />;
+      case 'speech':
+        return <SpeechWritingTemplate />;
+      default:
+        return null;
     }
   };
 
-  // Helper function to count words
-  const countWords = (text: string): number => {
-    if (!text || text.trim().length === 0) return 0;
-    return text.trim().split(/\s+/).filter(word => word.length > 0).length;
-  };
-
-  const handleRestoreContent = (restoredContent: string, restoredTextType: string) => {
-    console.log('Restoring content with type:', restoredTextType);
-    onChange(restoredContent);
-    if (restoredTextType) {
-      setSelectedWritingType(restoredTextType);
-      if (onTextTypeChange) {
-        onTextTypeChange(restoredTextType);
-      }
-    }
-  };
-
-  const noTypeSelected = !textType && !selectedWritingType;
   const currentTextType = textType || selectedWritingType;
 
-  // If narrative writing is selected, show the narrative template
-  if (textType === 'narrative') {
-    return (
-      <NarrativeWritingTemplate
-        content={content}
-        onChange={onChange}
-        onTimerStart={onTimerStart}
-        onSubmit={onSubmit}
-      />
-    );
-  }
-
-  // If persuasive writing is selected, show the persuasive template
-  if (textType === 'persuasive') {
-    return (
-      <PersuasiveWritingTemplate
-        content={content}
-        onChange={onChange}
-        onTimerStart={onTimerStart}
-        onSubmit={onSubmit}
-      />
-    );
-  }
-
-  // If expository writing is selected, show the expository template
-  if (textType === 'expository') {
-    return (
-      <ExpositoryWritingTemplate
-        content={content}
-        onChange={onChange}
-        onTimerStart={onTimerStart}
-        onSubmit={onSubmit}
-      />
-    );
-  }
-
-  // If reflective writing is selected, show the reflective template
-  if (textType === 'reflective') {
-    return (
-      <ReflectiveWritingTemplate
-        content={content}
-        onChange={onChange}
-        onTimerStart={onTimerStart}
-        onSubmit={onSubmit}
-      />
-    );
-  }
-
-  // If descriptive writing is selected, show the descriptive template
-  if (textType === 'descriptive') {
-    return (
-      <DescriptiveWritingTemplate
-        content={content}
-        onChange={onChange}
-        onTimerStart={onTimerStart}
-        onSubmit={onSubmit}
-      />
-    );
-  }
-
-  // If recount writing is selected, show the recount template
-  if (textType === 'recount') {
-    return (
-      <RecountWritingTemplate
-        content={content}
-        onChange={onChange}
-        onTimerStart={onTimerStart}
-        onSubmit={onSubmit}
-      />
-    );
-  }
-
-  // If discursive writing is selected, show the discursive template
-  if (textType === 'discursive') {
-    return (
-      <DiscursiveWritingTemplate
-        content={content}
-        onChange={onChange}
-        onTimerStart={onTimerStart}
-        onSubmit={onSubmit}
-      />
-    );
-  }
-
-  // If news report writing is selected, show the news report template
-  if (textType === 'news_report') {
-    return (
-      <NewsReportWritingTemplate
-        content={content}
-        onChange={onChange}
-        onTimerStart={onTimerStart}
-        onSubmit={onSubmit}
-      />
-    );
-  }
-
-  // If letter writing is selected, show the letter template
-  if (textType === 'letter') {
-    return (
-      <LetterWritingTemplate
-        content={content}
-        onChange={onChange}
-        onTimerStart={onTimerStart}
-        onSubmit={onSubmit}
-      />
-    );
-  }
-
-  // If diary writing is selected, show the diary template
-  if (textType === 'diary') {
-    return (
-      <DiaryWritingTemplate
-        content={content}
-        onChange={onChange}
-        onTimerStart={onTimerStart}
-        onSubmit={onSubmit}
-      />
-    );
-  }
-
-  // If speech writing is selected, show the speech template
-  if (textType === 'speech') {
-    return (
-      <SpeechWritingTemplate
-        content={content}
-        onChange={onChange}
-        onTimerStart={onTimerStart}
-        onSubmit={onSubmit}
-      />
-    );
-  }
-
   return (
-    <div ref={containerRef} className="h-full flex flex-col bg-white dark:bg-gray-800 rounded-md shadow-sm writing-area-container">
-      {prompt && !noTypeSelected && (
-        <div className="p-4 border-b border-gray-100 dark:border-gray-700 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20">
-          <h3 className="font-medium text-blue-900 dark:text-blue-100 mb-2 flex items-center">
-            <Sparkles className="w-4 h-4 text-blue-500 mr-2" />
-            Writing Prompt:
-          </h3>
-          <p className="text-blue-800 dark:text-blue-200">{prompt}</p>
+    <div ref={containerRef} className="writing-area-container h-full flex flex-col">
+      {/* Writing Template */}
+      {currentTextType && renderWritingTemplate()}
+
+      {/* Prompt Display */}
+      {prompt && (
+        <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-xl border-2 border-blue-200 dark:border-blue-800">
+          <div className="flex items-start gap-3">
+            <div className="p-2 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg">
+              <Sparkles className="w-5 h-5 text-white" />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-bold text-lg text-gray-900 dark:text-white mb-2">
+                Your Writing Prompt
+              </h3>
+              <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
+                {prompt}
+              </p>
+            </div>
+          </div>
         </div>
       )}
 
-      <div className="relative flex-1 overflow-hidden writing-area-enhanced">
-        <textarea
-          ref={textareaRef}
-          spellCheck="false"
-          value={content}
-          onChange={handleContentChange}
-          onScroll={handleScroll}
-          onClick={handleTextareaClick}
-          disabled={noTypeSelected || !prompt}
-          className="absolute inset-0 w-full h-full p-4 text-gray-900 dark:text-white bg-transparent resize-none focus:outline-none disabled:bg-gray-100 dark:disabled:bg-gray-700 disabled:cursor-not-allowed overflow-auto writing-textarea z-10 caret-blue-600 select-text"
-          placeholder={noTypeSelected ? "Select a writing type to begin..." : !prompt ? "Choose or enter a prompt to start writing..." : "Begin writing here..."}
-          style={{ 
-            fontSize: '16px',
-            lineHeight: '1.6',
-            fontFamily: 'inherit',
-            caretColor: '#3b82f6',
-            caretWidth: '1px',
-            WebkitFontSmoothing: 'antialiased',
-            MozOsxFontSmoothing: 'grayscale',
-            textRendering: 'optimizeLegibility'
-          }}
-        />
-        
-        {showHighlights && (
-          <div 
+      {/* Main Writing Area */}
+      <div className="flex-1 relative">
+        <div className="relative h-full">
+          {/* Highlight Layer */}
+          <div
             ref={highlightLayerRef}
-            className="absolute inset-0 p-4 pointer-events-none overflow-hidden z-5 select-none"
-            style={{ 
-              whiteSpace: 'pre-wrap', 
-              wordWrap: 'break-word', 
-              fontSize: '16px', 
-              lineHeight: '1.6',
-              fontFamily: 'inherit',
-              color: 'transparent'
+            className="absolute inset-0 pointer-events-none z-10 p-4 font-mono text-transparent whitespace-pre-wrap break-words"
+            style={{
+              fontSize: '16px',
+              lineHeight: '24px',
+              fontFamily: 'inherit'
             }}
           >
             {renderHighlightedText()}
           </div>
-        )}
 
+          {/* Textarea */}
+          <textarea
+            ref={textareaRef}
+            value={content}
+            onChange={handleTextareaChange}
+            onClick={handleTextareaClick}
+            placeholder={prompt ? "Start writing your response here..." : "Select a writing type to get started..."}
+            className="w-full h-full p-4 border-2 border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent relative z-20"
+            style={{
+              fontSize: '16px',
+              lineHeight: '24px',
+              fontFamily: 'inherit',
+              background: 'transparent'
+            }}
+            disabled={!prompt}
+          />
+        </div>
+
+        {/* Inline Suggestion Popup */}
         {selectedIssue && (
           <InlineSuggestionPopup
-            original={content.slice(selectedIssue.start, selectedIssue.end)}
-            suggestion={suggestions.length > 0 ? suggestions.join(', ') : selectedIssue.suggestion}
-            explanation={selectedIssue.message}
+            issue={selectedIssue}
             position={popupPosition}
-            onApply={handleApplySuggestion}
+            suggestions={suggestions}
+            isLoading={isLoadingSuggestions}
+            onApplySuggestion={handleApplySuggestion}
+            onClose={() => setSelectedIssue(null)}
             onParaphrase={handleParaphrase}
             onThesaurus={handleThesaurus}
-            onClose={() => {
-              setSelectedIssue(null);
-              setSuggestions([]);
-            }}
-            start={selectedIssue.start}
-            end={selectedIssue.end}
-            isLoading={isLoadingSuggestions}
-            isDarkMode={document.documentElement.classList.contains('dark')}
           />
         )}
       </div>
 
-      <div className="flex items-center justify-between gap-4 p-4 bg-gray-50 dark:bg-gray-800 border-t border-gray-100 dark:border-gray-700">
-        <WritingStatusBar 
-          content={content} 
-          textType={currentTextType}
-          onRestore={handleRestoreContent}
-        />
-        
+      {/* Status Bar */}
+      <WritingStatusBar
+        wordCount={countWords(content)}
+        lastSaved={lastSaved}
+        isSaving={isSaving}
+        issues={issues}
+        showHighlights={showHighlights}
+        onToggleHighlights={() => setShowHighlights(!showHighlights)}
+      />
+
+      {/* Submit Button */}
+      <div className="mt-4 flex justify-center">
         <button
-          onClick={handleSubmitEssay}
+          onClick={handleEvaluateEssay}
           disabled={countWords(content) < 50}
-          className={`flex items-center gap-2 px-5 py-2 rounded-md font-medium transition-all ${
-            countWords(content) >= 50
-              ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-sm'
-              : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-          }`}
+          className="px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 disabled:from-gray-400 disabled:to-gray-500 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 disabled:transform-none disabled:cursor-not-allowed flex items-center gap-2"
           title={countWords(content) < 50 ? 'Write at least 50 words to submit for evaluation' : 'Submit your essay for detailed evaluation'}
         >
           <Send className="w-4 h-4" />
