@@ -21,16 +21,16 @@ export function Footer({ onNavigate }: FooterProps) {
   };
 
   return (
-    <footer className="bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 mt-12">
+    <footer className="bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700">
       <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Brand Section */}
           <div className="col-span-1 md:col-span-1">
             <div className="flex items-center mb-4">
-              <div className="w-8 h-8 bg-indigo-600 rounded-md flex items-center justify-center mr-3">
+              <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center mr-3">
                 <PenTool className="w-5 h-5 text-white" />
               </div>
-              <span className="text-lg font-bold text-gray-900 dark:text-white">
+              <span className="text-xl font-bold text-gray-900 dark:text-white">
                 InstaChat AI
               </span>
             </div>
@@ -188,7 +188,7 @@ export function Footer({ onNavigate }: FooterProps) {
         </div>
 
         {/* Bottom Section */}
-        <div className="mt-10 pt-6 border-t border-gray-200 dark:border-gray-700">
+        <div className="mt-12 pt-8 border-t border-gray-200 dark:border-gray-700">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="flex flex-wrap justify-center md:justify-start space-x-6 mb-4 md:mb-0">
               <a
@@ -224,19 +224,19 @@ export function Footer({ onNavigate }: FooterProps) {
 
         {/* Additional Info */}
         <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
-          <div className="bg-indigo-50 dark:bg-indigo-900/10 rounded-md p-4">
+          <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
             <div className="flex items-center justify-between">
               <div>
-                <h4 className="text-sm font-medium text-indigo-900 dark:text-indigo-200">
+                <h4 className="text-sm font-medium text-blue-900 dark:text-blue-200">
                   Ready to improve your writing?
                 </h4>
-                <p className="text-sm text-indigo-700 dark:text-indigo-300 mt-1">
+                <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
                   Join thousands of students preparing for NSW Selective School exams.
                 </p>
               </div>
               <button
                 onClick={() => handleNavigation('home')}
-                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-md transition-colors"
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md transition-colors"
               >
                 Get Started
               </button>

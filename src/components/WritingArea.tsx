@@ -493,16 +493,16 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
 
       {/* Prompt Display */}
       {prompt && (
-        <div className="mb-6 p-4 bg-indigo-50 dark:bg-indigo-900/10 rounded-lg border border-indigo-100 dark:border-indigo-800">
-          <div className="flex items-start">
-            <div className="p-2 bg-indigo-100 dark:bg-indigo-800 rounded-md mr-3">
-              <Sparkles className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+        <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-xl border-2 border-blue-200 dark:border-blue-800">
+          <div className="flex items-start gap-3">
+            <div className="p-2 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg">
+              <Sparkles className="w-5 h-5 text-white" />
             </div>
             <div className="flex-1">
-              <h3 className="font-medium text-base text-gray-900 dark:text-white mb-2">
+              <h3 className="font-bold text-lg text-gray-900 dark:text-white mb-2">
                 Your Writing Prompt
               </h3>
-              <p className="text-gray-700 dark:text-gray-300">
+              <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
                 {prompt}
               </p>
             </div>
@@ -533,7 +533,7 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
             onChange={handleTextareaChange}
             onClick={handleTextareaClick}
             placeholder={prompt ? "Start writing your response here..." : "Select a writing type to get started..."}
-            className="w-full h-full p-4 border border-gray-200 dark:border-gray-700 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent relative z-20"
+            className="w-full h-full p-4 border-2 border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent relative z-20"
             style={{
               fontSize: '16px',
               lineHeight: '24px',
@@ -570,7 +570,7 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
         <button
           onClick={handleEvaluateEssay}
           disabled={countWords(content) < 50}
-          className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white font-medium rounded-md shadow-sm hover:shadow-md transition-all duration-300 disabled:cursor-not-allowed flex items-center gap-2"
+          className="px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 disabled:from-gray-400 disabled:to-gray-500 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 disabled:transform-none disabled:cursor-not-allowed flex items-center gap-2"
           title={countWords(content) < 50 ? 'Write at least 50 words to submit for evaluation' : 'Submit your essay for detailed evaluation'}
         >
           <Send className="w-4 h-4" />
