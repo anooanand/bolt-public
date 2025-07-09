@@ -43,7 +43,7 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
   const [showHighlights, setShowHighlights] = useState(true);
   
   // New state for popup management
-  const [popupFlowCompleted, setPopupFlowCompleted] = useState(false); 
+  const [popupFlowCompleted, setPopupFlowCompleted] = useState(false);
   const [showWritingTypeModal, setShowWritingTypeModal] = useState(false);
   const [showPromptOptionsModal, setShowPromptOptionsModal] = useState(false);
   const [showCustomPromptModal, setShowCustomPromptModal] = useState(false);
@@ -502,24 +502,26 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
       <div className="relative flex-1 overflow-hidden writing-area-enhanced">
         <textarea
           ref={textareaRef}
+          spellCheck="false"
           value={content}
           onChange={handleContentChange}
           onScroll={handleScroll}
           onClick={handleTextareaClick}
           disabled={noTypeSelected || !prompt}
-          className="absolute inset-0 w-full h-full p-4 text-gray-900 dark:text-white bg-transparent resize-none focus:outline-none disabled:bg-gray-100 dark:disabled:bg-gray-700 disabled:cursor-not-allowed overflow-auto writing-textarea z-10"
+          className="absolute inset-0 w-full h-full p-4 text-gray-900 dark:text-white bg-transparent resize-none focus:outline-none disabled:bg-gray-100 dark:disabled:bg-gray-700 disabled:cursor-not-allowed overflow-auto writing-textarea z-10 caret-blue-600"
           placeholder={noTypeSelected ? "Select a writing type to begin..." : !prompt ? "Choose or enter a prompt to start writing..." : "Begin writing here..."}
           style={{ 
             fontSize: '16px',
             lineHeight: '1.6',
-            fontFamily: 'inherit'
+            fontFamily: 'inherit',
+            caretColor: '#3b82f6'
           }}
         />
         
         {showHighlights && (
           <div 
             ref={highlightLayerRef}
-            className="absolute inset-0 p-4 pointer-events-none overflow-hidden z-5"
+            className="absolute inset-0 p-4 pointer-events-none overflow-hidden z-5 select-none"
             style={{ 
               whiteSpace: 'pre-wrap', 
               wordWrap: 'break-word', 
