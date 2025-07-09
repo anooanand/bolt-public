@@ -315,6 +315,7 @@ function AppContent() {
                     <SplitScreen useFloatingChat={true}>
                       <WritingArea 
                         content={content}
+                      />
                     </SplitScreen>
                     
                     <FloatingChatWindow
