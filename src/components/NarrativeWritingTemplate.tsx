@@ -221,6 +221,29 @@ export function NarrativeWritingTemplate({ content, onChange, onTimerStart, onSu
         </div>
       </div>
 
+      {/* Action Buttons */}
+      <div className="flex justify-center space-x-4 pt-6">
+        <button
+          onClick={generateStoryFromTemplate}
+          disabled={!isTemplateComplete}
+          className={`flex items-center px-6 py-3 rounded-lg font-medium transition-all ${
+            isTemplateComplete
+              ? 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg'
+              : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+          }`}
+        >
+          <BookOpen className="w-5 h-5 mr-2" />
+          Start Writing Your Story
+        </button>
+        
+        <button
+          onClick={toggleWritingArea}
+          className="flex items-center px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-medium transition-all"
+        >
+          Skip Template & Write Freely
+        </button>
+      </div>
+
       <div className="flex-1 overflow-hidden">
         {!showWritingArea ? (
           /* Template Planning Interface */
@@ -291,28 +314,7 @@ export function NarrativeWritingTemplate({ content, onChange, onTimerStart, onSu
                 </p>
               </div>
 
-              {/* Action Buttons */}
-              <div className="flex justify-center space-x-4 pt-6">
-                <button
-                  onClick={generateStoryFromTemplate}
-                  disabled={!isTemplateComplete}
-                  className={`flex items-center px-6 py-3 rounded-lg font-medium transition-all ${
-                    isTemplateComplete
-                      ? 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg'
-                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  }`}
-                >
-                  <BookOpen className="w-5 h-5 mr-2" />
-                  Start Writing Your Story
-                </button>
-                
-                <button
-                  onClick={toggleWritingArea}
-                  className="flex items-center px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-medium transition-all"
-                >
-                  Skip Template & Write Freely
-                </button>
-              </div>
+
 
               {/* Template Boxes - Vertical Layout */}
               <div className="space-y-6">
@@ -495,3 +497,27 @@ export function NarrativeWritingTemplate({ content, onChange, onTimerStart, onSu
   );
 }
 
+
+
+              {/* Action Buttons */}
+              <div className="flex justify-center space-x-4 pt-6">
+                <button
+                  onClick={generateStoryFromTemplate}
+                  disabled={!isTemplateComplete}
+                  className={`flex items-center px-6 py-3 rounded-lg font-medium transition-all ${
+                    isTemplateComplete
+                      ? 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg'
+                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  }`}
+                >
+                  <BookOpen className="w-5 h-5 mr-2" />
+                  Start Writing Your Story
+                </button>
+                
+                <button
+                  onClick={toggleWritingArea}
+                  className="flex items-center px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-medium transition-all"
+                >
+                  Skip Template & Write Freely
+                </button>
+              </div>
