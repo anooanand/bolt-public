@@ -1,12 +1,10 @@
 /* Floating Chat Window Styles */
 .floating-chat-container {
   position: fixed;
-  bottom: 20px;
-  right: 20px;
   width: 400px;
   max-width: calc(100vw - 40px);
-  height: 500px;
-  max-height: calc(100vh - 40px);
+  height: 600px; /* Increased height for better visibility */
+  max-height: calc(100vh - 80px); /* More conservative max-height to ensure full visibility */
   z-index: 1000;
   border-radius: 16px;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
@@ -15,6 +13,7 @@
   border: 1px solid rgba(255, 255, 255, 0.3);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   overflow: hidden;
+  /* Remove default positioning - will be handled by transform */
 }
 
 .floating-chat-container.minimized {
@@ -41,8 +40,8 @@
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   border-radius: 16px 16px 0 0;
-  cursor: move;
   user-select: none;
+  /* Cursor will be handled dynamically */
 }
 
 .floating-chat-header h3 {
@@ -114,28 +113,34 @@
   display: none;
 }
 
-/* Dragging styles */
+/* Enhanced dragging styles */
 .floating-chat-container.dragging {
-  cursor: grabbing;
-  transform: rotate(2deg);
+  cursor: grabbing !important;
+  transform-origin: center;
   box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
+  z-index: 1001; /* Ensure it's above other elements while dragging */
+  opacity: 0.9;
+}
+
+.floating-chat-container.dragging * {
+  pointer-events: none; /* Prevent interference from child elements */
+}
+
+.floating-chat-container.dragging .floating-chat-header {
+  cursor: grabbing !important;
 }
 
 /* Mobile responsive */
 @media (max-width: 768px) {
   .floating-chat-container {
     width: calc(100vw - 20px);
-    height: calc(100vh - 100px);
-    bottom: 10px;
-    right: 10px;
-    left: 10px;
-    border-radius: 12px;
+    height: calc(100vh - 120px); /* More space for mobile keyboards */
+    max-height: calc(100vh - 120px);
   }
   
   .floating-chat-container.minimized {
     width: 250px;
     height: 50px;
-    left: auto;
   }
   
   .floating-chat-toggle {
@@ -196,3 +201,25 @@
   border-radius: 8px !important;
 }
 
+/* Prevent text selection during drag */
+.floating-chat-container.dragging,
+.floating-chat-container.dragging * {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
+}
+
+/* Ensure proper stacking context */
+.floating-chat-container {
+  isolation: isolate;
+}
+
+/* Better visual feedback for draggable area */
+.floating-chat-header:hover {
+  background: linear-gradient(135deg, #5a6fd8 0%, #6b4190 100%);
+}
+
+.floating-chat-header:active {
+  background: linear-gradient(135deg, #4e63d2 0%, #5f3a84 100%);
+}
