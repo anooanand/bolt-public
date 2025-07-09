@@ -15,7 +15,7 @@ export function AutoSave({ content, textType, onRestore }: AutoSaveProps) {
 
   // Auto-save content every 30 seconds if there's content to save
   useEffect(() => {
-    const autoSaveInterval = setInterval(() => {
+    if (content && content.trim().length > 0) {
       if (content.trim().length > 0) {
         saveContent();
       }
@@ -54,7 +54,7 @@ export function AutoSave({ content, textType, onRestore }: AutoSaveProps) {
 
   // Save content to localStorage
   const saveContent = () => {
-    if (content.trim().length === 0) return;
+    if (!content || content.trim().length === 0) return;
 
     try {
       setSaveStatus('saving');
@@ -153,7 +153,7 @@ export function AutoSave({ content, textType, onRestore }: AutoSaveProps) {
           Save now
         </button>
         
-        {hasSavedContent && content.trim().length === 0 && onRestore && (
+        {hasSavedContent && (!content || content.trim().length === 0) && onRestore && (
           <button
             onClick={restoreSavedContent}
             className="ml-2 px-2 py-1 text-xs bg-blue-100 hover:bg-blue-200 rounded-md text-blue-700"

@@ -17,9 +17,9 @@ export function WritingStatusBar({ content, textType, onRestore }: WritingStatus
 
   // Calculate statistics
   useEffect(() => {
-    const words = content.trim().split(/\s+/).filter(Boolean);
+    const words = content && content.trim() ? content.trim().split(/\s+/).filter(Boolean) : [];
     setWordCount(words.length);
-    setCharacterCount(content.length);
+    setCharacterCount(content ? content.length : 0);
     setReadingTime(Math.ceil(words.length / 200)); // Average reading speed
     
     // Show warning if word count is too low or too high
@@ -32,7 +32,7 @@ export function WritingStatusBar({ content, textType, onRestore }: WritingStatus
 
   // Simulate auto-save
   useEffect(() => {
-    if (content.trim().length > 0) {
+    if (content && content.trim().length > 0) {
       const timer = setTimeout(() => {
         setLastSaved(new Date());
       }, 5000);
