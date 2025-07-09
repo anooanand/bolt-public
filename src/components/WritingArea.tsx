@@ -10,6 +10,7 @@ import { PromptOptionsModal } from './PromptOptionsModal';
 import { CustomPromptModal } from './CustomPromptModal';
 import { EssayEvaluationModal } from './EssayEvaluationModal';
 import { NarrativeWritingTemplate } from './NarrativeWritingTemplate';
+import { PersuasiveWritingTemplate } from './PersuasiveWritingTemplate';
 import './responsive.css';
 
 interface WritingAreaProps {
@@ -492,6 +493,18 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
   if (currentTextType === 'narrative' || currentTextType === 'narrative_creative') {
     return (
       <NarrativeWritingTemplate
+        content={content}
+        onChange={onChange}
+        onTimerStart={onTimerStart}
+        onSubmit={onSubmit}
+      />
+    );
+  }
+
+  // If persuasive writing is selected, use the special template
+  if (currentTextType === 'persuasive' || currentTextType === 'persuasive_formal' || currentTextType === 'persuasive_informal') {
+    return (
+      <PersuasiveWritingTemplate
         content={content}
         onChange={onChange}
         onTimerStart={onTimerStart}
