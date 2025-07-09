@@ -3,7 +3,7 @@
   position: fixed;
   width: 400px;
   max-width: calc(100vw - 40px);
-  height: 600px; /* Increased height for better visibility */
+  height: 650px; /* Increased height for better visibility */
   max-height: calc(100vh - 80px); /* More conservative max-height to ensure full visibility */
   z-index: 1000;
   border-radius: 16px;
