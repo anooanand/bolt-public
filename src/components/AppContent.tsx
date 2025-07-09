@@ -33,6 +33,7 @@ import { WritingAccessCheck } from './WritingAccessCheck';
 import { WritingToolbar } from './WritingToolbar';
 import { PlanningToolModal } from './PlanningToolModal';
 import { EmailVerificationHandler } from './EmailVerificationHandler';
+import { FloatingChatWindow } from './FloatingChatWindow';
 import { CheckCircle } from 'lucide-react';
 import { AdminButton } from './AdminButton';
 
