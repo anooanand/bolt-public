@@ -561,12 +561,8 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
 
       {/* Status Bar */}
       <WritingStatusBar
-        wordCount={countWords(content)}
-        lastSaved={lastSaved}
-        isSaving={isSaving}
-        issues={issues}
-        showHighlights={showHighlights}
-        onToggleHighlights={() => setShowHighlights(!showHighlights)}
+        content={content}
+        textType={currentTextType}
       />
 
       {/* Submit Button */}
