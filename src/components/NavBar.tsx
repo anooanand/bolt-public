@@ -1,367 +1,101 @@
-import React, { useState, useRef } from 'react';
-import { User } from '@supabase/supabase-js';
-import { useLearning } from '../contexts/LearningContext';
-import { useAuth } from '../contexts/AuthContext'; // FIXED: Added missing import
-import { Link } from 'react-router-dom';
-import { LogOut, Menu, X } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, Check, Wand, Star, Sparkles } from 'lucide-react';
 
-interface NavBarProps {
-  activePage: string;
-  onNavigate: (page: string) => void;
-  user: User | null;
-  onSignInClick: () => void;
-  onSignUpClick: () => void;
-  onForceSignOut: () => void;
+interface CustomPromptModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSubmit: (prompt: string) => void;
+  textType: string;
 }
 
-export function NavBar({ 
-  activePage, 
-  onNavigate, 
-  user, 
-  onSignInClick, 
-  onSignUpClick, 
-  onForceSignOut 
-}: NavBarProps) {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isLearningMenuOpen, setIsLearningMenuOpen] = useState(false);
-  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-  const { progress } = useLearning();
-  
-  // Use ref to prevent multiple simultaneous sign out attempts
-  const isSigningOut = useRef(false);
+export function CustomPromptModal({ 
+  isOpen, 
+  onClose, 
+  onSubmit, 
+  textType 
+}: CustomPromptModalProps) {
+  const [prompt, setPrompt] = useState('');
 
-  const navigationItems = [
-    { id: 'home', name: '🏠 Home', href: '/' },
-    { id: 'features', name: '✨ Fun Stuff', href: '/features' },
-    { id: 'about', name: '🙋‍♀️ About Us', href: '/about' },
-    { id: 'faq', name: '❓ Questions', href: '/faq' }
-  ];
+  if (!isOpen) return null;
 
-  const learningItems = [
-    { id: 'learning', name: '📚 My Adventures', description: 'Your learning journey' },
-    { id: 'progress-dashboard', name: '🌟 My Progress', description: 'See how far you have come' },
-    { id: 'quiz-demo', name: '🧠 Brain Games', description: 'Test your smarts' }
-  ];
-
-  const handleSignOut = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    // Prevent multiple simultaneous sign out attempts
-    if (isSigningOut.current) {
-      console.log('Sign out already in progress, ignoring click...');
-      return;
-    }
-    
-    try {
-      isSigningOut.current = true;
-      console.log('NavBar: Sign out clicked');
-      
-      // Close all menus immediately
-      setIsUserMenuOpen(false);
-      setIsMenuOpen(false);
-      setIsLearningMenuOpen(false);
-      
-      // Call the sign out function
-      await onForceSignOut();
-      
-    } catch (error) {
-      console.error('Error during sign out:', error);
-    } finally {
-      // Reset the flag after a delay to prevent rapid clicks
-      setTimeout(() => {
-        isSigningOut.current = false;
-      }, 2000);
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault(); 
+    if (prompt.trim()) {
+      onSubmit(prompt.trim());
+      setPrompt('');
+      onClose();
     }
   };
 
-
+  const handleClose = () => {
+    setPrompt('');
+    onClose();
+  };
 
   return (
-    <nav className="fixed top-0 left-0 right-0 bg-white border-b border-gray-200 z-50 dark:bg-gray-900 dark:border-gray-700">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
-          {/* Logo */}
-          <div className="flex items-center">
-            <div className="w-8 h-8 bg-indigo-600 rounded-md flex items-center justify-center">
-              <span className="text-white font-semibold text-sm">AI</span>
-            </div>
-            <span className="ml-2 text-lg font-bold text-gray-900 dark:text-white">InstaChat AI</span>
-              <span className="text-xl font-bold text-gray-900 dark:text-white">InstaChat AI</span>
-            </Link>
-          </div>
-
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-8">
-            {navigationItems.map((item) => (
-              <Link
-                key={item.id}
-                to={item.href}
-                className={`flex items-center space-x-1 text-sm font-medium transition-colors ${
-                  ['learning', 'progress-dashboard', 'quiz-demo', 'lesson'].includes(activePage) 
-                    ? 'text-indigo-600 border-b-2 border-indigo-600 pb-1'
-                    : 'text-gray-700 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400'
-                }`}
-              >
-                {item.name}
-              </Link>
-            ))}
-
-
-
-            {/* Learning Dropdown */}
-            <div className="relative">
-              <button
-                onClick={() => setIsLearningMenuOpen(!isLearningMenuOpen)}
-                className={`flex items-center space-x-1 text-sm font-medium transition-colors ${
-                className={`flex items-center text-sm font-medium transition-colors ${
-                    ? 'text-indigo-600 border-b-2 border-indigo-600 pb-1'
-                    : 'text-gray-700 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400'
-                }`}
-              >
-                <span>🎯 My Learning</span>
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-                {progress.completedLessons.length > 0 && (
-                  <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
-                    <span className="text-xs text-white font-bold">{progress.completedLessons.length}</span>
-                  </div>
-                )}
-              </button>
-
-              {/* Learning Dropdown Menu */}
-              {isLearningMenuOpen && (
-                <div className="absolute top-full left-0 mt-2 w-64 bg-white rounded-md shadow-lg border border-gray-200 py-2 z-50 dark:bg-gray-800 dark:border-gray-700">
-                  {learningItems.map((item) => (
-                    <Link
-                      key={item.id}
-                      to={`/${item.id}`}
-                      className="w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors block dark:hover:bg-gray-700"
-                      onClick={() => setIsLearningMenuOpen(false)}
-                    >
-                      <div className="font-medium text-gray-900 dark:text-white">{item.name}</div>
-                      <div className="text-sm text-gray-500 dark:text-gray-400">{item.description}</div>
-                    </Link>
-                  ))}
-                  
-                  {/* Progress Summary */}
-                  <div className="border-t border-gray-200 mt-2 pt-2 px-4 dark:border-gray-700">
-                    <div className="text-xs text-gray-500 mb-1 dark:text-gray-400">🌟 Your Journey</div>
-                    <div className="flex justify-between text-sm">
-                      <span>Adventures: {progress.completedLessons.length}/30</span>
-                      <span>Stars: {progress.totalPoints}</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-1.5 mt-1 dark:bg-gray-700">
-                      <div 
-                        className="bg-blue-600 h-1.5 rounded-full transition-all"
-                        style={{ width: `${(progress.completedLessons.length / 30) * 100}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {user ? (
-              <div className="flex items-center space-x-4 relative">
-                
-                
-                <Link
-                  to="/dashboard"
-                  className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
-                >
-                  🏠 My Space
-                </Link>
-                <div className="relative">
-                  <button
-                    onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                    className="flex items-center space-x-2"
-                  >
-                    <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center dark:bg-gray-700">
-                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                        {user.email?.charAt(0).toUpperCase()}
-                      </span>
-                    </div>
-                  </button>
-                  
-                  {isUserMenuOpen && (
-                    <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50 dark:bg-gray-800 dark:border-gray-700">
-                  <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700">
-                        <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                          Hi, {user.email?.split('@')[0]}!
-                        </p>
-                  </div>
-                      
-
-                      
-                      <Link
-                        to="/dashboard"
-                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700"
-                        onClick={() => setIsUserMenuOpen(false)}
-                      >
-                        🏠 My Space
-                      </Link>
-                      <Link
-                        to="/settings"
-                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700"
-                        onClick={() => setIsUserMenuOpen(false)}
-                      >
-                        ⚙️ Settings
-                      </Link>
-                      <button
-                        onClick={handleSignOut}
-                        disabled={isSigningOut.current}
-                        className={`block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-50 dark:text-red-400 dark:hover:bg-gray-700 ${
-                          isSigningOut.current ? 'opacity-50 cursor-not-allowed' : ''
-                        }`}
-                      >
-                        <div className="flex items-center">
-                          <LogOut className="w-4 h-4 mr-2" />
-                          {isSigningOut.current ? 'Signing out...' : '👋 Sign Out'}
-                        </div>
-                      </button>
-                    </div>
-                  )}
-                </div>
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-lg w-full border border-gray-200 dark:border-gray-700">
+        <div className="bg-indigo-50 dark:bg-indigo-900/10 p-6 border-b border-gray-200 dark:border-gray-700">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <div className="w-10 h-10 bg-indigo-600 rounded-md flex items-center justify-center mr-4">
+                <Wand className="h-5 w-5 text-white" />
               </div>
-            ) : (
-              <div className="flex items-center space-x-4">
-                <button
-                  onClick={onSignInClick}
-                  className="text-sm font-medium text-gray-700 hover:text-indigo-600 transition-colors dark:text-gray-300 dark:hover:text-indigo-400"
-                >
-                  🔑 Sign In
-                </button>
-                <button
-                  onClick={onSignUpClick}
-                  className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
-                >
-                  🚀 Get Started
-                </button>
-              </div>
-            )}
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                Create Custom Prompt
+              </h2>
+            </div>
+          <button
+            onClick={handleClose}
+            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors bg-white dark:bg-gray-700 p-2 rounded-md"
+          >
+            <X className="w-6 h-6" />
+          </button>
           </div>
-
-          {/* Mobile menu button */}
-          <div className="md:hidden flex items-center space-x-2">
-            
-            
+        </div>
+        
+        <form onSubmit={handleSubmit} className="p-6">
+          <p className="text-gray-700 dark:text-gray-300 mb-4 text-base">
+            What would you like to write about for your <span className="font-medium text-indigo-600 dark:text-indigo-400">{textType}</span>?
+          </p>
+          
+          <textarea
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            placeholder={`Enter your ${textType} writing prompt here...`}
+            className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white resize-none text-base"
+            rows={5}
+            required
+          />
+          
+          <div className="mt-4 bg-yellow-50 dark:bg-yellow-900/10 p-3 rounded-md border border-yellow-200 dark:border-yellow-700 mb-4">
+            <div className="flex items-start">
+              <Star className="w-4 h-4 text-yellow-500 mr-2 mt-0.5 flex-shrink-0" />
+              <p className="text-xs text-yellow-700 dark:text-yellow-300">
+                Be specific about what you want to write about in your {textType}.
+              </p>
+            </div>
+          </div>
+          
+          <div className="flex justify-end space-x-3 mt-4">
             <button
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="text-gray-700 hover:text-blue-600 dark:text-gray-300 dark:hover:text-blue-400"
+              type="button"
+              onClick={handleClose}
+              className="px-6 py-3 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-300 dark:hover:bg-gray-600 transition-all duration-300 font-bold"
             >
-              {isMenuOpen ? (
-                <X className="w-6 h-6" />
-              ) : (
-                <Menu className="w-6 h-6" />
-              )}
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={!prompt.trim()}
+              className="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-xl hover:from-blue-600 hover:to-purple-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 flex items-center space-x-2 font-bold shadow-md transform hover:scale-105"
+            >
+              <Sparkles className="w-5 h-5" />
+              <span>Use This Prompt</span>
             </button>
           </div>
-        </div>
+        </form>
       </div>
-
-      {/* Mobile menu */}
-      {isMenuOpen && (
-        <div className="md:hidden bg-white border-t border-gray-200 dark:bg-gray-900 dark:border-gray-700">
-          <div className="px-4 py-2 space-y-2">
-            {navigationItems.map((item) => (
-              <Link
-                key={item.id}
-                to={item.href}
-                className={`block w-full text-left px-3 py-2 rounded-md text-sm font-medium ${
-                  activePage === item.id
-                    ? 'text-blue-600 bg-blue-50 dark:bg-blue-900/30 dark:text-blue-400'
-                    : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-gray-800'
-                }`}
-                onClick={() => setIsMenuOpen(false)}
-              >
-                {item.name}
-              </Link>
-            ))}
-            
-          
-            
-            {/* Mobile Learning Items */}
-            <div className="border-t border-gray-200 pt-2 mt-2 dark:border-gray-700">
-              <div className="text-xs font-medium text-gray-500 px-3 py-1 uppercase tracking-wide dark:text-gray-400">
-                🎯 My Learning
-              </div>
-              {learningItems.map((item) => (
-                <Link
-                  key={item.id}
-                  to={`/${item.id}`}
-                  className="block w-full text-left px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:text-blue-400 dark:hover:bg-gray-800"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  {item.name}
-                </Link>
-              ))}
-            </div>
-
-            {/* Mobile Auth */}
-            <div className="border-t border-gray-200 pt-2 mt-2 dark:border-gray-700">
-              {user ? (
-                <div className="space-y-2">
-                  <div className="px-3 py-2">
-                    <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                      Hi, {user.email?.split("@")[0]}!
-                    </p>
-                  </div>
-                  
-                  <Link
-                    to="/dashboard"
-                    className="block w-full text-left px-3 py-2 rounded-md text-sm font-medium bg-blue-600 text-white"
-                    onClick={() => setIsMenuOpen(false)}
-                  >
-                    🏠 My Space
-                  </Link>
-                  <Link
-                    to="/settings"
-                    className="block w-full text-left px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800"
-                    onClick={() => setIsMenuOpen(false)}
-                  >
-                    ⚙️ Settings
-                  </Link>
-                  <button
-                    onClick={handleSignOut}
-                    disabled={isSigningOut.current}
-                    className={`block w-full text-left px-3 py-2 rounded-md text-sm font-medium text-red-600 hover:bg-gray-50 dark:text-red-400 dark:hover:bg-gray-800 ${
-                      isSigningOut.current ? 'opacity-50 cursor-not-allowed' : ''
-                    }`}
-                  >
-                    <div className="flex items-center">
-                      <LogOut className="w-4 h-4 mr-2" />
-                      {isSigningOut.current ? 'Signing out...' : '👋 Sign Out'}
-                    </div>
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <button
-                    onClick={() => {
-                      onSignInClick();
-                      setIsMenuOpen(false);
-                    }}
-                    className="block w-full text-left px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800"
-                  >
-                    🔑 Sign In
-                  </button>
-                  <button
-                    onClick={() => {
-                      onSignUpClick();
-                      setIsMenuOpen(false);
-                    }}
-                    className="block w-full text-left px-3 py-2 rounded-md text-sm font-medium bg-blue-600 text-white"
-                  >
-                    🚀 Get Started
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-    </nav>
+    </div>
   );
 }
