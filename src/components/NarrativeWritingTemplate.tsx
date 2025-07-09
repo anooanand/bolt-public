@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Clock, Play, Pause, RotateCcw, BookOpen, Users, Zap, CheckCircle, Send } from 'lucide-react';
+import { BookOpen } from 'lucide-react';
 
 interface NarrativeWritingTemplateProps {
   content: string;
@@ -25,18 +25,6 @@ export function NarrativeWritingTemplate({ content, onChange, onTimerStart, onSu
     resolution: ''
   });
   
-  // Planning timer (5 minutes)
-  const [planningMinutes, setPlanningMinutes] = useState(5);
-  const [planningSeconds, setPlanningSeconds] = useState(0);
-  const [isPlanningTimerActive, setIsPlanningTimerActive] = useState(false);
-  const [isPlanningTimerCompleted, setIsPlanningTimerCompleted] = useState(false);
-  
-  // Writing timer (25 minutes)
-  const [writingMinutes, setWritingMinutes] = useState(25);
-  const [writingSecondsState, setWritingSecondsState] = useState(0);
-  const [isWritingTimerActive, setIsWritingTimerActive] = useState(false);
-  const [isWritingTimerCompleted, setIsWritingTimerCompleted] = useState(false);
-  
   const [showWritingArea, setShowWritingArea] = useState(false);
 
   // Load saved template data from localStorage
@@ -57,114 +45,11 @@ export function NarrativeWritingTemplate({ content, onChange, onTimerStart, onSu
     localStorage.setItem('narrativeTemplateData', JSON.stringify(templateData));
   }, [templateData]);
 
-  // Planning timer functionality
-  useEffect(() => {
-    let interval: NodeJS.Timeout | null = null;
-    
-    if (isPlanningTimerActive && !isPlanningTimerCompleted) {
-      interval = setInterval(() => {
-        if (planningSeconds > 0) {
-          setPlanningSeconds(planningSeconds - 1);
-        } else if (planningMinutes > 0) {
-          setPlanningMinutes(planningMinutes - 1);
-          setPlanningSeconds(59);
-        } else {
-          setIsPlanningTimerActive(false);
-          setIsPlanningTimerCompleted(true);
-          // Show notification
-          if (Notification.permission === 'granted') {
-            new Notification('Planning time is up!', {
-              body: 'Time to fill in your story template!',
-              icon: '/favicon.ico'
-            });
-          }
-        }
-      }, 1000);
-    } else if (interval) {
-      clearInterval(interval);
-    }
-    
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [isPlanningTimerActive, planningMinutes, planningSeconds, isPlanningTimerCompleted]);
-
-  // Writing timer functionality
-  useEffect(() => {
-    let interval: NodeJS.Timeout | null = null;
-    
-    if (isWritingTimerActive && !isWritingTimerCompleted) {
-      interval = setInterval(() => {
-        if (writingSecondsState > 0) {
-          setWritingSecondsState(writingSecondsState - 1);
-        } else if (writingMinutes > 0) {
-          setWritingMinutes(writingMinutes - 1);
-          setWritingSecondsState(59);
-        } else {
-          setIsWritingTimerActive(false);
-          setIsWritingTimerCompleted(true);
-          onTimerStart(false);
-          // Show notification
-          if (Notification.permission === 'granted') {
-            new Notification('Writing time is up!', {
-              body: 'Great job on your narrative writing!',
-              icon: '/favicon.ico'
-            });
-          }
-        }
-      }, 1000);
-    } else if (interval) {
-      clearInterval(interval);
-    }
-    
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [isWritingTimerActive, writingMinutes, writingSecondsState, isWritingTimerCompleted, onTimerStart]);
-
-  // Request notification permission on component mount
-  useEffect(() => {
-    if (Notification.permission === 'default') {
-      Notification.requestPermission();
-    }
-  }, []);
-
   const handleTemplateChange = (field: keyof TemplateData, value: string) => {
     setTemplateData(prev => ({
       ...prev,
       [field]: value
     }));
-  };
-
-  const startPlanningTimer = () => {
-    setIsPlanningTimerActive(true);
-  };
-
-  const pausePlanningTimer = () => {
-    setIsPlanningTimerActive(false);
-  };
-
-  const resetPlanningTimer = () => {
-    setIsPlanningTimerActive(false);
-    setPlanningMinutes(5);
-    setPlanningSeconds(0);
-    setIsPlanningTimerCompleted(false);
-  };
-
-  const startWritingTimer = () => {
-    setIsWritingTimerActive(true);
-    onTimerStart(true);
-  };
-
-  const pauseWritingTimer = () => {
-    setIsWritingTimerActive(false);
-  };
-
-  const resetWritingTimer = () => {
-    setIsWritingTimerActive(false);
-    setWritingMinutes(25);
-    setWritingSecondsState(0);
-    setIsWritingTimerCompleted(false);
   };
 
   const generateStoryFromTemplate = () => {
@@ -212,36 +97,36 @@ export function NarrativeWritingTemplate({ content, onChange, onTimerStart, onSu
     <div className="h-full flex flex-col bg-white dark:bg-gray-800">
       {/* Header */}
       <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20">
-        <div className="flex items-center">
-          <BookOpen className="w-6 h-6 text-purple-600 dark:text-purple-400 mr-3" />
-          <div>
-            <h2 className="text-xl font-bold text-purple-900 dark:text-purple-100">Narrative Writing Template</h2>
-            <p className="text-sm text-purple-700 dark:text-purple-300">Plan your story before you write!</p>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center">
+            <BookOpen className="w-6 h-6 text-purple-600 dark:text-purple-400 mr-3" />
+            <div>
+              <h2 className="text-xl font-bold text-purple-900 dark:text-purple-100">Narrative Writing Template</h2>
+              <p className="text-sm text-purple-700 dark:text-purple-300">Plan your story before you write!</p>
+            </div>
+          </div>
+          <div className="flex items-center space-x-4">
+            <button
+              onClick={generateStoryFromTemplate}
+              disabled={!isTemplateComplete}
+              className={`flex items-center px-6 py-3 rounded-lg font-medium transition-all ${
+                isTemplateComplete
+                  ? 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg'
+                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+              }`}
+            >
+              <BookOpen className="w-5 h-5 mr-2" />
+              Start Writing Your Story
+            </button>
+            
+            <button
+              onClick={toggleWritingArea}
+              className="flex items-center px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-medium transition-all"
+            >
+              Skip Template & Write Freely
+            </button>
           </div>
         </div>
-      </div>
-
-      {/* Action Buttons */}
-      <div className="flex justify-center space-x-4 pt-6">
-        <button
-          onClick={generateStoryFromTemplate}
-          disabled={!isTemplateComplete}
-          className={`flex items-center px-6 py-3 rounded-lg font-medium transition-all ${
-            isTemplateComplete
-              ? 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg'
-              : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-          }`}
-        >
-          <BookOpen className="w-5 h-5 mr-2" />
-          Start Writing Your Story
-        </button>
-        
-        <button
-          onClick={toggleWritingArea}
-          className="flex items-center px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-medium transition-all"
-        >
-          Skip Template & Write Freely
-        </button>
       </div>
 
       <div className="flex-1 overflow-hidden">
@@ -249,59 +134,10 @@ export function NarrativeWritingTemplate({ content, onChange, onTimerStart, onSu
           /* Template Planning Interface */
           <div className="h-full overflow-y-auto p-6">
             <div className="max-w-3xl mx-auto space-y-6">
-              
-              {/* Planning Timer (5 minutes) */}
-              <div className="flex justify-center">
-                <div className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-md border border-blue-200 dark:border-blue-700">
-                  <div className="flex items-center space-x-4">
-                    <div className="flex items-center space-x-2">
-                      <Clock className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                      <span className="text-sm font-medium text-blue-900 dark:text-blue-100">Planning Timer:</span>
-                      <span className="text-lg font-mono font-bold text-blue-900 dark:text-blue-100">
-                        {String(planningMinutes).padStart(2, '0')}:{String(planningSeconds).padStart(2, '0')}
-                      </span>
-                    </div>
-                    <div className="flex items-center space-x-1">
-                      {!isPlanningTimerActive ? (
-                        <button
-                          onClick={startPlanningTimer}
-                          disabled={isPlanningTimerCompleted}
-                          className="flex items-center px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
-                        >
-                          <Play className="w-3 h-3 mr-1" />
-                          Start
-                        </button>
-                      ) : (
-                        <button
-                          onClick={pausePlanningTimer}
-                          className="flex items-center px-2 py-1 text-xs bg-yellow-600 text-white rounded hover:bg-yellow-700"
-                        >
-                          <Pause className="w-3 h-3 mr-1" />
-                          Pause
-                        </button>
-                      )}
-                      <button
-                        onClick={resetPlanningTimer}
-                        className="flex items-center px-2 py-1 text-xs bg-gray-600 text-white rounded hover:bg-gray-700"
-                      >
-                        <RotateCcw className="w-3 h-3 mr-1" />
-                        Reset
-                      </button>
-                    </div>
-                    {isPlanningTimerCompleted && (
-                      <div className="text-xs text-green-600 dark:text-green-400 font-medium">
-                        ✓ Planning complete!
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
               {/* Planning Box */}
               <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-700">
                 <div className="flex items-center mb-3">
-                  <Clock className="w-5 h-5 text-blue-600 dark:text-blue-400 mr-2" />
-                  <h3 className="text-lg font-semibold text-blue-900 dark:text-blue-100">Planning Notes (5 minutes)</h3>
+                  <h3 className="text-lg font-semibold text-blue-900 dark:text-blue-100">Planning Notes</h3>
                 </div>
                 <textarea
                   value={templateData.planning}
@@ -313,8 +149,6 @@ export function NarrativeWritingTemplate({ content, onChange, onTimerStart, onSu
                   Use this space to brainstorm and organize your thoughts before filling in the template below.
                 </p>
               </div>
-
-
 
               {/* Template Boxes - Vertical Layout */}
               <div className="space-y-6">
@@ -394,9 +228,6 @@ export function NarrativeWritingTemplate({ content, onChange, onTimerStart, onSu
                   </p>
                 </div>
               </div>
-
-
-
             </div>
           </div>
         ) : (
@@ -413,66 +244,20 @@ export function NarrativeWritingTemplate({ content, onChange, onTimerStart, onSu
                 </button>
                 
                 <div className="flex items-center space-x-4">
-                  {/* Writing Timer */}
-                  <div className="bg-white dark:bg-gray-800 rounded-lg p-3 shadow-md border border-green-200 dark:border-green-700">
-                    <div className="flex items-center space-x-2">
-                      <Clock className="w-5 h-5 text-green-600 dark:text-green-400" />
-                      <span className="text-sm font-medium text-green-900 dark:text-green-100">Writing Timer:</span>
-                      <span className="text-lg font-mono font-bold text-green-900 dark:text-green-100">
-                        {String(writingMinutes).padStart(2, '0')}:{String(writingSecondsState).padStart(2, '0')}
-                      </span>
-                    </div>
-                    <div className="flex items-center space-x-1 mt-2">
-                      {!isWritingTimerActive ? (
-                        <button
-                          onClick={startWritingTimer}
-                          disabled={isWritingTimerCompleted}
-                          className="flex items-center px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
-                        >
-                          <Play className="w-3 h-3 mr-1" />
-                          Start
-                        </button>
-                      ) : (
-                        <button
-                          onClick={pauseWritingTimer}
-                          className="flex items-center px-2 py-1 text-xs bg-yellow-600 text-white rounded hover:bg-yellow-700"
-                        >
-                          <Pause className="w-3 h-3 mr-1" />
-                          Pause
-                        </button>
-                      )}
-                      <button
-                        onClick={resetWritingTimer}
-                        className="flex items-center px-2 py-1 text-xs bg-gray-600 text-white rounded hover:bg-gray-700"
-                      >
-                        <RotateCcw className="w-3 h-3 mr-1" />
-                        Reset
-                      </button>
-                    </div>
-                    {isWritingTimerCompleted && (
-                      <div className="text-xs text-green-600 dark:text-green-400 mt-1 font-medium">
-                        ✓ Writing time complete!
-                      </div>
-                    )}
-                  </div>
-                  
-                  <div className="flex items-center space-x-4">
-                    <span className="text-sm text-gray-600 dark:text-gray-400">
-                      Words: {countWords(content)}
-                    </span>
-                    <button
-                      onClick={onSubmit}
-                      disabled={countWords(content) < 50}
-                      className={`flex items-center px-4 py-2 rounded-lg font-medium transition-all ${
-                        countWords(content) >= 50
-                          ? 'bg-green-600 hover:bg-green-700 text-white'
-                          : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                      }`}
-                    >
-                      <Send className="w-4 h-4 mr-2" />
-                      Submit Story
-                    </button>
-                  </div>
+                  <span className="text-sm text-gray-600 dark:text-gray-400">
+                    Words: {countWords(content)}
+                  </span>
+                  <button
+                    onClick={onSubmit}
+                    disabled={countWords(content) < 50}
+                    className={`flex items-center px-4 py-2 rounded-lg font-medium transition-all ${
+                      countWords(content) >= 50
+                        ? 'bg-green-600 hover:bg-green-700 text-white'
+                        : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    }`}
+                  >
+                    Submit Story
+                  </button>
                 </div>
               </div>
             </div>
