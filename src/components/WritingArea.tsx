@@ -17,6 +17,9 @@ import { DescriptiveWritingTemplate } from './DescriptiveWritingTemplate';
 import { RecountWritingTemplate } from './RecountWritingTemplate';
 import { DiscursiveWritingTemplate } from './DiscursiveWritingTemplate';
 import { NewsReportWritingTemplate } from './NewsReportWritingTemplate';
+import { LetterWritingTemplate } from './LetterWritingTemplate';
+import { DiaryWritingTemplate } from './DiaryWritingTemplate';
+import { SpeechWritingTemplate } from './SpeechWritingTemplate';
 import './responsive.css';
 
 interface WritingAreaProps {
@@ -583,6 +586,42 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
   if (textType === 'news_report') {
     return (
       <NewsReportWritingTemplate
+        content={content}
+        onChange={onChange}
+        onTimerStart={onTimerStart}
+        onSubmit={onSubmit}
+      />
+    );
+  }
+
+  // If letter writing is selected, show the letter template
+  if (textType === 'letter') {
+    return (
+      <LetterWritingTemplate
+        content={content}
+        onChange={onChange}
+        onTimerStart={onTimerStart}
+        onSubmit={onSubmit}
+      />
+    );
+  }
+
+  // If diary writing is selected, show the diary template
+  if (textType === 'diary') {
+    return (
+      <DiaryWritingTemplate
+        content={content}
+        onChange={onChange}
+        onTimerStart={onTimerStart}
+        onSubmit={onSubmit}
+      />
+    );
+  }
+
+  // If speech writing is selected, show the speech template
+  if (textType === 'speech') {
+    return (
+      <SpeechWritingTemplate
         content={content}
         onChange={onChange}
         onTimerStart={onTimerStart}
