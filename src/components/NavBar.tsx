@@ -1,101 +1,120 @@
-import React, { useState } from 'react';
-import { X, Check, Wand, Star, Sparkles } from 'lucide-react';
+import React from 'react';
+import { useAuth } from '../contexts/AuthContext';
+import { PenTool, BookOpen, User, Home, LogIn } from 'lucide-react';
 
-interface CustomPromptModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onSubmit: (prompt: string) => void;
-  textType: string;
+interface NavBarProps {
+  currentPage: string;
+  onNavigate: (page: 'home' | 'write' | 'learn' | 'dashboard') => void;
+  onShowAuth: () => void;
 }
 
-export function CustomPromptModal({ 
-  isOpen, 
-  onClose, 
-  onSubmit, 
-  textType 
-}: CustomPromptModalProps) {
-  const [prompt, setPrompt] = useState('');
+export const NavBar: React.FC<NavBarProps> = ({ 
+  currentPage, 
+  onNavigate, 
+  onShowAuth 
+}) => {
+  const { user, authSignOut } = useAuth(); // ✅ FIXED: Use authSignOut instead of signOut
 
-  if (!isOpen) return null;
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault(); 
-    if (prompt.trim()) {
-      onSubmit(prompt.trim());
-      setPrompt('');
-      onClose();
+  const handleSignOut = async () => {
+    try {
+      await authSignOut();
+      console.log('✅ User signed out successfully');
+    } catch (error) {
+      console.error('❌ Sign out error:', error);
     }
   };
 
-  const handleClose = () => {
-    setPrompt('');
-    onClose();
-  };
-
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-lg w-full border border-gray-200 dark:border-gray-700">
-        <div className="bg-indigo-50 dark:bg-indigo-900/10 p-6 border-b border-gray-200 dark:border-gray-700">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <div className="w-10 h-10 bg-indigo-600 rounded-md flex items-center justify-center mr-4">
-                <Wand className="h-5 w-5 text-white" />
+    <nav className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between items-center h-16">
+          {/* Logo */}
+          <div className="flex items-center">
+            <PenTool className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+            <span className="ml-2 text-xl font-bold text-gray-900 dark:text-white">
+              Writing Assistant
+            </span>
+          </div>
+
+          {/* Navigation Links */}
+          <div className="hidden md:flex items-center space-x-8">
+            <button
+              onClick={() => onNavigate('home')}
+              className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                currentPage === 'home'
+                  ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20'
+                  : 'text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400'
+              }`}
+            >
+              <Home className="w-4 h-4 mr-2" />
+              Home
+            </button>
+
+            <button
+              onClick={() => onNavigate('write')}
+              className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                currentPage === 'write'
+                  ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20'
+                  : 'text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400'
+              }`}
+            >
+              <PenTool className="w-4 h-4 mr-2" />
+              Write
+            </button>
+
+            <button
+              onClick={() => onNavigate('learn')}
+              className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                currentPage === 'learn'
+                  ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20'
+                  : 'text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400'
+              }`}
+            >
+              <BookOpen className="w-4 h-4 mr-2" />
+              Learn
+            </button>
+
+            {user && (
+              <button
+                onClick={() => onNavigate('dashboard')}
+                className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  currentPage === 'dashboard'
+                    ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20'
+                    : 'text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400'
+                }`}
+              >
+                <User className="w-4 h-4 mr-2" />
+                Dashboard
+              </button>
+            )}
+          </div>
+
+          {/* User Menu */}
+          <div className="flex items-center space-x-4">
+            {user ? (
+              <div className="flex items-center space-x-3">
+                <span className="text-sm text-gray-700 dark:text-gray-300">
+                  {user.email}
+                </span>
+                <button
+                  onClick={handleSignOut} // ✅ FIXED: Use handleSignOut function
+                  className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+                >
+                  Sign Out
+                </button>
               </div>
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-                Create Custom Prompt
-              </h2>
-            </div>
-          <button
-            onClick={handleClose}
-            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors bg-white dark:bg-gray-700 p-2 rounded-md"
-          >
-            <X className="w-6 h-6" />
-          </button>
+            ) : (
+              <button
+                onClick={onShowAuth}
+                className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+              >
+                <LogIn className="w-4 h-4 mr-2" />
+                Sign In
+              </button>
+            )}
           </div>
         </div>
-        
-        <form onSubmit={handleSubmit} className="p-6">
-          <p className="text-gray-700 dark:text-gray-300 mb-4 text-base">
-            What would you like to write about for your <span className="font-medium text-indigo-600 dark:text-indigo-400">{textType}</span>?
-          </p>
-          
-          <textarea
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            placeholder={`Enter your ${textType} writing prompt here...`}
-            className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white resize-none text-base"
-            rows={5}
-            required
-          />
-          
-          <div className="mt-4 bg-yellow-50 dark:bg-yellow-900/10 p-3 rounded-md border border-yellow-200 dark:border-yellow-700 mb-4">
-            <div className="flex items-start">
-              <Star className="w-4 h-4 text-yellow-500 mr-2 mt-0.5 flex-shrink-0" />
-              <p className="text-xs text-yellow-700 dark:text-yellow-300">
-                Be specific about what you want to write about in your {textType}.
-              </p>
-            </div>
-          </div>
-          
-          <div className="flex justify-end space-x-3 mt-4">
-            <button
-              type="button"
-              onClick={handleClose}
-              className="px-6 py-3 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-300 dark:hover:bg-gray-600 transition-all duration-300 font-bold"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={!prompt.trim()}
-              className="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-xl hover:from-blue-600 hover:to-purple-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 flex items-center space-x-2 font-bold shadow-md transform hover:scale-105"
-            >
-              <Sparkles className="w-5 h-5" />
-              <span>Use This Prompt</span>
-            </button>
-          </div>
-        </form>
       </div>
-    </div>
+    </nav>
   );
-}
+};
