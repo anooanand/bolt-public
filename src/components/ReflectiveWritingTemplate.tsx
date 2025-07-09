@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Clock, Play, Pause, RotateCcw, Heart, Lightbulb, Mirror, CheckCircle, Send, ThoughtBubble } from 'lucide-react';
+import { Clock, Play, Pause, RotateCcw, Heart, Lightbulb, Eye, CheckCircle, Send, ThoughtBubble } from 'lucide-react';
 
 interface ReflectiveWritingTemplateProps {
   content: string;
@@ -235,7 +235,7 @@ export function ReflectiveWritingTemplate({ content, onChange, onTimerStart, onS
       {/* Header */}
       <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20">
         <div className="flex items-center">
-          <Mirror className="w-6 h-6 text-purple-600 dark:text-purple-400 mr-3" />
+          <Eye className="w-6 h-6 text-purple-600 dark:text-purple-400 mr-3" />
           <div>
             <h2 className="text-xl font-bold text-purple-900 dark:text-purple-100">Reflective Writing Template</h2>
             <p className="text-sm text-purple-700 dark:text-purple-300">Think deeply about your experiences and what you learned!</p>
@@ -468,7 +468,7 @@ export function ReflectiveWritingTemplate({ content, onChange, onTimerStart, onS
                       : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                   }`}
                 >
-                  <Mirror className="w-5 h-5 mr-2" />
+                  <Eye className="w-5 h-5 mr-2" />
                   Start Writing Your Reflection
                 </button>
                 
@@ -578,4 +578,3 @@ export function ReflectiveWritingTemplate({ content, onChange, onTimerStart, onS
     </div>
   );
 }
-
