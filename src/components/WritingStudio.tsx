@@ -1,15 +1,11 @@
-import React, { useState, useRef, useEffect } from 'react';
 import { 
   Save, 
   Download, 
   FileText, 
   BarChart3, 
-  Lightbulb, 
   RefreshCw,
   Clock,
   Target,
-  TrendingUp,
-  BookOpen,
   Zap,
   Eye,
   PlusCircle
@@ -189,19 +185,6 @@ export const WritingStudio: React.FC<WritingStudioProps> = ({ onNavigate }) => {
       icon: RefreshCw,
       action: () => onNavigate('paraphrase'),
       description: 'Rephrase selected text'
-    },
-    {
-      label: 'Brainstorm',
-      icon: Lightbulb,
-      action: () => onNavigate('brainstorm'),
-      description: 'Generate ideas'
-    },
-    {
-      label: 'Learn',
-      icon: BookOpen,
-      action: () => onNavigate('learn'),
-      description: 'Writing tutorials',
-      isPro: true
     },
     {
       label: 'Practice',
