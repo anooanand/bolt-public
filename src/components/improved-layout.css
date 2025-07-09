@@ -347,13 +347,14 @@
 .feedback-item {
   padding: 20px;
   border-radius: 16px;
-  margin-bottom: 16px;
+  margin-bottom: 20px;
   font-size: 16px;
   line-height: 1.6;
   border-left: 6px solid;
   position: relative;
   transition: all 0.3s ease;
   font-weight: 500;
+  padding-right: 30px; /* Add space for the close button */
   padding-right: 30px; /* Add space for the close button */
 }
 
@@ -370,9 +371,9 @@
 
 .feedback-item-praise::before {
   content: '🌟';
-  position: absolute;
-  top: 16px;
-  right: 20px;
+  position: absolute; 
+  top: 16px; 
+  right: 40px; /* Move emoji to make room for close button */
   font-size: 20px;
 }
 
@@ -386,7 +387,7 @@
   content: '💡';
   position: absolute;
   top: 16px;
-  right: 20px;
+  right: 40px; /* Move emoji to make room for close button */
   font-size: 20px;
 }
 
@@ -400,7 +401,7 @@
   content: '🤔';
   position: absolute;
   top: 16px;
-  right: 20px;
+  right: 40px; /* Move emoji to make room for close button */
   font-size: 20px;
 }
 
@@ -414,13 +415,13 @@
   content: '🚀';
   position: absolute;
   top: 16px;
-  right: 20px;
+  right: 40px; /* Move emoji to make room for close button */
   font-size: 20px;
 }
 
 /* Dark mode feedback items - Kid-Friendly */
 .dark .feedback-item-praise {
-  background: linear-gradient(135deg, #064e3b 0%, #065f46 100%);
+  background: linear-gradient(135deg, #064e3b 0%, #065f46 100%); 
   color: #86efac;
 }
 
@@ -437,6 +438,34 @@
 .dark .feedback-item-challenge {
   background: linear-gradient(135deg, #581c87 0%, #6b21a8 100%);
   color: #c4b5fd;
+}
+
+/* Close button for feedback items */
+.feedback-item .close-button {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 24px;
+  height: 24px;
+  background: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: all 0.2s ease;
+  z-index: 10;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.feedback-item .close-button:hover {
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+.dark .feedback-item .close-button {
+  background: #374151;
 }
 
 /* Kid-Friendly Form Elements */
