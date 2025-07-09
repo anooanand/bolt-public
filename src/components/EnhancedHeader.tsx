@@ -65,6 +65,8 @@ export function EnhancedHeader({
           </div>
         </div>
       </div>
+    )
+    }
     </div>
   );
 }
