@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Bot, RefreshCw, Sparkles, Wand, Star } from 'lucide-react';
 import { CoachPanel } from './CoachPanel';
 import { ParaphrasePanel } from './ParaphrasePanel';
