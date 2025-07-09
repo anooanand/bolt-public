@@ -354,6 +354,7 @@
   position: relative;
   transition: all 0.3s ease;
   font-weight: 500;
+  padding-right: 30px; /* Add space for the close button */
 }
 
 .feedback-item:hover {

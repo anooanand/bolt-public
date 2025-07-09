@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { MessageSquare, Sparkles, ChevronDown, ChevronUp, ThumbsUp, Lightbulb, HelpCircle, Target, AlertCircle, Star, Zap, Gift, Heart } from 'lucide-react';
+import { MessageSquare, Sparkles, ChevronDown, ChevronUp, ThumbsUp, Lightbulb, HelpCircle, Target, AlertCircle, Star, Zap, Gift, Heart, X } from 'lucide-react';
 import { getWritingFeedback } from '../lib/openai';
 import AIErrorHandler from '../utils/errorHandling';
 import { promptConfig } from '../config/prompts';
@@ -28,6 +28,9 @@ interface StructuredFeedback {
 export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelProps) {
   const [structuredFeedback, setStructuredFeedback] = useState<StructuredFeedback | null>(null);
   const [feedbackHistory, setFeedbackHistory] = useState<FeedbackItem[]>([]);
+  const [hiddenFeedbackItems, setHiddenFeedbackItems] = useState<number[]>([]);
+  const [isOverallCommentHidden, setIsOverallCommentHidden] = useState(false);
+  const [isFocusForNextTimeHidden, setIsFocusForNextTimeHidden] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [question, setQuestion] = useState('');
   const [showPrompts, setShowPrompts] = useState(false);
@@ -271,6 +274,18 @@ export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelPro
     return 'text-gray-700 dark:text-gray-400';
   };
 
+  const handleHideFeedbackItem = (index: number) => {
+    setHiddenFeedbackItems(prev => [...prev, index]);
+  };
+
+  const handleHideOverallComment = () => {
+    setIsOverallCommentHidden(true);
+  };
+
+  const handleHideFocusForNextTime = () => {
+    setIsFocusForNextTimeHidden(true);
+  };
+
   return (
     <div className="h-full flex flex-col">
       {/* Word count indicator */}
@@ -303,8 +318,15 @@ export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelPro
       )}
 
       <div className="coach-panel-content space-y-4">
-        {structuredFeedback?.overallComment && (
-          <div className="p-5 bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-900/30 dark:to-blue-900/30 text-indigo-700 dark:text-indigo-300 rounded-2xl text-base border-2 border-indigo-200 dark:border-indigo-800 shadow-md">
+        {structuredFeedback?.overallComment && !isOverallCommentHidden && (
+          <div className="p-5 bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-900/30 dark:to-blue-900/30 text-indigo-700 dark:text-indigo-300 rounded-2xl text-base border-2 border-indigo-200 dark:border-indigo-800 shadow-md relative">
+            <button 
+              onClick={handleHideOverallComment}
+              className="absolute top-2 right-2 p-1 rounded-full bg-white dark:bg-gray-700 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+              aria-label="Close feedback"
+            >
+              <X className="w-4 h-4" />
+            </button>
             <div className="flex items-start">
               <Heart className="w-6 h-6 text-indigo-500 mr-3 mt-1 shrink-0" />
               <div>
@@ -315,10 +337,18 @@ export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelPro
           </div>
         )}
 
-        {structuredFeedback?.feedbackItems?.map((item, index) => {
+        {structuredFeedback?.feedbackItems?.filter((_, index) => !hiddenFeedbackItems.includes(index)).map((item, index) => {
           const { icon, bgColor, textColor } = getFeedbackItemStyle(item.type);
+          const originalIndex = structuredFeedback.feedbackItems.findIndex(i => i === item);
           return (
-            <div key={index} className={`feedback-item feedback-item-${item.type} flex transform hover:scale-102 transition-all duration-300`}>
+            <div key={originalIndex} className={`feedback-item feedback-item-${item.type} flex transform hover:scale-102 transition-all duration-300 relative`}>
+              <button 
+                onClick={() => handleHideFeedbackItem(originalIndex)}
+                className="absolute top-2 right-2 p-1 rounded-full bg-white dark:bg-gray-700 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+                aria-label="Close feedback"
+              >
+                <X className="w-4 h-4" />
+              </button>
               <div>{icon}</div>
               <div className="flex-grow relative">
                 <p className="font-bold text-lg capitalize">{item.area}</p>
@@ -338,7 +368,9 @@ export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelPro
           );
         })}
 
-        {structuredFeedback?.feedbackItems?.length === 0 && currentWordCount >= 50 && !isLoading && (
+        {(!structuredFeedback?.feedbackItems || structuredFeedback.feedbackItems.length === 0 || 
+          (structuredFeedback.feedbackItems.length > 0 && hiddenFeedbackItems.length === structuredFeedback.feedbackItems.length)) && 
+          currentWordCount >= 50 && !isLoading && (
           <div className="p-6 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 text-gray-700 dark:text-gray-300 rounded-2xl text-base text-center border-2 border-gray-200 dark:border-gray-700 shadow-md">
             <Sparkles className="w-10 h-10 mx-auto mb-3 text-gray-400 dark:text-gray-500" />
             <p className="font-bold text-lg mb-2">Your writing buddy is thinking...</p>
@@ -351,8 +383,15 @@ export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelPro
           </div>
         )}
 
-        {structuredFeedback?.focusForNextTime && structuredFeedback.focusForNextTime.length > 0 && (
-          <div className="p-5 bg-gradient-to-r from-blue-50 to-green-50 dark:from-blue-900/20 dark:to-green-900/20 text-gray-700 dark:text-gray-300 rounded-2xl text-base border-2 border-blue-200 dark:border-blue-800 shadow-md">
+        {structuredFeedback?.focusForNextTime && structuredFeedback.focusForNextTime.length > 0 && !isFocusForNextTimeHidden && (
+          <div className="p-5 bg-gradient-to-r from-blue-50 to-green-50 dark:from-blue-900/20 dark:to-green-900/20 text-gray-700 dark:text-gray-300 rounded-2xl text-base border-2 border-blue-200 dark:border-blue-800 shadow-md relative">
+            <button 
+              onClick={handleHideFocusForNextTime}
+              className="absolute top-2 right-2 p-1 rounded-full bg-white dark:bg-gray-700 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+              aria-label="Close feedback"
+            >
+              <X className="w-4 h-4" />
+            </button>
             <div className="flex items-start">
               <Star className="w-6 h-6 text-blue-500 mr-3 mt-1 shrink-0" />
               <div>
