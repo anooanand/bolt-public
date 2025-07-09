@@ -22,6 +22,12 @@ export function TabbedCoachPanel({
   onNavigate
 }: TabbedCoachPanelProps) {
   const [activeTab, setActiveTab] = useState<TabType>('coach');
+  const [localAssistanceLevel, setLocalAssistanceLevel] = useState<string>(assistanceLevel);
+
+  // Update local assistance level when prop changes
+  useEffect(() => {
+    setLocalAssistanceLevel(assistanceLevel);
+  }, [assistanceLevel]);
 
   const tabs = [
     {
@@ -83,7 +89,7 @@ export function TabbedCoachPanel({
           <CoachPanel
             content={content}
             textType={textType}
-            assistanceLevel={assistanceLevel}
+            assistanceLevel={localAssistanceLevel}
           />
         ) : (
           <ParaphrasePanel

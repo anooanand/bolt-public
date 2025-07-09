@@ -28,6 +28,7 @@ interface StructuredFeedback {
 export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelProps) {
   const [structuredFeedback, setStructuredFeedback] = useState<StructuredFeedback | null>(null);
   const [feedbackHistory, setFeedbackHistory] = useState<FeedbackItem[]>([]);
+  const [localAssistanceLevel, setLocalAssistanceLevel] = useState<string>(assistanceLevel);
   const [hiddenFeedbackItems, setHiddenFeedbackItems] = useState<number[]>([]);
   const [isOverallCommentHidden, setIsOverallCommentHidden] = useState(false);
   const [isFocusForNextTimeHidden, setIsFocusForNextTimeHidden] = useState(false);
@@ -162,11 +163,16 @@ export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelPro
 
   useEffect(() => {
     const debounceTimer = setTimeout(() => {
-      fetchFeedback(content, textType, assistanceLevel, feedbackHistory);
+      fetchFeedback(content, textType, localAssistanceLevel, feedbackHistory);
     }, 2000);
 
     return () => clearTimeout(debounceTimer);
-  }, [content, textType, assistanceLevel, feedbackHistory, fetchFeedback]);
+  }, [content, textType, localAssistanceLevel, feedbackHistory, fetchFeedback]);
+
+  // Update local assistance level when prop changes
+  useEffect(() => {
+    setLocalAssistanceLevel(assistanceLevel);
+  }, [assistanceLevel]);
 
   const handleQuestionSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -177,7 +183,7 @@ export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelPro
       
       try {
         const userQueryText = `Question about my ${textType} writing: ${question}\n\nCurrent text: ${content}`;
-        const response = await getWritingFeedback(userQueryText, textType, assistanceLevel, feedbackHistory);
+        const response = await getWritingFeedback(userQueryText, textType, localAssistanceLevel, feedbackHistory);
         
         if (response && response.feedbackItems) {
           const questionFeedbackItem: FeedbackItem = {
@@ -286,6 +292,10 @@ export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelPro
     setIsFocusForNextTimeHidden(true);
   };
 
+  const handleAssistanceLevelChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setLocalAssistanceLevel(e.target.value);
+  };
+
   return (
     <div className="h-full flex flex-col">
       {/* Word count indicator */}
@@ -294,6 +304,22 @@ export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelPro
           <Sparkles className="w-5 h-5 mr-2" />
           {getWordCountMessage()}
           {isNearTarget && <Star className="w-5 h-5 ml-2 text-yellow-500 fill-current" />}
+        </div>
+        
+        {/* Assistance Level Selector */}
+        <div className="relative">
+          <select
+            value={localAssistanceLevel}
+            onChange={handleAssistanceLevelChange}
+            className="block rounded-xl border-3 border-purple-300 py-1 pl-3 pr-8 text-gray-900 dark:text-gray-100 dark:bg-gray-700 focus:ring-2 focus:ring-purple-200 focus:border-purple-500 text-sm font-medium shadow-sm transition-all duration-200 hover:border-purple-400"
+          >
+            <option value="detailed">🌟 Lots of Help</option>
+            <option value="moderate">⭐ Some Help</option>
+            <option value="minimal">✨ Just a Little Help</option>
+          </select>
+          <div className="absolute -top-1 -right-1 w-4 h-4 bg-purple-400 rounded-full flex items-center justify-center animate-pulse">
+            <Sparkles className="w-2 h-2 text-white" />
+          </div>
         </div>
       </div>
 

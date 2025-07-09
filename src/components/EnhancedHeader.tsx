@@ -62,21 +62,6 @@ export function EnhancedHeader({
               <option value="diary entry">📔 Dear Diary</option>
               <option value="speech">🎤 Give a Speech</option>
             </select>
-          )}
-
-          <div className="relative">
-            <select
-              value={assistanceLevel}
-              onChange={(e) => onAssistanceLevelChange(e.target.value)}
-              className="block rounded-xl border-3 border-purple-300 py-2 pl-4 pr-10 text-gray-900 dark:text-gray-100 dark:bg-gray-700 focus:ring-4 focus:ring-purple-200 focus:border-purple-500 text-base font-medium shadow-sm transition-all duration-200 hover:border-purple-400"
-            >
-              <option value="detailed">🌟 Lots of Help</option>
-              <option value="moderate">⭐ Some Help</option>
-              <option value="minimal">✨ Just a Little Help</option>
-            </select>
-            <div className="absolute -top-1 -right-1 w-5 h-5 bg-purple-400 rounded-full flex items-center justify-center animate-pulse">
-              <Sparkles className="w-3 h-3 text-white" />
-            </div>
           </div>
         </div>
       </div>

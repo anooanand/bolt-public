@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { MessageSquare, Minimize2, Maximize2, X, Move } from 'lucide-react';
+import { MessageSquare, Minimize2, Maximize2, X, Move, Sparkles } from 'lucide-react';
 import { TabbedCoachPanel } from './TabbedCoachPanel';
 import './FloatingChatWindow.css';
 
@@ -23,6 +23,7 @@ export function FloatingChatWindow({
   const [isDragging, setIsDragging] = useState(false);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const [localAssistanceLevel, setLocalAssistanceLevel] = useState<string>(assistanceLevel);
   
   const chatRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLDivElement>(null);
@@ -143,6 +144,15 @@ export function FloatingChatWindow({
     setIsVisible(false);
   };
 
+  // Update local assistance level when prop changes
+  useEffect(() => {
+    setLocalAssistanceLevel(assistanceLevel);
+  }, [assistanceLevel]);
+
+  const handleAssistanceLevelChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setLocalAssistanceLevel(e.target.value);
+  };
+
   if (!isVisible) {
     return (
       <button
@@ -203,7 +213,7 @@ export function FloatingChatWindow({
         <TabbedCoachPanel
           content={content}
           textType={textType}
-          assistanceLevel={assistanceLevel}
+          assistanceLevel={localAssistanceLevel}
           selectedText={selectedText}
           onNavigate={onNavigate}
         />
