@@ -14,12 +14,12 @@ interface TabbedCoachPanelProps {
 
 type TabType = 'coach' | 'paraphrase';
 
-export function TabbedCoachPanel({ 
-  content, 
-  textType, 
-  assistanceLevel, 
-  selectedText, 
-  onNavigate 
+export function TabbedCoachPanel({
+  content,
+  textType,
+  assistanceLevel,
+  selectedText,
+  onNavigate
 }: TabbedCoachPanelProps) {
   const [activeTab, setActiveTab] = useState<TabType>('coach');
 
@@ -39,7 +39,7 @@ export function TabbedCoachPanel({
   ];
 
   return (
-    <div className="h-full coach-panel-container">
+    <div className="h-full flex flex-col coach-panel-container">
       {/* Tab Navigation */}
       <div className="coach-panel-header border-b-0 bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30">
         <div className="flex space-x-2 bg-white dark:bg-gray-800 p-2 rounded-2xl shadow-md">
@@ -80,13 +80,13 @@ export function TabbedCoachPanel({
           </div>
         )}
         {activeTab === 'coach' ? (
-          <CoachPanel 
+          <CoachPanel
             content={content}
             textType={textType}
             assistanceLevel={assistanceLevel}
           />
         ) : (
-          <ParaphrasePanel 
+          <ParaphrasePanel
             selectedText={selectedText}
             onNavigate={onNavigate}
           />
@@ -95,4 +95,3 @@ export function TabbedCoachPanel({
     </div>
   );
 }
-
