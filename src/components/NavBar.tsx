@@ -161,7 +161,7 @@ export const NavBar: React.FC<NavBarProps> = ({ onNavigate, onSignIn, onSignUp, 
                   onClick={() => handleNavigation('dashboard')}
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                 >
-                  🏠 Dashboard
+                  🏠 My Space
                 </button>
                 <div className="relative">
                   <button
@@ -187,7 +187,7 @@ export const NavBar: React.FC<NavBarProps> = ({ onNavigate, onSignIn, onSignUp, 
                         onClick={() => handleNavigation('dashboard')}
                         className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
                       >
-                        🏠 Dashboard
+                        🏠 My Space
                       </button>
                       <button
                         onClick={() => handleNavigation('writing')}
@@ -297,7 +297,7 @@ export const NavBar: React.FC<NavBarProps> = ({ onNavigate, onSignIn, onSignUp, 
                     onClick={() => handleNavigation('dashboard')}
                     className="block w-full text-left px-3 py-2 rounded-md text-sm font-medium bg-blue-600 text-white"
                   >
-                    🏠 Dashboard
+                    🏠 My Space
                   </button>
                   <button
                     onClick={() => handleNavigation('writing')}
@@ -355,3 +355,4 @@ export const NavBar: React.FC<NavBarProps> = ({ onNavigate, onSignIn, onSignUp, 
     </nav>
   );
 };
+
