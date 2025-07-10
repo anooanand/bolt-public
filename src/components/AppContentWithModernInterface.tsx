@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
 import { NavBar } from './NavBar';
@@ -32,7 +32,6 @@ import { EmailVerificationHandler } from './EmailVerificationHandler';
 import { CheckCircle } from 'lucide-react';
 import { AdminButton } from './AdminButton';
 
-// Import the modern interface styles
 import '../styles/modern-writing-interface.css';
 
 function AppContentWithModernInterface() {
@@ -43,6 +42,7 @@ function AppContentWithModernInterface() {
   const [showPaymentSuccess, setShowPaymentSuccess] = useState(false);
   const [pendingPaymentPlan, setPendingPaymentPlan] = useState<string | null>(null);
   const location = useLocation();
+  const navigate = useNavigate();
 
   // Writing state
   const [content, setContent] = useState('');
@@ -53,106 +53,74 @@ function AppContentWithModernInterface() {
   const [showExamMode, setShowExamMode] = useState(false);
   const [showHelpCenter, setShowHelpCenter] = useState(false);
   const [showPlanningTool, setShowPlanningTool] = useState(false);
-  
-  // New state for popup flow completion
   const [popupFlowCompleted, setPopupFlowCompleted] = useState(false); 
   const [hasSignedIn, setHasSignedIn] = useState(false);
 
-  // Handle sign-in behavior - clear content and show modal when user signs in
   useEffect(() => {
     if (user && !hasSignedIn) {
-      // User just signed in
       setHasSignedIn(true);
-      
-      // Clear content and reset state
       setContent('');
       setTextType('');
       setPopupFlowCompleted(false);
-      
-      // Clear localStorage to ensure fresh start
       localStorage.removeItem('writingContent');
       localStorage.removeItem('selectedWritingType');
-      
-      // If we're on the writing page, this will trigger the writing type modal
-      if (activePage === 'writing') {
-        // The WritingArea component will handle showing the modal
-      }
     } else if (!user && hasSignedIn) {
-      // User signed out
       setHasSignedIn(false);
     }
   }, [user, hasSignedIn, activePage]);
 
-  // Check for payment success in URL on mount
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const paymentSuccess = urlParams.get('paymentSuccess') === 'true' || urlParams.get('payment_success') === 'true';
     const planType = urlParams.get('planType') || urlParams.get('plan');
     const userEmail = urlParams.get('email');
-    
     if (paymentSuccess && planType) {
-      console.log('[DEBUG] Payment success detected for plan:', planType);
-      
-      // Store payment info
       if (userEmail) {
         localStorage.setItem('userEmail', userEmail);
       }
       localStorage.setItem('payment_plan', planType);
       localStorage.setItem('payment_date', new Date().toISOString());
-      
-      // Clear URL parameters
       window.history.replaceState({}, document.title, window.location.pathname);
-      
       setShowPaymentSuccess(true);
       setPendingPaymentPlan(planType);
     }
   }, []);
 
-  // Update page based on route
   useEffect(() => {
     const path = location.pathname;
-    if (path === '/') {
-      setActivePage('home');
-    } else if (path === '/writing') {
-      setActivePage('writing');
-    } else if (path === '/dashboard') {
-      setActivePage('dashboard');
-    } else if (path === '/pricing') {
-      setActivePage('pricing');
-    } else if (path === '/faq') {
-      setActivePage('faq');
-    } else if (path === '/about') {
-      setActivePage('about');
-    } else if (path === '/demo') {
-      setActivePage('demo');
-    } else if (path === '/learning') {
-      setActivePage('learning');
-    } else if (path === '/exam') {
-      setActivePage('exam');
-    } else if (path === '/supportive-features') {
-      setActivePage('supportive-features');
-    } else if (path === '/help-center') {
-      setActivePage('help-center');
-    } else if (path === '/essay-feedback') {
-      setActivePage('essay-feedback');
-    } else if (path === '/specialized-coaching') {
-      setActivePage('specialized-coaching');
-    } else if (path === '/brainstorming-tools') {
-      setActivePage('brainstorming-tools');
-    } else if (path === '/settings') {
-      setActivePage('settings');
-    }
+    if (path === '/') setActivePage('home');
+    else if (path === '/writing') setActivePage('writing');
+    else if (path === '/dashboard') setActivePage('dashboard');
+    else if (path === '/pricing') setActivePage('pricing');
+    else if (path === '/faq') setActivePage('faq');
+    else if (path === '/about') setActivePage('about');
+    else if (path === '/demo') setActivePage('demo');
+    else if (path === '/learning') setActivePage('learning');
+    else if (path === '/exam') setActivePage('exam');
+    else if (path === '/supportive-features') setActivePage('supportive-features');
+    else if (path === '/help-center') setActivePage('help-center');
+    else if (path === '/essay-feedback') setActivePage('essay-feedback');
+    else if (path === '/specialized-coaching') setActivePage('specialized-coaching');
+    else if (path === '/brainstorming-tools') setActivePage('brainstorming-tools');
+    else if (path === '/settings') setActivePage('settings');
   }, [location]);
 
   const handleNavigation = (page: string) => {
     setActivePage(page);
   };
 
-  // Updated handleAuthSuccess to navigate to dashboard and reload page
+  // Comprehensive fix for navigation after authentication
   const handleAuthSuccess = () => {
+    console.log('🔑 Authentication successful, navigating to dashboard...');
     setShowAuthModal(false);
     setActivePage('dashboard');
-    window.location.href = '/dashboard';
+    navigate('/dashboard');
+    setTimeout(() => {
+      if (location.pathname !== '/dashboard') {
+        console.log('⚠️ Navigation with React Router may have failed, using fallback...');
+        window.location.href = '/dashboard';
+      }
+    }, 500);
   };
 
   const handleForceSignOut = async () => {
