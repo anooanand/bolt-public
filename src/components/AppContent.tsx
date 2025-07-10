@@ -1,44 +1,83 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext, createContext } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-
-import { NavBar } from './NavBar';
-import { HeroSection } from './HeroSection';
-import { FeaturesSection } from './FeaturesSection';
-import { ToolsSection } from './ToolsSection';
-import { WritingTypesSection } from './WritingTypesSection';
-import { Footer } from './Footer';
-import { PaymentSuccessPage } from './PaymentSuccessPage';
-import { PricingPage } from './PricingPage';
-import { Dashboard } from './Dashboard';
-import { AuthModal } from './AuthModal';
-import { FAQPage } from './FAQPage';
-import { AboutPage } from './AboutPage';
-import { SettingsPage } from './SettingsPage';
-import { DemoPage } from './DemoPage';
+import { NavBar } from '../components/NavBar';
+import { HeroSection } from '../components/HeroSection';
+import { FeaturesSection } from '../components/FeaturesSection';
+import { ToolsSection } from '../components/ToolsSection';
+import { WritingTypesSection } from '../components/WritingTypesSection';
+import { Footer } from '../components/Footer';
+import { PaymentSuccessPage } from '../components/PaymentSuccessPage';
+import { PricingPage } from '../components/PricingPage';
+import { Dashboard } from '../components/Dashboard';
+import { AuthModal } from '../components/AuthModal';
+import { FAQPage } from '../components/FAQPage';
+import { AboutPage } from '../components/AboutPage';
+import { SettingsPage } from '../components/SettingsPage';
+import { DemoPage } from '../components/DemoPage';
 
 // Writing components
-import { SplitScreen } from './SplitScreen';
-import { WritingArea } from './WritingArea';
-import { TabbedCoachPanel } from './TabbedCoachPanel';
-import { LearningPage } from './LearningPage';
-import { ExamSimulationMode } from './ExamSimulationMode';
-import { SupportiveFeatures } from './SupportiveFeatures';
-import { HelpCenter } from './HelpCenter';
-import { EssayFeedbackPage } from './EssayFeedbackPage';
-import { EnhancedHeader } from './EnhancedHeader';
-import { SpecializedCoaching } from './text-type-templates/SpecializedCoaching';
-import { BrainstormingTools } from './BrainstormingTools';
-import { WritingAccessCheck } from './WritingAccessCheck';
-import { WritingToolbar } from './WritingToolbar';
-import { PlanningToolModal } from './PlanningToolModal';
-import { EmailVerificationHandler } from './EmailVerificationHandler';
-import { FloatingChatWindow } from './FloatingChatWindow';
+import { SplitScreen } from '../components/SplitScreen';
+import { WritingArea } from '../components/WritingArea';
+import { TabbedCoachPanel } from '../components/TabbedCoachPanel';
+import { LearningPage } from '../components/LearningPage';
+import { ExamSimulationMode } from '../components/ExamSimulationMode';
+import { SupportiveFeatures } from '../components/SupportiveFeatures';
+import { HelpCenter } from '../components/HelpCenter';
+import { EssayFeedbackPage } from '../components/EssayFeedbackPage';
+import { EnhancedHeader } from '../components/EnhancedHeader';
+import { SpecializedCoaching } from '../components/text-type-templates/SpecializedCoaching';
+import { BrainstormingTools } from '../components/BrainstormingTools';
+import { WritingAccessCheck } from '../components/WritingAccessCheck';
+import { WritingToolbar } from '../components/WritingToolbar';
+import { PlanningToolModal } from '../components/PlanningToolModal';
+import { EmailVerificationHandler } from '../components/EmailVerificationHandler';
+import { FloatingChatWindow } from '../components/FloatingChatWindow';
 import { CheckCircle } from 'lucide-react';
-import { AdminButton } from './AdminButton';
+import { AdminButton } from '../components/AdminButton';
 
-function AppContent() {
-  const { user, isLoading, paymentCompleted, emailVerified, authSignOut } = useAuth();
+interface AppContextType {
+  activePage: string;
+  setActivePage: React.Dispatch<React.SetStateAction<string>>;
+  showAuthModal: boolean;
+  setShowAuthModal: React.Dispatch<React.SetStateAction<boolean>>;
+  authModalMode: 'signin' | 'signup';
+  setAuthModalMode: React.Dispatch<React.SetStateAction<'signin' | 'signup'>>;
+  showPaymentSuccess: boolean;
+  setShowPaymentSuccess: React.Dispatch<React.SetStateAction<boolean>>;
+  pendingPaymentPlan: string | null;
+  setPendingPaymentPlan: React.Dispatch<React.SetStateAction<string | null>>;
+  content: string;
+  setContent: React.Dispatch<React.SetStateAction<string>>;
+  textType: string;
+  setTextType: React.Dispatch<React.SetStateAction<string>>;
+  assistanceLevel: string;
+  setAssistanceLevel: React.Dispatch<React.SetStateAction<string>>;
+  timerStarted: boolean;
+  setTimerStarted: React.Dispatch<React.SetStateAction<boolean>>;
+  selectedText: string;
+  setSelectedText: React.Dispatch<React.SetStateAction<string>>;
+  showExamMode: boolean;
+  setShowExamMode: React.Dispatch<React.SetStateAction<boolean>>;
+  showHelpCenter: boolean;
+  setShowHelpCenter: React.Dispatch<React.SetStateAction<boolean>>;
+  showPlanningTool: boolean;
+  setShowPlanningTool: React.Dispatch<React.SetStateAction<boolean>>;
+  popupFlowCompleted: boolean;
+  setPopupFlowCompleted: React.Dispatch<React.SetStateAction<boolean>>;
+  hasSignedIn: boolean;
+  setHasSignedIn: React.Dispatch<React.SetStateAction<boolean>>;
+  handleNavigation: (page: string) => Promise<void>;
+  handleGetStarted: () => Promise<void>;
+  handleSignIn: () => void;
+  handleSignUp: () => void;
+  handleForceSignOut: () => Promise<void>;
+}
+
+const AppContext = createContext<AppContextType | undefined>(undefined);
+
+export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user, loading, paymentCompleted, emailVerified, authSignOut } = useAuth();
   const [activePage, setActivePage] = useState('home');
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'signin' | 'signup'>('signin');
@@ -60,13 +99,14 @@ function AppContent() {
   const [popupFlowCompleted, setPopupFlowCompleted] = useState(false); 
   const [hasSignedIn, setHasSignedIn] = useState(false);
 
-  // Handle sign-in behavior - clear content and show modal when user signs in
+  // IMPROVED: Handle sign-in behavior with better session management
   useEffect(() => {
     if (user && !hasSignedIn) {
       // User just signed in
+      console.log('✅ User signed in:', user.email);
       setHasSignedIn(true);
       
-      // Clear content and reset state
+      // Clear content and reset state for fresh start
       setContent('');
       setTextType('');
       setPopupFlowCompleted(false);
@@ -75,15 +115,24 @@ function AppContent() {
       localStorage.removeItem('writingContent');
       localStorage.removeItem('selectedWritingType');
       
-      // If we're on the writing page, this will trigger the writing type modal
-      if (activePage === 'writing') {
-        // The WritingArea component will handle showing the modal
+      // IMPROVED: Navigate to appropriate page based on user status
+      if (emailVerified && paymentCompleted) {
+        console.log('✅ User has full access, navigating to writing');
+        setActivePage('writing');
+      } else if (emailVerified && !paymentCompleted) {
+        console.log('⚠️ User needs payment, navigating to pricing');
+        setActivePage('pricing');
+      } else if (!emailVerified) {
+        console.log('⚠️ User needs email verification, navigating to dashboard');
+        setActivePage('dashboard');
       }
     } else if (!user && hasSignedIn) {
       // User signed out
+      console.log('👋 User signed out');
       setHasSignedIn(false);
+      setActivePage('home');
     }
-  }, [user, hasSignedIn, activePage]);
+  }, [user, hasSignedIn, emailVerified, paymentCompleted]);
 
   // Check for payment success in URL on mount
   useEffect(() => {
@@ -138,7 +187,8 @@ function AppContent() {
       setActivePage('payment-success');
       setShowPaymentSuccess(true);
     } else {
-      setActivePage('dashboard');
+      // Let the useEffect handle navigation based on user status
+      console.log('Auth success, letting useEffect handle navigation');
     }
   };
 
@@ -154,6 +204,7 @@ function AppContent() {
       setContent('');
       setTextType('');
       setPopupFlowCompleted(false);
+      setHasSignedIn(false);
       
       console.log('✅ AppContent: Local state reset completed');
       
@@ -166,9 +217,9 @@ function AppContent() {
       
       // Force reset even if sign out fails
       setActivePage('home');
-      setShowAuthModal(false);
       setShowPaymentSuccess(false);
       setPendingPaymentPlan(null);
+      setHasSignedIn(false);
       
       // Clear localStorage as fallback
       localStorage.clear();
@@ -177,15 +228,33 @@ function AppContent() {
     }
   };
 
+  // IMPROVED: Better navigation handling with proper access checks
   const handleNavigation = async (page: string) => {
+    console.log('Navigation requested to:', page);
+    
     // Special handling for dashboard - redirect based on verification and payment status
     if (page === 'dashboard' && user) {
       if (!emailVerified) {
+        console.log('Navigating to dashboard for email verification');
         setActivePage('dashboard'); // Show email verification reminder
       } else if (paymentCompleted) {
+        console.log('User has full access, redirecting to writing');
         setActivePage('writing'); // Full access
       } else {
+        console.log('User needs payment, redirecting to pricing');
         setActivePage('pricing'); // Need to complete payment
+      }
+    } else if (page === 'writing' && user) {
+      // Check access before allowing writing page
+      if (!emailVerified) {
+        console.log('Email not verified, redirecting to dashboard');
+        setActivePage('dashboard');
+      } else if (!paymentCompleted) {
+        console.log('Payment not completed, redirecting to pricing');
+        setActivePage('pricing');
+      } else {
+        console.log('Full access granted, navigating to writing');
+        setActivePage('writing');
       }
     } else {
       setActivePage(page);
@@ -196,180 +265,473 @@ function AppContent() {
   const handleGetStarted = async () => {
     if (user) {
       if (!emailVerified) {
+        console.log('Get started: Email not verified, showing dashboard');
         setActivePage('dashboard'); // Show email verification reminder
       } else if (paymentCompleted) {
+        console.log('Get started: Full access, showing writing');
         setActivePage('writing'); // Full access
       } else {
+        console.log('Get started: Payment needed, showing pricing');
         setActivePage('pricing'); // Need to complete payment
       }
     } else {
+      console.log('Get started: No user, showing auth modal');
       setAuthModalMode('signup');
       setShowAuthModal(true);
     }
   };
 
-  const handleSubmit = () => {
-    console.log('Writing submitted:', { content, textType });
+  const handleSignIn = () => {
+    setAuthModalMode('signin');
+    setShowAuthModal(true);
   };
 
-  // Handle text type change from WritingArea popup
-  const handleTextTypeChange = (newTextType: string) => {
-    setTextType(newTextType);
-    console.log('Text type changed to:', newTextType);
+  const handleSignUp = () => {
+    setAuthModalMode('signup');
+    setShowAuthModal(true);
   };
 
-  // Handle popup flow completion
-  const handlePopupCompleted = () => {
-    setPopupFlowCompleted(true);
+  const contextValue: AppContextType = {
+    activePage,
+    setActivePage,
+    showAuthModal,
+    setShowAuthModal,
+    authModalMode,
+    setAuthModalMode,
+    showPaymentSuccess,
+    setShowPaymentSuccess,
+    pendingPaymentPlan,
+    setPendingPaymentPlan,
+    content,
+    setContent,
+    textType,
+    setTextType,
+    assistanceLevel,
+    setAssistanceLevel,
+    timerStarted,
+    setTimerStarted,
+    selectedText,
+    setSelectedText,
+    showExamMode,
+    setShowExamMode,
+    showHelpCenter,
+    setShowHelpCenter,
+    showPlanningTool,
+    setShowPlanningTool,
+    popupFlowCompleted,
+    setPopupFlowCompleted,
+    hasSignedIn,
+    setHasSignedIn,
+    handleNavigation,
+    handleGetStarted,
+    handleSignIn,
+    handleSignUp,
+    handleForceSignOut,
   };
 
-  if (isLoading) {
+  return <AppContext.Provider value={contextValue}>{children}</AppContext.Provider>;
+};
+
+export const useApp = () => {
+  const context = useContext(AppContext);
+  if (context === undefined) {
+    throw new Error('useApp must be used within an AppProvider');
+  }
+  return context;
+};
+
+export default function AppContent() {
+  const { 
+    activePage, setActivePage, showAuthModal, setShowAuthModal, authModalMode, setAuthModalMode,
+    showPaymentSuccess, setShowPaymentSuccess, pendingPaymentPlan, setPendingPaymentPlan,
+    content, setContent, textType, setTextType, assistanceLevel, setAssistanceLevel,
+    timerStarted, setTimerStarted, selectedText, setSelectedText, showExamMode, setShowExamMode,
+    showHelpCenter, setShowHelpCenter, showPlanningTool, setShowPlanningTool,
+    popupFlowCompleted, setPopupFlowCompleted, hasSignedIn, setHasSignedIn,
+    handleNavigation, handleGetStarted, handleSignIn, handleSignUp, handleForceSignOut
+  } = useApp();
+
+  const { user, loading, paymentCompleted, emailVerified, authSignOut } = useAuth();
+
+  // IMPROVED: Handle sign-in behavior with better session management
+  useEffect(() => {
+    if (user && !hasSignedIn) {
+      // User just signed in
+      console.log('✅ User signed in:', user.email);
+      setHasSignedIn(true);
+      
+      // Clear content and reset state for fresh start
+      setContent('');
+      setTextType('');
+      setPopupFlowCompleted(false);
+      
+      // Clear localStorage to ensure fresh start
+      localStorage.removeItem('writingContent');
+      localStorage.removeItem('selectedWritingType');
+      
+      // IMPROVED: Navigate to appropriate page based on user status
+      if (emailVerified && paymentCompleted) {
+        console.log('✅ User has full access, navigating to writing');
+        setActivePage('writing');
+      } else if (emailVerified && !paymentCompleted) {
+        console.log('⚠️ User needs payment, navigating to pricing');
+        setActivePage('pricing');
+      } else if (!emailVerified) {
+        console.log('⚠️ User needs email verification, navigating to dashboard');
+        setActivePage('dashboard');
+      }
+    } else if (!user && hasSignedIn) {
+      // User signed out
+      console.log('👋 User signed out');
+      setHasSignedIn(false);
+      setActivePage('home');
+    }
+  }, [user, hasSignedIn, emailVerified, paymentCompleted, setActivePage, setHasSignedIn, setContent, setTextType, setPopupFlowCompleted]);
+
+  // Check for payment success in URL on mount
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const paymentSuccess = urlParams.get('paymentSuccess') === 'true' || urlParams.get('payment_success') === 'true';
+    const planType = urlParams.get('planType') || urlParams.get('plan');
+    const userEmail = urlParams.get('email');
+    
+    if (paymentSuccess && planType) {
+      console.log('[DEBUG] Payment success detected for plan:', planType);
+      
+      // Store payment info
+      if (userEmail) {
+        localStorage.setItem('userEmail', userEmail);
+      }
+      localStorage.setItem('payment_plan', planType);
+      localStorage.setItem('payment_date', new Date().toISOString());
+      
+      // Clear URL parameters
+      window.history.replaceState({}, document.title, window.location.pathname);
+      
+      setShowPaymentSuccess(true);
+      setPendingPaymentPlan(planType);
+      setActivePage('payment-success');
+    }
+  }, [setActivePage, setPendingPaymentPlan, setShowPaymentSuccess]);
+
+  // Set active page based on current path
+  useEffect(() => {
+    const path = location.pathname.substring(1) || 'home';
+    if (path !== 'auth/callback') { // Don't change active page during auth callback
+      setActivePage(path);
+    }
+  }, [location.pathname, setActivePage]);
+
+  // Text selection logic for writing area
+  useEffect(() => {
+    const handleSelectionChange = () => {
+      const selection = window.getSelection();
+      if (selection && selection.toString().trim().length > 0) {
+        setSelectedText(selection.toString());
+      }
+    };
+
+    document.addEventListener('selectionchange', handleSelectionChange);
+    return () => document.removeEventListener('selectionchange', handleSelectionChange);
+  }, [setSelectedText]);
+
+  const handleAuthSuccess = () => {
+    setShowAuthModal(false);
+    if (pendingPaymentPlan) {
+      setActivePage('payment-success');
+      setShowPaymentSuccess(true);
+    } else {
+      // Let the useEffect handle navigation based on user status
+      console.log('Auth success, letting useEffect handle navigation');
+    }
+  };
+
+  // IMPROVED: Show loading state while auth is being checked
+  if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-300">Loading...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-400">Loading...</p>
         </div>
       </div>
     );
   }
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
-      <div className="min-h-screen flex flex-col">
-        <Routes>
-          <Route path="/" element={
-            <>
-              <NavBar 
-                activePage={activePage}
-                onNavigate={handleNavigation}
-                user={user}
-                onSignInClick={() => {
-                  setAuthModalMode('signin');
-                  setShowAuthModal(true);
-                }}
-                onSignUpClick={() => {
-                  setAuthModalMode('signup');
-                  setShowAuthModal(true);
-                }}
-                onForceSignOut={handleForceSignOut}
-              />
-              <HeroSection onGetStarted={handleGetStarted} />
-              <FeaturesSection />
-              <ToolsSection />
-              <WritingTypesSection />
-            </>
-          } />
-          <Route path="/pricing" element={<PricingPage onNavigate={handleNavigation} />} />
-          <Route path="/faq" element={<FAQPage onNavigate={handleNavigation} />} />
-          <Route path="/about" element={<AboutPage onNavigate={handleNavigation} />} />
-          <Route path="/demo" element={<DemoPage onNavigate={handleNavigation} />} />
-          <Route path="/dashboard" element={
-            user ? (
-              <Dashboard 
+  const renderPage = () => {
+    switch (activePage) {
+      case 'home':
+        return (
+          <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+            <NavBar 
+              onNavigate={handleNavigation}
+              onSignIn={handleSignIn}
+              onSignUp={handleSignUp}
+              onSignOut={handleForceSignOut}
+              user={user}
+            />
+            <HeroSection onGetStarted={handleGetStarted} />
+            <FeaturesSection />
+            <ToolsSection />
+            <WritingTypesSection onNavigate={handleNavigation} />
+            <Footer />
+            <AdminButton onNavigate={handleNavigation} />
+          </div>
+        );
+
+      case 'pricing':
+        return (
+          <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+            <NavBar 
+              onNavigate={handleNavigation}
+              onSignIn={handleSignIn}
+              onSignUp={handleSignUp}
+              onSignOut={handleForceSignOut}
+              user={user}
+            />
+            <PricingPage onNavigate={handleNavigation} />
+            <Footer />
+          </div>
+        );
+
+      case 'dashboard':
+        return (
+          <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+            <NavBar 
+              onNavigate={handleNavigation}
+              onSignIn={handleSignIn}
+              onSignUp={handleSignUp}
+              onSignOut={handleForceSignOut}
+              user={user}
+            />
+            <Dashboard onNavigate={handleNavigation} />
+            <Footer />
+          </div>
+        );
+
+      case 'writing':
+        return (
+          <WritingAccessCheck onNavigate={handleNavigation}>
+            <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+              <EnhancedHeader 
                 onNavigate={handleNavigation}
                 onSignOut={handleForceSignOut}
+                user={user}
+                emailVerified={emailVerified}
+                paymentCompleted={paymentCompleted}
               />
-            ) : (
-              <Navigate to="/" />
-            )
-          } />
-          <Route path="/settings" element={
-            user ? <SettingsPage onBack={() => setActivePage('dashboard')} /> : <Navigate to="/" />
-          } />
-          <Route path="/writing" element={
-            <WritingAccessCheck onNavigate={handleNavigation}>
-              <div className="flex flex-col h-screen">
-                <EnhancedHeader 
-                  textType={textType}
-                  assistanceLevel={assistanceLevel}
-                  onTextTypeChange={setTextType}
-                  onAssistanceLevelChange={setAssistanceLevel}
-                  onTimerStart={() => setTimerStarted(true)}
-                  hideTextTypeSelector={popupFlowCompleted}
-                />
-                
-                <WritingToolbar 
-                  content={content}
-                  textType={textType}
-                  onShowHelpCenter={() => setShowHelpCenter(true)}
-                  onShowPlanningTool={() => setShowPlanningTool(true)}
-                  onTimerStart={() => setTimerStarted(true)}
-                  onStartNewEssay={() => {
-                    setContent('');
-                    setTextType('');
-                    setPopupFlowCompleted(false);
-                    // Clear localStorage to ensure fresh start
-                    localStorage.removeItem('writingContent');
-                    localStorage.removeItem('selectedWritingType');
-                  }}
-                />
-                
-                {showExamMode ? (
-                  <ExamSimulationMode 
-                    onExit={() => setShowExamMode(false)}
+              
+              <SplitScreen
+                leftPanel={
+                  <WritingArea
+                    content={content}
+                    setContent={setContent}
+                    textType={textType}
+                    setTextType={setTextType}
+                    assistanceLevel={assistanceLevel}
+                    timerStarted={timerStarted}
+                    setTimerStarted={setTimerStarted}
+                    onNavigate={handleNavigation}
+                    popupFlowCompleted={popupFlowCompleted}
+                    setPopupFlowCompleted={setPopupFlowCompleted}
                   />
-                ) : (
-                  <div className="flex-1 container mx-auto px-4">
-                    <SplitScreen useFloatingChat={true}>
-                      <WritingArea 
-                        content={content}
-                        onChange={setContent}
-                        textType={textType}
-                        onTimerStart={setTimerStarted}
-                        onSubmit={handleSubmit}
-                        onTextTypeChange={handleTextTypeChange}
-                        onPopupCompleted={handlePopupCompleted}
-                      />
-                    </SplitScreen>
-                    
-                    {/* Only show FloatingChatWindow after popup flow is completed */}
-                    {popupFlowCompleted && (
-                      <FloatingChatWindow
-                        content={content}
-                        textType={textType}
-                        assistanceLevel={assistanceLevel}
-                        selectedText={selectedText}
-                        onNavigate={handleNavigation}
-                      />
-                    )}
-                  </div>
-                )}
-              </div>
-            </WritingAccessCheck>
-          } />
+                }
+                rightPanel={
+                  <TabbedCoachPanel
+                    content={content}
+                    textType={textType}
+                    assistanceLevel={assistanceLevel}
+                    setAssistanceLevel={setAssistanceLevel}
+                    selectedText={selectedText}
+                    onNavigate={handleNavigation}
+                  />
+                }
+              />
+              
+              <WritingToolbar
+                onExamMode={() => setShowExamMode(true)}
+                onHelpCenter={() => setShowHelpCenter(true)}
+                onPlanningTool={() => setShowPlanningTool(true)}
+              />
+              
+              <FloatingChatWindow />
+            </div>
+          </WritingAccessCheck>
+        );
 
-          <Route path="/learning" element={<LearningPage />} />
-          <Route path="/exam" element={<ExamSimulationMode onExit={() => setActivePage('writing')} />} />
-          <Route path="/supportive-features" element={<SupportiveFeatures />} />
-          <Route path="/help-center" element={<HelpCenter />} />
-          <Route path="/essay-feedback" element={<EssayFeedbackPage />} />
-          <Route path="/specialized-coaching" element={<SpecializedCoaching />} />
-          <Route path="/brainstorming-tools" element={<BrainstormingTools />} />
-          <Route path="/email-verification" element={<EmailVerificationHandler />} />
+      case 'learning':
+        return (
+          <WritingAccessCheck onNavigate={handleNavigation}>
+            <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+              <NavBar 
+                onNavigate={handleNavigation}
+                onSignIn={handleSignIn}
+                onSignUp={handleSignUp}
+                onSignOut={handleForceSignOut}
+                user={user}
+              />
+              <LearningPage onNavigate={handleNavigation} />
+              <Footer />
+            </div>
+          </WritingAccessCheck>
+        );
 
-          <Route path="*" element={<Navigate to="/" />} />
-        </Routes>
+      case 'payment-success':
+        return (
+          <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+            <NavBar 
+              onNavigate={handleNavigation}
+              onSignIn={handleSignIn}
+              onSignUp={handleSignUp}
+              onSignOut={handleForceSignOut}
+              user={user}
+            />
+            <PaymentSuccessPage 
+              onNavigate={handleNavigation}
+              planType={pendingPaymentPlan}
+            />
+            <Footer />
+          </div>
+        );
 
-        <Footer />
+      case 'faq':
+        return (
+          <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+            <NavBar 
+              onNavigate={handleNavigation}
+              onSignIn={handleSignIn}
+              onSignUp={handleSignUp}
+              onSignOut={handleForceSignOut}
+              user={user}
+            />
+            <FAQPage />
+            <Footer />
+          </div>
+        );
 
+      case 'about':
+        return (
+          <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+            <NavBar 
+              onNavigate={handleNavigation}
+              onSignIn={handleSignIn}
+              onSignUp={handleSignUp}
+              onSignOut={handleForceSignOut}
+              user={user}
+            />
+            <AboutPage />
+            <Footer />
+          </div>
+        );
+
+      case 'settings':
+        return (
+          <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+            <NavBar 
+              onNavigate={handleNavigation}
+              onSignIn={handleSignIn}
+              onSignUp={handleSignUp}
+              onSignOut={handleForceSignOut}
+              user={user}
+            />
+            <SettingsPage onNavigate={handleNavigation} />
+            <Footer />
+          </div>
+        );
+
+      case 'demo':
+        return (
+          <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+            <NavBar 
+              onNavigate={handleNavigation}
+              onSignIn={handleSignIn}
+              onSignUp={handleSignUp}
+              onSignOut={handleForceSignOut}
+              user={user}
+            />
+            <DemoPage />
+            <Footer />
+          </div>
+        );
+
+      case 'essay-feedback':
+        return (
+          <WritingAccessCheck onNavigate={handleNavigation}>
+            <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+              <NavBar 
+                onNavigate={handleNavigation}
+                onSignIn={handleSignIn}
+                onSignUp={handleSignUp}
+                onSignOut={handleForceSignOut}
+                user={user}
+              />
+              <EssayFeedbackPage onNavigate={handleNavigation} />
+              <Footer />
+            </div>
+          </WritingAccessCheck>
+        );
+
+      default:
+        return (
+          <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-indigo-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+            <NavBar 
+              onNavigate={handleNavigation}
+              onSignIn={handleSignIn}
+              onSignUp={handleSignUp}
+              onSignOut={handleForceSignOut}
+              user={user}
+            />
+            <HeroSection onGetStarted={handleGetStarted} />
+            <FeaturesSection />
+            <ToolsSection />
+            <WritingTypesSection onNavigate={handleNavigation} />
+            <Footer />
+            <AdminButton onNavigate={handleNavigation} />
+          </div>
+        );
+    }
+  };
+
+  return (
+    <div className="App">
+      <EmailVerificationHandler />
+      
+      {renderPage()}
+
+      {/* Modals */}
+      {showAuthModal && (
         <AuthModal
-          isOpen={showAuthModal}
-          onClose={() => setShowAuthModal(false)}
           mode={authModalMode}
-          onAuthSuccess={handleAuthSuccess}
+          onClose={() => setShowAuthModal(false)}
+          onSuccess={handleAuthSuccess}
+          onSwitchMode={(mode) => setAuthModalMode(mode)}
         />
+      )}
 
-        {showPaymentSuccess && (
-          <PaymentSuccessPage
-            onClose={() => setShowPaymentSuccess(false)}
-            planType={pendingPaymentPlan || 'unknown'}
-          />
-        )}
-      </div>
-      <AdminButton />
+      {showExamMode && (
+        <ExamSimulationMode
+          onClose={() => setShowExamMode(false)}
+          onNavigate={handleNavigation}
+        />
+      )}
+
+      {showHelpCenter && (
+        <HelpCenter
+          onClose={() => setShowHelpCenter(false)}
+          onNavigate={handleNavigation}
+        />
+      )}
+
+      {showPlanningTool && (
+        <PlanningToolModal
+          onClose={() => setShowPlanningTool(false)}
+          textType={textType}
+          onContentGenerated={(content) => {
+            setContent(content);
+            setShowPlanningTool(false);
+          }}
+        />
+      )}
     </div>
   );
 }
-
-export default AppContent;
