@@ -64,8 +64,17 @@ function AppContentWithModernInterface() {
   const [popupFlowCompleted, setPopupFlowCompleted] = useState(false); 
   const [hasSignedIn, setHasSignedIn] = useState(false);
 
-  // New state for interface toggle
-  const [useModernInterface, setUseModernInterface] = useState(false);
+  // New state for interface toggle - DEFAULT TO MODERN INTERFACE
+  const [useModernInterface, setUseModernInterface] = useState(() => {
+    // Check localStorage for user preference, default to true (modern interface)
+    const savedPreference = localStorage.getItem('useModernInterface');
+    return savedPreference !== null ? JSON.parse(savedPreference) : true;
+  });
+
+  // Save interface preference to localStorage when it changes
+  useEffect(() => {
+    localStorage.setItem('useModernInterface', JSON.stringify(useModernInterface));
+  }, [useModernInterface]);
 
   // Handle sign-in behavior - clear content and show modal when user signs in
   useEffect(() => {
@@ -230,6 +239,11 @@ function AppContentWithModernInterface() {
     setPopupFlowCompleted(true);
   };
 
+  // Handle interface toggle
+  const handleToggleInterface = () => {
+    setUseModernInterface(!useModernInterface);
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center">
@@ -288,21 +302,29 @@ function AppContentWithModernInterface() {
             <WritingAccessCheck onNavigate={handleNavigation}>
               {useModernInterface ? (
                 <div className="modern-writing-interface">
-                  {/* Interface Toggle */}
-                  <div className="fixed top-4 right-4 z-50 bg-white rounded-lg shadow-lg p-2 border border-gray-200">
-                    <div className="flex items-center space-x-2">
-                      <span className="text-sm text-gray-600">Classic</span>
+                  {/* Interface Toggle - Enhanced styling */}
+                  <div className="fixed top-4 right-4 z-50 bg-white rounded-lg shadow-lg p-3 border border-gray-200">
+                    <div className="flex items-center space-x-3">
+                      <span className={`text-sm font-medium ${!useModernInterface ? 'text-blue-600' : 'text-gray-500'}`}>
+                        Classic
+                      </span>
                       <button
-                        onClick={() => setUseModernInterface(!useModernInterface)}
-                        className="p-1 hover:bg-gray-100 rounded transition-colors"
+                        onClick={handleToggleInterface}
+                        className="p-1 hover:bg-gray-100 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        aria-label={`Switch to ${useModernInterface ? 'classic' : 'modern'} interface`}
                       >
                         {useModernInterface ? (
-                          <ToggleRight className="w-6 h-6 text-blue-600" />
+                          <ToggleRight className="w-8 h-8 text-blue-600" />
                         ) : (
-                          <ToggleLeft className="w-6 h-6 text-gray-400" />
+                          <ToggleLeft className="w-8 h-8 text-gray-400" />
                         )}
                       </button>
-                      <span className="text-sm text-gray-600">Modern</span>
+                      <span className={`text-sm font-medium ${useModernInterface ? 'text-blue-600' : 'text-gray-500'}`}>
+                        Modern
+                      </span>
+                    </div>
+                    <div className="text-xs text-gray-400 text-center mt-1">
+                      {useModernInterface ? 'Modern Interface' : 'Classic Interface'}
                     </div>
                   </div>
                   
@@ -318,21 +340,29 @@ function AppContentWithModernInterface() {
                 </div>
               ) : (
                 <div className="flex flex-col h-screen">
-                  {/* Interface Toggle */}
-                  <div className="fixed top-4 right-4 z-50 bg-white rounded-lg shadow-lg p-2 border border-gray-200">
-                    <div className="flex items-center space-x-2">
-                      <span className="text-sm text-gray-600">Classic</span>
+                  {/* Interface Toggle - Enhanced styling */}
+                  <div className="fixed top-4 right-4 z-50 bg-white rounded-lg shadow-lg p-3 border border-gray-200">
+                    <div className="flex items-center space-x-3">
+                      <span className={`text-sm font-medium ${!useModernInterface ? 'text-blue-600' : 'text-gray-500'}`}>
+                        Classic
+                      </span>
                       <button
-                        onClick={() => setUseModernInterface(!useModernInterface)}
-                        className="p-1 hover:bg-gray-100 rounded transition-colors"
+                        onClick={handleToggleInterface}
+                        className="p-1 hover:bg-gray-100 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        aria-label={`Switch to ${useModernInterface ? 'classic' : 'modern'} interface`}
                       >
                         {useModernInterface ? (
-                          <ToggleRight className="w-6 h-6 text-blue-600" />
+                          <ToggleRight className="w-8 h-8 text-blue-600" />
                         ) : (
-                          <ToggleLeft className="w-6 h-6 text-gray-400" />
+                          <ToggleLeft className="w-8 h-8 text-gray-400" />
                         )}
                       </button>
-                      <span className="text-sm text-gray-600">Modern</span>
+                      <span className={`text-sm font-medium ${useModernInterface ? 'text-blue-600' : 'text-gray-500'}`}>
+                        Modern
+                      </span>
+                    </div>
+                    <div className="text-xs text-gray-400 text-center mt-1">
+                      {useModernInterface ? 'Modern Interface' : 'Classic Interface'}
                     </div>
                   </div>
 
