@@ -148,9 +148,11 @@ function AppContentWithModernInterface() {
     setActivePage(page);
   };
 
+  // Updated handleAuthSuccess to navigate to dashboard and reload page
   const handleAuthSuccess = () => {
     setShowAuthModal(false);
-    // Don't automatically navigate to writing page
+    setActivePage('dashboard');
+    window.location.href = '/dashboard';
   };
 
   const handleForceSignOut = async () => {
