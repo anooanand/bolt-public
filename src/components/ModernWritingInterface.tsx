@@ -16,7 +16,10 @@ import {
   Circle,
   Sparkles,
   PanelRightClose,
-  PanelRightOpen
+  PanelRightOpen,
+  MessageSquare,
+  Send,
+  X
 } from 'lucide-react';
 
 interface TemplateStep {
@@ -89,12 +92,26 @@ export function ModernWritingInterface({
   const [activeMode, setActiveMode] = useState<'template' | 'ai' | 'resources'>('template');
   const [documentTitle, setDocumentTitle] = useState('Untitled Story');
   const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [showTemplateBoxes, setShowTemplateBoxes] = useState(true);
+  
+  // Chat state
+  const [chatMessages, setChatMessages] = useState<Array<{id: string, text: string, sender: 'user' | 'ai', timestamp: Date}>>([]);
+  const [chatInput, setChatInput] = useState('');
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  
   const writingAreaRef = useRef<HTMLTextAreaElement>(null);
+  const chatEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const words = content.trim().split(/\s+/).filter(word => word.length > 0);
     setWordCount(words.length);
   }, [content]);
+
+  useEffect(() => {
+    if (chatEndRef.current) {
+      chatEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [chatMessages]);
 
   const handleTemplateDataChange = (stepId: string, value: string) => {
     setTemplateData(prev => ({
@@ -115,6 +132,31 @@ export function ModernWritingInterface({
     }
   };
 
+  const handleChatSubmit = () => {
+    if (chatInput.trim()) {
+      const newMessage = {
+        id: Date.now().toString(),
+        text: chatInput,
+        sender: 'user' as const,
+        timestamp: new Date()
+      };
+      setChatMessages(prev => [...prev, newMessage]);
+      
+      // Simulate AI response
+      setTimeout(() => {
+        const aiResponse = {
+          id: (Date.now() + 1).toString(),
+          text: "That's a great question! I'm here to help you with your writing. Can you tell me more about what you're working on?",
+          sender: 'ai' as const,
+          timestamp: new Date()
+        };
+        setChatMessages(prev => [...prev, aiResponse]);
+      }, 1000);
+      
+      setChatInput('');
+    }
+  };
+
   const currentTemplateStep = TEMPLATE_STEPS[currentStep];
   const Icon = currentTemplateStep.icon;
 
@@ -128,6 +170,12 @@ export function ModernWritingInterface({
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       setIsEditingTitle(false);
+    }
+  };
+
+  const handleChatKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleChatSubmit();
     }
   };
 
@@ -170,6 +218,12 @@ export function ModernWritingInterface({
         </div>
 
         <div className="flex items-center space-x-2">
+          <button 
+            className={`px-3 py-1 text-sm rounded-md transition-colors ${showTemplateBoxes ? 'bg-blue-100 text-blue-700' : 'text-gray-600 hover:text-gray-900'}`}
+            onClick={() => setShowTemplateBoxes(!showTemplateBoxes)}
+          >
+            Template
+          </button>
           <button className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors">
             <Save className="w-5 h-5" />
           </button>
@@ -181,6 +235,88 @@ export function ModernWritingInterface({
           </button>
         </div>
       </header>
+
+      {/* Template Boxes - Prominent Display */}
+      {showTemplateBoxes && (
+        <div className="bg-white border-b border-gray-200 p-4">
+          <div className="max-w-6xl mx-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-gray-900">Writing Template</h2>
+              <div className="flex items-center space-x-2">
+                <span className="text-sm text-gray-500">Step {currentStep + 1} of {TEMPLATE_STEPS.length}</span>
+                <div className="w-32 bg-gray-200 rounded-full h-2">
+                  <div 
+                    className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+                    style={{ width: `${((currentStep + 1) / TEMPLATE_STEPS.length) * 100}%` }}
+                  ></div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {TEMPLATE_STEPS.map((step, index) => {
+                const StepIcon = step.icon;
+                const isActive = index === currentStep;
+                const isCompleted = templateData[step.id] && templateData[step.id].length > 0;
+                
+                return (
+                  <div 
+                    key={step.id}
+                    className={`border-2 rounded-lg p-4 cursor-pointer transition-all duration-200 ${
+                      isActive 
+                        ? `${step.color} border-blue-400 shadow-md` 
+                        : isCompleted
+                        ? 'bg-green-50 border-green-200 hover:border-green-300'
+                        : 'bg-gray-50 border-gray-200 hover:border-gray-300'
+                    }`}
+                    onClick={() => setCurrentStep(index)}
+                  >
+                    <div className="flex items-center space-x-2 mb-2">
+                      <StepIcon className={`w-5 h-5 ${isActive ? 'text-blue-600' : isCompleted ? 'text-green-600' : 'text-gray-500'}`} />
+                      <h3 className={`font-medium ${isActive ? 'text-blue-900' : isCompleted ? 'text-green-900' : 'text-gray-700'}`}>
+                        {step.title}
+                      </h3>
+                      {isCompleted && <CheckCircle className="w-4 h-4 text-green-500 ml-auto" />}
+                    </div>
+                    <p className={`text-xs ${isActive ? 'text-blue-700' : isCompleted ? 'text-green-700' : 'text-gray-500'}`}>
+                      {step.description}
+                    </p>
+                    {isActive && (
+                      <div className="mt-3">
+                        <textarea
+                          value={templateData[step.id] || ''}
+                          onChange={(e) => handleTemplateDataChange(step.id, e.target.value)}
+                          placeholder={step.placeholder}
+                          className="w-full h-20 p-2 border border-gray-300 rounded text-xs resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            
+            <div className="flex justify-between mt-4">
+              <button 
+                onClick={prevStep}
+                disabled={currentStep === 0}
+                className="flex items-center space-x-1 px-4 py-2 text-sm text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                <ChevronLeft className="w-4 h-4" />
+                <span>Previous</span>
+              </button>
+              <button 
+                onClick={nextStep}
+                disabled={currentStep === TEMPLATE_STEPS.length - 1}
+                className="flex items-center space-x-1 px-4 py-2 bg-blue-500 text-white text-sm rounded-md hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                <span>Next</span>
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden">
@@ -272,169 +408,205 @@ export function ModernWritingInterface({
             </div>
 
             {/* Panel Content */}
-            <div className="flex-1 overflow-y-auto">
-              {activeMode === 'template' && (
-                <div className="p-4">
-                  {/* Step Indicator */}
-                  <div className="mb-6">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium text-gray-700">Step {currentStep + 1} of {TEMPLATE_STEPS.length}</span>
-                      <span className="text-xs text-gray-500">{Math.round(((currentStep + 1) / TEMPLATE_STEPS.length) * 100)}% complete</span>
+            <div className="flex-1 flex flex-col overflow-hidden">
+              <div className="flex-1 overflow-y-auto">
+                {activeMode === 'template' && (
+                  <div className="p-4">
+                    <div className="flex items-center space-x-2 mb-4">
+                      <FileText className="w-5 h-5 text-blue-600" />
+                      <h3 className="font-semibold text-gray-900">Writing Tips</h3>
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div 
-                        className="bg-blue-500 h-2 rounded-full transition-all duration-300"
-                        style={{ width: `${((currentStep + 1) / TEMPLATE_STEPS.length) * 100}%` }}
-                      ></div>
-                    </div>
-                  </div>
-
-                  {/* Current Step */}
-                  <div className={`border-2 rounded-lg p-4 ${currentTemplateStep.color}`}>
-                    <div className="flex items-center space-x-2 mb-3">
-                      <Icon className="w-5 h-5 text-gray-700" />
-                      <h3 className="font-semibold text-gray-900">{currentTemplateStep.title}</h3>
-                    </div>
-                    <p className="text-sm text-gray-600 mb-4">{currentTemplateStep.description}</p>
-                    <textarea
-                      value={templateData[currentTemplateStep.id] || ''}
-                      onChange={(e) => handleTemplateDataChange(currentTemplateStep.id, e.target.value)}
-                      placeholder={currentTemplateStep.placeholder}
-                      className="w-full h-32 p-3 border border-gray-300 rounded-md resize-none text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-
-                  {/* Navigation */}
-                  <div className="flex justify-between mt-6">
-                    <button 
-                      onClick={prevStep}
-                      disabled={currentStep === 0}
-                      className="flex items-center space-x-1 px-4 py-2 text-sm text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                    >
-                      <ChevronLeft className="w-4 h-4" />
-                      <span>Previous</span>
-                    </button>
-                    <button 
-                      onClick={nextStep}
-                      disabled={currentStep === TEMPLATE_STEPS.length - 1}
-                      className="flex items-center space-x-1 px-4 py-2 bg-blue-500 text-white text-sm rounded-md hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                    >
-                      <span>Next</span>
-                      <ChevronRight className="w-4 h-4" />
-                    </button>
-                  </div>
-
-                  {/* Quick Overview */}
-                  <div className="mt-6 pt-4 border-t border-gray-200">
-                    <h4 className="text-sm font-medium text-gray-700 mb-3">Template Progress</h4>
-                    <div className="space-y-2">
-                      {TEMPLATE_STEPS.map((step, index) => (
-                        <div 
-                          key={step.id}
-                          className={`flex items-center space-x-2 text-sm cursor-pointer p-2 rounded transition-colors ${
-                            index === currentStep ? 'bg-blue-50 text-blue-700' : 'text-gray-600 hover:bg-gray-50'
-                          }`}
-                          onClick={() => setCurrentStep(index)}
-                        >
-                          {templateData[step.id] ? (
-                            <CheckCircle className="w-4 h-4 text-green-500" />
-                          ) : (
-                            <Circle className="w-4 h-4 text-gray-400" />
-                          )}
-                          <span>{step.title}</span>
+                    
+                    <div className="space-y-4">
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <h4 className="font-medium text-blue-900 mb-2">Writing Tips</h4>
+                        <div className="space-y-2">
+                          {aiSuggestions.map((suggestion, index) => (
+                            <div key={index} className="flex items-start space-x-2">
+                              <Lightbulb className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                              <p className="text-sm text-blue-800">{suggestion}</p>
+                            </div>
+                          ))}
                         </div>
-                      ))}
+                      </div>
+
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                        <h4 className="font-medium text-green-900 mb-2">Word Magic</h4>
+                        <p className="text-sm text-green-800 mb-3">Write 50 more words to get help (0/50)</p>
+                        <div className="w-full bg-green-200 rounded-full h-2">
+                          <div className="bg-green-500 h-2 rounded-full w-0"></div>
+                        </div>
+                      </div>
+
+                      <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                        <h4 className="font-medium text-orange-900 mb-2">Quick Actions</h4>
+                        <div className="space-y-2">
+                          <button className="w-full text-left p-2 text-sm text-orange-800 hover:bg-orange-100 rounded transition-colors">
+                            ✨ Improve this sentence
+                          </button>
+                          <button className="w-full text-left p-2 text-sm text-orange-800 hover:bg-orange-100 rounded transition-colors">
+                            📝 Suggest next paragraph
+                          </button>
+                          <button className="w-full text-left p-2 text-sm text-orange-800 hover:bg-orange-100 rounded transition-colors">
+                            🎯 Check grammar
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              {activeMode === 'ai' && (
-                <div className="p-4">
-                  <div className="flex items-center space-x-2 mb-4">
-                    <Bot className="w-5 h-5 text-purple-600" />
-                    <h3 className="font-semibold text-gray-900">AI Writing Coach</h3>
+                {activeMode === 'ai' && (
+                  <div className="p-4">
+                    <div className="flex items-center space-x-2 mb-4">
+                      <Bot className="w-5 h-5 text-purple-600" />
+                      <h3 className="font-semibold text-gray-900">AI Writing Coach</h3>
+                    </div>
+                    
+                    <div className="space-y-4">
+                      <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                        <h4 className="font-medium text-purple-900 mb-2">Writing Tips</h4>
+                        <div className="space-y-2">
+                          {aiSuggestions.map((suggestion, index) => (
+                            <div key={index} className="flex items-start space-x-2">
+                              <Lightbulb className="w-4 h-4 text-purple-600 mt-0.5 flex-shrink-0" />
+                              <p className="text-sm text-purple-800">{suggestion}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <h4 className="font-medium text-blue-900 mb-2">Word Magic</h4>
+                        <p className="text-sm text-blue-800 mb-3">Write 50 more words to get help (0/50)</p>
+                        <div className="w-full bg-blue-200 rounded-full h-2">
+                          <div className="bg-blue-500 h-2 rounded-full w-0"></div>
+                        </div>
+                      </div>
+
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                        <h4 className="font-medium text-green-900 mb-2">Quick Actions</h4>
+                        <div className="space-y-2">
+                          <button className="w-full text-left p-2 text-sm text-green-800 hover:bg-green-100 rounded transition-colors">
+                            ✨ Improve this sentence
+                          </button>
+                          <button className="w-full text-left p-2 text-sm text-green-800 hover:bg-green-100 rounded transition-colors">
+                            📝 Suggest next paragraph
+                          </button>
+                          <button className="w-full text-left p-2 text-sm text-green-800 hover:bg-green-100 rounded transition-colors">
+                            🎯 Check grammar
+                          </button>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  
-                  <div className="space-y-4">
-                    <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-                      <h4 className="font-medium text-purple-900 mb-2">Writing Tips</h4>
-                      <div className="space-y-2">
-                        {aiSuggestions.map((suggestion, index) => (
-                          <div key={index} className="flex items-start space-x-2">
-                            <Lightbulb className="w-4 h-4 text-purple-600 mt-0.5 flex-shrink-0" />
-                            <p className="text-sm text-purple-800">{suggestion}</p>
+                )}
+
+                {activeMode === 'resources' && (
+                  <div className="p-4">
+                    <div className="flex items-center space-x-2 mb-4">
+                      <BookOpen className="w-5 h-5 text-green-600" />
+                      <h3 className="font-semibold text-gray-900">Writing Resources</h3>
+                    </div>
+                    
+                    <div className="space-y-4">
+                      <div className="border border-gray-200 rounded-lg p-4">
+                        <h4 className="font-medium text-gray-900 mb-2">Example Stories</h4>
+                        <div className="space-y-2">
+                          <button className="w-full text-left p-2 text-sm text-gray-700 hover:bg-gray-50 rounded transition-colors">
+                            📖 Adventure in the Forest
+                          </button>
+                          <button className="w-full text-left p-2 text-sm text-gray-700 hover:bg-gray-50 rounded transition-colors">
+                            🏰 The Mysterious Castle
+                          </button>
+                          <button className="w-full text-left p-2 text-sm text-gray-700 hover:bg-gray-50 rounded transition-colors">
+                            🌟 A Day at the Beach
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="border border-gray-200 rounded-lg p-4">
+                        <h4 className="font-medium text-gray-900 mb-2">Writing Guides</h4>
+                        <div className="space-y-2">
+                          <button className="w-full text-left p-2 text-sm text-gray-700 hover:bg-gray-50 rounded transition-colors">
+                            📚 Character Development
+                          </button>
+                          <button className="w-full text-left p-2 text-sm text-gray-700 hover:bg-gray-50 rounded transition-colors">
+                            🎭 Dialogue Writing
+                          </button>
+                          <button className="w-full text-left p-2 text-sm text-gray-700 hover:bg-gray-50 rounded transition-colors">
+                            🌍 Setting Description
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Chat Section at Bottom of Coach Panel */}
+              <div className="border-t border-gray-200 bg-gray-50">
+                <div className="p-3 border-b border-gray-200">
+                  <button
+                    onClick={() => setIsChatOpen(!isChatOpen)}
+                    className="flex items-center space-x-2 text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
+                  >
+                    <MessageSquare className="w-4 h-4" />
+                    <span>Chat with AI Coach</span>
+                    {isChatOpen ? <ChevronLeft className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                  </button>
+                </div>
+                
+                {isChatOpen && (
+                  <div className="h-64 flex flex-col">
+                    <div className="flex-1 overflow-y-auto p-3 space-y-2">
+                      {chatMessages.length === 0 ? (
+                        <div className="text-center text-gray-500 text-sm py-4">
+                          <Bot className="w-8 h-8 mx-auto mb-2 text-gray-400" />
+                          <p>Start a conversation with your AI writing coach!</p>
+                        </div>
+                      ) : (
+                        chatMessages.map((message) => (
+                          <div
+                            key={message.id}
+                            className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+                          >
+                            <div
+                              className={`max-w-xs px-3 py-2 rounded-lg text-sm ${
+                                message.sender === 'user'
+                                  ? 'bg-blue-500 text-white'
+                                  : 'bg-white border border-gray-200 text-gray-800'
+                              }`}
+                            >
+                              {message.text}
+                            </div>
                           </div>
-                        ))}
-                      </div>
+                        ))
+                      )}
+                      <div ref={chatEndRef} />
                     </div>
-
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                      <h4 className="font-medium text-blue-900 mb-2">Word Magic</h4>
-                      <p className="text-sm text-blue-800 mb-3">Write 50 more words to get help (0/50)</p>
-                      <div className="w-full bg-blue-200 rounded-full h-2">
-                        <div className="bg-blue-500 h-2 rounded-full w-0"></div>
-                      </div>
-                    </div>
-
-                    <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                      <h4 className="font-medium text-green-900 mb-2">Quick Actions</h4>
-                      <div className="space-y-2">
-                        <button className="w-full text-left p-2 text-sm text-green-800 hover:bg-green-100 rounded transition-colors">
-                          ✨ Improve this sentence
-                        </button>
-                        <button className="w-full text-left p-2 text-sm text-green-800 hover:bg-green-100 rounded transition-colors">
-                          📝 Suggest next paragraph
-                        </button>
-                        <button className="w-full text-left p-2 text-sm text-green-800 hover:bg-green-100 rounded transition-colors">
-                          🎯 Check grammar
+                    
+                    <div className="p-3 border-t border-gray-200">
+                      <div className="flex space-x-2">
+                        <input
+                          type="text"
+                          value={chatInput}
+                          onChange={(e) => setChatInput(e.target.value)}
+                          onKeyDown={handleChatKeyDown}
+                          placeholder="Ask your AI coach..."
+                          className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                        <button
+                          onClick={handleChatSubmit}
+                          className="px-3 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
+                        >
+                          <Send className="w-4 h-4" />
                         </button>
                       </div>
                     </div>
                   </div>
-                </div>
-              )}
-
-              {activeMode === 'resources' && (
-                <div className="p-4">
-                  <div className="flex items-center space-x-2 mb-4">
-                    <BookOpen className="w-5 h-5 text-green-600" />
-                    <h3 className="font-semibold text-gray-900">Writing Resources</h3>
-                  </div>
-                  
-                  <div className="space-y-4">
-                    <div className="border border-gray-200 rounded-lg p-4">
-                      <h4 className="font-medium text-gray-900 mb-2">Example Stories</h4>
-                      <div className="space-y-2">
-                        <button className="w-full text-left p-2 text-sm text-gray-700 hover:bg-gray-50 rounded transition-colors">
-                          📖 Adventure in the Forest
-                        </button>
-                        <button className="w-full text-left p-2 text-sm text-gray-700 hover:bg-gray-50 rounded transition-colors">
-                          🏰 The Mysterious Castle
-                        </button>
-                        <button className="w-full text-left p-2 text-sm text-gray-700 hover:bg-gray-50 rounded transition-colors">
-                          🌟 A Day at the Beach
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="border border-gray-200 rounded-lg p-4">
-                      <h4 className="font-medium text-gray-900 mb-2">Writing Guides</h4>
-                      <div className="space-y-2">
-                        <button className="w-full text-left p-2 text-sm text-gray-700 hover:bg-gray-50 rounded transition-colors">
-                          📚 Character Development
-                        </button>
-                        <button className="w-full text-left p-2 text-sm text-gray-700 hover:bg-gray-50 rounded transition-colors">
-                          🎭 Dialogue Writing
-                        </button>
-                        <button className="w-full text-left p-2 text-sm text-gray-700 hover:bg-gray-50 rounded transition-colors">
-                          🌍 Setting Description
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
         )}
