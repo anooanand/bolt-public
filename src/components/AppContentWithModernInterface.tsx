@@ -301,7 +301,7 @@ function AppContentWithModernInterface() {
           <Route path="/writing" element={
             <WritingAccessCheck onNavigate={handleNavigation}>
               {useModernInterface ? (
-                <div className="modern-writing-interface">
+                <div className="modern-writing-interface relative">
                   {/* Interface Toggle - Enhanced styling */}
                   <div className="fixed top-4 right-4 z-50 bg-white rounded-lg shadow-lg p-3 border border-gray-200">
                     <div className="flex items-center space-x-3">
@@ -337,6 +337,58 @@ function AppContentWithModernInterface() {
                     onTextTypeChange={handleTextTypeChange}
                     onPopupCompleted={handlePopupCompleted}
                   />
+                  
+                  {/* FloatingChatWindow positioned for modern interface - left side to avoid collision */}
+                  {popupFlowCompleted && (
+                    <div className="modern-interface-chat">
+                      <style>{`
+                        .modern-interface-chat .floating-chat-container {
+                          position: fixed !important;
+                          left: 20px !important;
+                          bottom: 20px !important;
+                          right: auto !important;
+                          top: auto !important;
+                          transform: none !important;
+                          z-index: 1000;
+                        }
+                        
+                        .modern-interface-chat .floating-chat-toggle {
+                          left: 20px !important;
+                          right: auto !important;
+                          bottom: 20px !important;
+                        }
+                        
+                        /* Ensure chat doesn't interfere with modern interface panels */
+                        @media (max-width: 1200px) {
+                          .modern-interface-chat .floating-chat-container {
+                            width: 350px !important;
+                            max-width: calc(100vw - 420px) !important;
+                          }
+                        }
+                        
+                        @media (max-width: 768px) {
+                          .modern-interface-chat .floating-chat-container {
+                            left: 10px !important;
+                            bottom: 10px !important;
+                            width: calc(100vw - 20px) !important;
+                            max-width: calc(100vw - 20px) !important;
+                          }
+                          
+                          .modern-interface-chat .floating-chat-toggle {
+                            left: 10px !important;
+                            bottom: 10px !important;
+                          }
+                        }
+                      `}</style>
+                      <FloatingChatWindow
+                        content={content}
+                        textType={textType}
+                        assistanceLevel={assistanceLevel}
+                        selectedText={selectedText}
+                        onNavigate={handleNavigation}
+                      />
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="flex flex-col h-screen">
@@ -409,7 +461,7 @@ function AppContentWithModernInterface() {
                         />
                       </SplitScreen>
                       
-                      {/* Only show FloatingChatWindow after popup flow is completed */}
+                      {/* Only show FloatingChatWindow after popup flow is completed - normal positioning for classic interface */}
                       {popupFlowCompleted && (
                         <FloatingChatWindow
                           content={content}
