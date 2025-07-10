@@ -13,8 +13,45 @@ if (!supabaseUrl || !supabaseAnonKey) {
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 // Helper function to check if email is verified
-export function isEmailVerified(user: any): boolean {
-  return user?.email_confirmed_at !== undefined && user?.email_confirmed_at !== null;
+// FIXED: Updated to work both with and without a user parameter
+export async function isEmailVerified(user?: any): Promise<boolean> {
+  try {
+    // If user is provided, check directly
+    if (user) {
+      return user?.email_confirmed_at !== undefined && user?.email_confirmed_at !== null;
+    }
+    
+    // Otherwise, get the current user and check
+    const { data: { user: currentUser } } = await supabase.auth.getUser();
+    if (!currentUser) {
+      return false;
+    }
+    
+    // Check email confirmation from auth
+    if (currentUser.email_confirmed_at) {
+      return true;
+    }
+    
+    // Fallback: Check from user_access_status
+    try {
+      const { data, error } = await supabase
+        .from('user_access_status')
+        .select('email_verified')
+        .eq('email', currentUser.email)
+        .single();
+        
+      if (!error && data && data.email_verified) {
+        return true;
+      }
+    } catch (error) {
+      console.warn('Error checking email verification from user_access_status:', error);
+    }
+    
+    return false;
+  } catch (error) {
+    console.error('Error in isEmailVerified:', error);
+    return false;
+  }
 }
 
 // FIXED: Updated function to properly check user access from database
