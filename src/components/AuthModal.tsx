@@ -111,7 +111,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         } else if (data.user) {
           localStorage.setItem('userEmail', email);
           
-          const emailVerified = await isEmailVerified();
+          // FIXED: Use the updated isEmailVerified function
+          const emailVerified = await isEmailVerified(data.user);
           
           if (emailVerified) {
             setSuccess(true);
@@ -160,22 +161,29 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     }
   };
 
+  // FIXED: Updated to use the fixed isEmailVerified function
   const handleVerificationCheck = async () => {
     setVerificationChecking(true);
     setError('');
     
     try {
-      const emailVerified = await isEmailVerified();
+      // Get the current user first
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        setError("We couldn't find your account. Please try signing in again.");
+        setVerificationChecking(false);
+        return;
+      }
+      
+      // Use the updated isEmailVerified function with the user
+      const emailVerified = await isEmailVerified(user);
       
       if (emailVerified) {
         setSuccess(true);
-        
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          setTimeout(() => {
-            onAuthSuccess(user);
-          }, 1500);
-        }
+        setTimeout(() => {
+          onAuthSuccess(user);
+        }, 1500);
       } else {
         setError("We haven't received your email confirmation yet. Please check your email and click the magic link! ✨");
       }
@@ -186,17 +194,44 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     }
   };
 
+  // FIXED: Enhanced to bypass email verification for users with verified status in database
   const handleContinueAnyway = async () => {
+    setLoading(true);
+    setError('');
+    
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        // Always call onAuthSuccess to close the modal and proceed
-        onAuthSuccess(user);
+      
+      if (!user) {
+        setError("We couldn't find your account. Please try signing in again.");
+        setLoading(false);
+        return;
+      }
+      
+      // Check if user exists in user_access_status with email_verified=true
+      const { data, error } = await supabase
+        .from('user_access_status')
+        .select('email_verified, has_access')
+        .eq('email', user.email)
+        .single();
+      
+      if (!error && data && (data.email_verified || data.has_access)) {
+        // User is verified in the database, proceed regardless of auth status
+        console.log('User verified in database, proceeding...');
+        setSuccess(true);
+        setTimeout(() => {
+          onAuthSuccess(user);
+        }, 1000);
       } else {
-        setError("Let's try signing in again! 🔄");
+        // Fallback: Always proceed anyway as requested by the user
+        console.log('Proceeding anyway as requested by user...');
+        onAuthSuccess(user);
       }
     } catch (error) {
+      console.error('Error in handleContinueAnyway:', error);
       setError("Let's try signing in again! 🔄");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -296,10 +331,20 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             
             <button
               onClick={handleContinueAnyway}
-              className="w-full py-4 px-6 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white text-lg font-bold rounded-xl transition-all duration-200 transform hover:scale-105 shadow-lg"
+              disabled={loading}
+              className="w-full py-4 px-6 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white text-lg font-bold rounded-xl transition-all duration-200 transform hover:scale-105 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
             >
-              <Heart className="mr-2 h-5 w-5" />
-              Continue (If Already Done)
+              {loading ? (
+                <>
+                  <Loader className="animate-spin -ml-1 mr-3 h-6 w-6" />
+                  Checking Access...
+                </>
+              ) : (
+                <>
+                  <Heart className="mr-2 h-5 w-5" />
+                  Continue (If Already Done)
+                </>
+              )}
             </button>
             
             <button
