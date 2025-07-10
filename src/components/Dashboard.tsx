@@ -26,9 +26,17 @@ interface DashboardProps {
   user?: any;
   emailVerified?: boolean;
   paymentCompleted?: boolean;
+  onNavigate?: (page: string) => void;
+  onSignOut?: () => void;
 }
 
-export function Dashboard({ user: propUser, emailVerified: propEmailVerified, paymentCompleted: propPaymentCompleted }: DashboardProps) {
+export function Dashboard({
+  user: propUser,
+  emailVerified: propEmailVerified,
+  paymentCompleted: propPaymentCompleted,
+  onNavigate,
+  onSignOut
+}: DashboardProps) {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [isVerified, setIsVerified] = useState(false);
@@ -171,12 +179,20 @@ export function Dashboard({ user: propUser, emailVerified: propEmailVerified, pa
 
   const handleStartWriting = () => {
     console.log('🚀 Dashboard: Navigating to writing area...');
-    navigate('/writing');
+    if (onNavigate) {
+      onNavigate('writing');
+    } else {
+      navigate('/writing');
+    }
   };
 
   const handlePracticeExam = () => {
     console.log('🚀 Dashboard: Navigating to practice exam...');
-    navigate('/exam');
+    if (onNavigate) {
+      onNavigate('exam');
+    } else {
+      navigate('/exam');
+    }
   };
 
   const formatDateTime = (dateString: string) => {
@@ -546,4 +562,3 @@ export function Dashboard({ user: propUser, emailVerified: propEmailVerified, pa
     </div>
   );
 }
-
