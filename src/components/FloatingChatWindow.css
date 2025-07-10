@@ -1,62 +1,80 @@
-/* Floating Chat Window Styles */
-.floating-chat-container {
+/* Attached Chat Window Styles */
+.attached-chat-container {
   position: fixed;
+  top: 0;
+  right: 0;
   width: 400px;
-  max-width: calc(100vw - 40px);
-  height: 650px; /* Increased height for better visibility */
-  max-height: calc(100vh - 80px); /* More conservative max-height to ensure full visibility */
+  height: 100vh;
   z-index: 1000;
-  border-radius: 16px;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
-  background: rgba(255, 255, 255, 0.95);
+  background: rgba(255, 255, 255, 0.98);
   backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-left: 1px solid rgba(0, 0, 0, 0.1);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   overflow: hidden;
-  /* Remove default positioning - will be handled by transform */
+  box-shadow: -4px 0 20px rgba(0, 0, 0, 0.1);
 }
 
-.floating-chat-container.minimized {
+.attached-chat-container.minimized {
   height: 60px;
-  width: 300px;
 }
 
-.floating-chat-container.hidden {
-  transform: translateY(100%);
-  opacity: 0;
-  pointer-events: none;
+.attached-chat-container.collapsed {
+  width: 60px;
 }
 
-.dark .floating-chat-container {
-  background: rgba(30, 41, 59, 0.95);
-  border-color: rgba(148, 163, 184, 0.3);
+.attached-chat-container.collapsed.minimized {
+  width: 60px;
+  height: 60px;
 }
 
-.floating-chat-header {
+.dark .attached-chat-container {
+  background: rgba(30, 41, 59, 0.98);
+  border-left-color: rgba(148, 163, 184, 0.3);
+}
+
+.attached-chat-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 12px 16px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
-  border-radius: 16px 16px 0 0;
   user-select: none;
-  /* Cursor will be handled dynamically */
+  min-height: 60px;
+  box-sizing: border-box;
 }
 
-.floating-chat-header h3 {
+.attached-chat-container.collapsed .attached-chat-header {
+  padding: 12px 8px;
+  justify-content: center;
+}
+
+.attached-chat-container.collapsed .attached-chat-header h3 {
+  display: none;
+}
+
+.attached-chat-container.collapsed .attached-chat-header .flex {
+  justify-content: center;
+}
+
+.attached-chat-header h3 {
   margin: 0;
   font-size: 16px;
   font-weight: 600;
   color: white !important;
 }
 
-.floating-chat-controls {
+.attached-chat-controls {
   display: flex;
   gap: 8px;
 }
 
-.floating-chat-control-btn {
+.attached-chat-container.collapsed .attached-chat-controls {
+  flex-direction: column;
+  gap: 4px;
+}
+
+.attached-chat-control-btn {
   background: rgba(255, 255, 255, 0.2);
   border: none;
   border-radius: 6px;
@@ -67,27 +85,33 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  min-width: 32px;
+  min-height: 32px;
 }
 
-.floating-chat-control-btn:hover {
+.attached-chat-control-btn:hover {
   background: rgba(255, 255, 255, 0.3);
   transform: scale(1.05);
 }
 
-.floating-chat-content {
+.attached-chat-content {
   height: calc(100% - 60px);
   overflow: hidden;
   display: flex;
   flex-direction: column;
 }
 
-.floating-chat-container.minimized .floating-chat-content {
+.attached-chat-container.minimized .attached-chat-content {
+  display: none;
+}
+
+.attached-chat-container.collapsed .attached-chat-content {
   display: none;
 }
 
 .floating-chat-toggle {
   position: fixed;
-  bottom: 20px;
+  top: 50%;
   right: 20px;
   width: 60px;
   height: 60px;
@@ -102,10 +126,11 @@
   align-items: center;
   justify-content: center;
   z-index: 999;
+  transform: translateY(-50%);
 }
 
 .floating-chat-toggle:hover {
-  transform: scale(1.1);
+  transform: translateY(-50%) scale(1.1);
   box-shadow: 0 12px 35px rgba(102, 126, 234, 0.6);
 }
 
@@ -113,83 +138,89 @@
   display: none;
 }
 
-/* Enhanced dragging styles */
-.floating-chat-container.dragging {
-  cursor: grabbing !important;
-  transform-origin: center;
-  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
-  z-index: 1001; /* Ensure it's above other elements while dragging */
-  opacity: 0.9;
-}
-
-.floating-chat-container.dragging * {
-  pointer-events: none; /* Prevent interference from child elements */
-}
-
-.floating-chat-container.dragging .floating-chat-header {
-  cursor: grabbing !important;
-}
-
 /* Mobile responsive */
 @media (max-width: 768px) {
-  .floating-chat-container {
-    width: calc(100vw - 20px);
-    height: calc(100vh - 120px); /* More space for mobile keyboards */
-    max-height: calc(100vh - 120px);
+  .attached-chat-container {
+    width: 100vw;
+    height: 50vh;
+    top: auto;
+    bottom: 0;
+    right: 0;
+    border-left: none;
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
   }
   
-  .floating-chat-container.minimized {
-    width: 250px;
-    height: 50px;
+  .attached-chat-container.minimized {
+    height: 60px;
+  }
+  
+  .attached-chat-container.collapsed {
+    width: 100vw;
+    height: 60px;
   }
   
   .floating-chat-toggle {
-    width: 50px;
-    height: 50px;
-    bottom: 15px;
-    right: 15px;
+    bottom: 20px;
+    right: 20px;
+    top: auto;
+    transform: none;
+  }
+  
+  .floating-chat-toggle:hover {
+    transform: scale(1.1);
   }
 }
 
 /* Animation for showing/hiding */
-@keyframes slideInUp {
+@keyframes slideInRight {
   from {
-    transform: translateY(100%);
+    transform: translateX(100%);
     opacity: 0;
   }
   to {
-    transform: translateY(0);
+    transform: translateX(0);
     opacity: 1;
   }
 }
 
-@keyframes slideOutDown {
+@keyframes slideOutRight {
   from {
-    transform: translateY(0);
+    transform: translateX(0);
     opacity: 1;
   }
   to {
-    transform: translateY(100%);
+    transform: translateX(100%);
     opacity: 0;
   }
 }
 
-.floating-chat-container.show {
-  animation: slideInUp 0.3s ease-out;
+.attached-chat-container.show {
+  animation: slideInRight 0.3s ease-out;
 }
 
-.floating-chat-container.hide {
-  animation: slideOutDown 0.3s ease-in;
+.attached-chat-container.hide {
+  animation: slideOutRight 0.3s ease-in;
 }
 
-/* Ensure chat content doesn't interfere with main content */
-.main-content-with-floating-chat {
+/* Ensure main content adjusts for attached panel */
+.main-content-with-attached-chat {
+  padding-right: 420px !important;
+  transition: padding-right 0.3s ease;
+}
+
+.main-content-with-attached-chat.collapsed {
+  padding-right: 80px !important;
+}
+
+.main-content-with-attached-chat.hidden {
   padding-right: 0 !important;
 }
 
-/* Override split screen when floating chat is enabled */
+/* Override split screen when attached chat is enabled */
 .split-screen-container.with-floating-chat {
   display: block !important;
+  margin-right: 0;
 }
 
 .split-screen-container.with-floating-chat .split-screen-right {
@@ -199,27 +230,44 @@
 .split-screen-container.with-floating-chat .split-screen-left {
   flex: 1 !important;
   border-radius: 8px !important;
+  max-width: 100%;
 }
 
-/* Prevent text selection during drag */
-.floating-chat-container.dragging,
-.floating-chat-container.dragging * {
-  user-select: none !important;
-  -webkit-user-select: none !important;
-  -moz-user-select: none !important;
-  -ms-user-select: none !important;
-}
-
-/* Ensure proper stacking context */
-.floating-chat-container {
-  isolation: isolate;
-}
-
-/* Better visual feedback for draggable area */
-.floating-chat-header:hover {
+/* Better visual feedback for interactive elements */
+.attached-chat-header:hover {
   background: linear-gradient(135deg, #5a6fd8 0%, #6b4190 100%);
 }
 
-.floating-chat-header:active {
-  background: linear-gradient(135deg, #4e63d2 0%, #5f3a84 100%);
+/* Ensure proper stacking context */
+.attached-chat-container {
+  isolation: isolate;
+}
+
+/* Smooth transitions for collapse/expand */
+.attached-chat-container {
+  transition: width 0.3s ease, height 0.3s ease;
+}
+
+.attached-chat-header {
+  transition: padding 0.3s ease;
+}
+
+.attached-chat-controls {
+  transition: flex-direction 0.3s ease, gap 0.3s ease;
+}
+
+/* Mobile-specific adjustments for bottom panel */
+@media (max-width: 768px) {
+  .main-content-with-attached-chat {
+    padding-right: 0 !important;
+    padding-bottom: 50vh !important;
+  }
+  
+  .main-content-with-attached-chat.collapsed {
+    padding-bottom: 80px !important;
+  }
+  
+  .main-content-with-attached-chat.hidden {
+    padding-bottom: 0 !important;
+  }
 }
