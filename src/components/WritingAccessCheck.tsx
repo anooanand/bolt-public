@@ -15,8 +15,7 @@ export const WritingAccessCheck: React.FC<WritingAccessCheckProps> = ({
     user, 
     emailVerified, 
     paymentCompleted, 
-    loading,
-    verificationStatus 
+    loading
   } = useAuth();
 
   // Show loading state
@@ -198,4 +197,3 @@ export const WritingAccessCheck: React.FC<WritingAccessCheckProps> = ({
     </div>
   );
 };
-
