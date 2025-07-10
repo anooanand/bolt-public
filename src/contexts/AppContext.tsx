@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, createContext, useContext, ReactNode } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from './AuthContext';
 
 import { NavBar } from '../components/NavBar';
 import { HeroSection } from '../components/HeroSection';
@@ -37,7 +37,85 @@ import { FloatingChatWindow } from '../components/FloatingChatWindow';
 import { CheckCircle } from 'lucide-react';
 import { AdminButton } from '../components/AdminButton';
 
-function AppContent() {
+// Type definitions
+export interface Writing {
+  id: string;
+  user_id: string;
+  title: string;
+  content: string;
+  text_type: string;
+  created_at: string;
+  updated_at: string;
+  word_count?: number;
+  status?: 'draft' | 'completed' | 'submitted';
+}
+
+export interface Feedback {
+  id: string;
+  writing_id: string;
+  user_id: string;
+  feedback_text: string;
+  feedback_type: 'grammar' | 'structure' | 'content' | 'style' | 'overall';
+  created_at: string;
+  rating?: number;
+}
+
+export interface UserProgress {
+  id: string;
+  user_id: string;
+  lesson_id: string;
+  completed: boolean;
+  score?: number;
+  completed_at?: string;
+  time_spent?: number;
+}
+
+// App Context interface
+interface AppContextType {
+  // Writing state
+  content: string;
+  setContent: (content: string) => void;
+  textType: string;
+  setTextType: (type: string) => void;
+  assistanceLevel: string;
+  setAssistanceLevel: (level: string) => void;
+  timerStarted: boolean;
+  setTimerStarted: (started: boolean) => void;
+  selectedText: string;
+  setSelectedText: (text: string) => void;
+  
+  // UI state
+  activePage: string;
+  setActivePage: (page: string) => void;
+  showExamMode: boolean;
+  setShowExamMode: (show: boolean) => void;
+  showHelpCenter: boolean;
+  setShowHelpCenter: (show: boolean) => void;
+  showPlanningTool: boolean;
+  setShowPlanningTool: (show: boolean) => void;
+  
+  // Navigation
+  handleNavigation: (page: string) => void;
+  
+  // Popup flow
+  popupFlowCompleted: boolean;
+  setPopupFlowCompleted: (completed: boolean) => void;
+}
+
+// Create the context
+const AppContext = createContext<AppContextType | undefined>(undefined);
+
+// Custom hook to use the app context
+export const useApp = (): AppContextType => {
+  const context = useContext(AppContext);
+  if (context === undefined) {
+    throw new Error('useApp must be used within an AppProvider');
+  }
+  return context;
+};
+
+// App Provider component
+export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { user, loading, paymentCompleted, emailVerified, authSignOut } = useAuth();
   const [activePage, setActivePage] = useState('home');
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -222,6 +300,144 @@ function AppContent() {
       setActivePage(page);
     }
     setShowAuthModal(false);
+  };
+
+  const handleGetStarted = async () => {
+    if (user) {
+      if (!emailVerified) {
+        console.log('Get started: Email not verified, showing dashboard');
+        setActivePage('dashboard'); // Show email verification reminder
+      } else if (paymentCompleted) {
+        console.log('Get started: Full access, showing writing');
+        setActivePage('writing'); // Full access
+      } else {
+        console.log('Get started: Payment needed, showing pricing');
+        setActivePage('pricing'); // Need to complete payment
+      }
+    } else {
+      console.log('Get started: No user, showing auth modal');
+      setAuthModalMode('signup');
+      setShowAuthModal(true);
+    }
+  };
+
+  const handleSignIn = () => {
+    setAuthModalMode('signin');
+    setShowAuthModal(true);
+  };
+
+  const handleSignUp = () => {
+    setAuthModalMode('signup');
+    setShowAuthModal(true);
+  };
+
+  // Context value
+  const contextValue: AppContextType = {
+    content,
+    setContent,
+    textType,
+    setTextType,
+    assistanceLevel,
+    setAssistanceLevel,
+    timerStarted,
+    setTimerStarted,
+    selectedText,
+    setSelectedText,
+    activePage,
+    setActivePage,
+    showExamMode,
+    setShowExamMode,
+    showHelpCenter,
+    setShowHelpCenter,
+    showPlanningTool,
+    setShowPlanningTool,
+    handleNavigation,
+    popupFlowCompleted,
+    setPopupFlowCompleted,
+  };
+
+  return (
+    <AppContext.Provider value={contextValue}>
+      {children}
+    </AppContext.Provider>
+  );
+};
+
+// AppContent component (the main app component)
+function AppContent() {
+  const { user, loading, paymentCompleted, emailVerified, authSignOut } = useAuth();
+  const {
+    activePage,
+    setActivePage,
+    content,
+    setContent,
+    textType,
+    setTextType,
+    assistanceLevel,
+    setAssistanceLevel,
+    timerStarted,
+    setTimerStarted,
+    selectedText,
+    showExamMode,
+    setShowExamMode,
+    showHelpCenter,
+    setShowHelpCenter,
+    showPlanningTool,
+    setShowPlanningTool,
+    handleNavigation,
+    popupFlowCompleted,
+    setPopupFlowCompleted,
+  } = useApp();
+
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authModalMode, setAuthModalMode] = useState<'signin' | 'signup'>('signin');
+  const [showPaymentSuccess, setShowPaymentSuccess] = useState(false);
+  const [pendingPaymentPlan, setPendingPaymentPlan] = useState<string | null>(null);
+
+  const handleAuthSuccess = () => {
+    setShowAuthModal(false);
+    if (pendingPaymentPlan) {
+      setActivePage('payment-success');
+      setShowPaymentSuccess(true);
+    } else {
+      // Let the useEffect handle navigation based on user status
+      console.log('Auth success, letting useEffect handle navigation');
+    }
+  };
+
+  const handleForceSignOut = async () => {
+    try {
+      console.log('🔄 AppContent: Starting force sign out...');
+      
+      // Reset all local state first
+      setActivePage('home');
+      setShowAuthModal(false);
+      setShowPaymentSuccess(false);
+      setPendingPaymentPlan(null);
+      setContent('');
+      setTextType('');
+      setPopupFlowCompleted(false);
+      
+      console.log('✅ AppContent: Local state reset completed');
+      
+      // Then attempt auth sign out
+      await authSignOut();
+      console.log('✅ AppContent: Auth sign out completed');
+      
+    } catch (error) {
+      console.error('AppContent: Error during sign out:', error);
+      
+      // Force reset even if sign out fails
+      setActivePage('home');
+      setShowAuthModal(false);
+      setShowPaymentSuccess(false);
+      setPendingPaymentPlan(null);
+      
+      // Clear localStorage as fallback
+      localStorage.clear();
+      
+      console.log('⚠️ AppContent: Forced local state reset due to sign out error');
+    }
   };
 
   const handleGetStarted = async () => {
