@@ -1,15 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { CheckCircle, XCircle, Loader, RefreshCw, AlertCircle, UserX, Mail } from 'lucide-react';
 
 export function EmailVerificationHandler() {
-  const [status, setStatus] = useState<'loading' | 'success' | 'error' | 'processing' | 'user_not_found'>('loading');
+  const [status, setStatus] = useState<'loading' | 'success' | 'error' | 'processing' | 'user_not_found' | 'hidden'>('hidden');
   const [message, setMessage] = useState('Verifying your email...');
   const [isProcessing, setIsProcessing] = useState(false);
   const [debugInfo, setDebugInfo] = useState<string[]>([]);
   const [userEmail, setUserEmail] = useState<string>('');
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Add debug logging function
   const addDebugInfo = (info: string) => {
@@ -25,15 +26,29 @@ export function EmailVerificationHandler() {
       if (!isMounted) return;
       
       try {
+        const urlHash = window.location.hash;
+        const urlSearch = window.location.search;
+        const currentPath = location.pathname;
+        
+        // Only show verification handler if we're on auth callback or have verification tokens
+        const hasVerificationTokens = urlHash.includes('access_token') || urlSearch.includes('access_token');
+        const isAuthCallback = currentPath.includes('/auth/callback');
+        const hasErrorParams = urlSearch.includes('error') || urlHash.includes('error');
+        
+        // If we're not in a verification context, don't show the modal
+        if (!hasVerificationTokens && !isAuthCallback && !hasErrorParams) {
+          addDebugInfo('🔍 No verification context found, hiding handler');
+          setStatus('hidden');
+          return;
+        }
+        
         addDebugInfo('🔥 EMAIL VERIFICATION HANDLER STARTED');
         setStatus('processing');
         setMessage('Processing verification...');
         
-        const urlHash = window.location.hash;
-        const urlSearch = window.location.search;
-        
         addDebugInfo(`📍 URL Hash: ${urlHash}`);
         addDebugInfo(`📍 URL Search: ${urlSearch}`);
+        addDebugInfo(`📍 Current Path: ${currentPath}`);
         
         let accessToken = null;
         let refreshToken = null;
@@ -135,7 +150,7 @@ export function EmailVerificationHandler() {
               setMessage(`Welcome ${sessionData.user.email}! Email verified successfully.`);
               
               // Clean the URL immediately
-              window.history.replaceState({}, document.title, '/auth/callback');
+              window.history.replaceState({}, document.title, '/');
               
               // Set a timeout for redirect with longer delay for better UX
               timeoutId = setTimeout(() => {
@@ -164,44 +179,51 @@ export function EmailVerificationHandler() {
           return;
         }
 
-        // Alternative: Check if user is already authenticated
-        addDebugInfo('🔍 Checking existing session...');
-        setMessage('Checking authentication status...');
-        
-        const { data: { user }, error: userError } = await supabase.auth.getUser();
-        
-        if (userError) {
-          addDebugInfo(`❌ User check error: ${userError.message}`);
-          if (isMounted) {
-            setStatus('error');
-            setMessage('Unable to verify session. Please try signing in again.');
-          }
-          return;
-        }
-
-        if (user) {
-          addDebugInfo(`👤 Found existing user: ${user.email}`);
+        // Alternative: Check if user is already authenticated (only if we're in auth callback)
+        if (isAuthCallback) {
+          addDebugInfo('🔍 Checking existing session...');
+          setMessage('Checking authentication status...');
           
-          if (user.email_confirmed_at) {
-            addDebugInfo('✅ User already verified');
+          const { data: { user }, error: userError } = await supabase.auth.getUser();
+          
+          if (userError) {
+            addDebugInfo(`❌ User check error: ${userError.message}`);
             if (isMounted) {
-              setStatus('success');
-              setMessage('Email already verified! Redirecting...');
-              timeoutId = setTimeout(() => {
-                if (isMounted) {
-                  navigate('/pricing', { replace: true });
-                }
-              }, 1500);
+              setStatus('error');
+              setMessage('Unable to verify session. Please try signing in again.');
             }
             return;
           }
+
+          if (user) {
+            addDebugInfo(`👤 Found existing user: ${user.email}`);
+            
+            if (user.email_confirmed_at) {
+              addDebugInfo('✅ User already verified');
+              if (isMounted) {
+                setStatus('success');
+                setMessage('Email already verified! Redirecting...');
+                timeoutId = setTimeout(() => {
+                  if (isMounted) {
+                    navigate('/pricing', { replace: true });
+                  }
+                }, 1500);
+              }
+              return;
+            }
+          }
         }
 
-        // If we get here, verification failed
-        addDebugInfo('❌ No valid tokens or session found, or email not confirmed.');
-        if (isMounted) {
-          setStatus('error');
-          setMessage('No verification tokens found or email not confirmed. Please check your email and click the verification link again.');
+        // If we get here and we're in a verification context, show error
+        if (hasVerificationTokens || isAuthCallback || hasErrorParams) {
+          addDebugInfo('❌ No valid tokens or session found, or email not confirmed.');
+          if (isMounted) {
+            setStatus('error');
+            setMessage('No verification tokens found or email not confirmed. Please check your email and click the verification link again.');
+          }
+        } else {
+          // Not in verification context, hide the handler
+          setStatus('hidden');
         }
         
       } catch (error: any) {
@@ -222,7 +244,7 @@ export function EmailVerificationHandler() {
         clearTimeout(timeoutId);
       }
     };
-  }, [navigate]);
+  }, [navigate, location]);
 
   const handleManualRetry = async () => {
     setIsProcessing(true);
@@ -257,8 +279,13 @@ export function EmailVerificationHandler() {
     }
   };
 
+  // Don't render anything if status is hidden
+  if (status === 'hidden') {
+    return null;
+  }
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
       <div className="max-w-lg w-full bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-8 text-center border border-gray-200 dark:border-gray-700">
         
         {(status === 'loading' || status === 'processing') && (
