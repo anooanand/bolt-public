@@ -1,0 +1,259 @@
+/* Modern Writing Interface Styles */
+
+/* Custom styles for the writing interface */
+.writing-area {
+  font-family: 'Georgia', 'Times New Roman', serif;
+  line-height: 1.8;
+}
+
+.writing-area:focus {
+  outline: none;
+}
+
+/* Smooth transitions for panel animations */
+.panel-transition {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Custom scrollbar for the right panel */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Hover effects for interactive elements */
+.hover-lift {
+  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.hover-lift:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Focus states for accessibility */
+.focus-ring:focus {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+/* Animation for progress bars */
+.progress-animate {
+  transition: width 0.5s ease-in-out;
+}
+
+/* Gradient backgrounds for AI elements */
+.ai-gradient {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.ai-gradient-light {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+}
+
+/* Typography improvements */
+.font-serif-writing {
+  font-family: 'Georgia', 'Times New Roman', serif;
+  font-size: 16px;
+  line-height: 1.8;
+}
+
+/* Button hover states */
+.btn-hover {
+  transition: all 0.2s ease-in-out;
+}
+
+.btn-hover:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Panel slide animations */
+.slide-in-right {
+  animation: slideInRight 0.3s ease-out;
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* Header height fix */
+.h-15 {
+  height: 3.75rem; /* 60px */
+}
+
+/* Top positioning for fixed panel */
+.top-15 {
+  top: 3.75rem; /* 60px */
+}
+
+/* Modern writing interface specific styles */
+.modern-writing-interface {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+}
+
+.modern-writing-interface .writing-textarea {
+  font-family: 'Georgia', 'Times New Roman', serif;
+  font-size: 16px;
+  line-height: 1.8;
+  color: #1f2937;
+}
+
+.modern-writing-interface .writing-textarea:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+.modern-writing-interface .template-step-card {
+  transition: all 0.2s ease-in-out;
+}
+
+.modern-writing-interface .template-step-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.modern-writing-interface .ai-suggestion-item {
+  transition: background-color 0.2s ease-in-out;
+}
+
+.modern-writing-interface .ai-suggestion-item:hover {
+  background-color: rgba(139, 92, 246, 0.1);
+}
+
+.modern-writing-interface .resource-item {
+  transition: background-color 0.2s ease-in-out;
+}
+
+.modern-writing-interface .resource-item:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+/* Progress bar animation */
+.modern-writing-interface .progress-bar {
+  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Panel toggle animation */
+.modern-writing-interface .panel-toggle {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .modern-writing-interface .mobile-stack {
+    flex-direction: column;
+  }
+  
+  .modern-writing-interface .mobile-full-width {
+    width: 100% !important;
+  }
+  
+  .modern-writing-interface .right-panel {
+    position: relative !important;
+    width: 100% !important;
+    height: auto !important;
+    top: auto !important;
+    bottom: auto !important;
+  }
+  
+  .modern-writing-interface .writing-area-container {
+    margin-right: 0 !important;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .modern-writing-interface {
+    background-color: #111827;
+    color: #f9fafb;
+  }
+  
+  .modern-writing-interface .bg-white {
+    background-color: #1f2937 !important;
+  }
+  
+  .modern-writing-interface .bg-gray-50 {
+    background-color: #111827 !important;
+  }
+  
+  .modern-writing-interface .text-gray-900 {
+    color: #f9fafb !important;
+  }
+  
+  .modern-writing-interface .text-gray-600 {
+    color: #d1d5db !important;
+  }
+  
+  .modern-writing-interface .text-gray-500 {
+    color: #9ca3af !important;
+  }
+  
+  .modern-writing-interface .border-gray-200 {
+    border-color: #374151 !important;
+  }
+  
+  .modern-writing-interface .writing-textarea {
+    background-color: #1f2937;
+    color: #f9fafb;
+  }
+}
+
+/* Accessibility improvements */
+.modern-writing-interface button:focus,
+.modern-writing-interface input:focus,
+.modern-writing-interface textarea:focus {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+.modern-writing-interface .sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .modern-writing-interface {
+    --tw-border-opacity: 1;
+  }
+  
+  .modern-writing-interface button {
+    border: 2px solid currentColor;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .modern-writing-interface * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
