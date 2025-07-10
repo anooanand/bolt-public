@@ -143,22 +143,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
            hasManualOverride || hasTempAccess;
   };
 
-  // IMPROVED: Robust user status checking with better error handling
+  // IMPROVED: Robust user status checking
   const checkUserAndStatus = useCallback(async () => {
     try {
       setLoading(true);
-      
-      // Get current user from Supabase
-      const { data: { user: supabaseUser }, error: userError } = await supabase.auth.getUser();
-      
-      if (userError) {
-        console.error('Error getting user:', userError);
-        setUser(null);
-        setEmailVerified(false);
-        setPaymentCompleted(false);
-        return;
-      }
-      
+      const { data: { user: supabaseUser } } = await supabase.auth.getUser();
       setUser(supabaseUser);
 
       if (supabaseUser) {
@@ -196,11 +185,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         setEmailVerified(isEmailVerified);
 
-        // IMPROVED: Check payment status with multiple fallbacks and better error handling
-        let paymentStatus = false;
-        
+        // IMPROVED: Check payment status with multiple fallbacks
         try {
           // Primary check: user_profiles table (by email to match webhook)
+          // Clear cache to ensure fresh data
+          supabase.from("user_profiles").select("*").eq("email", supabaseUser.email).single().then(() => {}); // Dummy query to clear cache
           const { data: profile, error: profileError } = await supabase
             .from("user_profiles")
             .select(`
@@ -215,20 +204,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             .eq("email", supabaseUser.email)
             .single();
 
-          if (profileError) {
-            if (profileError.code === 'PGRST116') {
-              console.warn('User profile not found by email:', supabaseUser.email);
-            } else {
-              console.warn('Error fetching user profile:', profileError);
-            }
+          if (profileError && profileError.code === 'PGRST116') {
+            // Profile not found, treat as no payment completed
+            console.warn('User profile not found by email:', supabaseUser.email);
+            setPaymentCompleted(false);
+          } else if (profileError) {
+            console.warn('Error fetching user profile:', profileError);
+            setPaymentCompleted(false);
           } else if (profile) {
-            paymentStatus = isPaymentCompleted(profile);
-            console.log(`Payment status: ${paymentStatus ? '✅ Completed' : '❌ Not completed'}`);
+            const completed = isPaymentCompleted(profile);
+            setPaymentCompleted(completed);
+            console.log(`Payment status: ${completed ? '✅ Completed' : '❌ Not completed'}`);
             console.log('Profile data:', profile);
+          } else {
+            setPaymentCompleted(false);
+            console.log('❌ User profile not found.');
           }
 
-          // Secondary check: user_access_status (if available and primary check failed)
-          if (!paymentStatus) {
+          // Secondary check: user_access_status (if available)
+          if (!paymentCompleted) {
             try {
               const { data: accessStatus, error: accessError } = await supabase
                 .from('user_access_status')
@@ -242,7 +236,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                   (accessStatus.temp_access_until && new Date(accessStatus.temp_access_until) > new Date());
                 
                 if (hasAccessViaStatus) {
-                  paymentStatus = true;
+                  setPaymentCompleted(true);
                   console.log('✅ Payment verified via user_access_status');
                 }
               }
@@ -251,33 +245,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
           }
 
-          // Tertiary check: localStorage temporary access (24-hour grace period)
-          if (!paymentStatus) {
-            try {
-              const paymentDate = localStorage.getItem('payment_date');
-              const paymentPlan = localStorage.getItem('payment_plan');
-              
-              if (paymentDate && paymentPlan) {
-                const paymentTime = new Date(paymentDate).getTime();
-                const now = Date.now();
-                const hoursSincePayment = (now - paymentTime) / (1000 * 60 * 60);
-                
-                // 24-hour temporary access
-                if (hoursSincePayment < 24) {
-                  paymentStatus = true;
-                  console.log('✅ Temporary access granted via localStorage');
-                }
-              }
-            } catch (error) {
-              console.warn('Error checking temporary access:', error);
-            }
-          }
-
         } catch (profileError) {
           console.error('Error checking payment status:', profileError);
+          setPaymentCompleted(false);
         }
-        
-        setPaymentCompleted(paymentStatus);
       } else {
         setEmailVerified(false);
         setPaymentCompleted(false);
@@ -295,17 +266,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     checkUserAndStatus();
 
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth state change:', event, session?.user?.email);
-      
-      // Add a small delay to allow database operations to complete
-      if (event === 'SIGNED_IN' && session?.user) {
-        setTimeout(() => {
-          checkUserAndStatus();
-        }, 1000);
-      } else {
-        checkUserAndStatus();
-      }
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      console.log('Auth state change:', _event);
+      checkUserAndStatus();
     });
 
     return () => {
@@ -327,13 +290,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (error) {
         return { data: null, error };
-      }
-      
-      // Add a small delay to allow session to be established
-      if (data.user) {
-        setTimeout(() => {
-          checkUserAndStatus();
-        }, 500);
       }
       
       return { data, error: null };

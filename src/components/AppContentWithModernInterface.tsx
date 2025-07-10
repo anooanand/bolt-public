@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
 import { NavBar } from './NavBar';
@@ -18,20 +18,27 @@ import { SettingsPage } from './SettingsPage';
 import { DemoPage } from './DemoPage';
 
 // Writing components
+import { SplitScreen } from './SplitScreen';
+import { WritingArea } from './WritingArea';
 import { ModernWritingInterface } from './ModernWritingInterface';
+import { TabbedCoachPanel } from './TabbedCoachPanel';
 import { LearningPage } from './LearningPage';
 import { ExamSimulationMode } from './ExamSimulationMode';
 import { SupportiveFeatures } from './SupportiveFeatures';
 import { HelpCenter } from './HelpCenter';
 import { EssayFeedbackPage } from './EssayFeedbackPage';
+import { EnhancedHeader } from './EnhancedHeader';
 import { SpecializedCoaching } from './text-type-templates/SpecializedCoaching';
 import { BrainstormingTools } from './BrainstormingTools';
 import { WritingAccessCheck } from './WritingAccessCheck';
+import { WritingToolbar } from './WritingToolbar';
 import { PlanningToolModal } from './PlanningToolModal';
 import { EmailVerificationHandler } from './EmailVerificationHandler';
-import { CheckCircle } from 'lucide-react';
+import { FloatingChatWindow } from './FloatingChatWindow';
+import { CheckCircle, ToggleLeft, ToggleRight } from 'lucide-react';
 import { AdminButton } from './AdminButton';
 
+// Import the modern interface styles
 import '../styles/modern-writing-interface.css';
 
 function AppContentWithModernInterface() {
@@ -42,7 +49,6 @@ function AppContentWithModernInterface() {
   const [showPaymentSuccess, setShowPaymentSuccess] = useState(false);
   const [pendingPaymentPlan, setPendingPaymentPlan] = useState<string | null>(null);
   const location = useLocation();
-  const navigate = useNavigate();
 
   // Writing state
   const [content, setContent] = useState('');
@@ -53,93 +59,173 @@ function AppContentWithModernInterface() {
   const [showExamMode, setShowExamMode] = useState(false);
   const [showHelpCenter, setShowHelpCenter] = useState(false);
   const [showPlanningTool, setShowPlanningTool] = useState(false);
+  
+  // New state for popup flow completion
   const [popupFlowCompleted, setPopupFlowCompleted] = useState(false); 
   const [hasSignedIn, setHasSignedIn] = useState(false);
 
+  // New state for interface toggle
+  const [useModernInterface, setUseModernInterface] = useState(false);
+
+  // Handle sign-in behavior - clear content and show modal when user signs in
   useEffect(() => {
     if (user && !hasSignedIn) {
+      // User just signed in
       setHasSignedIn(true);
+      
+      // Clear content and reset state
       setContent('');
       setTextType('');
       setPopupFlowCompleted(false);
+      
+      // Clear localStorage to ensure fresh start
       localStorage.removeItem('writingContent');
       localStorage.removeItem('selectedWritingType');
+      
+      // If we're on the writing page, this will trigger the writing type modal
+      if (activePage === 'writing') {
+        // The WritingArea component will handle showing the modal
+      }
     } else if (!user && hasSignedIn) {
+      // User signed out
       setHasSignedIn(false);
     }
   }, [user, hasSignedIn, activePage]);
 
+  // Check for payment success in URL on mount
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const paymentSuccess = urlParams.get('paymentSuccess') === 'true' || urlParams.get('payment_success') === 'true';
     const planType = urlParams.get('planType') || urlParams.get('plan');
     const userEmail = urlParams.get('email');
+    
     if (paymentSuccess && planType) {
+      console.log('[DEBUG] Payment success detected for plan:', planType);
+      
+      // Store payment info
       if (userEmail) {
         localStorage.setItem('userEmail', userEmail);
       }
       localStorage.setItem('payment_plan', planType);
       localStorage.setItem('payment_date', new Date().toISOString());
+      
+      // Clear URL parameters
       window.history.replaceState({}, document.title, window.location.pathname);
+      
       setShowPaymentSuccess(true);
       setPendingPaymentPlan(planType);
+      setActivePage('payment-success');
     }
   }, []);
 
+  // Set active page based on current path
   useEffect(() => {
-    const path = location.pathname;
-    if (path === '/') setActivePage('home');
-    else if (path === '/writing') setActivePage('writing');
-    else if (path === '/dashboard') setActivePage('dashboard');
-    else if (path === '/pricing') setActivePage('pricing');
-    else if (path === '/faq') setActivePage('faq');
-    else if (path === '/about') setActivePage('about');
-    else if (path === '/demo') setActivePage('demo');
-    else if (path === '/learning') setActivePage('learning');
-    else if (path === '/exam') setActivePage('exam');
-    else if (path === '/supportive-features') setActivePage('supportive-features');
-    else if (path === '/help-center') setActivePage('help-center');
-    else if (path === '/essay-feedback') setActivePage('essay-feedback');
-    else if (path === '/specialized-coaching') setActivePage('specialized-coaching');
-    else if (path === '/brainstorming-tools') setActivePage('brainstorming-tools');
-    else if (path === '/settings') setActivePage('settings');
-  }, [location]);
+    const path = location.pathname.substring(1) || 'home';
+    if (path !== 'auth/callback') { // Don't change active page during auth callback
+      setActivePage(path);
+    }
+  }, [location.pathname]);
 
-  const handleNavigation = (page: string) => {
-    setActivePage(page);
-  };
-
-  // Comprehensive fix for navigation after authentication
-  const handleAuthSuccess = () => {
-    console.log('🔑 Authentication successful, navigating to dashboard...');
-    setShowAuthModal(false);
-    setActivePage('dashboard');
-    navigate('/dashboard');
-    setTimeout(() => {
-      if (location.pathname !== '/dashboard') {
-        console.log('⚠️ Navigation with React Router may have failed, using fallback...');
-        window.location.href = '/dashboard';
+  // Text selection logic for writing area
+  useEffect(() => {
+    const handleSelectionChange = () => {
+      const selection = window.getSelection();
+      if (selection && selection.toString().trim().length > 0) {
+        setSelectedText(selection.toString());
       }
-    }, 500);
+    };
+
+    document.addEventListener('selectionchange', handleSelectionChange);
+    return () => document.removeEventListener('selectionchange', handleSelectionChange);
+  }, []);
+
+  const handleAuthSuccess = () => {
+    setShowAuthModal(false);
+    if (pendingPaymentPlan) {
+      setActivePage('payment-success');
+      setShowPaymentSuccess(true);
+    } else {
+      setActivePage('dashboard');
+    }
   };
 
   const handleForceSignOut = async () => {
     try {
-      await authSignOut();
+      console.log('🔄 AppContent: Starting force sign out...');
+      
+      // Reset all local state first
       setActivePage('home');
+      setShowAuthModal(false);
+      setShowPaymentSuccess(false);
+      setPendingPaymentPlan(null);
+      setContent('');
+      setTextType('');
+      setPopupFlowCompleted(false);
+      
+      console.log('✅ AppContent: Local state reset completed');
+      
+      // Then attempt auth sign out
+      await authSignOut();
+      console.log('✅ AppContent: Auth sign out completed');
+      
     } catch (error) {
-      console.error('Error signing out:', error);
+      console.error('AppContent: Error during sign out:', error);
+      
+      // Force reset even if sign out fails
+      setActivePage('home');
+      setShowAuthModal(false);
+      setShowPaymentSuccess(false);
+      setPendingPaymentPlan(null);
+      
+      // Clear localStorage as fallback
+      localStorage.clear();
+      
+      console.log('⚠️ AppContent: Forced local state reset due to sign out error');
+    }
+  };
+
+  const handleNavigation = async (page: string) => {
+    // Special handling for dashboard - redirect based on verification and payment status
+    if (page === 'dashboard' && user) {
+      if (!emailVerified) {
+        setActivePage('dashboard'); // Show email verification reminder
+      } else if (paymentCompleted) {
+        setActivePage('writing'); // Full access
+      } else {
+        setActivePage('pricing'); // Need to complete payment
+      }
+    } else {
+      setActivePage(page);
+    }
+    setShowAuthModal(false);
+  };
+
+  const handleGetStarted = async () => {
+    if (user) {
+      if (!emailVerified) {
+        setActivePage('dashboard'); // Show email verification reminder
+      } else if (paymentCompleted) {
+        setActivePage('writing'); // Full access
+      } else {
+        setActivePage('pricing'); // Need to complete payment
+      }
+    } else {
+      setAuthModalMode('signup');
+      setShowAuthModal(true);
     }
   };
 
   const handleSubmit = () => {
-    console.log('Submitting essay:', content);
+    console.log('Writing submitted:', { content, textType });
   };
 
+  // Handle text type change from WritingArea popup
   const handleTextTypeChange = (newTextType: string) => {
     setTextType(newTextType);
+    console.log('Text type changed to:', newTextType);
   };
 
+  // Handle popup flow completion
   const handlePopupCompleted = () => {
     setPopupFlowCompleted(true);
   };
@@ -157,112 +243,188 @@ function AppContentWithModernInterface() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
-      <NavBar 
-        activePage={activePage} 
-        onNavigate={handleNavigation}
-        onSignInClick={() => {
-          setAuthModalMode('signin');
-          setShowAuthModal(true);
-        }}
-        onSignUpClick={() => {
-          setAuthModalMode('signup');
-          setShowAuthModal(true);
-        }}
-      />
-      
-      <AdminButton />
-      
-      {showPaymentSuccess && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-8 max-w-md mx-4 text-center">
-            <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Payment Successful!</h2>
-            <p className="text-gray-600 mb-6">
-              Welcome to your {pendingPaymentPlan} plan! You now have access to all premium features.
-            </p>
-            <button
-              onClick={() => {
-                setShowPaymentSuccess(false);
-                setPendingPaymentPlan(null);
-                handleNavigation('writing');
-              }}
-              className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              Start Writing
-            </button>
-          </div>
-        </div>
-      )}
-
-      <Routes>
-        <Route path="/" element={
-          <>
-            <HeroSection onNavigate={handleNavigation} />
-            <FeaturesSection />
-            <ToolsSection />
-            <WritingTypesSection />
-          </>
-        } />
-        <Route path="/pricing" element={<PricingPage onNavigate={handleNavigation} />} />
-        <Route path="/faq" element={<FAQPage onNavigate={handleNavigation} />} />
-        <Route path="/about" element={<AboutPage onNavigate={handleNavigation} />} />
-        <Route path="/demo" element={<DemoPage onNavigate={handleNavigation} />} />
-        <Route path="/dashboard" element={
-          user ? (
-            <Dashboard 
-              onNavigate={handleNavigation}
-              onSignOut={handleForceSignOut}
-            />
-          ) : (
-            <Navigate to="/" />
-          )
-        } />
-        <Route path="/settings" element={
-          user ? <SettingsPage onBack={() => setActivePage('dashboard')} /> : <Navigate to="/" />
-        } />
-        <Route path="/writing" element={
-          <WritingAccessCheck onNavigate={handleNavigation}>
-            <div className="modern-writing-interface relative">
-              <ModernWritingInterface
-                content={content}
-                onChange={setContent}
-                textType={textType}
-                onTimerStart={setTimerStarted}
-                onSubmit={handleSubmit}
-                onTextTypeChange={handleTextTypeChange}
-                onPopupCompleted={handlePopupCompleted}
+      <div className="min-h-screen flex flex-col">
+        <Routes>
+          <Route path="/" element={
+            <>
+              <NavBar 
+                activePage={activePage}
+                onNavigate={handleNavigation}
+                user={user}
+                onSignInClick={() => {
+                  setAuthModalMode('signin');
+                  setShowAuthModal(true);
+                }}
+                onSignUpClick={() => {
+                  setAuthModalMode('signup');
+                  setShowAuthModal(true);
+                }}
+                onForceSignOut={handleForceSignOut}
               />
-            </div>
-          </WritingAccessCheck>
-        } />
-        <Route path="/learning" element={<LearningPage />} />
-        <Route path="/exam" element={<ExamSimulationMode onExit={() => setActivePage('writing')} />} />
-        <Route path="/supportive-features" element={<SupportiveFeatures />} />
-        <Route path="/help-center" element={<HelpCenter />} />
-        <Route path="/essay-feedback" element={<EssayFeedbackPage />} />
-        <Route path="/specialized-coaching" element={<SpecializedCoaching />} />
-        <Route path="/brainstorming-tools" element={<BrainstormingTools />} />
-        <Route path="/email-verification" element={<EmailVerificationHandler />} />
-        <Route path="*" element={<Navigate to="/" />} />
-      </Routes>
-      <Footer />
-      <AuthModal
-        isOpen={showAuthModal}
-        onClose={() => setShowAuthModal(false)}
-        mode={authModalMode}
-        onAuthSuccess={handleAuthSuccess}
-      />
-      
-      {showHelpCenter && (
-        <HelpCenter onClose={() => setShowHelpCenter(false)} />
-      )}
-      
-      {showPlanningTool && (
-        <PlanningToolModal 
-          onClose={() => setShowPlanningTool(false)}
-          textType={textType}
+              <HeroSection onGetStarted={handleGetStarted} />
+              <FeaturesSection />
+              <ToolsSection />
+              <WritingTypesSection />
+            </>
+          } />
+          <Route path="/pricing" element={<PricingPage onNavigate={handleNavigation} />} />
+          <Route path="/faq" element={<FAQPage onNavigate={handleNavigation} />} />
+          <Route path="/about" element={<AboutPage onNavigate={handleNavigation} />} />
+          <Route path="/demo" element={<DemoPage onNavigate={handleNavigation} />} />
+          <Route path="/dashboard" element={
+            user ? (
+              <Dashboard 
+                onNavigate={handleNavigation}
+                onSignOut={handleForceSignOut}
+              />
+            ) : (
+              <Navigate to="/" />
+            )
+          } />
+          <Route path="/settings" element={
+            user ? <SettingsPage onBack={() => setActivePage('dashboard')} /> : <Navigate to="/" />
+          } />
+          <Route path="/writing" element={
+            <WritingAccessCheck onNavigate={handleNavigation}>
+              {useModernInterface ? (
+                <div className="modern-writing-interface">
+                  {/* Interface Toggle */}
+                  <div className="fixed top-4 right-4 z-50 bg-white rounded-lg shadow-lg p-2 border border-gray-200">
+                    <div className="flex items-center space-x-2">
+                      <span className="text-sm text-gray-600">Classic</span>
+                      <button
+                        onClick={() => setUseModernInterface(!useModernInterface)}
+                        className="p-1 hover:bg-gray-100 rounded transition-colors"
+                      >
+                        {useModernInterface ? (
+                          <ToggleRight className="w-6 h-6 text-blue-600" />
+                        ) : (
+                          <ToggleLeft className="w-6 h-6 text-gray-400" />
+                        )}
+                      </button>
+                      <span className="text-sm text-gray-600">Modern</span>
+                    </div>
+                  </div>
+                  
+                  <ModernWritingInterface
+                    content={content}
+                    onChange={setContent}
+                    textType={textType}
+                    onTimerStart={setTimerStarted}
+                    onSubmit={handleSubmit}
+                    onTextTypeChange={handleTextTypeChange}
+                    onPopupCompleted={handlePopupCompleted}
+                  />
+                </div>
+              ) : (
+                <div className="flex flex-col h-screen">
+                  {/* Interface Toggle */}
+                  <div className="fixed top-4 right-4 z-50 bg-white rounded-lg shadow-lg p-2 border border-gray-200">
+                    <div className="flex items-center space-x-2">
+                      <span className="text-sm text-gray-600">Classic</span>
+                      <button
+                        onClick={() => setUseModernInterface(!useModernInterface)}
+                        className="p-1 hover:bg-gray-100 rounded transition-colors"
+                      >
+                        {useModernInterface ? (
+                          <ToggleRight className="w-6 h-6 text-blue-600" />
+                        ) : (
+                          <ToggleLeft className="w-6 h-6 text-gray-400" />
+                        )}
+                      </button>
+                      <span className="text-sm text-gray-600">Modern</span>
+                    </div>
+                  </div>
+
+                  <EnhancedHeader 
+                    textType={textType}
+                    assistanceLevel={assistanceLevel}
+                    onTextTypeChange={setTextType}
+                    onAssistanceLevelChange={setAssistanceLevel}
+                    onTimerStart={() => setTimerStarted(true)}
+                    hideTextTypeSelector={popupFlowCompleted}
+                  />
+                  
+                  <WritingToolbar 
+                    content={content}
+                    textType={textType}
+                    onShowHelpCenter={() => setShowHelpCenter(true)}
+                    onShowPlanningTool={() => setShowPlanningTool(true)}
+                    onTimerStart={() => setTimerStarted(true)}
+                    onStartNewEssay={() => {
+                      setContent('');
+                      setTextType('');
+                      setPopupFlowCompleted(false);
+                      // Clear localStorage to ensure fresh start
+                      localStorage.removeItem('writingContent');
+                      localStorage.removeItem('selectedWritingType');
+                    }}
+                  />
+                  
+                  {showExamMode ? (
+                    <ExamSimulationMode 
+                      onExit={() => setShowExamMode(false)}
+                    />
+                  ) : (
+                    <div className="flex-1 container mx-auto px-4">
+                      <SplitScreen useFloatingChat={true}>
+                        <WritingArea 
+                          content={content}
+                          onChange={setContent}
+                          textType={textType}
+                          onTimerStart={setTimerStarted}
+                          onSubmit={handleSubmit}
+                          onTextTypeChange={handleTextTypeChange}
+                          onPopupCompleted={handlePopupCompleted}
+                        />
+                      </SplitScreen>
+                      
+                      {/* Only show FloatingChatWindow after popup flow is completed */}
+                      {popupFlowCompleted && (
+                        <FloatingChatWindow
+                          content={content}
+                          textType={textType}
+                          assistanceLevel={assistanceLevel}
+                          selectedText={selectedText}
+                          onNavigate={handleNavigation}
+                        />
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </WritingAccessCheck>
+          } />
+
+          <Route path="/learning" element={<LearningPage />} />
+          <Route path="/exam" element={<ExamSimulationMode onExit={() => setActivePage('writing')} />} />
+          <Route path="/supportive-features" element={<SupportiveFeatures />} />
+          <Route path="/help-center" element={<HelpCenter />} />
+          <Route path="/essay-feedback" element={<EssayFeedbackPage />} />
+          <Route path="/specialized-coaching" element={<SpecializedCoaching />} />
+          <Route path="/brainstorming-tools" element={<BrainstormingTools />} />
+          <Route path="/email-verification" element={<EmailVerificationHandler />} />
+
+          <Route path="*" element={<Navigate to="/" />} />
+        </Routes>
+
+        <Footer />
+
+        <AuthModal
+          isOpen={showAuthModal}
+          onClose={() => setShowAuthModal(false)}
+          mode={authModalMode}
+          onAuthSuccess={handleAuthSuccess}
         />
-      )}
+
+        {showPaymentSuccess && (
+          <PaymentSuccessPage
+            onClose={() => setShowPaymentSuccess(false)}
+            planType={pendingPaymentPlan || 'unknown'}
+          />
+        )}
+      </div>
+      <AdminButton />
     </div>
   );
 }
