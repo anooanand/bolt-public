@@ -34,6 +34,7 @@ import { WritingToolbar } from './WritingToolbar';
 import { PlanningToolModal } from './PlanningToolModal';
 import { EmailVerificationHandler } from './EmailVerificationHandler';
 import { FloatingChatWindow } from './FloatingChatWindow';
+import { WritingDemo } from './WritingDemo';
 import { CheckCircle } from 'lucide-react';
 import { AdminButton } from './AdminButton';
 
@@ -59,6 +60,10 @@ function AppContent() {
   // New state for popup flow completion
   const [popupFlowCompleted, setPopupFlowCompleted] = useState(false); 
   const [hasSignedIn, setHasSignedIn] = useState(false);
+  
+  // Panel state for attached chat
+  const [panelVisible, setPanelVisible] = useState(true);
+  const [panelCollapsed, setPanelCollapsed] = useState(false);
 
   // Handle sign-in behavior - clear content and show modal when user signs in
   useEffect(() => {
@@ -310,7 +315,13 @@ function AppContent() {
                     onExit={() => setShowExamMode(false)}
                   />
                 ) : (
-                  <div className="flex-1 container mx-auto px-4">
+                  <div className={`flex-1 container mx-auto px-4 ${
+                    popupFlowCompleted && panelVisible 
+                      ? `main-content-with-attached-chat ${panelCollapsed ? 'collapsed' : ''}` 
+                      : popupFlowCompleted && !panelVisible 
+                        ? 'main-content-with-attached-chat hidden'
+                        : ''
+                  }`}>
                     <SplitScreen useFloatingChat={true}>
                       <WritingArea 
                         content={content}
@@ -331,6 +342,10 @@ function AppContent() {
                         assistanceLevel={assistanceLevel}
                         selectedText={selectedText}
                         onNavigate={handleNavigation}
+                        isVisible={panelVisible}
+                        isCollapsed={panelCollapsed}
+                        onVisibilityChange={setPanelVisible}
+                        onCollapseChange={setPanelCollapsed}
                       />
                     )}
                   </div>
@@ -347,6 +362,7 @@ function AppContent() {
           <Route path="/specialized-coaching" element={<SpecializedCoaching />} />
           <Route path="/brainstorming-tools" element={<BrainstormingTools />} />
           <Route path="/email-verification" element={<EmailVerificationHandler />} />
+          <Route path="/demo-writing" element={<WritingDemo />} />
 
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
