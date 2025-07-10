@@ -168,7 +168,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   }, [user, hasSignedIn, emailVerified, paymentCompleted]);
 
-  // Check for payment success in URL on mount (moved to LocationHandler component)
   // Text selection logic for writing area
   useEffect(() => {
     const handleSelectionChange = () => {
@@ -313,12 +312,14 @@ function AppContent() {
     setPopupFlowCompleted,
   } = useApp();
 
+  // Auth modal state - MOVED TO COMPONENT LEVEL
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'signin' | 'signup'>('signin');
   const [showPaymentSuccess, setShowPaymentSuccess] = useState(false);
   const [pendingPaymentPlan, setPendingPaymentPlan] = useState<string | null>(null);
 
   const handleAuthSuccess = () => {
+    console.log('🎉 Auth success!');
     setShowAuthModal(false);
     if (pendingPaymentPlan) {
       setActivePage('payment-success');
@@ -365,6 +366,7 @@ function AppContent() {
   };
 
   const handleGetStarted = async () => {
+    console.log('🚀 Get Started clicked');
     if (user) {
       if (!emailVerified) {
         console.log('Get started: Email not verified, showing dashboard');
@@ -383,14 +385,20 @@ function AppContent() {
     }
   };
 
+  // FIXED: Sign In handler with debugging
   const handleSignIn = () => {
+    console.log('🔑 Sign In button clicked!');
     setAuthModalMode('signin');
     setShowAuthModal(true);
+    console.log('📝 Auth modal should now be visible:', { showAuthModal: true, authModalMode: 'signin' });
   };
 
+  // FIXED: Sign Up handler with debugging
   const handleSignUp = () => {
+    console.log('📝 Sign Up button clicked!');
     setAuthModalMode('signup');
     setShowAuthModal(true);
+    console.log('📝 Auth modal should now be visible:', { showAuthModal: true, authModalMode: 'signup' });
   };
 
   // IMPROVED: Show loading state while auth is being checked
@@ -646,13 +654,19 @@ function AppContent() {
       
       {renderPage()}
 
-      {/* Modals */}
+      {/* Modals - FIXED: Moved to component level */}
       {showAuthModal && (
         <AuthModal
           mode={authModalMode}
-          onClose={() => setShowAuthModal(false)}
+          onClose={() => {
+            console.log('❌ Closing auth modal');
+            setShowAuthModal(false);
+          }}
           onSuccess={handleAuthSuccess}
-          onSwitchMode={(mode) => setAuthModalMode(mode)}
+          onSwitchMode={(mode) => {
+            console.log('🔄 Switching auth mode to:', mode);
+            setAuthModalMode(mode);
+          }}
         />
       )}
 
