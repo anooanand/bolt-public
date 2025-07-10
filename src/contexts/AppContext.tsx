@@ -114,15 +114,10 @@ export const useApp = (): AppContextType => {
   return context;
 };
 
-// App Provider component
+// App Provider component (NO useLocation here - this runs outside Router)
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { user, loading, paymentCompleted, emailVerified, authSignOut } = useAuth();
   const [activePage, setActivePage] = useState('home');
-  const [showAuthModal, setShowAuthModal] = useState(false);
-  const [authModalMode, setAuthModalMode] = useState<'signin' | 'signup'>('signin');
-  const [showPaymentSuccess, setShowPaymentSuccess] = useState(false);
-  const [pendingPaymentPlan, setPendingPaymentPlan] = useState<string | null>(null);
-  const location = useLocation();
 
   // Writing state
   const [content, setContent] = useState('');
@@ -173,40 +168,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   }, [user, hasSignedIn, emailVerified, paymentCompleted]);
 
-  // Check for payment success in URL on mount
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const paymentSuccess = urlParams.get('paymentSuccess') === 'true' || urlParams.get('payment_success') === 'true';
-    const planType = urlParams.get('planType') || urlParams.get('plan');
-    const userEmail = urlParams.get('email');
-    
-    if (paymentSuccess && planType) {
-      console.log('[DEBUG] Payment success detected for plan:', planType);
-      
-      // Store payment info
-      if (userEmail) {
-        localStorage.setItem('userEmail', userEmail);
-      }
-      localStorage.setItem('payment_plan', planType);
-      localStorage.setItem('payment_date', new Date().toISOString());
-      
-      // Clear URL parameters
-      window.history.replaceState({}, document.title, window.location.pathname);
-      
-      setShowPaymentSuccess(true);
-      setPendingPaymentPlan(planType);
-      setActivePage('payment-success');
-    }
-  }, []);
-
-  // Set active page based on current path
-  useEffect(() => {
-    const path = location.pathname.substring(1) || 'home';
-    if (path !== 'auth/callback') { // Don't change active page during auth callback
-      setActivePage(path);
-    }
-  }, [location.pathname]);
-
+  // Check for payment success in URL on mount (moved to LocationHandler component)
   // Text selection logic for writing area
   useEffect(() => {
     const handleSelectionChange = () => {
@@ -219,54 +181,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     document.addEventListener('selectionchange', handleSelectionChange);
     return () => document.removeEventListener('selectionchange', handleSelectionChange);
   }, []);
-
-  const handleAuthSuccess = () => {
-    setShowAuthModal(false);
-    if (pendingPaymentPlan) {
-      setActivePage('payment-success');
-      setShowPaymentSuccess(true);
-    } else {
-      // Let the useEffect handle navigation based on user status
-      console.log('Auth success, letting useEffect handle navigation');
-    }
-  };
-
-  const handleForceSignOut = async () => {
-    try {
-      console.log('🔄 AppContent: Starting force sign out...');
-      
-      // Reset all local state first
-      setActivePage('home');
-      setShowAuthModal(false);
-      setShowPaymentSuccess(false);
-      setPendingPaymentPlan(null);
-      setContent('');
-      setTextType('');
-      setPopupFlowCompleted(false);
-      setHasSignedIn(false);
-      
-      console.log('✅ AppContent: Local state reset completed');
-      
-      // Then attempt auth sign out
-      await authSignOut();
-      console.log('✅ AppContent: Auth sign out completed');
-      
-    } catch (error) {
-      console.error('AppContent: Error during sign out:', error);
-      
-      // Force reset even if sign out fails
-      setActivePage('home');
-      setShowAuthModal(false);
-      setShowPaymentSuccess(false);
-      setPendingPaymentPlan(null);
-      setHasSignedIn(false);
-      
-      // Clear localStorage as fallback
-      localStorage.clear();
-      
-      console.log('⚠️ AppContent: Forced local state reset due to sign out error');
-    }
-  };
 
   // IMPROVED: Better navigation handling with proper access checks
   const handleNavigation = async (page: string) => {
@@ -299,36 +213,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     } else {
       setActivePage(page);
     }
-    setShowAuthModal(false);
-  };
-
-  const handleGetStarted = async () => {
-    if (user) {
-      if (!emailVerified) {
-        console.log('Get started: Email not verified, showing dashboard');
-        setActivePage('dashboard'); // Show email verification reminder
-      } else if (paymentCompleted) {
-        console.log('Get started: Full access, showing writing');
-        setActivePage('writing'); // Full access
-      } else {
-        console.log('Get started: Payment needed, showing pricing');
-        setActivePage('pricing'); // Need to complete payment
-      }
-    } else {
-      console.log('Get started: No user, showing auth modal');
-      setAuthModalMode('signup');
-      setShowAuthModal(true);
-    }
-  };
-
-  const handleSignIn = () => {
-    setAuthModalMode('signin');
-    setShowAuthModal(true);
-  };
-
-  const handleSignUp = () => {
-    setAuthModalMode('signup');
-    setShowAuthModal(true);
   };
 
   // Context value
@@ -361,6 +245,46 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       {children}
     </AppContext.Provider>
   );
+};
+
+// Location Handler component (handles useLocation inside Router context)
+const LocationHandler: React.FC = () => {
+  const location = useLocation();
+  const { setActivePage } = useApp();
+
+  // Set active page based on current path
+  useEffect(() => {
+    const path = location.pathname.substring(1) || 'home';
+    if (path !== 'auth/callback') { // Don't change active page during auth callback
+      setActivePage(path);
+    }
+  }, [location.pathname, setActivePage]);
+
+  // Check for payment success in URL on mount
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const paymentSuccess = urlParams.get('paymentSuccess') === 'true' || urlParams.get('payment_success') === 'true';
+    const planType = urlParams.get('planType') || urlParams.get('plan');
+    const userEmail = urlParams.get('email');
+    
+    if (paymentSuccess && planType) {
+      console.log('[DEBUG] Payment success detected for plan:', planType);
+      
+      // Store payment info
+      if (userEmail) {
+        localStorage.setItem('userEmail', userEmail);
+      }
+      localStorage.setItem('payment_plan', planType);
+      localStorage.setItem('payment_date', new Date().toISOString());
+      
+      // Clear URL parameters
+      window.history.replaceState({}, document.title, window.location.pathname);
+      
+      setActivePage('payment-success');
+    }
+  }, [setActivePage]);
+
+  return null; // This component doesn't render anything
 };
 
 // AppContent component (the main app component)
@@ -717,6 +641,7 @@ function AppContent() {
 
   return (
     <div className="App">
+      <LocationHandler />
       <EmailVerificationHandler />
       
       {renderPage()}
