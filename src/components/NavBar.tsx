@@ -23,6 +23,50 @@ export const NavBar: React.FC<NavBarProps> = ({ onNavigate, onSignIn, onSignUp, 
     { id: 'pricing', name: '💎 Pricing' }
   ];
 
+  // BULLETPROOF: Enhanced Sign In handler with comprehensive debugging
+  const handleSignInClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    console.log('🔑 [NavBar] Sign In button clicked!');
+    console.log('🔑 [NavBar] onSignIn prop:', typeof onSignIn, onSignIn);
+    
+    if (typeof onSignIn === 'function') {
+      console.log('🔑 [NavBar] Calling onSignIn function...');
+      try {
+        onSignIn();
+        console.log('🔑 [NavBar] onSignIn called successfully');
+      } catch (error) {
+        console.error('🔑 [NavBar] Error calling onSignIn:', error);
+      }
+    } else {
+      console.error('🔑 [NavBar] onSignIn is not a function:', onSignIn);
+      alert('Sign In function not available. Please refresh the page.');
+    }
+  };
+
+  // BULLETPROOF: Enhanced Sign Up handler
+  const handleSignUpClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    console.log('📝 [NavBar] Sign Up button clicked!');
+    console.log('📝 [NavBar] onSignUp prop:', typeof onSignUp, onSignUp);
+    
+    if (typeof onSignUp === 'function') {
+      console.log('📝 [NavBar] Calling onSignUp function...');
+      try {
+        onSignUp();
+        console.log('📝 [NavBar] onSignUp called successfully');
+      } catch (error) {
+        console.error('📝 [NavBar] Error calling onSignUp:', error);
+      }
+    } else {
+      console.error('📝 [NavBar] onSignUp is not a function:', onSignUp);
+      alert('Sign Up function not available. Please refresh the page.');
+    }
+  };
+
   const handleSignOut = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -55,10 +99,22 @@ export const NavBar: React.FC<NavBarProps> = ({ onNavigate, onSignIn, onSignUp, 
   };
 
   const handleNavigation = (page: string) => {
+    console.log('🧭 [NavBar] Navigation to:', page);
     onNavigate(page);
     setIsMenuOpen(false);
     setIsUserMenuOpen(false);
   };
+
+  // Debug props on component mount
+  React.useEffect(() => {
+    console.log('🔧 [NavBar] Component mounted with props:', {
+      onNavigate: typeof onNavigate,
+      onSignIn: typeof onSignIn,
+      onSignUp: typeof onSignUp,
+      onSignOut: typeof onSignOut,
+      user: !!user
+    });
+  }, [onNavigate, onSignIn, onSignUp, onSignOut, user]);
 
   return (
     <nav className="fixed top-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-b border-gray-200 z-50 dark:bg-gray-900/95 dark:border-gray-700">
@@ -89,7 +145,7 @@ export const NavBar: React.FC<NavBarProps> = ({ onNavigate, onSignIn, onSignUp, 
               </button>
             ))}
 
-            {/* Learning/Writing Button */}
+            {/* Writing Button for logged in users */}
             {user && (
               <button
                 onClick={() => handleNavigation('writing')}
@@ -169,15 +225,19 @@ export const NavBar: React.FC<NavBarProps> = ({ onNavigate, onSignIn, onSignUp, 
               </div>
             ) : (
               <div className="flex items-center space-x-4">
+                {/* BULLETPROOF: Sign In Button with enhanced debugging */}
                 <button
-                  onClick={onSignIn}
+                  onClick={handleSignInClick}
                   className="text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors dark:text-gray-300 dark:hover:text-blue-400"
+                  data-testid="sign-in-button"
                 >
                   🔑 Sign In
                 </button>
+                {/* BULLETPROOF: Sign Up Button with enhanced debugging */}
                 <button
-                  onClick={onSignUp}
+                  onClick={handleSignUpClick}
                   className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-200 shadow-md hover:shadow-lg"
+                  data-testid="sign-up-button"
                 >
                   🚀 Get Started
                 </button>
@@ -272,20 +332,16 @@ export const NavBar: React.FC<NavBarProps> = ({ onNavigate, onSignIn, onSignUp, 
                 </div>
               ) : (
                 <div className="space-y-2">
+                  {/* BULLETPROOF: Mobile Sign In Button */}
                   <button
-                    onClick={() => {
-                      onSignIn();
-                      setIsMenuOpen(false);
-                    }}
+                    onClick={handleSignInClick}
                     className="block w-full text-left px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800"
                   >
                     🔑 Sign In
                   </button>
+                  {/* BULLETPROOF: Mobile Sign Up Button */}
                   <button
-                    onClick={() => {
-                      onSignUp();
-                      setIsMenuOpen(false);
-                    }}
+                    onClick={handleSignUpClick}
                     className="block w-full text-left px-3 py-2 rounded-md text-sm font-medium bg-gradient-to-r from-blue-600 to-purple-600 text-white"
                   >
                     🚀 Get Started
