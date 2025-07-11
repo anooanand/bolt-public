@@ -21,7 +21,7 @@ interface WritingAssistantState {
   isLoading: boolean;
 }
 
-export function NarrativeWritingTemplateRedesigned({ content, onChange, onTimerStart, onSubmit }: NarrativeWritingTemplateProps) {
+export function NarrativeWritingTemplate({ content, onChange, onTimerStart, onSubmit }: NarrativeWritingTemplateProps) {
   const [templateData, setTemplateData] = useState<TemplateData>({
     planning: '',
     setting: '',
