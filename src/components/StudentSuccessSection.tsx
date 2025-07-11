@@ -110,7 +110,7 @@ export function StudentSuccessSection() {
           <h2 className="text-3xl md:text-4xl font-bold mb-4 text-gray-900 dark:text-white">
             Amazing Student Success Stories
           </h2>
-          <p className="text-lg text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
+          <p className="text-lg text-gray-700 dark:text-gray-200 max-w-3xl mx-auto">
             See how InstaChat AI has helped thousands of students improve their writing skills and ace their selective exams.
           </p>
         </div>
@@ -135,14 +135,14 @@ export function StudentSuccessSection() {
         </div>
 
         {/* Call to Action */}
-        <div className="text-center bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl p-8 text-white">
+        <div className="text-center bg-gradient-to-r from-blue-600 to-purple-700 rounded-2xl p-8 text-white">
           <h3 className="text-2xl md:text-3xl font-bold mb-4">
             Join Thousands of Successful Students!
           </h3>
-          <p className="text-lg mb-6 opacity-90">
+          <p className="text-lg mb-6 opacity-95">
             Start your writing journey today and see amazing results in just weeks.
           </p>
-          <button className="px-8 py-4 bg-white text-blue-600 font-bold rounded-xl hover:bg-gray-100 transition-colors duration-300 shadow-lg">
+          <button className="px-8 py-4 bg-white text-blue-700 font-bold rounded-xl hover:bg-gray-100 transition-colors duration-300 shadow-lg">
             Start Your Free Trial
           </button>
         </div>
@@ -158,24 +158,24 @@ interface SuccessMetricCardProps {
 function SuccessMetricCard({ metric }: SuccessMetricCardProps) {
   const colorClasses = {
     blue: {
-      bg: 'bg-blue-50 dark:bg-blue-900/30',
-      text: 'text-blue-600 dark:text-blue-400',
-      border: 'border-blue-200 dark:border-blue-700'
+      bg: 'bg-blue-50 dark:bg-blue-900/40',
+      text: 'text-blue-700 dark:text-blue-300',
+      border: 'border-blue-300 dark:border-blue-600'
     },
     green: {
-      bg: 'bg-green-50 dark:bg-green-900/30',
-      text: 'text-green-600 dark:text-green-400',
-      border: 'border-green-200 dark:border-green-700'
+      bg: 'bg-green-50 dark:bg-green-900/40',
+      text: 'text-green-700 dark:text-green-300',
+      border: 'border-green-300 dark:border-green-600'
     },
     purple: {
-      bg: 'bg-purple-50 dark:bg-purple-900/30',
-      text: 'text-purple-600 dark:text-purple-400',
-      border: 'border-purple-200 dark:border-purple-700'
+      bg: 'bg-purple-50 dark:bg-purple-900/40',
+      text: 'text-purple-700 dark:text-purple-300',
+      border: 'border-purple-300 dark:border-purple-600'
     },
     amber: {
-      bg: 'bg-amber-50 dark:bg-amber-900/30',
-      text: 'text-amber-600 dark:text-amber-400',
-      border: 'border-amber-200 dark:border-amber-700'
+      bg: 'bg-amber-50 dark:bg-amber-900/40',
+      text: 'text-amber-700 dark:text-amber-300',
+      border: 'border-amber-300 dark:border-amber-600'
     }
   };
 
@@ -189,10 +189,10 @@ function SuccessMetricCard({ metric }: SuccessMetricCardProps) {
       <div className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
         {metric.value}
       </div>
-      <div className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2">
+      <div className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">
         {metric.label}
       </div>
-      <div className="text-sm text-gray-600 dark:text-gray-400">
+      <div className="text-sm text-gray-700 dark:text-gray-300">
         {metric.description}
       </div>
     </div>
@@ -206,7 +206,7 @@ interface TestimonialCardProps {
 function TestimonialCard({ testimonial }: TestimonialCardProps) {
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl shadow-md hover:shadow-lg transition-shadow duration-300 p-6 relative">
-      <div className="absolute top-4 right-4 text-blue-200 dark:text-blue-700">
+      <div className="absolute top-4 right-4 text-blue-300 dark:text-blue-600">
         <Quote className="w-8 h-8" />
       </div>
       
@@ -216,7 +216,7 @@ function TestimonialCard({ testimonial }: TestimonialCardProps) {
           <h4 className="font-semibold text-gray-900 dark:text-white">
             {testimonial.name}, {testimonial.age}
           </h4>
-          <p className="text-sm text-gray-600 dark:text-gray-400">
+          <p className="text-sm text-gray-700 dark:text-gray-300">
             {testimonial.school}
           </p>
         </div>
@@ -224,16 +224,16 @@ function TestimonialCard({ testimonial }: TestimonialCardProps) {
 
       <div className="flex mb-3">
         {[...Array(testimonial.rating)].map((_, i) => (
-          <Star key={i} className="w-4 h-4 text-yellow-400 fill-current" />
+          <Star key={i} className="w-4 h-4 text-yellow-500 fill-current" />
         ))}
       </div>
 
-      <p className="text-gray-700 dark:text-gray-300 mb-4 italic">
+      <p className="text-gray-800 dark:text-gray-200 mb-4 italic">
         "{testimonial.quote}"
       </p>
 
-      <div className="bg-green-50 dark:bg-green-900/30 p-3 rounded-lg">
-        <p className="text-sm font-semibold text-green-700 dark:text-green-400">
+      <div className="bg-green-50 dark:bg-green-900/40 p-3 rounded-lg">
+        <p className="text-sm font-semibold text-green-800 dark:text-green-200">
           📈 {testimonial.improvement}
         </p>
       </div>
