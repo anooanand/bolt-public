@@ -9,6 +9,7 @@ import { ToolsSection } from './ToolsSection';
 import { WritingTypesSection } from './WritingTypesSection';
 import { StudentSuccessSection } from './StudentSuccessSection';
 import { HowItWorksSection } from './HowItWorksSection';
+import { EnhancedSuccessSection } from './EnhancedSuccessSection';
 import { Footer } from './Footer';
 import { PaymentSuccessPage } from './PaymentSuccessPage';
 import { PricingPage } from './PricingPage';
@@ -263,10 +264,7 @@ function AppContent() {
               />
               <HeroSection onGetStarted={handleGetStarted} />
               <FeaturesSection />
-              <HowItWorksSection />
-              <ToolsSection />
-              <WritingTypesSection />
-              <StudentSuccessSection />
+              <EnhancedSuccessSection />
             </>
           } />
           <Route path="/pricing" element={<PricingPage onNavigate={handleNavigation} />} />
