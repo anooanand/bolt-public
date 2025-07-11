@@ -458,7 +458,7 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
     
     switch (currentTextType) {
       case 'narrative':
-        return <NarrativeWritingTemplateRedesigned 
+        return <NarrativeWritingTemplate 
           content={content}
           onChange={onChange}
           onTimerStart={onTimerStart}
