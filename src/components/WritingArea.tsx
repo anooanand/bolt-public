@@ -9,7 +9,7 @@ import { WritingTypeSelectionModal } from './WritingTypeSelectionModal';
 import { PromptOptionsModal } from './PromptOptionsModal';
 import { CustomPromptModal } from './CustomPromptModal';
 import { EssayEvaluationModal } from './EssayEvaluationModal';
-import { NarrativeWritingTemplate } from './NarrativeWritingTemplate';
+import { NarrativeWritingTemplateRedesigned } from './NarrativeWritingTemplateRedesigned';
 import { PersuasiveWritingTemplate } from './PersuasiveWritingTemplate';
 import { ExpositoryWritingTemplate } from './ExpositoryWritingTemplate';
 import { ReflectiveWritingTemplate } from './ReflectiveWritingTemplate';
@@ -458,7 +458,12 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
     
     switch (currentTextType) {
       case 'narrative':
-        return <NarrativeWritingTemplate />;
+        return <NarrativeWritingTemplateRedesigned 
+          content={content}
+          onChange={onChange}
+          onTimerStart={onTimerStart}
+          onSubmit={onSubmit}
+        />;
       case 'persuasive':
         return <PersuasiveWritingTemplate />;
       case 'expository':
