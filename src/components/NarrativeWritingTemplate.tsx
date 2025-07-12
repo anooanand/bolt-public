@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BookOpen, ChevronDown, ChevronUp, HelpCircle, Lightbulb, Target, Users, MapPin, Zap } from 'lucide-react';
+import { BookOpen, ChevronDown, ChevronUp, HelpCircle, Lightbulb, Target, Users, MapPin, Zap, Sparkles } from 'lucide-react';
 
 interface NarrativeWritingTemplateProps {
   content: string;
@@ -197,6 +197,26 @@ export function NarrativeWritingTemplate({ content, onChange, onTimerStart, onSu
             /* Template Planning Interface */
             <div className="h-full overflow-y-auto">
               <div className="max-w-4xl mx-auto p-6 space-y-8">
+                {/* Writing Prompt Section - Moved to top */}
+                <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-2xl border border-indigo-200 overflow-hidden shadow-sm">
+                  <div className="p-6">
+                    <div className="flex items-center mb-4">
+                      <div className="w-10 h-10 bg-indigo-500 rounded-xl flex items-center justify-center mr-4">
+                        <Sparkles className="w-5 h-5 text-white" />
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-semibold text-indigo-900">Writing Prompt</h3>
+                        <p className="text-indigo-700 text-sm">Your creative inspiration starts here</p>
+                      </div>
+                    </div>
+                    <div className="bg-white/80 backdrop-blur-sm rounded-xl p-4 border border-indigo-200">
+                      <p className="text-gray-700 leading-relaxed">
+                        Write a narrative story that takes your readers on an emotional journey. Consider the setting, characters, and plot that will bring your story to life. Use vivid descriptions and engaging dialogue to create a compelling narrative.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Planning Notes */}
                 <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-2xl border border-blue-200 overflow-hidden shadow-sm">
                   <div 
