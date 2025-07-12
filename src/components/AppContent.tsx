@@ -24,6 +24,7 @@ import { DemoPage } from './DemoPage';
 import { SplitScreen } from './SplitScreen';
 import { WritingArea } from './WritingArea';
 import { TabbedCoachPanel } from './TabbedCoachPanel';
+import { EnhancedWritingLayout } from './EnhancedWritingLayout';
 import { LearningPage } from './LearningPage';
 import { ExamSimulationMode } from './ExamSimulationMode';
 import { SupportiveFeatures } from './SupportiveFeatures';
@@ -317,40 +318,18 @@ function AppContent() {
                     onExit={() => setShowExamMode(false)}
                   />
                 ) : (
-                  <div className={`flex-1 container mx-auto px-4 ${
-                    popupFlowCompleted && panelVisible 
-                      ? `main-content-with-attached-chat ${panelCollapsed ? 'collapsed' : ''}` 
-                      : popupFlowCompleted && !panelVisible 
-                        ? 'main-content-with-attached-chat hidden'
-                        : ''
-                  }`}>
-                    <SplitScreen useFloatingChat={true}>
-                      <WritingArea 
-                        content={content}
-                        onChange={setContent}
-                        textType={textType}
-                        onTimerStart={setTimerStarted}
-                        onSubmit={handleSubmit}
-                        onTextTypeChange={handleTextTypeChange}
-                        onPopupCompleted={handlePopupCompleted}
-                      />
-                    </SplitScreen>
-                    
-                    {/* Only show FloatingChatWindow after popup flow is completed */}
-                    {popupFlowCompleted && (
-                      <FloatingChatWindow
-                        content={content}
-                        textType={textType}
-                        assistanceLevel={assistanceLevel}
-                        selectedText={selectedText}
-                        onNavigate={handleNavigation}
-                        isVisible={panelVisible}
-                        isCollapsed={panelCollapsed}
-                        onVisibilityChange={setPanelVisible}
-                        onCollapseChange={setPanelCollapsed}
-                      />
-                    )}
-                  </div>
+                  <EnhancedWritingLayout
+                    content={content}
+                    onChange={setContent}
+                    textType={textType}
+                    assistanceLevel={assistanceLevel}
+                    selectedText={selectedText}
+                    onTimerStart={setTimerStarted}
+                    onSubmit={handleSubmit}
+                    onTextTypeChange={handleTextTypeChange}
+                    onPopupCompleted={handlePopupCompleted}
+                    onNavigate={handleNavigation}
+                  />
                 )}
               </div>
             </WritingAccessCheck>
