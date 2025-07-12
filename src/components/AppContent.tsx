@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import './layout-fix.css';
 
 import { NavBar } from './NavBar';
 import { HeroSection } from './HeroSection';
@@ -244,8 +245,8 @@ function AppContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
-      <div className="min-h-screen flex flex-col">
+    <div className="app-content-wrapper bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
+      <div className="route-with-footer">
         <Routes>
           <Route path="/" element={
             <>
@@ -263,9 +264,11 @@ function AppContent() {
                 }}
                 onForceSignOut={handleForceSignOut}
               />
-              <HeroSection onGetStarted={handleGetStarted} />
-              <FeaturesSection />
-              <EnhancedSuccessSection />
+              <div className="main-route-content">
+                <HeroSection onGetStarted={handleGetStarted} />
+                <FeaturesSection />
+                <EnhancedSuccessSection />
+              </div>
             </>
           } />
           <Route path="/pricing" element={<PricingPage onNavigate={handleNavigation} />} />
@@ -287,7 +290,7 @@ function AppContent() {
           } />
           <Route path="/writing" element={
             <WritingAccessCheck onNavigate={handleNavigation}>
-              <div className="flex flex-col h-screen">
+              <div className="writing-route">
                 <EnhancedHeader 
                   textType={textType}
                   assistanceLevel={assistanceLevel}
@@ -302,18 +305,20 @@ function AppContent() {
                     onExit={() => setShowExamMode(false)}
                   />
                 ) : (
-                  <EnhancedWritingLayout
-                    content={content}
-                    onChange={setContent}
-                    textType={textType}
-                    assistanceLevel={assistanceLevel}
-                    selectedText={selectedText}
-                    onTimerStart={setTimerStarted}
-                    onSubmit={handleSubmit}
-                    onTextTypeChange={handleTextTypeChange}
-                    onPopupCompleted={handlePopupCompleted}
-                    onNavigate={handleNavigation}
-                  />
+                  <div className="writing-layout-content">
+                    <EnhancedWritingLayout
+                      content={content}
+                      onChange={setContent}
+                      textType={textType}
+                      assistanceLevel={assistanceLevel}
+                      selectedText={selectedText}
+                      onTimerStart={setTimerStarted}
+                      onSubmit={handleSubmit}
+                      onTextTypeChange={handleTextTypeChange}
+                      onPopupCompleted={handlePopupCompleted}
+                      onNavigate={handleNavigation}
+                    />
+                  </div>
                 )}
               </div>
             </WritingAccessCheck>
