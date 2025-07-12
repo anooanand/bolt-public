@@ -493,56 +493,62 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
   const currentTextType = textType || selectedWritingType;
 
   return (
-    <div ref={containerRef} className="writing-area-container h-full flex flex-col">
+    <div ref={containerRef} className="writing-area-container h-full flex flex-col space-y-6 p-6">
       {/* Writing Template */}
-      {currentTextType && renderWritingTemplate()}
+      {currentTextType && (
+        <div className="writing-template-section">
+          {renderWritingTemplate()}
+        </div>
+      )}
 
-      {/* Prompt Display */}
+      {/* Prompt Display - Enhanced visual hierarchy */}
       {prompt && (
-        <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-xl border-2 border-blue-200 dark:border-blue-800">
-          <div className="flex items-start gap-3">
-            <div className="p-2 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg">
-              <Sparkles className="w-5 h-5 text-white" />
-            </div>
-            <div className="flex-1">
-              <h3 className="font-bold text-lg text-gray-900 dark:text-white mb-2">
-                Your Writing Prompt
-              </h3>
-              <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
-                {prompt}
-              </p>
+        <div className="prompt-section mb-8">
+          <div className="p-6 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-2xl border-2 border-blue-200 dark:border-blue-800 shadow-lg">
+            <div className="flex items-start gap-4">
+              <div className="p-3 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl shadow-md">
+                <Sparkles className="w-6 h-6 text-white" />
+              </div>
+              <div className="flex-1 space-y-3">
+                <h3 className="font-bold text-xl text-gray-900 dark:text-white">
+                  Your Writing Prompt
+                </h3>
+                <p className="text-gray-700 dark:text-gray-300 leading-relaxed text-lg">
+                  {prompt}
+                </p>
+              </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* Main Writing Area */}
-      <div className="flex-1 relative">
-        <div className="relative h-full">
+      {/* Main Writing Area - Improved spacing and visual hierarchy */}
+      <div className="writing-main-section flex-1 space-y-4">
+        <div className="relative h-full min-h-[500px]">
           {/* Highlight Layer */}
           <div
             ref={highlightLayerRef}
-            className="absolute inset-0 pointer-events-none z-10 p-4 font-mono text-transparent whitespace-pre-wrap break-words"
+            className="absolute inset-0 pointer-events-none z-10 p-6 font-mono text-transparent whitespace-pre-wrap break-words"
             style={{
               fontSize: '16px',
-              lineHeight: '24px',
+              lineHeight: '28px',
               fontFamily: 'inherit'
             }}
           >
             {renderHighlightedText()}
           </div>
 
-          {/* Textarea */}
+          {/* Textarea - Enhanced spacing and typography */}
           <textarea
             ref={textareaRef}
             value={content}
             onChange={handleTextareaChange}
             onClick={handleTextareaClick}
             placeholder={prompt ? "Start writing your response here..." : "Select a writing type to get started..."}
-            className="w-full h-full p-4 border-2 border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent relative z-20"
+            className="w-full h-full p-6 border-2 border-gray-300 dark:border-gray-600 rounded-2xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white resize-none focus:outline-none focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-300 relative z-20 shadow-lg"
             style={{
               fontSize: '16px',
-              lineHeight: '24px',
+              lineHeight: '28px',
               fontFamily: 'inherit',
               background: 'transparent'
             }}
@@ -565,24 +571,30 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
         )}
       </div>
 
-      {/* Status Bar */}
-      <WritingStatusBar
-        content={content}
-        textType={currentTextType}
-      />
+      {/* Status Bar - Enhanced spacing */}
+      <div className="status-section py-4">
+        <WritingStatusBar
+          content={content}
+          textType={currentTextType}
+        />
+      </div>
 
-      {/* Submit Button */}
-      <div className="mt-4 flex justify-center">
-        <button
-          onClick={handleEvaluateEssay}
-          disabled={countWords(content) < 50}
-          className="px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 disabled:from-gray-400 disabled:to-gray-500 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 disabled:transform-none disabled:cursor-not-allowed flex items-center gap-2"
-          title={countWords(content) < 50 ? 'Write at least 50 words to submit for evaluation' : 'Submit your essay for detailed evaluation'}
-        >
-          <Send className="w-4 h-4" />
-          Submit for Evaluation
-          <span className="text-xs opacity-75">({countWords(content)} words)</span>
-        </button>
+      {/* Submit Button - Improved visual hierarchy and spacing */}
+      <div className="submit-section pt-6 border-t border-gray-200 dark:border-gray-700">
+        <div className="flex justify-center">
+          <button
+            onClick={handleEvaluateEssay}
+            disabled={countWords(content) < 50}
+            className="px-8 py-4 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 disabled:from-gray-400 disabled:to-gray-500 text-white font-semibold text-lg rounded-2xl shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 disabled:transform-none disabled:cursor-not-allowed flex items-center gap-3"
+            title={countWords(content) < 50 ? 'Write at least 50 words to submit for evaluation' : 'Submit your essay for detailed evaluation'}
+          >
+            <Send className="w-5 h-5" />
+            Submit for Evaluation
+            <span className="text-sm opacity-80 bg-white/20 px-3 py-1 rounded-full">
+              {countWords(content)} words
+            </span>
+          </button>
+        </div>
       </div>
 
       {/* Popup Modals */}
