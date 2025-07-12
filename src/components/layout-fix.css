@@ -20,7 +20,7 @@
   flex-direction: column;
 }
 
-/* Writing page specific fixes */
+/* Writing page specific fixes - FULL VIEWPORT HEIGHT */
 .writing-page-container {
   display: flex;
   flex-direction: column;
@@ -28,11 +28,11 @@
   overflow: hidden;
 }
 
-/* Enhanced Writing Layout fixes */
+/* Enhanced Writing Layout fixes - FULL HEIGHT */
 .enhanced-writing-layout {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  height: 100vh;
   overflow: hidden;
 }
 
@@ -45,7 +45,7 @@
   overflow: hidden;
 }
 
-/* Main writing content area */
+/* Main writing content area - FULL HEIGHT */
 .writing-main-content {
   flex: 1;
   display: flex;
@@ -67,10 +67,15 @@
   resize: none;
 }
 
-/* Footer should not overlap content */
+/* Footer should not overlap content - CONDITIONAL DISPLAY */
 footer {
   flex-shrink: 0;
   margin-top: auto;
+}
+
+/* Hide footer on writing route */
+.writing-route footer {
+  display: none !important;
 }
 
 /* Ensure proper spacing for footer */
@@ -90,12 +95,13 @@ footer {
   flex: 1;
 }
 
-/* Specific fix for writing route */
+/* Specific fix for writing route - FULL VIEWPORT */
 .writing-route {
   height: 100vh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  position: relative;
 }
 
 /* Ensure the writing layout takes full height minus header */
@@ -113,6 +119,20 @@ footer {
   height: 100%;
 }
 
+/* Enhanced Header in writing mode */
+.writing-route .enhanced-header {
+  flex-shrink: 0;
+  position: relative;
+  z-index: 10;
+}
+
+/* Writing content below header */
+.writing-route .writing-layout-content {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
 /* Responsive fixes */
 @media (max-width: 768px) {
   .writing-page-container {
@@ -122,6 +142,11 @@ footer {
   
   .enhanced-writing-layout {
     height: 100%;
+  }
+  
+  .writing-route {
+    height: 100vh;
+    height: 100dvh;
   }
 }
 
@@ -163,4 +188,38 @@ footer {
 
 .overflow-auto-fix {
   overflow: auto;
+}
+
+/* Additional fixes for writing section layout */
+.writing-route .enhanced-writing-layout {
+  background: #f9fafb;
+}
+
+/* Ensure writing area takes full available space */
+.writing-route .writing-main-content {
+  height: 100%;
+  max-height: 100%;
+}
+
+/* Fix for chat panel in writing mode */
+.writing-route .writing-main-content .w-96 {
+  height: 100%;
+  max-height: 100%;
+}
+
+/* Prevent footer from showing in writing mode */
+.writing-route + footer,
+.writing-route ~ footer {
+  display: none !important;
+}
+
+/* Ensure no bottom margin/padding in writing mode */
+.writing-route {
+  margin-bottom: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+/* Fix for any nested footer elements */
+.writing-route * footer {
+  display: none !important;
 }
