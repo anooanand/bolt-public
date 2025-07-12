@@ -98,26 +98,30 @@ export function FloatingChatWindow({
         </div>
       </div>
 
-      {!isMinimized && !isCollapsed && (
+      {!isMinimized && (
         <div className="attached-chat-content flex-1 overflow-hidden">
-          <TabbedCoachPanel
-            content={content}
-            textType={textType}
-            assistanceLevel={assistanceLevel}
-            selectedText={selectedText}
-            onNavigate={onNavigate}
-          />
+          {!isCollapsed ? (
+            <TabbedCoachPanel
+              content={content}
+              textType={textType}
+              assistanceLevel={assistanceLevel}
+              selectedText={selectedText}
+              onNavigate={onNavigate}
+            />
+          ) : (
+            <div className="flex flex-col items-center justify-center h-full p-2">
+              <MessageSquare className="w-6 h-6 text-purple-600 mb-2" />
+              <div className="writing-vertical-text text-xs text-gray-500 dark:text-gray-400 transform rotate-90 whitespace-nowrap">
+                Writing Buddy
+              </div>
+            </div>
+          )}
         </div>
       )}
 
-      {(isMinimized || isCollapsed) && (
+      {isMinimized && (
         <div className="flex flex-col items-center justify-center h-full p-2">
           <MessageSquare className="w-6 h-6 text-purple-600 mb-2" />
-          {isCollapsed && !isMinimized && (
-            <div className="writing-vertical-text text-xs text-gray-500 dark:text-gray-400">
-              Writing Buddy
-            </div>
-          )}
         </div>
       )}
     </div>
