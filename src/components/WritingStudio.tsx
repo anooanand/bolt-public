@@ -197,7 +197,7 @@ export const WritingStudio: React.FC<WritingStudioProps> = ({ onNavigate }) => {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="w-full px-2 py-8">
         {/* Header */}
         <div className="mb-6">
           <div className="flex items-center justify-between mb-4">
@@ -257,14 +257,19 @@ export const WritingStudio: React.FC<WritingStudioProps> = ({ onNavigate }) => {
               {stats.paragraphCount} paragraphs
             </div>
           </div>
-        </di        <div className="grid grid-cols-1 gap-6">{/* Main Editor */          <div className="col-span-1">            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm">
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          {/* Main Editor */}
+          <div className="lg:col-span-3">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm">
               <div className="p-6">
                 <textarea
                   ref={textareaRef}
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
                   placeholder="Start writing your masterpiece..."
-                  className="w-full p-4 border border-gray-200 dark:border-gray-700 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  className="w-full h-96 p-4 border border-gray-200 dark:border-gray-700 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   style={{ minHeight: '800px' }}
                 />
               </div>
@@ -320,10 +325,42 @@ export const WritingStudio: React.FC<WritingStudioProps> = ({ onNavigate }) => {
 
           {/* Sidebar */}
           <div className="space-y-6">
-
+            {/* Writing Stats */}
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                Writing Stats
+              </h3>
+              <div className="space-y-3">
+                <div className="flex justify-between">
+                  <span className="text-gray-600 dark:text-gray-400">Words</span>
+                  <span className="font-medium text-gray-900 dark:text-white">
+                    {stats.wordCount}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600 dark:text-gray-400">Characters</span>
+                  <span className="font-medium text-gray-900 dark:text-white">
+                    {stats.characterCount}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600 dark:text-gray-400">Paragraphs</span>
+                  <span className="font-medium text-gray-900 dark:text-white">
+                    {stats.paragraphCount}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600 dark:text-gray-400">Reading Time</span>
+                  <span className="font-medium text-gray-900 dark:text-white">
+                    {stats.readingTime} min
+                  </span>
+                </div>
+              </div>
+            </div>
 
             {/* AI Analysis Results */}
-
+            {showAnalysis && (
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
                   AI Analysis
                 </h3>
@@ -388,7 +425,23 @@ export const WritingStudio: React.FC<WritingStudioProps> = ({ onNavigate }) => {
               </div>
             )}
 
-
+            {/* Upgrade Prompt for Free Users */}
+            {!isPaidUser && (
+              <div className="bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-900 dark:to-purple-900 rounded-lg p-6 border border-blue-200 dark:border-blue-700">
+                <h3 className="font-semibold text-blue-900 dark:text-blue-100 mb-2">
+                  Unlock Pro Features
+                </h3>
+                <p className="text-sm text-blue-700 dark:text-blue-300 mb-4">
+                  Get unlimited AI analysis, advanced writing tools, and more!
+                </p>
+                <button
+                  onClick={() => onNavigate('pricing')}
+                  className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Upgrade Now
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
