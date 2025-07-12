@@ -172,22 +172,22 @@ export function EnhancedWritingLayout({
   };
 
   return (
-    <div className="enhanced-writing-layout bg-gray-50 overflow-hidden min-h-0">
-      {/* Writing Prompt at Top */}
-      <div className="bg-gradient-to-r from-blue-50 to-purple-50 border-b border-blue-200 p-4 shadow-sm flex-shrink-0">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex items-center space-x-2 mb-2">
-            <Sparkles className="w-5 h-5 text-blue-600" />
-            <h3 className="font-semibold text-blue-800">Your Writing Prompt</h3>
+    <div className="enhanced-writing-layout bg-gray-50 overflow-hidden min-h-0 h-full flex flex-col">
+      {/* Writing Prompt at Top - Reduced padding */}
+      <div className="bg-gradient-to-r from-blue-50 to-purple-50 border-b border-blue-200 p-2 shadow-sm flex-shrink-0">
+        <div className="max-w-none mx-2">
+          <div className="flex items-center space-x-2 mb-1">
+            <Sparkles className="w-4 h-4 text-blue-600" />
+            <h3 className="font-semibold text-blue-800 text-sm">Your Writing Prompt</h3>
           </div>
-          <p className="text-gray-700 leading-relaxed text-lg">{getWritingPrompt()}</p>
+          <p className="text-gray-700 leading-relaxed text-sm">{getWritingPrompt()}</p>
         </div>
       </div>
 
-      {/* Compact Toolbar */}
-      <div className="bg-white border-b border-gray-200 p-3 shadow-sm flex-shrink-0">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center space-x-4">
+      {/* Compact Toolbar - Reduced padding */}
+      <div className="bg-white border-b border-gray-200 p-2 shadow-sm flex-shrink-0">
+        <div className="max-w-none mx-2 flex items-center justify-between">
+          <div className="flex items-center space-x-3">
             {/* Planning Toggle */}
             <div className="flex items-center space-x-2">
               <label className="flex items-center cursor-pointer">
@@ -197,100 +197,100 @@ export function EnhancedWritingLayout({
                   onChange={togglePlanning}
                   className="sr-only"
                 />
-                <div className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+                <div className={`relative inline-flex h-4 w-8 items-center rounded-full transition-colors ${
                   showPlanning ? 'bg-blue-600' : 'bg-gray-300'
                 }`}>
                   <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
-                    showPlanning ? 'translate-x-5' : 'translate-x-1'
+                    showPlanning ? 'translate-x-4' : 'translate-x-0.5'
                   }`} />
                 </div>
-                <span className="ml-2 text-sm font-medium text-gray-700">Planning</span>
+                <span className="ml-2 text-xs font-medium text-gray-700">Planning</span>
               </label>
             </div>
 
             {/* Word Count */}
-            <div className="flex items-center space-x-2 text-sm text-gray-600">
-              <Type className="w-4 h-4" />
+            <div className="flex items-center space-x-1 text-xs text-gray-600">
+              <Type className="w-3 h-3" />
               <span className="font-medium">{wordCount} words</span>
             </div>
 
             {/* Writing Stats */}
-            <div className="flex items-center space-x-3 text-sm">
-              <div className="bg-green-100 px-2 py-1 rounded-full">
+            <div className="flex items-center space-x-2 text-xs">
+              <div className="bg-green-100 px-2 py-0.5 rounded-full">
                 <span className="font-medium">{Math.round(timeSpent / 60)} min</span>
               </div>
-              <div className="bg-purple-100 px-2 py-1 rounded-full">
+              <div className="bg-purple-100 px-2 py-0.5 rounded-full">
                 <span className="font-medium">{writingStreak} day streak</span>
               </div>
             </div>
           </div>
           
-          <div className="flex items-center space-x-2">
-            {/* Action Buttons - Moved here */}
+          <div className="flex items-center space-x-1">
+            {/* Action Buttons - Smaller */}
             <button
               onClick={handleNewStory}
-              className="flex items-center space-x-1 px-3 py-1.5 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-sm"
+              className="flex items-center space-x-1 px-2 py-1 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-xs"
             >
-              <Plus className="w-4 h-4" />
+              <Plus className="w-3 h-3" />
               <span>New</span>
             </button>
             
             <button
               onClick={handleSave}
-              className="flex items-center space-x-1 px-3 py-1.5 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors text-sm"
+              className="flex items-center space-x-1 px-2 py-1 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors text-xs"
             >
-              <Save className="w-4 h-4" />
+              <Save className="w-3 h-3" />
               <span>Save</span>
             </button>
             
             <button
               onClick={handleExport}
-              className="flex items-center space-x-1 px-3 py-1.5 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm"
+              className="flex items-center space-x-1 px-2 py-1 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-xs"
             >
-              <Download className="w-4 h-4" />
+              <Download className="w-3 h-3" />
               <span>Export</span>
             </button>
             
             <button
               onClick={handleHelp}
-              className="flex items-center space-x-1 px-3 py-1.5 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors text-sm"
+              className="flex items-center space-x-1 px-2 py-1 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors text-xs"
             >
-              <HelpCircle className="w-4 h-4" />
+              <HelpCircle className="w-3 h-3" />
               <span>Help</span>
             </button>
 
             {/* Chat Panel Toggle */}
             <button
               onClick={toggleChatPanel}
-              className="flex items-center space-x-1 px-3 py-1.5 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors text-sm"
+              className="flex items-center space-x-1 px-2 py-1 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors text-xs"
             >
-              {showChatPanel ? <PanelRightClose className="w-4 h-4" /> : <PanelRightOpen className="w-4 h-4" />}
+              {showChatPanel ? <PanelRightClose className="w-3 h-3" /> : <PanelRightOpen className="w-3 h-3" />}
               <span>{showChatPanel ? 'Hide' : 'Show'} Assistant</span>
             </button>
           </div>
         </div>
       </div>
 
-      {/* Planning Section (Collapsible) */}
+      {/* Planning Section (Collapsible) - Reduced padding */}
       {showPlanning && (
-        <div className="bg-white border-b border-gray-200 p-4 shadow-sm flex-shrink-0">
-          <div className="max-w-7xl mx-auto">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="bg-white border-b border-gray-200 p-2 shadow-sm flex-shrink-0">
+          <div className="max-w-none mx-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {writingSteps.map((step) => (
-                <div key={step.id} className="space-y-2">
+                <div key={step.id} className="space-y-1">
                   <div className="flex items-center space-x-2">
                     {completedSteps.includes(step.id) ? (
-                      <CheckCircle className="w-4 h-4 text-green-600" />
+                      <CheckCircle className="w-3 h-3 text-green-600" />
                     ) : (
-                      <step.icon className="w-4 h-4 text-gray-400" />
+                      <step.icon className="w-3 h-3 text-gray-400" />
                     )}
-                    <label className="font-medium text-gray-700 text-sm">{step.title}</label>
+                    <label className="font-medium text-gray-700 text-xs">{step.title}</label>
                   </div>
                   <textarea
                     value={templateData[step.field]}
                     onChange={(e) => handleTemplateChange(step.field, e.target.value)}
                     placeholder={step.description}
-                    className="w-full h-16 p-2 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                    className="w-full h-12 p-2 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-xs"
                   />
                 </div>
               ))}
@@ -299,29 +299,27 @@ export function EnhancedWritingLayout({
         </div>
       )}
 
-      {/* Main Writing Area with Optional Chat Panel - FULL HEIGHT */}
-      <div className="writing-main-content overflow-hidden min-h-0">
-        {/* Writing Area - Uses specific templates */}
+      {/* Main Writing Area with Optional Chat Panel - FULL HEIGHT, NO PADDING */}
+      <div className="writing-main-content flex-1 overflow-hidden min-h-0 flex">
+        {/* Writing Area - Uses specific templates, NO PADDING */}
         <div className={`writing-textarea-wrapper ${showChatPanel ? 'flex-1' : 'w-full'} min-h-0`}>
-          <div className="flex-1 p-4 overflow-hidden">
-            <div className="h-full max-w-7xl mx-auto">
-              <WritingArea
-                content={content}
-                onChange={onChange}
-                textType={textType}
-                onTimerStart={onTimerStart}
-                onSubmit={onSubmit}
-                onTextTypeChange={onTextTypeChange}
-                onPopupCompleted={onPopupCompleted}
-              />
-            </div>
+          <div className="h-full">
+            <WritingArea
+              content={content}
+              onChange={onChange}
+              textType={textType}
+              onTimerStart={onTimerStart}
+              onSubmit={onSubmit}
+              onTextTypeChange={onTextTypeChange}
+              onPopupCompleted={onPopupCompleted}
+            />
           </div>
         </div>
 
         {/* Right Sidebar - Chat Panel (Optional) - FULL HEIGHT */}
         {showChatPanel && (
-          <div className="w-96 flex-shrink-0 bg-white border-l border-gray-200 flex flex-col min-h-0">
-            <div className="flex-1 p-4 overflow-hidden">
+          <div className="w-80 flex-shrink-0 bg-white border-l border-gray-200 flex flex-col min-h-0">
+            <div className="flex-1 p-2 overflow-hidden">
               <div className="h-full">
                 <TabbedCoachPanel
                   content={content}
@@ -337,15 +335,15 @@ export function EnhancedWritingLayout({
         )}
       </div>
 
-      {/* Writing Tips (Bottom) */}
+      {/* Writing Tips (Bottom) - Reduced padding */}
       {wordCount < 50 && (
-        <div className="bg-blue-50 border-t border-blue-200 p-3 flex-shrink-0">
-          <div className="max-w-7xl mx-auto">
+        <div className="bg-blue-50 border-t border-blue-200 p-2 flex-shrink-0">
+          <div className="max-w-none mx-2">
             <div className="flex items-center space-x-2 text-blue-700">
-              <Lightbulb className="w-4 h-4" />
-              <span className="font-medium text-sm">Writing Tip:</span>
+              <Lightbulb className="w-3 h-3" />
+              <span className="font-medium text-xs">Writing Tip:</span>
             </div>
-            <p className="text-blue-600 text-sm mt-1">
+            <p className="text-blue-600 text-xs mt-1">
               Start with a strong opening that grabs your reader's attention. Don't worry about making it perfect - you can always revise it later!
             </p>
           </div>
