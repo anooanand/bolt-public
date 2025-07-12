@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { WritingArea } from './WritingArea';
 import { TabbedCoachPanel } from './TabbedCoachPanel';
 import { Lightbulb, Type, Save, Settings, Sparkles, Users, Target, Star, CheckCircle, PanelRightClose, PanelRightOpen, Plus, Download, HelpCircle } from 'lucide-react';
+import './layout-fix.css';
 
 interface EnhancedWritingLayoutProps {
   content: string;
@@ -171,7 +172,7 @@ export function EnhancedWritingLayout({
   };
 
   return (
-    <div className="flex-1 flex flex-col bg-gray-50 overflow-hidden min-h-0">
+    <div className="enhanced-writing-layout bg-gray-50 overflow-hidden min-h-0">
       {/* Writing Prompt at Top */}
       <div className="bg-gradient-to-r from-blue-50 to-purple-50 border-b border-blue-200 p-4 shadow-sm flex-shrink-0">
         <div className="max-w-7xl mx-auto">
@@ -299,9 +300,9 @@ export function EnhancedWritingLayout({
       )}
 
       {/* Main Writing Area with Optional Chat Panel - FULL HEIGHT */}
-      <div className="flex-1 flex overflow-hidden min-h-0">
+      <div className="writing-main-content overflow-hidden min-h-0">
         {/* Writing Area - Uses specific templates */}
-        <div className={`${showChatPanel ? 'flex-1' : 'w-full'} flex flex-col min-h-0`}>
+        <div className={`writing-textarea-wrapper ${showChatPanel ? 'flex-1' : 'w-full'} min-h-0`}>
           <div className="flex-1 p-4 overflow-hidden">
             <div className="h-full max-w-7xl mx-auto">
               <WritingArea
