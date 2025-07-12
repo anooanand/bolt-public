@@ -297,22 +297,6 @@ function AppContent() {
                   hideTextTypeSelector={popupFlowCompleted}
                 />
                 
-                <WritingToolbar 
-                  content={content}
-                  textType={textType}
-                  onShowHelpCenter={() => setShowHelpCenter(true)}
-                  onShowPlanningTool={() => setShowPlanningTool(true)}
-                  onTimerStart={() => setTimerStarted(true)}
-                  onStartNewEssay={() => {
-                    setContent('');
-                    setTextType('');
-                    setPopupFlowCompleted(false);
-                    // Clear localStorage to ensure fresh start
-                    localStorage.removeItem('writingContent');
-                    localStorage.removeItem('selectedWritingType');
-                  }}
-                />
-                
                 {showExamMode ? (
                   <ExamSimulationMode 
                     onExit={() => setShowExamMode(false)}
