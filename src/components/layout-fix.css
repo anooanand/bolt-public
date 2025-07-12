@@ -1,0 +1,166 @@
+/* Layout Fix for Footer Overlap Issue */
+
+/* Ensure the main app container has proper flex layout */
+.min-h-screen {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Fix for AppContent layout */
+.app-content-wrapper {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* Main content area should grow to fill available space */
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Writing page specific fixes */
+.writing-page-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* Enhanced Writing Layout fixes */
+.enhanced-writing-layout {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Writing area container should use remaining space */
+.writing-area-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0; /* Important for flex children */
+  overflow: hidden;
+}
+
+/* Main writing content area */
+.writing-main-content {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* Writing textarea should fill available space */
+.writing-textarea-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.writing-textarea {
+  flex: 1;
+  min-height: 0;
+  resize: none;
+}
+
+/* Footer should not overlap content */
+footer {
+  flex-shrink: 0;
+  margin-top: auto;
+}
+
+/* Ensure proper spacing for footer */
+.content-with-footer {
+  padding-bottom: 0; /* Remove any bottom padding that might cause issues */
+  margin-bottom: 0;
+}
+
+/* Fix for routes that include footer */
+.route-with-footer {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.route-with-footer .main-route-content {
+  flex: 1;
+}
+
+/* Specific fix for writing route */
+.writing-route {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Ensure the writing layout takes full height minus header */
+.writing-layout-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* Fix for any absolute positioned elements */
+.writing-area-relative {
+  position: relative;
+  height: 100%;
+}
+
+/* Responsive fixes */
+@media (max-width: 768px) {
+  .writing-page-container {
+    height: 100vh;
+    height: 100dvh; /* Use dynamic viewport height on mobile */
+  }
+  
+  .enhanced-writing-layout {
+    height: 100%;
+  }
+}
+
+/* Utility classes for layout debugging */
+.debug-border {
+  border: 2px solid red !important;
+}
+
+.debug-height {
+  background-color: rgba(255, 0, 0, 0.1) !important;
+}
+
+/* Ensure proper stacking context */
+.writing-container {
+  position: relative;
+  z-index: 1;
+}
+
+footer {
+  position: relative;
+  z-index: 10;
+}
+
+/* Fix for any margin collapse issues */
+.writing-page-container > * {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+/* Ensure proper box-sizing */
+* {
+  box-sizing: border-box;
+}
+
+/* Fix for overflow issues */
+.overflow-fix {
+  overflow: hidden;
+}
+
+.overflow-auto-fix {
+  overflow: auto;
+}
