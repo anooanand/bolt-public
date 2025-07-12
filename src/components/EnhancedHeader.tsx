@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { PenTool, BookOpen, Clock, Settings, HelpCircle, Lightbulb, Award, Sparkles, Rocket } from 'lucide-react';
 
 interface EnhancedHeaderProps {
@@ -27,6 +27,24 @@ export function EnhancedHeader({
     localStorage.setItem('selectedWritingType', newTextType);
   };
 
+  // Get display name for text type
+  const getTextTypeDisplayName = (type: string) => {
+    const displayNames = {
+      'narrative': '🚀 Adventure Story',
+      'persuasive': '🔊 Convince Others',
+      'expository': '📚 Explain & Teach',
+      'reflective': '✨ My Thoughts & Feelings',
+      'descriptive': '🎨 Describe with Details',
+      'recount': '📆 Tell What Happened',
+      'discursive': '🤔 Explore Different Ideas',
+      'news report': '📰 News Reporter',
+      'letter': '✉️ Write a Letter',
+      'diary entry': '📔 Dear Diary',
+      'speech': '🎤 Give a Speech'
+    };
+    return displayNames[type as keyof typeof displayNames] || type;
+  };
+
   return (
     <div className="mb-4 px-4 py-3 bg-gradient-to-r from-blue-100 to-purple-100 dark:from-blue-900/30 dark:to-purple-900/30 border-b-4 border-blue-300 dark:border-blue-700 rounded-t-xl shadow-md">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0 relative">
@@ -43,7 +61,16 @@ export function EnhancedHeader({
         </div>
 
         <div className="flex space-x-4">
-          {!hideTextTypeSelector && (
+          {/* Show selected text type instead of dropdown when hideTextTypeSelector is true */}
+          {hideTextTypeSelector ? (
+            textType && (
+              <div className="flex items-center space-x-2 px-4 py-2 bg-blue-100 dark:bg-blue-900/30 rounded-xl border-2 border-blue-300">
+                <span className="text-blue-800 dark:text-blue-200 font-medium">
+                  {getTextTypeDisplayName(textType)}
+                </span>
+              </div>
+            )
+          ) : (
             <select
               value={textType}
               onChange={handleTextTypeChange}
