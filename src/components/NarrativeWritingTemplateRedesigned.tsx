@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BookOpen, ChevronDown, ChevronUp, Lightbulb, Target, Users, MapPin, Star, CheckCircle, ChevronRight, Settings, BarChart3, Brain, MessageSquare } from 'lucide-react';
+import { BookOpen, ChevronDown, ChevronUp, Lightbulb, Target, Users, MapPin, Star, CheckCircle, ChevronRight, Settings, BarChart3, Brain, MessageSquare, Sparkles, Clock } from 'lucide-react';
 
 interface NarrativeWritingTemplateRedesignedProps {
   content: string;
@@ -232,29 +232,43 @@ export function NarrativeWritingTemplateRedesigned({ content, onChange, onTimerS
           </div>
         </div>
 
-        {/* NSW Writing Coach */}
-        <div className="mb-6">
-          <div className="flex items-center space-x-2 mb-3">
-            <MessageSquare className="h-5 w-5 text-purple-600" />
-            <h3 className="font-medium">NSW Writing Coach</h3>
+        {/* Writing Buddy Section */}
+        <div className="mb-6 p-4 bg-purple-50 rounded-lg border border-purple-200">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-medium text-purple-800">Writing Buddy</h3>
+            <div className="flex space-x-1">
+              <button className="text-purple-600 hover:text-purple-800">&gt;</button>
+              <button className="text-purple-600 hover:text-purple-800">X</button>
+            </div>
           </div>
-          
-          <div className="space-y-3">
-            <div className="text-sm text-gray-600">Quick Questions</div>
-            <select className="w-full p-2 border border-gray-200 rounded-lg text-sm">
-              <option>Choose a question...</option>
-              <option>How to develop characters?</option>
-              <option>What makes a good setting?</option>
-              <option>How to create conflict?</option>
-            </select>
-            
-            <div className="text-sm text-gray-600">Or ask your own question</div>
-            <textarea 
-              placeholder="Type your question here..."
-              className="w-full h-20 p-2 border border-gray-200 rounded-lg text-sm resize-none"
-            />
+          <div className="flex space-x-2 mb-4">
+            <button className="flex-1 flex items-center justify-center space-x-1 px-3 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium">
+              <Sparkles className="h-4 w-4" />
+              <span>Writing Buddy</span>
+            </button>
+            <button className="flex-1 flex items-center justify-center space-x-1 px-3 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium">
+              <Clock className="h-4 w-4" />
+              <span>Word Magic</span>
+            </button>
           </div>
+          <div className="text-sm text-gray-700 mb-3">
+            Write 38 more words to get help (12/50)
+          </div>
+          <select className="w-full p-2 border border-gray-200 rounded-lg text-sm mb-4">
+            <option>Lots of Help</option>
+            <option>Some Help</option>
+            <option>No Help</option>
+          </select>
+          <div className="text-sm text-gray-700 mb-2">
+            Questions to Ask Your Writing Buddy
+          </div>
+          <select className="w-full p-2 border border-gray-200 rounded-lg text-sm">
+            <option>Choose a question...</option>
+            <option>How to improve my vocabulary?</option>
+            <option>How to structure my essay?</option>
+          </select>
         </div>
+
       </div>
     </div>
   );
