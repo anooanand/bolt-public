@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BookOpen, ChevronDown, ChevronUp, HelpCircle, Lightbulb, Target, Users, MapPin, Zap, Sparkles, Clock, Star, CheckCircle, ChevronRight } from 'lucide-react';
+import { BookOpen, ChevronDown, ChevronUp, Lightbulb, Target, Users, MapPin, Star, CheckCircle, ChevronRight, Settings, BarChart3, Brain, MessageSquare } from 'lucide-react';
 
 interface NarrativeWritingTemplateRedesignedProps {
   content: string;
@@ -16,13 +16,6 @@ interface TemplateData {
   theme: string;
 }
 
-interface WritingAssistantState {
-  selectedQuestion: string;
-  customQuestion: string;
-  suggestions: string[];
-  isLoading: boolean;
-}
-
 export function NarrativeWritingTemplateRedesigned({ content, onChange, onTimerStart, onSubmit }: NarrativeWritingTemplateRedesignedProps) {
   const [templateData, setTemplateData] = useState<TemplateData>({
     planning: '',
@@ -32,7 +25,8 @@ export function NarrativeWritingTemplateRedesigned({ content, onChange, onTimerS
     theme: ''
   });
   
-  const [showWritingArea, setShowWritingArea] = useState(false);
+  const [currentStep, setCurrentStep] = useState(1);
+  const [completedSteps, setCompletedSteps] = useState<number[]>([]);
   const [expandedSections, setExpandedSections] = useState({
     planning: true,
     setting: false,
@@ -40,56 +34,13 @@ export function NarrativeWritingTemplateRedesigned({ content, onChange, onTimerS
     plot: false,
     theme: false
   });
-  
-  const [writingAssistant, setWritingAssistant] = useState<WritingAssistantState>({
-    selectedQuestion: '',
-    customQuestion: '',
-    suggestions: [],
-    isLoading: false
-  });
-
-  const [currentStep, setCurrentStep] = useState(1);
-  const [completedSteps, setCompletedSteps] = useState<number[]>([]);
-
-  const predefinedQuestions = [
-    "What makes my main character unique and relatable?",
-    "How can I create a vivid and engaging setting?",
-    "What conflict will drive my story forward?",
-    "How should I start my narrative to hook readers?",
-    "What emotions do I want readers to feel?",
-    "How can I show character development throughout the story?",
-    "What sensory details will bring my story to life?",
-    "How can I create effective dialogue?",
-    "What theme or message do I want to convey?",
-    "How should I structure my plot for maximum impact?"
-  ];
 
   const writingSteps = [
-    { id: 1, title: "Setting", icon: MapPin, color: "emerald", description: "Where and when your story unfolds" },
-    { id: 2, title: "Characters", icon: Users, color: "amber", description: "The people who bring your story to life" },
-    { id: 3, title: "Plot", icon: Target, color: "blue", description: "The sequence of events in your story" },
-    { id: 4, title: "Theme", icon: Star, color: "purple", description: "The deeper meaning or message" }
+    { id: 1, title: "Setting", icon: Settings, description: "Where and when your story unfolds" },
+    { id: 2, title: "Characters", icon: Users, description: "The people who bring your story to life" },
+    { id: 3, title: "Plot", icon: Target, description: "The sequence of events in your story" },
+    { id: 4, title: "Theme", icon: Star, description: "The deeper meaning or message" }
   ];
-
-  // Load saved template data from localStorage
-  useEffect(() => {
-    const savedData = localStorage.getItem('narrativeTemplateDataRedesigned');
-    if (savedData) {
-      try {
-        const parsed = JSON.parse(savedData);
-        setTemplateData(parsed);
-        updateCompletedSteps(parsed);
-      } catch (error) {
-        console.error('Error loading saved template data:', error);
-      }
-    }
-  }, []);
-
-  // Save template data to localStorage whenever it changes
-  useEffect(() => {
-    localStorage.setItem('narrativeTemplateDataRedesigned', JSON.stringify(templateData));
-    updateCompletedSteps(templateData);
-  }, [templateData]);
 
   const updateCompletedSteps = (data: TemplateData) => {
     const completed: number[] = [];
@@ -114,199 +65,197 @@ export function NarrativeWritingTemplateRedesigned({ content, onChange, onTimerS
     }));
   };
 
-  const generateStoryFromTemplate = () => {
-    const { setting, characters, plot, theme } = templateData;
-    
-    let generatedStory = '# My Narrative Story\n\n';
-    
-    if (setting.trim()) {
-      generatedStory += `**Setting:** ${setting}\n\n`;
-    }
-    
-    if (characters.trim()) {
-      generatedStory += `**Characters:** ${characters}\n\n`;
-    }
-    
-    if (plot.trim()) {
-      generatedStory += `**Plot Outline:** ${plot}\n\n`;
-    }
-    
-    if (theme.trim()) {
-      generatedStory += `**Theme:** ${theme}\n\n`;
-    }
-    
-    generatedStory += '---\n\n**Start writing your narrative below:**\n\n';
-    
-    onChange(generatedStory);
-    setShowWritingArea(true);
-    onTimerStart(true);
-  };
-
-  const toggleWritingArea = () => {
-    setShowWritingArea(!showWritingArea);
-    if (!showWritingArea) {
-      onTimerStart(true);
-    }
-  };
-
   const getProgressPercentage = () => {
     return Math.round((completedSteps.length / writingSteps.length) * 100);
   };
 
+  const getStepProgress = (stepId: number) => {
+    const progressValues = { 1: 100, 2: 75, 3: 50, 4: 25 };
+    return progressValues[stepId as keyof typeof progressValues] || 0;
+  };
+
   return (
-    <div className="narrative-template-container p-4 space-y-4">
-      {/* Writing Prompt Section - Added at the top */}
-      <div className="writing-prompt-section bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 p-4 rounded-lg border border-indigo-200 dark:border-indigo-800">
-        <div className="flex items-center space-x-2 mb-3">
-          <Sparkles className="h-5 w-5 text-indigo-600" />
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Writing Prompt</h3>
-        </div>
-        <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-lg p-3 border border-indigo-200 dark:border-indigo-700">
-          <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
-            Write a narrative story that takes your readers on an emotional journey. Consider the setting, characters, and plot that will bring your story to life. Use vivid descriptions and engaging dialogue to create a compelling narrative.
-          </p>
-        </div>
-      </div>
-
-      {/* Compact Header */}
-      <div className="template-header bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 p-3 rounded-lg border border-purple-200 dark:border-purple-800">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <BookOpen className="h-5 w-5 text-purple-600" />
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Narrative Writing Studio</h2>
-          </div>
-          <div className="text-right">
-            <div className="text-xs text-gray-500">Template Progress</div>
-            <div className="text-sm font-semibold text-purple-600">{getProgressPercentage()}%</div>
-          </div>
-        </div>
-        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-          Create compelling stories with guided planning and NSW-aligned structure
-        </p>
-      </div>
-
-      {/* Compact Step Navigation */}
-      <div className="step-navigation flex items-center space-x-2 bg-gray-50 dark:bg-gray-800 rounded-lg p-2">
-        {writingSteps.map((step, index) => (
-          <React.Fragment key={step.id}>
-            <button
-              onClick={() => setCurrentStep(step.id)}
-              className={`step-item flex items-center space-x-1 px-2 py-1 rounded text-xs font-medium transition-all ${
-                currentStep === step.id
-                  ? 'bg-purple-600 text-white'
-                  : completedSteps.includes(step.id)
-                  ? 'bg-green-500 text-white'
-                  : 'bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-300'
-              }`}
-            >
-              {completedSteps.includes(step.id) ? (
-                <CheckCircle className="h-3 w-3" />
-              ) : (
-                <step.icon className="h-3 w-3" />
-              )}
-              <span className="hidden sm:inline">{step.title}</span>
-              <span className="sm:hidden">{step.id}</span>
-            </button>
-            {index < writingSteps.length - 1 && (
-              <ChevronRight className="h-3 w-3 text-gray-400" />
-            )}
-          </React.Fragment>
-        ))}
-      </div>
-
-      {/* Action Buttons */}
-      <div className="flex space-x-2">
-        <button
-          onClick={toggleWritingArea}
-          className="flex-1 flex items-center justify-center space-x-1 px-3 py-2 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-lg text-sm font-medium hover:bg-purple-200 dark:hover:bg-purple-900/50 transition-colors"
-        >
-          <Clock className="h-4 w-4" />
-          <span>Start Writing Your Story</span>
-        </button>
-        <button
-          onClick={generateStoryFromTemplate}
-          className="flex-1 flex items-center justify-center space-x-1 px-3 py-2 bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 rounded-lg text-sm font-medium hover:bg-orange-200 dark:hover:bg-orange-900/50 transition-colors"
-        >
-          <Lightbulb className="h-4 w-4" />
-          <span>Skip Template & Write Freely</span>
-        </button>
-      </div>
-
-      {/* Collapsible Planning Section */}
-      <div className="collapsible-section">
-        <div 
-          className="collapsible-header cursor-pointer"
-          onClick={() => toggleSection('planning')}
-        >
-          <div className="flex items-center space-x-2">
-            <Lightbulb className="h-4 w-4 text-blue-600" />
-            <h3 className="text-sm font-medium">Initial Brainstorming</h3>
-          </div>
-          {expandedSections.planning ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-        </div>
-        {expandedSections.planning && (
-          <div className="collapsible-content">
-            <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">
-              Capture your creative spark and initial ideas
-            </p>
-            <textarea
-              value={templateData.planning}
-              onChange={(e) => handleTemplateChange('planning', e.target.value)}
-              placeholder="What's your story idea? Jot down any inspiration, themes, or concepts that come to mind..."
-              className="w-full h-20 p-2 text-sm border border-gray-200 dark:border-gray-600 rounded-md resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-            />
-            <div className="mt-2 text-xs text-blue-600 dark:text-blue-400">
-              💡 Don't worry about structure yet - just let your creativity flow!
+    <div className="flex h-screen bg-gray-50">
+      {/* Main Content Area */}
+      <div className="flex-1 p-6 overflow-y-auto">
+        {/* Header */}
+        <div className="bg-white rounded-lg p-6 mb-6 shadow-sm border">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center space-x-3">
+              <BookOpen className="h-6 w-6 text-purple-600" />
+              <h1 className="text-xl font-semibold text-gray-900">Narrative Writing Studio</h1>
+            </div>
+            <div className="text-right">
+              <div className="text-sm text-gray-500">Template Progress</div>
+              <div className="text-2xl font-bold text-gray-900">{getProgressPercentage()}%</div>
             </div>
           </div>
-        )}
-      </div>
+          <p className="text-gray-600 mb-4">
+            Create compelling stories with guided planning and NSW-aligned structure
+          </p>
 
-      {/* Current Step Content */}
-      {writingSteps.map((step) => (
-        currentStep === step.id && (
-          <div key={step.id} className="collapsible-section border-2 border-green-200 dark:border-green-800">
-            <div className="collapsible-header bg-green-50 dark:bg-green-900/20">
-              <div className="flex items-center space-x-2">
-                <step.icon className="h-4 w-4 text-green-600" />
-                <h3 className="text-sm font-medium">Step {step.id}: {step.title}</h3>
+          {/* Step Navigation */}
+          <div className="flex items-center space-x-2 mb-6">
+            {writingSteps.map((step, index) => (
+              <React.Fragment key={step.id}>
+                <button
+                  onClick={() => setCurrentStep(step.id)}
+                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                    currentStep === step.id
+                      ? 'bg-gray-900 text-white'
+                      : completedSteps.includes(step.id)
+                      ? 'bg-green-100 text-green-700'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  {completedSteps.includes(step.id) ? (
+                    <CheckCircle className="h-4 w-4" />
+                  ) : (
+                    <step.icon className="h-4 w-4" />
+                  )}
+                  <span>{step.title}</span>
+                </button>
+                {index < writingSteps.length - 1 && (
+                  <ChevronRight className="h-4 w-4 text-gray-400" />
+                )}
+              </React.Fragment>
+            ))}
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex space-x-3">
+            <button
+              onClick={() => onTimerStart(true)}
+              className="flex items-center space-x-2 px-4 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors"
+            >
+              <span>Start Writing Your Story</span>
+            </button>
+            <button
+              onClick={() => onChange('')}
+              className="flex items-center space-x-2 px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
+            >
+              <Lightbulb className="h-4 w-4" />
+              <span>Skip Template & Write Freely</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Brainstorming Section */}
+        <div className="bg-white rounded-lg p-6 mb-6 shadow-sm border">
+          <div 
+            className="flex items-center justify-between cursor-pointer"
+            onClick={() => toggleSection('planning')}
+          >
+            <div className="flex items-center space-x-2">
+              <Lightbulb className="h-5 w-5 text-blue-600" />
+              <h3 className="text-lg font-medium">Initial Brainstorming</h3>
+            </div>
+            {expandedSections.planning ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+          </div>
+          {expandedSections.planning && (
+            <div className="mt-4">
+              <p className="text-gray-600 mb-3">
+                Capture your creative spark and initial ideas
+              </p>
+              <textarea
+                value={templateData.planning}
+                onChange={(e) => handleTemplateChange('planning', e.target.value)}
+                placeholder="What's your story idea? Jot down any inspiration, themes, or concepts that come to mind..."
+                className="w-full h-24 p-3 border border-gray-200 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+              <div className="mt-3 text-sm text-blue-600">
+                💡 Don't worry about structure yet - just let your creativity flow!
               </div>
             </div>
-            <div className="collapsible-content">
-              <p className="text-xs text-gray-600 dark:text-gray-400 mb-2">
-                {step.description}
-              </p>
+          )}
+        </div>
+
+        {/* Current Step Content */}
+        {writingSteps.map((step) => (
+          currentStep === step.id && (
+            <div key={step.id} className="bg-white rounded-lg p-6 shadow-sm border border-green-200">
+              <div className="flex items-center space-x-2 mb-4">
+                <step.icon className="h-5 w-5 text-green-600" />
+                <h3 className="text-lg font-medium">Step {step.id}: {step.title}</h3>
+              </div>
+              <p className="text-gray-600 mb-4">{step.description}</p>
               <textarea
                 value={templateData[step.title.toLowerCase() as keyof TemplateData]}
                 onChange={(e) => handleTemplateChange(step.title.toLowerCase() as keyof TemplateData, e.target.value)}
-                placeholder={`Describe the ${step.title.toLowerCase()} of your story...`}
-                className="w-full h-24 p-2 text-sm border border-gray-200 dark:border-gray-600 rounded-md resize-none focus:ring-2 focus:ring-green-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+                placeholder={`Describe where and when your story takes place. Include details about the location, time period, weather, atmosphere, and any important background information...`}
+                className="w-full h-32 p-3 border border-gray-200 rounded-lg resize-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
               />
             </div>
-          </div>
-        )
-      ))}
+          )
+        ))}
+      </div>
 
-      {/* Writing Area */}
-      {showWritingArea && (
-        <div className="writing-area bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-3">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-medium">Your Story</h3>
-            <button
-              onClick={() => setShowWritingArea(false)}
-              className="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-            >
-              Minimize
-            </button>
+      {/* Right Sidebar */}
+      <div className="w-80 bg-white border-l border-gray-200 p-6 overflow-y-auto">
+        {/* AI Writing Coach */}
+        <div className="mb-6">
+          <div className="flex items-center space-x-2 mb-3">
+            <Brain className="h-5 w-5 text-purple-600" />
+            <h3 className="font-medium">AI Writing Coach</h3>
           </div>
-          <textarea
-            value={content}
-            onChange={(e) => onChange(e.target.value)}
-            placeholder="Start writing your narrative story here..."
-            className="w-full h-40 p-2 text-sm border border-gray-200 dark:border-gray-600 rounded-md resize-none focus:ring-2 focus:ring-purple-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-          />
+          <p className="text-sm text-gray-600">NSW-aligned guidance and support</p>
         </div>
-      )}
+
+        {/* Writing Progress */}
+        <div className="mb-6">
+          <div className="flex items-center space-x-2 mb-3">
+            <BarChart3 className="h-5 w-5 text-green-600" />
+            <h3 className="font-medium">Writing Progress</h3>
+          </div>
+          
+          <div className="space-y-3">
+            <div className="text-sm text-gray-600">Template Completion: {getProgressPercentage()}%</div>
+            
+            {writingSteps.map((step) => (
+              <div key={step.id} className="space-y-1">
+                <div className="flex justify-between text-sm">
+                  <span>{step.title}</span>
+                  <span className="font-medium">{getStepProgress(step.id)}%</span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div 
+                    className="bg-gray-900 h-2 rounded-full transition-all duration-300"
+                    style={{ width: `${getStepProgress(step.id)}%` }}
+                  ></div>
+                </div>
+              </div>
+            ))}
+            
+            <div className="mt-4 text-sm text-green-600">
+              Complete 3 more sections to unlock writing mode
+            </div>
+          </div>
+        </div>
+
+        {/* NSW Writing Coach */}
+        <div className="mb-6">
+          <div className="flex items-center space-x-2 mb-3">
+            <MessageSquare className="h-5 w-5 text-purple-600" />
+            <h3 className="font-medium">NSW Writing Coach</h3>
+          </div>
+          
+          <div className="space-y-3">
+            <div className="text-sm text-gray-600">Quick Questions</div>
+            <select className="w-full p-2 border border-gray-200 rounded-lg text-sm">
+              <option>Choose a question...</option>
+              <option>How to develop characters?</option>
+              <option>What makes a good setting?</option>
+              <option>How to create conflict?</option>
+            </select>
+            
+            <div className="text-sm text-gray-600">Or ask your own question</div>
+            <textarea 
+              placeholder="Type your question here..."
+              className="w-full h-20 p-2 border border-gray-200 rounded-lg text-sm resize-none"
+            />
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
