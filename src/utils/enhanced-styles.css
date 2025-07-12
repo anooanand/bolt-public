@@ -1,0 +1,318 @@
+/* Enhanced Writing Interface Styles */
+
+/* Smooth animations for all interactive elements */
+* {
+  transition: all 0.2s ease-in-out;
+}
+
+/* Enhanced button hover effects */
+.enhanced-button {
+  @apply transform transition-all duration-200 ease-in-out;
+}
+
+.enhanced-button:hover {
+  @apply scale-105 shadow-lg;
+}
+
+.enhanced-button:active {
+  @apply scale-95;
+}
+
+/* Gradient backgrounds for panels */
+.gradient-panel {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(217, 70, 239, 0.1) 50%, rgba(245, 158, 11, 0.1) 100%);
+}
+
+.dark .gradient-panel {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.2) 0%, rgba(217, 70, 239, 0.2) 50%, rgba(245, 158, 11, 0.2) 100%);
+}
+
+/* Enhanced progress bar animations */
+.progress-bar {
+  @apply transition-all duration-500 ease-out;
+}
+
+.progress-bar.milestone-reached {
+  @apply animate-pulse;
+  background: linear-gradient(90deg, #f59e0b, #ef4444, #f59e0b);
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* Chat message animations */
+.chat-message {
+  @apply transform transition-all duration-300 ease-out;
+  animation: slideInUp 0.3s ease-out;
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Typing indicator animation */
+.typing-indicator {
+  @apply flex space-x-1;
+}
+
+.typing-dot {
+  @apply w-2 h-2 bg-gray-400 rounded-full;
+  animation: typing 1.4s infinite ease-in-out;
+}
+
+.typing-dot:nth-child(1) { animation-delay: -0.32s; }
+.typing-dot:nth-child(2) { animation-delay: -0.16s; }
+
+@keyframes typing {
+  0%, 80%, 100% {
+    transform: scale(0);
+    opacity: 0.5;
+  }
+  40% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Enhanced toolbar styling */
+.writing-toolbar {
+  @apply bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20;
+  backdrop-filter: blur(10px);
+}
+
+.toolbar-button {
+  @apply p-2 rounded-lg bg-white dark:bg-gray-800 shadow-sm hover:shadow-md transition-all duration-200;
+}
+
+.toolbar-button:hover {
+  @apply transform scale-105;
+}
+
+/* Enhanced navigation styling */
+.nav-breadcrumb {
+  @apply flex items-center space-x-2 text-sm;
+}
+
+.nav-breadcrumb-item {
+  @apply px-2 py-1 rounded-md transition-all duration-200;
+}
+
+.nav-breadcrumb-item.active {
+  @apply bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 font-medium;
+}
+
+/* Quick jump buttons */
+.quick-jump-button {
+  @apply p-3 rounded-lg text-sm font-medium transition-all duration-200;
+}
+
+.quick-jump-button.current {
+  @apply bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg transform scale-105;
+}
+
+.quick-jump-button.completed {
+  @apply bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300;
+}
+
+.quick-jump-button.completed:hover {
+  @apply bg-green-200 dark:bg-green-900/50 transform scale-105;
+}
+
+.quick-jump-button.accessible {
+  @apply bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300;
+}
+
+.quick-jump-button.accessible:hover {
+  @apply bg-gray-200 dark:bg-gray-600 transform scale-105;
+}
+
+.quick-jump-button.disabled {
+  @apply bg-gray-50 dark:bg-gray-800 text-gray-400 cursor-not-allowed;
+}
+
+/* Progress tracker enhancements */
+.progress-circle {
+  @apply transition-all duration-1000 ease-out;
+}
+
+.milestone-indicator {
+  @apply transition-all duration-500;
+}
+
+.milestone-indicator.reached {
+  @apply transform scale-110;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1.1); }
+  50% { transform: scale(1.2); }
+}
+
+/* Celebration animation */
+.celebration-overlay {
+  @apply absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded-2xl z-10;
+  animation: fadeIn 0.5s ease-out;
+}
+
+.celebration-content {
+  @apply text-center text-white;
+  animation: bounceIn 0.8s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes bounceIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+  70% {
+    transform: scale(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Enhanced textarea styling */
+.enhanced-textarea {
+  @apply w-full border-0 resize-none focus:outline-none focus:ring-0 text-lg leading-relaxed bg-transparent;
+  font-family: 'Comic Neue', sans-serif;
+  min-height: 400px;
+}
+
+.enhanced-textarea::placeholder {
+  @apply text-gray-400 dark:text-gray-500;
+}
+
+/* Writing suggestions overlay */
+.writing-suggestion {
+  @apply absolute bg-blue-100 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-lg p-3 max-w-xs;
+  animation: slideInRight 0.5s ease-out;
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Context suggestions styling */
+.context-suggestion {
+  @apply p-2 bg-white dark:bg-gray-800 rounded-lg text-sm border border-purple-200 dark:border-purple-700 transition-all duration-200;
+}
+
+.context-suggestion:hover {
+  @apply bg-purple-50 dark:bg-purple-900/20 transform scale-105 cursor-pointer;
+}
+
+/* Quick reply buttons */
+.quick-reply-button {
+  @apply px-3 py-1 bg-white dark:bg-gray-800 rounded-full text-xs border border-gray-200 dark:border-gray-600 transition-all duration-200;
+}
+
+.quick-reply-button:hover {
+  @apply bg-purple-50 dark:bg-purple-900/20 transform scale-105 cursor-pointer;
+}
+
+/* Enhanced panel styling */
+.enhanced-panel {
+  @apply bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700;
+  backdrop-filter: blur(10px);
+}
+
+/* Responsive design improvements */
+@media (max-width: 768px) {
+  .enhanced-writing-layout {
+    @apply flex-col;
+  }
+  
+  .sidebar-panel {
+    @apply w-full h-auto;
+  }
+  
+  .chat-panel {
+    @apply w-full h-64;
+  }
+  
+  .writing-area {
+    @apply flex-1;
+  }
+}
+
+/* Dark mode enhancements */
+.dark .enhanced-panel {
+  background: rgba(31, 41, 55, 0.8);
+  border-color: rgba(75, 85, 99, 0.3);
+}
+
+.dark .writing-toolbar {
+  background: linear-gradient(90deg, rgba(139, 92, 246, 0.2) 0%, rgba(217, 70, 239, 0.2) 100%);
+}
+
+/* Accessibility improvements */
+.focus-visible {
+  @apply outline-none ring-2 ring-purple-500 ring-offset-2 dark:ring-offset-gray-800;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .enhanced-button {
+    @apply border-2 border-gray-800 dark:border-gray-200;
+  }
+  
+  .enhanced-panel {
+    @apply border-2 border-gray-800 dark:border-gray-200;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Print styles */
+@media print {
+  .enhanced-writing-layout {
+    @apply bg-white text-black;
+  }
+  
+  .sidebar-panel,
+  .chat-panel {
+    @apply hidden;
+  }
+  
+  .writing-area {
+    @apply w-full;
+  }
+}
+
