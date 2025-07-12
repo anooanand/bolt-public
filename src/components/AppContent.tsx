@@ -337,7 +337,8 @@ function AppContent() {
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
 
-        <Footer />
+        {/* Conditionally render footer - hide on writing route */}
+        {activePage !== 'writing' && <Footer onNavigate={handleNavigation} />}
 
         <AuthModal
           isOpen={showAuthModal}
