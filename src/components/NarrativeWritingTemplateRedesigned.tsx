@@ -155,6 +155,19 @@ export function NarrativeWritingTemplateRedesigned({ content, onChange, onTimerS
 
   return (
     <div className="narrative-template-container p-4 space-y-4">
+      {/* Writing Prompt Section - Added at the top */}
+      <div className="writing-prompt-section bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 p-4 rounded-lg border border-indigo-200 dark:border-indigo-800">
+        <div className="flex items-center space-x-2 mb-3">
+          <Sparkles className="h-5 w-5 text-indigo-600" />
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Writing Prompt</h3>
+        </div>
+        <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-lg p-3 border border-indigo-200 dark:border-indigo-700">
+          <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+            Write a narrative story that takes your readers on an emotional journey. Consider the setting, characters, and plot that will bring your story to life. Use vivid descriptions and engaging dialogue to create a compelling narrative.
+          </p>
+        </div>
+      </div>
+
       {/* Compact Header */}
       <div className="template-header bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 p-3 rounded-lg border border-purple-200 dark:border-purple-800">
         <div className="flex items-center justify-between">
