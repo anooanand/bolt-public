@@ -233,6 +233,13 @@ function AppContent() {
     setPopupFlowCompleted(true);
   };
 
+  // Determine if footer should be shown
+  const shouldShowFooter = () => {
+    // Don't show footer on writing page or other specific pages
+    const noFooterPages = ['writing', 'exam', 'dashboard', 'settings'];
+    return !noFooterPages.includes(activePage);
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center">
@@ -290,7 +297,7 @@ function AppContent() {
           } />
           <Route path="/writing" element={
             <WritingAccessCheck onNavigate={handleNavigation}>
-              <div className="writing-route">
+              <div className="writing-route h-screen flex flex-col">
                 <EnhancedHeader 
                   textType={textType}
                   assistanceLevel={assistanceLevel}
@@ -305,7 +312,7 @@ function AppContent() {
                     onExit={() => setShowExamMode(false)}
                   />
                 ) : (
-                  <div className="writing-layout-content">
+                  <div className="writing-layout-content flex-1 min-h-0">
                     <EnhancedWritingLayout
                       content={content}
                       onChange={setContent}
@@ -337,8 +344,8 @@ function AppContent() {
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
 
-        {/* Conditionally render footer - hide on writing route */}
-        {activePage !== 'writing' && <Footer onNavigate={handleNavigation} />}
+        {/* Only show footer on specific pages */}
+        {shouldShowFooter() && <Footer />}
 
         <AuthModal
           isOpen={showAuthModal}
