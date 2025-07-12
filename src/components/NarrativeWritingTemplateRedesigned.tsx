@@ -76,7 +76,7 @@ export function NarrativeWritingTemplateRedesigned({ content, onChange, onTimerS
 
   return (
     <div className="flex h-screen bg-gray-50">
-      {/* Left Sidebar - AI Writing Coach */}
+      {/* Left Sidebar - AI Writing Coach and NSW Writing Coach */}
       <div className="w-80 bg-white border-r border-gray-200 p-6 overflow-y-auto">
         {/* AI Writing Coach */}
         <div className="mb-6">
