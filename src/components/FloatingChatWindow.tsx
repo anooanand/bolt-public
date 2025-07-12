@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { MessageSquare, Minimize2, Maximize2, X, ChevronLeft, ChevronRight, PanelRightClose, PanelRightOpen } from 'lucide-react';
+import { MessageSquare, Minimize2, Maximize2, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { TabbedCoachPanel } from './TabbedCoachPanel';
 import './FloatingChatWindow.css';
 
@@ -15,11 +15,11 @@ interface FloatingChatWindowProps {
   onCollapseChange?: (collapsed: boolean) => void;
 }
 
-export function FloatingChatWindow({ 
-  content, 
-  textType, 
-  assistanceLevel, 
-  selectedText, 
+export function FloatingChatWindow({
+  content,
+  textType,
+  assistanceLevel,
+  selectedText,
   onNavigate,
   isVisible = true,
   isCollapsed = false,
@@ -27,7 +27,7 @@ export function FloatingChatWindow({
   onCollapseChange
 }: FloatingChatWindowProps) {
   const [isMinimized, setIsMinimized] = useState(false);
-  
+
   const chatRef = useRef<HTMLDivElement>(null);
 
   const toggleVisibility = () => {
@@ -49,12 +49,11 @@ export function FloatingChatWindow({
   if (!isVisible) {
     return (
       <button
-        className="floating-chat-toggle enhanced-toggle"
+        className="floating-chat-toggle fixed bottom-4 right-4 bg-purple-600 hover:bg-purple-700 text-white p-3 rounded-full shadow-lg transition-all duration-200 z-50"
         onClick={toggleVisibility}
-        title="Open Writing Buddy - Get 25% more writing space!"
+        title="Open Writing Buddy"
       >
-        <PanelRightOpen className="w-6 h-6" />
-        <span className="toggle-tooltip">Writing Buddy</span>
+        <MessageSquare className="w-5 h-5" />
       </button>
     );
   }
@@ -62,64 +61,63 @@ export function FloatingChatWindow({
   return (
     <div
       ref={chatRef}
-      className={`attached-chat-container enhanced-panel ${isMinimized ? 'minimized' : ''} ${isCollapsed ? 'collapsed' : ''}`}
+      className={`attached-chat-container fixed right-0 top-16 bottom-0 bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 shadow-xl transition-all duration-300 z-40 ${
+        isMinimized ? 'w-12' : isCollapsed ? 'w-16' : 'w-80'
+      }`}
     >
-      <div className="attached-chat-header enhanced-header">
-        <div className="flex items-center gap-2">
-          <div className="header-icon-wrapper">
-            <MessageSquare className="w-5 h-5" />
+      <div className="attached-chat-header flex items-center justify-between p-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+        {!isMinimized && !isCollapsed && (
+          <div className="flex items-center gap-2">
+            <MessageSquare className="w-4 h-4 text-purple-600" />
+            <h3 className="text-sm font-medium">Writing Buddy</h3>
           </div>
-          {!isCollapsed && (
-            <div className="header-content">
-              <h3>Writing Buddy</h3>
-              <span className="header-subtitle">AI-powered writing assistance</span>
+        )}
+
+        <div className="attached-chat-controls flex items-center gap-1">
+          <button
+            className="attached-chat-control-btn p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
+            onClick={toggleCollapse}
+            title={isCollapsed ? "Expand Panel" : "Collapse Panel"}
+          >
+            {isCollapsed ? <ChevronLeft className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+          </button>
+          <button
+            className="attached-chat-control-btn p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
+            onClick={toggleMinimize}
+            title={isMinimized ? "Maximize" : "Minimize"}
+          >
+            {isMinimized ? <Maximize2 className="w-3 h-3" /> : <Minimize2 className="w-3 h-3" />}
+          </button>
+          <button
+            className="attached-chat-control-btn p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
+            onClick={handleClose}
+            title="Close"
+          >
+            <X className="w-3 h-3" />
+          </button>
+        </div>
+      </div>
+
+      {!isMinimized && !isCollapsed && (
+        <div className="attached-chat-content flex-1 overflow-hidden">
+          <TabbedCoachPanel
+            content={content}
+            textType={textType}
+            assistanceLevel={assistanceLevel}
+            selectedText={selectedText}
+            onNavigate={onNavigate}
+          />
+        </div>
+      )}
+
+      {(isMinimized || isCollapsed) && (
+        <div className="flex flex-col items-center justify-center h-full p-2">
+          <MessageSquare className="w-6 h-6 text-purple-600 mb-2" />
+          {isCollapsed && !isMinimized && (
+            <div className="writing-vertical-text text-xs text-gray-500 dark:text-gray-400">
+              Writing Buddy
             </div>
           )}
-        </div>
-        
-        <div className="attached-chat-controls enhanced-controls">
-          <button
-            className="attached-chat-control-btn collapse-btn"
-            onClick={toggleCollapse}
-            title={isCollapsed ? "Expand Panel - Show full interface" : "Collapse Panel - Maximize writing space"}
-          >
-            {isCollapsed ? <PanelRightOpen className="w-4 h-4" /> : <PanelRightClose className="w-4 h-4" />}
-          </button>
-          {!isCollapsed && (
-            <>
-              <button
-                className="attached-chat-control-btn minimize-btn"
-                onClick={toggleMinimize}
-                title={isMinimized ? "Maximize Panel" : "Minimize Panel"}
-              >
-                {isMinimized ? <Maximize2 className="w-4 h-4" /> : <Minimize2 className="w-4 h-4" />}
-              </button>
-              <button
-                className="attached-chat-control-btn close-btn"
-                onClick={handleClose}
-                title="Close Panel - Get 25% more writing space"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </>
-          )}
-        </div>
-      </div>
-      
-      <div className="attached-chat-content enhanced-content">
-        <TabbedCoachPanel
-          content={content}
-          textType={textType}
-          assistanceLevel={assistanceLevel}
-          selectedText={selectedText}
-          onNavigate={onNavigate}
-        />
-      </div>
-      
-      {/* Space utilization indicator */}
-      {isCollapsed && (
-        <div className="space-indicator">
-          <div className="space-indicator-text">+25% Writing Space</div>
         </div>
       )}
     </div>
