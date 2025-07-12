@@ -173,9 +173,9 @@ export function EnhancedWritingLayout({
 
   return (
     <div className="enhanced-writing-layout bg-gray-50 overflow-hidden min-h-0 h-full flex flex-col">
-      {/* Writing Prompt at Top - Reduced padding */}
+      {/* Writing Prompt at Top - Removed max-w-7xl and mx-auto */}
       <div className="bg-gradient-to-r from-blue-50 to-purple-50 border-b border-blue-200 p-2 shadow-sm flex-shrink-0">
-        <div className="max-w-none mx-2">
+        <div className="px-4">
           <div className="flex items-center space-x-2 mb-1">
             <Sparkles className="w-4 h-4 text-blue-600" />
             <h3 className="font-semibold text-blue-800 text-sm">Your Writing Prompt</h3>
@@ -184,9 +184,9 @@ export function EnhancedWritingLayout({
         </div>
       </div>
 
-      {/* Compact Toolbar - Reduced padding */}
+      {/* Compact Toolbar - Removed max-w-7xl and mx-auto */}
       <div className="bg-white border-b border-gray-200 p-2 shadow-sm flex-shrink-0">
-        <div className="max-w-none mx-2 flex items-center justify-between">
+        <div className="px-4 flex items-center justify-between">
           <div className="flex items-center space-x-3">
             {/* Planning Toggle */}
             <div className="flex items-center space-x-2">
@@ -271,10 +271,10 @@ export function EnhancedWritingLayout({
         </div>
       </div>
 
-      {/* Planning Section (Collapsible) - Reduced padding */}
+      {/* Planning Section (Collapsible) - Removed max-w-7xl and mx-auto */}
       {showPlanning && (
         <div className="bg-white border-b border-gray-200 p-2 shadow-sm flex-shrink-0">
-          <div className="max-w-none mx-2">
+          <div className="px-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {writingSteps.map((step) => (
                 <div key={step.id} className="space-y-1">
@@ -318,7 +318,7 @@ export function EnhancedWritingLayout({
 
         {/* Right Sidebar - Chat Panel (Optional) - FULL HEIGHT */}
         {showChatPanel && (
-          <div className="w-80 flex-shrink-0 bg-white border-l border-gray-200 flex flex-col min-h-0">
+          <div className="w-[350px] flex-shrink-0 bg-white border-l border-gray-200 flex flex-col min-h-0">
             <div className="flex-1 p-2 overflow-hidden">
               <div className="h-full">
                 <TabbedCoachPanel
@@ -335,10 +335,10 @@ export function EnhancedWritingLayout({
         )}
       </div>
 
-      {/* Writing Tips (Bottom) - Reduced padding */}
+      {/* Writing Tips (Bottom) - Removed max-w-7xl and mx-auto */}
       {wordCount < 50 && (
         <div className="bg-blue-50 border-t border-blue-200 p-2 flex-shrink-0">
-          <div className="max-w-none mx-2">
+          <div className="px-4">
             <div className="flex items-center space-x-2 text-blue-700">
               <Lightbulb className="w-3 h-3" />
               <span className="font-medium text-xs">Writing Tip:</span>
