@@ -493,21 +493,40 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
   const currentTextType = textType || selectedWritingType;
 
   return (
-    <div ref={containerRef} className="writing-area-container h-full flex flex-col p-2">
-      {/* Writing Template - Reduced margin */}
+    <div ref={containerRef} className="writing-area-container h-full flex flex-col p-0">
+      {/* Writing Template - Removed margin and padding */}
       {currentTextType && (
-        <div className="writing-template-section mb-2">
+        <div className="writing-template-section">
           {renderWritingTemplate()}
         </div>
       )}
 
+      {/* Prompt Display - Removed margin and padding */}
+      {prompt && (
+        <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-none border-0 p-2">
+          <div className="flex items-start gap-2">
+            <div className="p-1 bg-gradient-to-r from-blue-500 to-purple-500 rounded-md">
+              <Sparkles className="w-4 h-4 text-white" />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-bold text-base text-gray-900 dark:text-white mb-1">
+                Your Writing Prompt
+              </h3>
+              <p className="text-gray-700 dark:text-gray-300 leading-relaxed text-sm">
+                {prompt}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Main Writing Area - Maximized space usage */}
-      <div className="writing-main-section flex-1 space-y-2">
-        <div className="relative h-full min-h-[400px]">
+      <div className="writing-main-section flex-1">
+        <div className="relative h-full">
           {/* Highlight Layer */}
           <div
             ref={highlightLayerRef}
-            className="absolute inset-0 pointer-events-none z-10 p-3 font-mono text-transparent whitespace-pre-wrap break-words"
+            className="absolute inset-0 pointer-events-none z-10 p-2 font-mono text-transparent whitespace-pre-wrap break-words"
             style={{
               fontSize: '16px',
               lineHeight: '24px',
@@ -517,19 +536,20 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
             {renderHighlightedText()}
           </div>
 
-          {/* Textarea - Reduced padding */}
+          {/* Textarea - Removed padding and border radius */}
           <textarea
             ref={textareaRef}
             value={content}
             onChange={handleTextareaChange}
             onClick={handleTextareaClick}
             placeholder={prompt ? "Start writing your response here..." : "Select a writing type to get started..."}
-            className="w-full h-full p-3 border-2 border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent relative z-20"
+            className="w-full h-full border-0 bg-white dark:bg-gray-800 text-gray-900 dark:text-white resize-none focus:outline-none focus:ring-0 relative z-20"
             style={{
               fontSize: '16px',
               lineHeight: '24px',
               fontFamily: 'inherit',
-              background: 'transparent'
+              background: 'transparent',
+              padding: '8px' // Minimal padding for text inside textarea
             }}
             disabled={!prompt}
           />
@@ -551,7 +571,7 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
       </div>
 
       {/* Status Bar - Compact */}
-      <div className="status-section py-1">
+      <div className="status-section py-1 px-2">
         <WritingStatusBar
           content={content}
           textType={currentTextType}
@@ -559,7 +579,7 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
       </div>
 
       {/* Submit Button - Compact */}
-      <div className="submit-section pt-2">
+      <div className="submit-section pt-2 px-2">
         <div className="flex justify-center">
           <button
             onClick={handleEvaluateEssay}
