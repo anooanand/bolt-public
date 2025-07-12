@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { WritingArea } from './WritingArea';
 import { TabbedCoachPanel } from './TabbedCoachPanel';
-import { Lightbulb, Type, Save, Settings, Sparkles, Users, Target, Star, CheckCircle, PanelRightClose, PanelRightOpen } from 'lucide-react';
+import { Lightbulb, Type, Save, Settings, Sparkles, Users, Target, Star, CheckCircle, PanelRightClose, PanelRightOpen, Plus, Download, HelpCircle } from 'lucide-react';
 
 interface EnhancedWritingLayoutProps {
   content: string;
@@ -57,6 +57,13 @@ export function EnhancedWritingLayout({
       'persuasive': 'Write a persuasive piece that convinces your reader of your viewpoint. Use strong arguments, evidence, and persuasive techniques.',
       'expository': 'Write an informative piece that explains a topic clearly and thoroughly. Use facts, examples, and logical organization.',
       'recount': 'Write a recount of an event or experience. Include details about what happened, when, where, and why it was significant.',
+      'reflective': 'Write a reflective piece about your thoughts, feelings, and experiences. Show personal growth and insight.',
+      'descriptive': 'Write a descriptive piece that paints a vivid picture with words. Use sensory details and figurative language.',
+      'discursive': 'Write a discursive piece that explores different perspectives on a topic. Present balanced arguments and analysis.',
+      'news report': 'Write a news report that informs readers about current events. Use the 5 W\'s and H (Who, What, When, Where, Why, How).',
+      'letter': 'Write a letter that communicates effectively with your intended audience. Use appropriate tone and format.',
+      'diary entry': 'Write a diary entry that captures your personal thoughts and experiences. Be authentic and reflective.',
+      'speech': 'Write a speech that engages and persuades your audience. Use rhetorical devices and clear structure.',
       'default': 'Write a well-structured piece that demonstrates your writing skills. Focus on clear expression, good organization, and engaging content.'
     };
     
@@ -116,11 +123,48 @@ export function EnhancedWritingLayout({
     setShowChatPanel(!showChatPanel);
   };
 
+  const handleNewStory = () => {
+    onChange('');
+    setTemplateData({
+      setting: '',
+      characters: '',
+      plot: '',
+      theme: ''
+    });
+    setCompletedSteps([]);
+    if (onNavigate) {
+      onNavigate('dashboard');
+    }
+  };
+
+  const handleSave = () => {
+    // Save functionality
+    localStorage.setItem('writingContent', content);
+    localStorage.setItem('writingTemplateData', JSON.stringify(templateData));
+  };
+
+  const handleExport = () => {
+    // Export functionality
+    const element = document.createElement('a');
+    const file = new Blob([content], { type: 'text/plain' });
+    element.href = URL.createObjectURL(file);
+    element.download = `writing-${textType}-${new Date().toISOString().split('T')[0]}.txt`;
+    document.body.appendChild(element);
+    element.click();
+    document.body.removeChild(element);
+  };
+
+  const handleHelp = () => {
+    if (onNavigate) {
+      onNavigate('help-center');
+    }
+  };
+
   return (
-    <div className="h-full flex flex-col bg-gray-50">
+    <div className="h-screen flex flex-col bg-gray-50 overflow-hidden">
       {/* Writing Prompt at Top */}
-      <div className="bg-gradient-to-r from-blue-50 to-purple-50 border-b border-blue-200 p-4 shadow-sm">
-        <div className="max-w-6xl mx-auto">
+      <div className="bg-gradient-to-r from-blue-50 to-purple-50 border-b border-blue-200 p-4 shadow-sm flex-shrink-0">
+        <div className="max-w-7xl mx-auto">
           <div className="flex items-center space-x-2 mb-2">
             <Sparkles className="w-5 h-5 text-blue-600" />
             <h3 className="font-semibold text-blue-800">Your Writing Prompt</h3>
@@ -129,128 +173,144 @@ export function EnhancedWritingLayout({
         </div>
       </div>
 
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col">
-        {/* Writing Toolbar */}
-        <div className="bg-white border-b border-gray-200 p-4 shadow-sm">
-          <div className="max-w-6xl mx-auto flex items-center justify-between">
-            <div className="flex items-center space-x-6">
-              {/* Planning Toggle */}
-              <div className="flex items-center space-x-3">
-                <label className="flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={showPlanning}
-                    onChange={togglePlanning}
-                    className="sr-only"
-                  />
-                  <div className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                    showPlanning ? 'bg-blue-600' : 'bg-gray-300'
-                  }`}>
-                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                      showPlanning ? 'translate-x-6' : 'translate-x-1'
-                    }`} />
-                  </div>
-                  <span className="ml-2 text-sm font-medium text-gray-700">
-                    {showPlanning ? 'Hide Planning' : 'Show Planning'}
-                  </span>
-                </label>
+      {/* Compact Toolbar */}
+      <div className="bg-white border-b border-gray-200 p-3 shadow-sm flex-shrink-0">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            {/* Planning Toggle */}
+            <div className="flex items-center space-x-2">
+              <label className="flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={showPlanning}
+                  onChange={togglePlanning}
+                  className="sr-only"
+                />
+                <div className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+                  showPlanning ? 'bg-blue-600' : 'bg-gray-300'
+                }`}>
+                  <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
+                    showPlanning ? 'translate-x-5' : 'translate-x-1'
+                  }`} />
+                </div>
+                <span className="ml-2 text-sm font-medium text-gray-700">Planning</span>
+              </label>
+            </div>
+
+            {/* Word Count */}
+            <div className="flex items-center space-x-2 text-sm text-gray-600">
+              <Type className="w-4 h-4" />
+              <span className="font-medium">{wordCount} words</span>
+            </div>
+
+            {/* Writing Stats */}
+            <div className="flex items-center space-x-3 text-sm">
+              <div className="bg-green-100 px-2 py-1 rounded-full">
+                <span className="font-medium">{Math.round(timeSpent / 60)} min</span>
               </div>
-
-              {/* Word Count */}
-              <div className="flex items-center space-x-2 text-sm text-gray-600">
-                <Type className="w-4 h-4" />
-                <span className="font-medium">{wordCount} words</span>
-                <span>•</span>
-                <span>{characterCount} characters</span>
-              </div>
-
-              {/* Progress (if planning is shown) */}
-              {showPlanning && (
-                <div className="flex items-center space-x-2 text-sm text-gray-600">
-                  <span>Planning Progress:</span>
-                  <span className="font-medium text-blue-600">{getProgressPercentage()}%</span>
-                </div>
-              )}
-
-              {/* Writing Stats */}
-              <div className="flex items-center space-x-4 text-sm">
-                <div className="flex items-center space-x-1 bg-green-100 px-3 py-1 rounded-full">
-                  <span className="font-medium">{Math.round(timeSpent / 60)} min</span>
-                </div>
-                <div className="flex items-center space-x-1 bg-purple-100 px-3 py-1 rounded-full">
-                  <span className="font-medium">{writingStreak} day streak</span>
-                </div>
+              <div className="bg-purple-100 px-2 py-1 rounded-full">
+                <span className="font-medium">{writingStreak} day streak</span>
               </div>
             </div>
+          </div>
+          
+          <div className="flex items-center space-x-2">
+            {/* Action Buttons - Moved here */}
+            <button
+              onClick={handleNewStory}
+              className="flex items-center space-x-1 px-3 py-1.5 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-sm"
+            >
+              <Plus className="w-4 h-4" />
+              <span>New</span>
+            </button>
             
-            <div className="flex items-center space-x-2">
-              {/* Chat Panel Toggle */}
-              <button
-                onClick={toggleChatPanel}
-                className="flex items-center space-x-2 px-3 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors"
-              >
-                {showChatPanel ? <PanelRightClose className="w-4 h-4" /> : <PanelRightOpen className="w-4 h-4" />}
-                <span>{showChatPanel ? 'Hide Assistant' : 'Show Assistant'}</span>
-              </button>
+            <button
+              onClick={handleSave}
+              className="flex items-center space-x-1 px-3 py-1.5 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors text-sm"
+            >
+              <Save className="w-4 h-4" />
+              <span>Save</span>
+            </button>
+            
+            <button
+              onClick={handleExport}
+              className="flex items-center space-x-1 px-3 py-1.5 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm"
+            >
+              <Download className="w-4 h-4" />
+              <span>Export</span>
+            </button>
+            
+            <button
+              onClick={handleHelp}
+              className="flex items-center space-x-1 px-3 py-1.5 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors text-sm"
+            >
+              <HelpCircle className="w-4 h-4" />
+              <span>Help</span>
+            </button>
 
-              <button className="flex items-center space-x-2 px-3 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors">
-                <Save className="w-4 h-4" />
-                <span>Auto-save</span>
-              </button>
+            {/* Chat Panel Toggle */}
+            <button
+              onClick={toggleChatPanel}
+              className="flex items-center space-x-1 px-3 py-1.5 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors text-sm"
+            >
+              {showChatPanel ? <PanelRightClose className="w-4 h-4" /> : <PanelRightOpen className="w-4 h-4" />}
+              <span>{showChatPanel ? 'Hide' : 'Show'} Assistant</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Planning Section (Collapsible) */}
+      {showPlanning && (
+        <div className="bg-white border-b border-gray-200 p-4 shadow-sm flex-shrink-0">
+          <div className="max-w-7xl mx-auto">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {writingSteps.map((step) => (
+                <div key={step.id} className="space-y-2">
+                  <div className="flex items-center space-x-2">
+                    {completedSteps.includes(step.id) ? (
+                      <CheckCircle className="w-4 h-4 text-green-600" />
+                    ) : (
+                      <step.icon className="w-4 h-4 text-gray-400" />
+                    )}
+                    <label className="font-medium text-gray-700 text-sm">{step.title}</label>
+                  </div>
+                  <textarea
+                    value={templateData[step.field]}
+                    onChange={(e) => handleTemplateChange(step.field, e.target.value)}
+                    placeholder={step.description}
+                    className="w-full h-16 p-2 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Main Writing Area with Optional Chat Panel - FULL HEIGHT */}
+      <div className="flex-1 flex overflow-hidden min-h-0">
+        {/* Writing Area - Uses specific templates */}
+        <div className={`${showChatPanel ? 'flex-1' : 'w-full'} flex flex-col min-h-0`}>
+          <div className="flex-1 p-4 overflow-hidden">
+            <div className="h-full max-w-7xl mx-auto">
+              <WritingArea
+                content={content}
+                onChange={onChange}
+                textType={textType}
+                onTimerStart={onTimerStart}
+                onSubmit={onSubmit}
+                onTextTypeChange={onTextTypeChange}
+                onPopupCompleted={onPopupCompleted}
+              />
             </div>
           </div>
         </div>
 
-        {/* Planning Section (Collapsible) */}
-        {showPlanning && (
-          <div className="bg-white border-b border-gray-200 p-4 shadow-sm">
-            <div className="max-w-6xl mx-auto">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {writingSteps.map((step) => (
-                  <div key={step.id} className="space-y-2">
-                    <div className="flex items-center space-x-2">
-                      {completedSteps.includes(step.id) ? (
-                        <CheckCircle className="w-5 h-5 text-green-600" />
-                      ) : (
-                        <step.icon className="w-5 h-5 text-gray-400" />
-                      )}
-                      <label className="font-medium text-gray-700">{step.title}</label>
-                    </div>
-                    <textarea
-                      value={templateData[step.field]}
-                      onChange={(e) => handleTemplateChange(step.field, e.target.value)}
-                      placeholder={step.description}
-                      className="w-full h-20 p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Main Writing Area with Optional Chat Panel */}
-        <div className="flex-1 flex overflow-hidden">
-          {/* Writing Area - Maximized */}
-          <div className={`${showChatPanel ? 'flex-1' : 'w-full'} p-6 bg-white`}>
-            <div className="max-w-6xl mx-auto h-full">
-              <textarea
-                value={content}
-                onChange={(e) => onChange(e.target.value)}
-                placeholder="Start writing your amazing story here! Let your creativity flow and bring your ideas to life... ✨"
-                className="w-full h-full p-6 border-2 border-gray-200 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg leading-relaxed shadow-sm"
-                style={{ 
-                  fontFamily: 'Georgia, serif',
-                  minHeight: showPlanning ? '400px' : '500px'
-                }}
-              />
-            </div>
-          </div>
-
-          {/* Right Sidebar - Chat Panel (Optional) */}
-          {showChatPanel && (
-            <div className="w-96 flex-shrink-0 p-4 bg-white border-l border-gray-200">
+        {/* Right Sidebar - Chat Panel (Optional) - FULL HEIGHT */}
+        {showChatPanel && (
+          <div className="w-96 flex-shrink-0 bg-white border-l border-gray-200 flex flex-col min-h-0">
+            <div className="flex-1 p-4 overflow-hidden">
               <div className="h-full">
                 <TabbedCoachPanel
                   content={content}
@@ -262,49 +322,24 @@ export function EnhancedWritingLayout({
                 />
               </div>
             </div>
-          )}
-        </div>
-
-        {/* Writing Tips (Bottom) */}
-        {wordCount < 50 && (
-          <div className="bg-blue-50 border-t border-blue-200 p-4">
-            <div className="max-w-6xl mx-auto">
-              <div className="flex items-center space-x-2 text-blue-700">
-                <Lightbulb className="w-4 h-4" />
-                <span className="font-medium">Writing Tip:</span>
-              </div>
-              <p className="text-blue-600 text-sm mt-1">
-                Start with a strong opening that grabs your reader's attention. Don't worry about making it perfect - you can always revise it later!
-              </p>
-            </div>
           </div>
         )}
+      </div>
 
-        {/* Footer with Submit Button */}
-        <div className="bg-white border-t border-gray-200 p-4 shadow-sm">
-          <div className="max-w-6xl mx-auto flex items-center justify-between">
-            <div className="flex items-center space-x-4 text-sm text-gray-600">
-              <span>Auto-save enabled</span>
-              <span>•</span>
-              <span>Last saved: just now</span>
+      {/* Writing Tips (Bottom) */}
+      {wordCount < 50 && (
+        <div className="bg-blue-50 border-t border-blue-200 p-3 flex-shrink-0">
+          <div className="max-w-7xl mx-auto">
+            <div className="flex items-center space-x-2 text-blue-700">
+              <Lightbulb className="w-4 h-4" />
+              <span className="font-medium text-sm">Writing Tip:</span>
             </div>
-            
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={onSubmit}
-                disabled={wordCount < 50}
-                className={`px-6 py-2 rounded-lg font-medium transition-all ${
-                  wordCount >= 50
-                    ? 'bg-gradient-to-r from-green-500 to-blue-500 text-white hover:shadow-lg hover:scale-105'
-                    : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                }`}
-              >
-                Submit for Evaluation ({wordCount} words)
-              </button>
-            </div>
+            <p className="text-blue-600 text-sm mt-1">
+              Start with a strong opening that grabs your reader's attention. Don't worry about making it perfect - you can always revise it later!
+            </p>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
