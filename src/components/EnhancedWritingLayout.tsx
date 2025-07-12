@@ -14,6 +14,8 @@ interface EnhancedWritingLayoutProps {
   onTextTypeChange?: (textType: string) => void;
   onPopupCompleted?: () => void;
   onNavigate?: (page: string) => void;
+  onShowHelpCenter?: () => void;
+  onStartNewEssay?: () => void;
 }
 
 interface TemplateData {
@@ -33,7 +35,9 @@ export function EnhancedWritingLayout({
   onSubmit,
   onTextTypeChange,
   onPopupCompleted,
-  onNavigate
+  onNavigate,
+  onShowHelpCenter,
+  onStartNewEssay
 }: EnhancedWritingLayoutProps) {
   const [templateData, setTemplateData] = useState<TemplateData>({
     setting: '',
@@ -124,16 +128,20 @@ export function EnhancedWritingLayout({
   };
 
   const handleNewStory = () => {
-    onChange('');
-    setTemplateData({
-      setting: '',
-      characters: '',
-      plot: '',
-      theme: ''
-    });
-    setCompletedSteps([]);
-    if (onNavigate) {
-      onNavigate('dashboard');
+    if (onStartNewEssay) {
+      onStartNewEssay();
+    } else {
+      onChange('');
+      setTemplateData({
+        setting: '',
+        characters: '',
+        plot: '',
+        theme: ''
+      });
+      setCompletedSteps([]);
+      if (onNavigate) {
+        onNavigate('dashboard');
+      }
     }
   };
 
@@ -155,13 +163,15 @@ export function EnhancedWritingLayout({
   };
 
   const handleHelp = () => {
-    if (onNavigate) {
+    if (onShowHelpCenter) {
+      onShowHelpCenter();
+    } else if (onNavigate) {
       onNavigate('help-center');
     }
   };
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50 overflow-hidden">
+    <div className="flex-1 flex flex-col bg-gray-50 overflow-hidden min-h-0">
       {/* Writing Prompt at Top */}
       <div className="bg-gradient-to-r from-blue-50 to-purple-50 border-b border-blue-200 p-4 shadow-sm flex-shrink-0">
         <div className="max-w-7xl mx-auto">
