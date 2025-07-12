@@ -21,6 +21,7 @@ import { LetterWritingTemplate } from './LetterWritingTemplate';
 import { DiaryWritingTemplate } from './DiaryWritingTemplate';
 import { SpeechWritingTemplate } from './SpeechWritingTemplate';
 import './responsive.css';
+import './layout-fix.css';
 
 interface WritingAreaProps {
   content: string;
