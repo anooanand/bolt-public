@@ -76,6 +76,42 @@ export function NarrativeWritingTemplateRedesigned({ content, onChange, onTimerS
 
   return (
     <div className="flex h-screen bg-gray-50">
+      {/* Left Sidebar - AI Writing Coach */}
+      <div className="w-80 bg-white border-r border-gray-200 p-6 overflow-y-auto">
+        {/* AI Writing Coach */}
+        <div className="mb-6">
+          <div className="flex items-center space-x-2 mb-3">
+            <Brain className="h-5 w-5 text-purple-600" />
+            <h3 className="font-medium">AI Writing Coach</h3>
+          </div>
+          <p className="text-sm text-gray-600">NSW-aligned guidance and support</p>
+        </div>
+
+        {/* NSW Writing Coach */}
+        <div className="mb-6">
+          <div className="flex items-center space-x-2 mb-3">
+            <MessageSquare className="h-5 w-5 text-purple-600" />
+            <h3 className="font-medium">NSW Writing Coach</h3>
+          </div>
+          
+          <div className="space-y-3">
+            <div className="text-sm text-gray-600">Quick Questions</div>
+            <select className="w-full p-2 border border-gray-200 rounded-lg text-sm">
+              <option>Choose a question...</option>
+              <option>How to develop characters?</option>
+              <option>What makes a good setting?</option>
+              <option>How to create conflict?</option>
+            </select>
+            
+            <div className="text-sm text-gray-600">Or ask your own question</div>
+            <textarea 
+              placeholder="Type your question here..."
+              className="w-full h-20 p-2 border border-gray-200 rounded-lg text-sm resize-none"
+            />
+          </div>
+        </div>
+      </div>
+
       {/* Main Content Area */}
       <div className="flex-1 p-6 overflow-y-auto">
         {/* Header */}
@@ -190,17 +226,8 @@ export function NarrativeWritingTemplateRedesigned({ content, onChange, onTimerS
         ))}
       </div>
 
-      {/* Right Sidebar */}
+      {/* Right Sidebar - Writing Buddy and Writing Progress */}
       <div className="w-80 bg-white border-l border-gray-200 p-6 overflow-y-auto">
-        {/* AI Writing Coach */}
-        <div className="mb-6">
-          <div className="flex items-center space-x-2 mb-3">
-            <Brain className="h-5 w-5 text-purple-600" />
-            <h3 className="font-medium">AI Writing Coach</h3>
-          </div>
-          <p className="text-sm text-gray-600">NSW-aligned guidance and support</p>
-        </div>
-
         {/* Writing Progress */}
         <div className="mb-6">
           <div className="flex items-center space-x-2 mb-3">
@@ -268,7 +295,6 @@ export function NarrativeWritingTemplateRedesigned({ content, onChange, onTimerS
             <option>How to structure my essay?</option>
           </select>
         </div>
-
       </div>
     </div>
   );
