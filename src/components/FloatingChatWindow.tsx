@@ -62,7 +62,7 @@ export function FloatingChatWindow({
     <div
       ref={chatRef}
       className={`attached-chat-container fixed right-0 top-16 bottom-0 bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 shadow-xl transition-all duration-300 z-40 ${
-        isMinimized ? 'w-12' : isCollapsed ? 'w-16' : 'w-80'
+        isMinimized ? 'w-12' : isCollapsed ? 'w-16' : 'w-96'
       }`}
     >
       <div className="attached-chat-header flex items-center justify-between p-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
@@ -99,7 +99,7 @@ export function FloatingChatWindow({
       </div>
 
       {!isMinimized && (
-        <div className="attached-chat-content flex-1 overflow-hidden">
+        <div className="attached-chat-content flex-1 overflow-hidden h-full">
           {!isCollapsed ? (
             <TabbedCoachPanel
               content={content}
