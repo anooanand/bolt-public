@@ -424,3 +424,25 @@
     width: 30%; /* Reduce the width of the right panel to accommodate the wider writing area */
 }
 
+
+
+
+/* Custom adjustments for planning tab realignment and Writing Buddy height */
+
+/* Realign planning tabs - targeting the container of the planning toggle and stats */
+.enhanced-writing-layout > .bg-white.border-b.border-gray-200.p-2.shadow-sm.flex-shrink-0 > div.px-0.flex.items-center.justify-between > div.flex.items-center.space-x-3.px-4 {
+    justify-content: flex-start; /* Align planning section to the left */
+    padding-left: 1rem; /* Add some padding to align with prompt */
+}
+
+/* Increase height of Writing Buddy to align with the top action buttons */
+/* This calculation assumes the top bar (prompt + toolbar) is approximately 100px tall. Adjust as needed. */
+.coach-panel-container {
+    height: calc(100vh - 100px); 
+}
+
+/* Ensure the main content area correctly fills the remaining space */
+.writing-main-content {
+    height: calc(100vh - 100px); /* Adjust based on header/toolbar height */
+}
+
