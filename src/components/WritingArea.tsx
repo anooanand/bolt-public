@@ -502,24 +502,7 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
         </div>
       )}
 
-      {/* Prompt Display - Removed margin and padding */}
-      {prompt && (
-        <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-none border-0 p-2">
-          <div className="flex items-start gap-2 px-2">
-            <div className="p-1 bg-gradient-to-r from-blue-500 to-purple-500 rounded-md">
-              <Sparkles className="w-4 h-4 text-white" />
-            </div>
-            <div className="flex-1">
-              <h3 className="font-bold text-base text-gray-900 dark:text-white mb-1">
-                Your Writing Prompt
-              </h3>
-              <p className="text-gray-700 dark:text-gray-300 leading-relaxed text-sm">
-                {prompt}
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
+
 
       {/* Main Writing Area - Maximized space usage */}
       <div className="writing-main-section flex-1">
