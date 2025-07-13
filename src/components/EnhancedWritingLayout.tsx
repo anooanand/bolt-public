@@ -300,7 +300,7 @@ export function EnhancedWritingLayout({
           <div className="px-0 h-full overflow-y-auto p-3">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 px-4">
               {writingSteps.map((step) => (
-                <div key={step.id} className="space-y-1">
+                <div key={step.id} className="space-y-1 w-full md:w-1/2">
                   <div className="flex items-center space-x-2">
                     {completedSteps.includes(step.id) ? (
                       <CheckCircle className="w-3 h-3 text-green-600" />
@@ -325,7 +325,7 @@ export function EnhancedWritingLayout({
       {/* Main Writing Area with Optional Chat Panel - FULL WIDTH, NO PADDING */}
       <div className="writing-main-content flex-1 overflow-hidden min-h-0 flex">
         {/* Writing Area - Uses specific templates, NO PADDING, FULL WIDTH */}
-        <div className={`writing-textarea-wrapper ${showChatPanel ? 'flex-[2]' : 'w-full'} min-h-0`}>
+        <div className={`writing-textarea-wrapper ${showChatPanel ? 'flex-[3]' : 'w-full'} min-h-0`}>
           <div className="h-full">
             <WritingArea
               content={content}
@@ -342,7 +342,7 @@ export function EnhancedWritingLayout({
 
         {/* Right Sidebar - Chat Panel (Optional) - INCREASED WIDTH FOR BETTER READABILITY */}
         {showChatPanel && (
-          <div className="w-[350px] flex-shrink-0 bg-white border-l border-gray-200 flex flex-col min-h-0">
+          <div className="w-[300px] flex-shrink-0 bg-white border-l border-gray-200 flex flex-col min-h-0">
             <div className="flex-1 p-3 overflow-hidden">
               <div className="h-full">
                 <TabbedCoachPanel
