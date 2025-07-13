@@ -55,9 +55,17 @@ export function EnhancedWritingLayout({
   const [completedSteps, setCompletedSteps] = useState<number[]>([]);
   const [writingStreak, setWritingStreak] = useState(3);
   const [timeSpent, setTimeSpent] = useState(0);
+  
+  // NEW: State to store the generated prompt from WritingArea
+  const [generatedPrompt, setGeneratedPrompt] = useState('');
 
-  // Get writing prompt based on text type
+  // Get writing prompt based on text type (fallback for when no generated prompt exists)
   const getWritingPrompt = () => {
+    // NEW: Use generated prompt if available, otherwise use static prompts
+    if (generatedPrompt) {
+      return generatedPrompt;
+    }
+    
     const prompts = {
       'narrative': 'Write a compelling narrative story that engages your reader from beginning to end. Include vivid descriptions, interesting characters, and a clear plot structure.',
       'persuasive': 'Write a persuasive piece that convinces your reader of your viewpoint. Use strong arguments, evidence, and persuasive techniques.',
@@ -74,6 +82,11 @@ export function EnhancedWritingLayout({
     };
     
     return prompts[textType as keyof typeof prompts] || prompts.default;
+  };
+
+  // NEW: Callback to receive generated prompt from WritingArea
+  const handlePromptGenerated = (prompt: string) => {
+    setGeneratedPrompt(prompt);
   };
 
   // Calculate word and character count
@@ -141,6 +154,8 @@ export function EnhancedWritingLayout({
         theme: ''
       });
       setCompletedSteps([]);
+      // NEW: Clear generated prompt when starting new story
+      setGeneratedPrompt('');
       if (onNavigate) {
         onNavigate('dashboard');
       }
@@ -174,8 +189,8 @@ export function EnhancedWritingLayout({
 
   return (
     <div className="enhanced-writing-layout bg-gray-50 overflow-hidden min-h-0 h-full flex flex-col">
-      {/* Writing Prompt at Top - Full width, no side padding - ALWAYS VISIBLE */}
-      {textType && (
+      {/* Writing Prompt at Top - Full width, no side padding - ALWAYS VISIBLE WHEN PROMPT EXISTS */}
+      {(textType && (generatedPrompt || getWritingPrompt())) && (
         <div className="bg-gradient-to-r from-blue-50 to-purple-50 border-b border-blue-200 p-2 shadow-sm flex-shrink-0">
           <div className="px-0">
             <div className="flex items-center space-x-2 mb-1 px-4">
@@ -315,6 +330,7 @@ export function EnhancedWritingLayout({
               onSubmit={onSubmit}
               onTextTypeChange={onTextTypeChange}
               onPopupCompleted={onPopupCompleted}
+              onPromptGenerated={handlePromptGenerated}
             />
           </div>
         </div>
