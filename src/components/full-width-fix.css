@@ -1,0 +1,96 @@
+/* Full Width Blue Box Fix */
+
+/* Remove any max-width constraints on writing containers */
+.enhanced-writing-layout,
+.writing-area-container,
+.writing-main-content,
+.writing-textarea-wrapper {
+  max-width: none !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+/* Ensure the blue textarea extends to full width */
+.writing-area-container .writing-main-section {
+  width: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Make sure the textarea itself has no side margins */
+.writing-area-container textarea {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  border-radius: 0 !important;
+  border-left: none !important;
+  border-right: none !important;
+}
+
+/* Remove any container constraints */
+.enhanced-writing-layout > * {
+  max-width: none !important;
+}
+
+/* Ensure full width for all writing sections */
+.writing-template-section,
+.writing-main-section,
+.status-section,
+.submit-section {
+  width: 100% !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+/* Override any Tailwind max-width utilities */
+.max-w-7xl,
+.max-w-6xl,
+.max-w-5xl,
+.max-w-4xl,
+.max-w-3xl,
+.max-w-2xl,
+.max-w-xl,
+.max-w-lg,
+.max-w-md,
+.max-w-sm {
+  max-width: none !important;
+}
+
+/* Ensure mx-auto doesn't center with margins */
+.mx-auto {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+/* Make the blue background extend to edges */
+.bg-blue-50 {
+  background-color: #eff6ff !important;
+}
+
+/* Ensure no border radius on the main writing area */
+.writing-area-container,
+.writing-main-section,
+.writing-area-container textarea {
+  border-radius: 0 !important;
+}
+
+/* Remove any padding from parent containers */
+.writing-route .writing-layout-content {
+  padding: 0 !important;
+}
+
+/* Ensure the enhanced writing layout takes full width */
+.enhanced-writing-layout {
+  width: 100vw !important;
+  margin-left: calc(-50vw + 50%) !important;
+  margin-right: calc(-50vw + 50%) !important;
+}
+
+/* Alternative approach - ensure full viewport width */
+@media (min-width: 1px) {
+  .enhanced-writing-layout {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+}
