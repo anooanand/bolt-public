@@ -32,7 +32,7 @@ interface WritingAreaProps {
   onSubmit: () => void;
   onTextTypeChange?: (textType: string) => void;
   onPopupCompleted?: () => void;
-  onPromptGenerated?: (prompt: string) => void; // NEW: Callback to pass prompt to parent
+  onPromptGenerated?: (prompt: string) => void;
 }
 
 interface WritingIssue {
@@ -101,7 +101,7 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
       const savedPrompt = localStorage.getItem(`${currentTextType}_prompt`);
       if (savedPrompt) {
         setPrompt(savedPrompt);
-        // NEW: Pass the loaded prompt to parent
+        // Pass the loaded prompt to parent
         if (onPromptGenerated) {
           onPromptGenerated(savedPrompt);
         }
@@ -109,7 +109,7 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
     }
   }, [selectedWritingType, textType, onPromptGenerated]);
 
-  // NEW: Pass prompt to parent whenever it changes
+  // Pass prompt to parent whenever it changes
   useEffect(() => {
     if (prompt && onPromptGenerated) {
       onPromptGenerated(prompt);
@@ -430,7 +430,7 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
         localStorage.setItem(`${currentTextType}_prompt`, newPrompt);
       }
       
-      // NEW: Pass the generated prompt to parent immediately
+      // Pass the generated prompt to parent immediately
       if (onPromptGenerated) {
         onPromptGenerated(newPrompt);
       }
@@ -461,7 +461,7 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
       localStorage.setItem(`${currentTextType}_prompt`, customPrompt);
     }
     
-    // NEW: Pass the custom prompt to parent immediately
+    // Pass the custom prompt to parent immediately
     if (onPromptGenerated) {
       onPromptGenerated(customPrompt);
     }
@@ -518,23 +518,23 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
 
   return (
     <div ref={containerRef} className="writing-area-container h-full flex flex-col p-0 m-0">
-      {/* Writing Template - Removed margin and padding */}
+      {/* FIXED: Writing Template Section with Scrolling - Takes remaining space but allows submit button to be visible */}
       {currentTextType && (
-        <div className="writing-template-section">
+        <div className="writing-template-section flex-1 overflow-y-auto min-h-0">
           {renderWritingTemplate()}
         </div>
       )}
 
-      {/* Status Bar - Compact */}
-      <div className="status-section py-1 px-2">
+      {/* FIXED: Status Bar - Always visible at bottom */}
+      <div className="status-section py-1 px-2 flex-shrink-0 bg-white border-t border-gray-200">
         <WritingStatusBar
           content={content}
           textType={currentTextType}
         />
       </div>
 
-      {/* Submit Button - Compact */}
-      <div className="submit-section pt-2 px-2">
+      {/* FIXED: Submit Button - Always visible at bottom */}
+      <div className="submit-section pt-2 px-2 pb-2 flex-shrink-0 bg-white">
         <div className="flex justify-center">
           <button
             onClick={handleEvaluateEssay}
