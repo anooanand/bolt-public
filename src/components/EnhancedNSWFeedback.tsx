@@ -37,6 +37,12 @@ async function generateNSWFeedback(essay, textType) {
     As an expert in NSW Selective School writing assessment, provide feedback on this ${textType}.
     
     Focus on these NSW Selective criteria:
+    - Relevance to Prompt: "Does your story directly address the prompt?"
+    - Content Depth: "Can you add more descriptive language here?", "How can you make this character more interesting?"
+    - Structural Cohesion: "Does this paragraph flow well from the previous one?", "Consider adding a stronger concluding sentence."
+    - Genre Suitability: "Does this sound like a persuasive argument?"
+    - Vocabulary Enhancement (Contextual): Suggestions for stronger verbs or more precise adjectives relevant to the context of the story.
+    
     SET A (15 marks):
     - Content: relevance, originality, detail
     - Structure: organization, paragraphing, cohesion
@@ -156,3 +162,4 @@ export function EnhancedNSWFeedback({ essay, textType }) {
     </div>
   );
 }
+
