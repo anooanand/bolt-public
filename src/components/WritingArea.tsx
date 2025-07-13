@@ -504,54 +504,7 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
 
 
 
-      {/* Main Writing Area - Maximized space usage */}
-      <div className="writing-main-section flex-1">
-        <div className="relative h-full">
-          {/* Highlight Layer */}
-          <div
-            ref={highlightLayerRef}
-            className="absolute inset-0 pointer-events-none z-10 p-0 font-mono text-transparent whitespace-pre-wrap break-words"
-            style={{
-              fontSize: '16px',
-              lineHeight: '24px',
-              fontFamily: 'inherit'
-            }}
-          >
-            {renderHighlightedText()}
-          </div>
 
-          {/* Textarea - Removed padding and border radius */}
-          <textarea
-            ref={textareaRef}
-            value={content}
-            onChange={handleTextareaChange}
-            onClick={handleTextareaClick}
-            placeholder={prompt ? "Start writing your response here..." : "Select a writing type to get started..."}
-            className="w-full h-full border-0 bg-blue-50 dark:bg-gray-800 text-gray-900 dark:text-white resize-none focus:outline-none focus:ring-0 relative z-20 rounded-none"
-            style={{
-              fontSize: '16px',
-              lineHeight: '24px',
-              fontFamily: 'inherit',
-              padding: '12px' // Minimal internal padding for text readability
-            }}
-            disabled={!prompt}
-          />
-        </div>
-
-        {/* Inline Suggestion Popup */}
-        {selectedIssue && (
-          <InlineSuggestionPopup
-            issue={selectedIssue}
-            position={popupPosition}
-            suggestions={suggestions}
-            isLoading={isLoadingSuggestions}
-            onApplySuggestion={handleApplySuggestion}
-            onClose={() => setSelectedIssue(null)}
-            onParaphrase={handleParaphrase}
-            onThesaurus={handleThesaurus}
-          />
-        )}
-      </div>
 
       {/* Status Bar - Compact */}
       <div className="status-section py-1 px-2">
