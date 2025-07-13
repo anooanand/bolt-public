@@ -3,6 +3,7 @@ import { WritingArea } from './WritingArea';
 import { TabbedCoachPanel } from './TabbedCoachPanel';
 import { Lightbulb, Type, Save, Settings, Sparkles, Users, Target, Star, CheckCircle, PanelRightClose, PanelRightOpen, Plus, Download, HelpCircle } from 'lucide-react';
 import './layout-fix.css';
+import './full-width-fix.css';
 
 interface EnhancedWritingLayoutProps {
   content: string;
@@ -173,21 +174,21 @@ export function EnhancedWritingLayout({
 
   return (
     <div className="enhanced-writing-layout bg-gray-50 overflow-hidden min-h-0 h-full flex flex-col">
-      {/* Writing Prompt at Top - Removed max-w-7xl and mx-auto */}
+      {/* Writing Prompt at Top - Full width, no side padding */}
       <div className="bg-gradient-to-r from-blue-50 to-purple-50 border-b border-blue-200 p-2 shadow-sm flex-shrink-0">
-        <div className="px-4">
-          <div className="flex items-center space-x-2 mb-1">
+        <div className="px-0">
+          <div className="flex items-center space-x-2 mb-1 px-4">
             <Sparkles className="w-4 h-4 text-blue-600" />
             <h3 className="font-semibold text-blue-800 text-sm">Your Writing Prompt</h3>
           </div>
-          <p className="text-gray-700 leading-relaxed text-sm">{getWritingPrompt()}</p>
+          <p className="text-gray-700 leading-relaxed text-sm px-4">{getWritingPrompt()}</p>
         </div>
       </div>
 
-      {/* Compact Toolbar - Removed max-w-7xl and mx-auto */}
+      {/* Compact Toolbar - Full width, no side padding */}
       <div className="bg-white border-b border-gray-200 p-2 shadow-sm flex-shrink-0">
-        <div className="px-4 flex items-center justify-between">
-          <div className="flex items-center space-x-3">
+        <div className="px-0 flex items-center justify-between">
+          <div className="flex items-center space-x-3 px-4">
             {/* Planning Toggle */}
             <div className="flex items-center space-x-2">
               <label className="flex items-center cursor-pointer">
@@ -225,7 +226,7 @@ export function EnhancedWritingLayout({
             </div>
           </div>
           
-          <div className="flex items-center space-x-1">
+          <div className="flex items-center space-x-1 px-4">
             {/* Action Buttons - Smaller */}
             <button
               onClick={handleNewStory}
@@ -271,11 +272,11 @@ export function EnhancedWritingLayout({
         </div>
       </div>
 
-      {/* Planning Section (Collapsible) - Removed max-w-7xl and mx-auto */}
+      {/* Planning Section (Collapsible) - Full width, no side padding */}
       {showPlanning && (
         <div className="bg-white border-b border-gray-200 p-2 shadow-sm flex-shrink-0">
-          <div className="px-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="px-0">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 px-4">
               {writingSteps.map((step) => (
                 <div key={step.id} className="space-y-1">
                   <div className="flex items-center space-x-2">
@@ -299,9 +300,9 @@ export function EnhancedWritingLayout({
         </div>
       )}
 
-      {/* Main Writing Area with Optional Chat Panel - FULL HEIGHT, NO PADDING */}
+      {/* Main Writing Area with Optional Chat Panel - FULL WIDTH, NO PADDING */}
       <div className="writing-main-content flex-1 overflow-hidden min-h-0 flex">
-        {/* Writing Area - Uses specific templates, NO PADDING */}
+        {/* Writing Area - Uses specific templates, NO PADDING, FULL WIDTH */}
         <div className={`writing-textarea-wrapper ${showChatPanel ? 'flex-1' : 'w-full'} min-h-0`}>
           <div className="h-full">
             <WritingArea
@@ -335,15 +336,15 @@ export function EnhancedWritingLayout({
         )}
       </div>
 
-      {/* Writing Tips (Bottom) - Removed max-w-7xl and mx-auto */}
+      {/* Writing Tips (Bottom) - Full width, no side padding */}
       {wordCount < 50 && (
         <div className="bg-blue-50 border-t border-blue-200 p-2 flex-shrink-0">
-          <div className="px-4">
-            <div className="flex items-center space-x-2 text-blue-700">
+          <div className="px-0">
+            <div className="flex items-center space-x-2 text-blue-700 px-4">
               <Lightbulb className="w-3 h-3" />
               <span className="font-medium text-xs">Writing Tip:</span>
             </div>
-            <p className="text-blue-600 text-xs mt-1">
+            <p className="text-blue-600 text-xs mt-1 px-4">
               Start with a strong opening that grabs your reader's attention. Don't worry about making it perfect - you can always revise it later!
             </p>
           </div>
