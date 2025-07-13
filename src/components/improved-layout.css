@@ -21,7 +21,7 @@
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   letter-spacing: 0.01em;
   color: #1f2937 !important;
-  background: #ffffff !important; /* Ensure consistent white background */
+  background: transparent !important;
   resize: none;
   border: none;
   outline: none;
@@ -51,13 +51,8 @@
 }
 
 /* Dark mode support */
-.dark .writing-area-enhanced {
-  background: #1f2937;
-}
-
 .dark .writing-textarea {
   color: #f9fafb !important;
-  background: #1f2937 !important; /* Consistent dark background */
   scrollbar-color: #4b5563 #374151;
 }
 
@@ -415,211 +410,17 @@
 
 
 
-/* Enhanced Space Utilization Styles */
-.split-screen-container {
-  display: flex;
-  height: 100%;
-  gap: 8px;
-  background: transparent;
-  transition: all 0.3s ease;
+/* Custom adjustments for Writing Buddy height and writing area width */
+.coach-panel-container {
+    height: 80vh; /* Increase the height of the Writing Buddy */
 }
 
-.split-screen-container.collapsed-panel {
-  gap: 0;
+.writing-main-content .writing-textarea-wrapper {
+    flex: 1; /* Ensure writing area takes available space */
+    width: 70%; /* Adjust this value to increase writing area width */
 }
 
-.split-screen-left {
-  flex: 2;
-  background: #ffffff;
-  border-radius: 12px;
-  overflow: hidden;
-  transition: all 0.3s ease;
+.writing-main-content .w-\[450px\] {
+    width: 30%; /* Reduce the width of the right panel to accommodate the wider writing area */
 }
 
-.split-screen-container.collapsed-panel .split-screen-left {
-  flex: 1;
-}
-
-.split-screen-right {
-  flex: 1;
-  background: #ffffff;
-  border-radius: 12px;
-  overflow: hidden;
-  transition: all 0.3s ease;
-}
-
-.dark .split-screen-left,
-.dark .split-screen-right {
-  background: #1f2937;
-}
-
-/* Compact Progress Bars */
-.progress-compact {
-  height: 4px;
-  background: #e5e7eb;
-  border-radius: 2px;
-  overflow: hidden;
-}
-
-.progress-compact .progress-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #3b82f6, #8b5cf6);
-  transition: width 0.3s ease;
-}
-
-/* Collapsible Sections */
-.collapsible-section {
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  overflow: hidden;
-  margin-bottom: 12px;
-}
-
-.collapsible-header {
-  padding: 8px 12px;
-  background: #f9fafb;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  transition: background-color 0.2s ease;
-}
-
-.collapsible-header:hover {
-  background: #f3f4f6;
-}
-
-.collapsible-content {
-  padding: 12px;
-  background: #ffffff;
-}
-
-.dark .collapsible-section {
-  border-color: #374151;
-}
-
-.dark .collapsible-header {
-  background: #374151;
-}
-
-.dark .collapsible-header:hover {
-  background: #4b5563;
-}
-
-.dark .collapsible-content {
-  background: #1f2937;
-}
-
-/* Compact Step Navigation */
-.step-navigation {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px;
-  background: #f9fafb;
-  border-radius: 8px;
-  margin-bottom: 12px;
-}
-
-.step-item {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 8px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 500;
-  transition: all 0.2s ease;
-  cursor: pointer;
-}
-
-.step-item.active {
-  background: #3b82f6;
-  color: white;
-}
-
-.step-item.completed {
-  background: #10b981;
-  color: white;
-}
-
-.step-item:not(.active):not(.completed) {
-  background: #e5e7eb;
-  color: #6b7280;
-}
-
-.step-separator {
-  width: 8px;
-  height: 1px;
-  background: #d1d5db;
-}
-
-.dark .step-navigation {
-  background: #374151;
-}
-
-.dark .step-item:not(.active):not(.completed) {
-  background: #4b5563;
-  color: #9ca3af;
-}
-
-/* Responsive Improvements */
-@media (max-width: 768px) {
-  .split-screen-container {
-    flex-direction: column;
-    gap: 8px;
-  }
-  
-  .split-screen-left,
-  .split-screen-right {
-    flex: 1;
-  }
-  
-  .content-spacing {
-    padding: 6px 8px !important;
-  }
-  
-  .touch-friendly-button {
-    min-height: 36px;
-    padding: 8px 12px !important;
-    font-size: 14px !important;
-  }
-  
-  .step-navigation {
-    flex-wrap: wrap;
-    gap: 4px;
-  }
-  
-  .step-item {
-    font-size: 11px;
-    padding: 3px 6px;
-  }
-}
-
-/* Panel Toggle Button */
-.panel-toggle {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  z-index: 10;
-  background: rgba(255, 255, 255, 0.9);
-  border: 1px solid #e5e7eb;
-  border-radius: 6px;
-  padding: 4px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.panel-toggle:hover {
-  background: rgba(255, 255, 255, 1);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.dark .panel-toggle {
-  background: rgba(31, 41, 55, 0.9);
-  border-color: #374151;
-}
-
-.dark .panel-toggle:hover {
-  background: rgba(31, 41, 55, 1);
-}
