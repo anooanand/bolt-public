@@ -75,18 +75,6 @@ export function NarrativeWritingTemplateRedesigned({
 
   return (
     <div className="h-full flex flex-col bg-gray-50">
-      {/* Writing Prompt at Top */}
-      {prompt && (
-        <div className="bg-gradient-to-r from-blue-50 to-purple-50 border-b border-blue-200 p-4 shadow-sm">
-          <div className="max-w-4xl mx-auto">
-            <div className="flex items-center space-x-2 mb-2">
-              <Sparkles className="w-5 h-5 text-blue-600" />
-              <h3 className="font-semibold text-blue-800">Your Writing Prompt</h3>
-            </div>
-            <p className="text-gray-700 leading-relaxed text-lg">{prompt}</p>
-          </div>
-        </div>
-      )}
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col">
