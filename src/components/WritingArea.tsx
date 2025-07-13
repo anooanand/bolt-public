@@ -32,6 +32,7 @@ interface WritingAreaProps {
   onSubmit: () => void;
   onTextTypeChange?: (textType: string) => void;
   onPopupCompleted?: () => void;
+  onPromptGenerated?: (prompt: string) => void; // NEW: Callback to pass prompt to parent
 }
 
 interface WritingIssue {
@@ -42,7 +43,7 @@ interface WritingIssue {
   suggestion: string;
 }
 
-export function WritingArea({ content, onChange, textType, onTimerStart, onSubmit, onTextTypeChange, onPopupCompleted }: WritingAreaProps) {
+export function WritingArea({ content, onChange, textType, onTimerStart, onSubmit, onTextTypeChange, onPopupCompleted, onPromptGenerated }: WritingAreaProps) {
   const { state, addWriting } = useApp();
   const [prompt, setPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
@@ -100,9 +101,20 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
       const savedPrompt = localStorage.getItem(`${currentTextType}_prompt`);
       if (savedPrompt) {
         setPrompt(savedPrompt);
+        // NEW: Pass the loaded prompt to parent
+        if (onPromptGenerated) {
+          onPromptGenerated(savedPrompt);
+        }
       }
     }
-  }, [selectedWritingType, textType]);
+  }, [selectedWritingType, textType, onPromptGenerated]);
+
+  // NEW: Pass prompt to parent whenever it changes
+  useEffect(() => {
+    if (prompt && onPromptGenerated) {
+      onPromptGenerated(prompt);
+    }
+  }, [prompt, onPromptGenerated]);
 
   // Persist content and selectedWritingType to localStorage
   useEffect(() => {
@@ -417,6 +429,11 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
       if (currentTextType) {
         localStorage.setItem(`${currentTextType}_prompt`, newPrompt);
       }
+      
+      // NEW: Pass the generated prompt to parent immediately
+      if (onPromptGenerated) {
+        onPromptGenerated(newPrompt);
+      }
     }
     setIsGenerating(false);
     
@@ -443,6 +460,12 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
     if (currentTextType) {
       localStorage.setItem(`${currentTextType}_prompt`, customPrompt);
     }
+    
+    // NEW: Pass the custom prompt to parent immediately
+    if (onPromptGenerated) {
+      onPromptGenerated(customPrompt);
+    }
+    
     setShowCustomPromptModal(false);
     
     // Call the callback to indicate popup flow is completed
@@ -501,10 +524,6 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
           {renderWritingTemplate()}
         </div>
       )}
-
-
-
-
 
       {/* Status Bar - Compact */}
       <div className="status-section py-1 px-2">
