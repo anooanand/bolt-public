@@ -22,6 +22,7 @@ import { DiaryWritingTemplate } from './DiaryWritingTemplate';
 import { SpeechWritingTemplate } from './SpeechWritingTemplate';
 import './responsive.css';
 import './layout-fix.css';
+import './full-width-fix.css';
 
 interface WritingAreaProps {
   content: string;
@@ -493,7 +494,7 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
   const currentTextType = textType || selectedWritingType;
 
   return (
-    <div ref={containerRef} className="writing-area-container h-full flex flex-col p-0">
+    <div ref={containerRef} className="writing-area-container h-full flex flex-col p-0 m-0">
       {/* Writing Template - Removed margin and padding */}
       {currentTextType && (
         <div className="writing-template-section">
@@ -504,7 +505,7 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
       {/* Prompt Display - Removed margin and padding */}
       {prompt && (
         <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-none border-0 p-2">
-          <div className="flex items-start gap-2">
+          <div className="flex items-start gap-2 px-2">
             <div className="p-1 bg-gradient-to-r from-blue-500 to-purple-500 rounded-md">
               <Sparkles className="w-4 h-4 text-white" />
             </div>
@@ -526,7 +527,7 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
           {/* Highlight Layer */}
           <div
             ref={highlightLayerRef}
-            className="absolute inset-0 pointer-events-none z-10 p-2 font-mono text-transparent whitespace-pre-wrap break-words"
+            className="absolute inset-0 pointer-events-none z-10 p-0 font-mono text-transparent whitespace-pre-wrap break-words"
             style={{
               fontSize: '16px',
               lineHeight: '24px',
@@ -543,13 +544,12 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
             onChange={handleTextareaChange}
             onClick={handleTextareaClick}
             placeholder={prompt ? "Start writing your response here..." : "Select a writing type to get started..."}
-            className="w-full h-full border-0 bg-white dark:bg-gray-800 text-gray-900 dark:text-white resize-none focus:outline-none focus:ring-0 relative z-20"
+            className="w-full h-full border-0 bg-blue-50 dark:bg-gray-800 text-gray-900 dark:text-white resize-none focus:outline-none focus:ring-0 relative z-20 rounded-none"
             style={{
               fontSize: '16px',
               lineHeight: '24px',
               fontFamily: 'inherit',
-              background: 'transparent',
-              padding: '8px' // Minimal padding for text inside textarea
+              padding: '12px' // Minimal internal padding for text readability
             }}
             disabled={!prompt}
           />
