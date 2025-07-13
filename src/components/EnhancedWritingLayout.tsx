@@ -56,12 +56,12 @@ export function EnhancedWritingLayout({
   const [writingStreak, setWritingStreak] = useState(3);
   const [timeSpent, setTimeSpent] = useState(0);
   
-  // NEW: State to store the generated prompt from WritingArea
+  // State to store the generated prompt from WritingArea
   const [generatedPrompt, setGeneratedPrompt] = useState('');
 
   // Get writing prompt based on text type (fallback for when no generated prompt exists)
   const getWritingPrompt = () => {
-    // NEW: Use generated prompt if available, otherwise use static prompts
+    // Use generated prompt if available, otherwise use static prompts
     if (generatedPrompt) {
       return generatedPrompt;
     }
@@ -84,7 +84,7 @@ export function EnhancedWritingLayout({
     return prompts[textType as keyof typeof prompts] || prompts.default;
   };
 
-  // NEW: Callback to receive generated prompt from WritingArea
+  // Callback to receive generated prompt from WritingArea
   const handlePromptGenerated = (prompt: string) => {
     setGeneratedPrompt(prompt);
   };
@@ -154,7 +154,7 @@ export function EnhancedWritingLayout({
         theme: ''
       });
       setCompletedSteps([]);
-      // NEW: Clear generated prompt when starting new story
+      // Clear generated prompt when starting new story
       setGeneratedPrompt('');
       if (onNavigate) {
         onNavigate('dashboard');
@@ -189,15 +189,20 @@ export function EnhancedWritingLayout({
 
   return (
     <div className="enhanced-writing-layout bg-gray-50 overflow-hidden min-h-0 h-full flex flex-col">
-      {/* Writing Prompt at Top - Full width, no side padding - ALWAYS VISIBLE WHEN PROMPT EXISTS */}
+      {/* Writing Prompt at Top - BOLD AND PROMINENT */}
       {(textType && (generatedPrompt || getWritingPrompt())) && (
-        <div className="bg-gradient-to-r from-blue-50 to-purple-50 border-b border-blue-200 p-2 shadow-sm flex-shrink-0">
+        <div className="bg-gradient-to-r from-blue-50 to-purple-50 border-b border-blue-200 p-4 shadow-lg flex-shrink-0">
           <div className="px-0">
-            <div className="flex items-center space-x-2 mb-1 px-4">
-              <Sparkles className="w-4 h-4 text-blue-600" />
-              <h3 className="font-semibold text-blue-800 text-sm">Your Writing Prompt</h3>
+            <div className="flex items-center space-x-3 mb-3 px-4">
+              <Sparkles className="w-6 h-6 text-blue-600" />
+              <h3 className="font-bold text-blue-800 text-lg">Your Writing Prompt</h3>
             </div>
-            <p className="text-gray-700 leading-relaxed text-sm px-4">{getWritingPrompt()}</p>
+            {/* ENHANCED PROMPT STYLING - BOLD AND PROMINENT */}
+            <div className="bg-white rounded-lg p-4 border-l-4 border-blue-600 shadow-md mx-4">
+              <p className="text-gray-800 leading-relaxed text-lg font-semibold">
+                {getWritingPrompt()}
+              </p>
+            </div>
           </div>
         </div>
       )}
@@ -289,10 +294,10 @@ export function EnhancedWritingLayout({
         </div>
       </div>
 
-      {/* Planning Section (Collapsible) - Full width, no side padding */}
+      {/* Planning Section (Collapsible) - FIXED HEIGHT WITH SCROLLING */}
       {showPlanning && (
-        <div className="bg-white border-b border-gray-200 p-2 shadow-sm flex-shrink-0">
-          <div className="px-0">
+        <div className="bg-white border-b border-gray-200 shadow-sm flex-shrink-0" style={{ maxHeight: '200px' }}>
+          <div className="px-0 h-full overflow-y-auto p-3">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 px-4">
               {writingSteps.map((step) => (
                 <div key={step.id} className="space-y-1">
@@ -335,10 +340,10 @@ export function EnhancedWritingLayout({
           </div>
         </div>
 
-        {/* Right Sidebar - Chat Panel (Optional) - FULL HEIGHT */}
+        {/* Right Sidebar - Chat Panel (Optional) - INCREASED WIDTH FOR BETTER READABILITY */}
         {showChatPanel && (
-          <div className="w-[350px] flex-shrink-0 bg-white border-l border-gray-200 flex flex-col min-h-0">
-            <div className="flex-1 p-2 overflow-hidden">
+          <div className="w-[450px] flex-shrink-0 bg-white border-l border-gray-200 flex flex-col min-h-0">
+            <div className="flex-1 p-3 overflow-hidden">
               <div className="h-full">
                 <TabbedCoachPanel
                   content={content}
@@ -353,10 +358,6 @@ export function EnhancedWritingLayout({
           </div>
         )}
       </div>
-
-      {/* REMOVED: Writing Tips section that was appearing at the bottom */}
-      {/* The original code had a conditional section here that showed writing tips when wordCount < 50 */}
-      {/* This has been completely removed as requested by the user */}
     </div>
   );
 }
