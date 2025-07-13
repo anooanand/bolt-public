@@ -174,16 +174,18 @@ export function EnhancedWritingLayout({
 
   return (
     <div className="enhanced-writing-layout bg-gray-50 overflow-hidden min-h-0 h-full flex flex-col">
-      {/* Writing Prompt at Top - Full width, no side padding */}
-      <div className="bg-gradient-to-r from-blue-50 to-purple-50 border-b border-blue-200 p-2 shadow-sm flex-shrink-0">
-        <div className="px-0">
-          <div className="flex items-center space-x-2 mb-1 px-4">
-            <Sparkles className="w-4 h-4 text-blue-600" />
-            <h3 className="font-semibold text-blue-800 text-sm">Your Writing Prompt</h3>
+      {/* Writing Prompt at Top - Full width, no side padding - ALWAYS VISIBLE */}
+      {textType && (
+        <div className="bg-gradient-to-r from-blue-50 to-purple-50 border-b border-blue-200 p-2 shadow-sm flex-shrink-0">
+          <div className="px-0">
+            <div className="flex items-center space-x-2 mb-1 px-4">
+              <Sparkles className="w-4 h-4 text-blue-600" />
+              <h3 className="font-semibold text-blue-800 text-sm">Your Writing Prompt</h3>
+            </div>
+            <p className="text-gray-700 leading-relaxed text-sm px-4">{getWritingPrompt()}</p>
           </div>
-          <p className="text-gray-700 leading-relaxed text-sm px-4">{getWritingPrompt()}</p>
         </div>
-      </div>
+      )}
 
       {/* Compact Toolbar - Full width, no side padding */}
       <div className="bg-white border-b border-gray-200 p-2 shadow-sm flex-shrink-0">
@@ -336,20 +338,9 @@ export function EnhancedWritingLayout({
         )}
       </div>
 
-      {/* Writing Tips (Bottom) - Full width, no side padding */}
-      {wordCount < 50 && (
-        <div className="bg-blue-50 border-t border-blue-200 p-2 flex-shrink-0">
-          <div className="px-0">
-            <div className="flex items-center space-x-2 text-blue-700 px-4">
-              <Lightbulb className="w-3 h-3" />
-              <span className="font-medium text-xs">Writing Tip:</span>
-            </div>
-            <p className="text-blue-600 text-xs mt-1 px-4">
-              Start with a strong opening that grabs your reader's attention. Don't worry about making it perfect - you can always revise it later!
-            </p>
-          </div>
-        </div>
-      )}
+      {/* REMOVED: Writing Tips section that was appearing at the bottom */}
+      {/* The original code had a conditional section here that showed writing tips when wordCount < 50 */}
+      {/* This has been completely removed as requested by the user */}
     </div>
   );
 }
