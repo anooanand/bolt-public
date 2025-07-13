@@ -71,6 +71,11 @@ NSW SELECTIVE WRITING TEST CONTEXT:
 - Evaluation should reflect selective school entry standards while being age-appropriate and encouraging
 
 EVALUATION CRITERIA:
+- Relevance to Prompt: "Does your story directly address the prompt?"
+- Content Depth: "Can you add more descriptive language here?", "How can you make this character more interesting?"
+- Structural Cohesion: "Does this paragraph flow well from the previous one?", "Consider adding a stronger concluding sentence."
+- Genre Suitability: "Does this sound like a persuasive argument?"
+- Vocabulary Enhancement (Contextual): Suggestions for stronger verbs or more precise adjectives relevant to the context of the story.
 - Ideas and Content: Creativity, originality, development of ideas appropriate for selective school level
 - Structure: Clear beginning, middle, end with logical organization
 - Language: Sentence variety, sophisticated vocabulary for age group, fluent expression
@@ -132,3 +137,4 @@ export const vocabularyEnhancements = {
 };
 
 export default promptConfig;
+
