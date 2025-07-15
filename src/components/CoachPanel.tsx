@@ -9,6 +9,7 @@ interface CoachPanelProps {
   content: string;
   textType: string;
   assistanceLevel: string;
+  wordCount: number;
 }
 
 interface FeedbackItem {
@@ -25,7 +26,7 @@ interface StructuredFeedback {
   focusForNextTime: string[];
 }
 
-export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelProps) {
+export function CoachPanel({ content, textType, assistanceLevel, wordCount }: CoachPanelProps) {
   const [structuredFeedback, setStructuredFeedback] = useState<StructuredFeedback | null>(null);
   const [feedbackHistory, setFeedbackHistory] = useState<FeedbackItem[]>([]);
   const [localAssistanceLevel, setLocalAssistanceLevel] = useState<string>(assistanceLevel);
@@ -123,7 +124,7 @@ export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelPro
     return text.trim().split(/\s+/).filter(word => word.length > 0).length;
   }, []);
 
-  const fetchFeedback = useCallback(async (currentContent: string, currentTextType: string, currentAssistanceLevel: string, currentFeedbackHistory: FeedbackItem[]) => {
+  const fetchFeedback = useCallback(async (currentContent: string, currentTextType: string, currentAssistanceLevel: string, currentFeedbackHistory: FeedbackItem[], currentWordCount: number) => {
     const wordCount = countWords(currentContent);
     
     if (wordCount >= 50 && currentContent !== lastProcessedContent) {
@@ -163,11 +164,11 @@ export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelPro
 
   useEffect(() => {
     const debounceTimer = setTimeout(() => {
-      fetchFeedback(content, textType, localAssistanceLevel, feedbackHistory);
+      fetchFeedback(content, textType, localAssistanceLevel, feedbackHistory, wordCount);
     }, 2000);
 
     return () => clearTimeout(debounceTimer);
-  }, [content, textType, localAssistanceLevel, feedbackHistory, fetchFeedback]);
+  }, [content, textType, localAssistanceLevel, feedbackHistory, fetchFeedback, wordCount]);
 
   // Update local assistance level when prop changes
   useEffect(() => {
