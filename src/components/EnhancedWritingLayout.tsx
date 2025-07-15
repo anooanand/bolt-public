@@ -190,8 +190,8 @@ export function EnhancedWritingLayout({
 
   return (
     <div className="enhanced-writing-layout bg-gray-50 overflow-hidden min-h-0 h-full flex">
-      {/* Left Side - Writing Area with Toolbar and Prompt */}
-      <div className="writing-left-section flex-1 flex flex-col min-h-0">
+      {/* Left Side - Writing Area with Toolbar and Prompt - 65% width */}
+      <div className="writing-left-section flex-[65] flex flex-col min-h-0">
         {/* Writing Prompt at Top - BOLD AND PROMINENT */}
         {(textType && (generatedPrompt || getWritingPrompt())) && (
           <div className="bg-gradient-to-r from-blue-50 to-purple-50 border-b border-blue-200 p-4 shadow-lg flex-shrink-0">
@@ -344,9 +344,9 @@ export function EnhancedWritingLayout({
         </div>
       </div>
 
-      {/* Right Sidebar - Writing Buddy Panel - Extended to full height */}
+      {/* Right Sidebar - Writing Buddy Panel - 25% width */}
       {showWritingBuddy && (
-        <div className="writing-buddy-panel w-[350px] flex-shrink-0 bg-white border-l border-gray-200 flex flex-col min-h-0">
+        <div className="writing-buddy-panel flex-[25] flex-shrink-0 bg-white border-l border-gray-200 flex flex-col min-h-0">
           {/* Writing Buddy Header */}
           <div className="writing-buddy-header bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30 p-3 border-b border-gray-200 flex-shrink-0">
             <div className="flex items-center justify-between">
