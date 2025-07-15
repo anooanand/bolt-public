@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { WritingArea } from './WritingArea';
 import { TabbedCoachPanel } from './TabbedCoachPanel';
-import { Lightbulb, Type, Save, Settings, Sparkles, Users, Target, Star, CheckCircle, PanelRightClose, PanelRightOpen, Plus, Download, HelpCircle } from 'lucide-react';
+import { Lightbulb, Type, Save, Settings, Sparkles, Users, Target, Star, CheckCircle, PanelRightClose, PanelRightOpen, Plus, Download, HelpCircle, Bot } from 'lucide-react';
 import './layout-fix.css';
 import './full-width-fix.css';
+import './new-layout.css';
 
 interface EnhancedWritingLayoutProps {
   content: string;
@@ -49,7 +50,7 @@ export function EnhancedWritingLayout({
   });
   
   const [showPlanning, setShowPlanning] = useState(false);
-  const [showChatPanel, setShowChatPanel] = useState(true);
+  const [showWritingBuddy, setShowWritingBuddy] = useState(true);
   const [wordCount, setWordCount] = useState(0);
   const [characterCount, setCharacterCount] = useState(0);
   const [completedSteps, setCompletedSteps] = useState<number[]>([]);
@@ -138,8 +139,8 @@ export function EnhancedWritingLayout({
     setShowPlanning(!showPlanning);
   };
 
-  const toggleChatPanel = () => {
-    setShowChatPanel(!showChatPanel);
+  const toggleWritingBuddy = () => {
+    setShowWritingBuddy(!showWritingBuddy);
   };
 
   const handleNewStory = () => {
@@ -188,144 +189,146 @@ export function EnhancedWritingLayout({
   };
 
   return (
-    <div className="enhanced-writing-layout bg-gray-50 overflow-hidden min-h-0 h-full flex flex-col">
-      {/* Writing Prompt at Top - BOLD AND PROMINENT */}
-      {(textType && (generatedPrompt || getWritingPrompt())) && (
-        <div className="bg-gradient-to-r from-blue-50 to-purple-50 border-b border-blue-200 p-4 shadow-lg flex-shrink-0">
-          <div className="px-0">
-            <div className="flex items-center space-x-3 mb-3 px-4">
-              <Sparkles className="w-6 h-6 text-blue-600" />
-              <h3 className="font-bold text-blue-800 text-lg">Your Writing Prompt</h3>
-            </div>
-            {/* ENHANCED PROMPT STYLING - BOLD AND PROMINENT */}
-            <div className="bg-white rounded-lg p-4 border-l-4 border-blue-600 shadow-md mx-4">
-              <p className="text-gray-800 leading-relaxed text-lg font-semibold">
-                {getWritingPrompt()}
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Compact Toolbar - Full width, no side padding */}
-      <div className="bg-white border-b border-gray-200 p-2 shadow-sm flex-shrink-0">
-        <div className="px-0 flex items-center justify-between">
-          <div className="flex items-center space-x-3 px-4 w-full justify-between">
-            {/* Planning Toggle */}
-            <div className="flex items-center space-x-2">
-              <label className="flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={showPlanning}
-                  onChange={togglePlanning}
-                  className="sr-only"
-                />
-                <div className={`relative inline-flex h-4 w-8 items-center rounded-full transition-colors ${
-                  showPlanning ? 'bg-blue-600' : 'bg-gray-300'
-                }`}>
-                  <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
-                    showPlanning ? 'translate-x-4' : 'translate-x-0.5'
-                  }`} />
-                </div>
-                <span className="ml-2 text-xs font-medium text-gray-700">Planning</span>
-              </label>
-            </div>
-
-            {/* Word Count */}
-            <div className="flex items-center space-x-1 text-xs text-gray-600">
-              <Type className="w-3 h-3" />
-              <span className="font-medium">{wordCount} words</span>
-            </div>
-
-            {/* Writing Stats */}
-            <div className="flex items-center space-x-2 text-xs">
-              <div className="bg-green-100 px-2 py-0.5 rounded-full">
-                <span className="font-medium">{Math.round(timeSpent / 60)} min</span>
+    <div className="enhanced-writing-layout bg-gray-50 overflow-hidden min-h-0 h-full flex">
+      {/* Left Side - Writing Area with Toolbar and Prompt */}
+      <div className="writing-left-section flex-1 flex flex-col min-h-0">
+        {/* Writing Prompt at Top - BOLD AND PROMINENT */}
+        {(textType && (generatedPrompt || getWritingPrompt())) && (
+          <div className="bg-gradient-to-r from-blue-50 to-purple-50 border-b border-blue-200 p-4 shadow-lg flex-shrink-0">
+            <div className="px-0">
+              <div className="flex items-center space-x-3 mb-3 px-4">
+                <Sparkles className="w-6 h-6 text-blue-600" />
+                <h3 className="font-bold text-blue-800 text-lg">Your Writing Prompt</h3>
               </div>
-              <div className="bg-purple-100 px-2 py-0.5 rounded-full">
-                <span className="font-medium">{writingStreak} day streak</span>
+              {/* ENHANCED PROMPT STYLING - BOLD AND PROMINENT */}
+              <div className="bg-white rounded-lg p-4 border-l-4 border-blue-600 shadow-md mx-4">
+                <p className="text-gray-800 leading-relaxed text-lg font-semibold">
+                  {getWritingPrompt()}
+                </p>
               </div>
             </div>
           </div>
-          
-          <div className="flex items-center space-x-1">
-            {/* Action Buttons - Smaller */}
-            <button
-              onClick={handleNewStory}
-              className="flex items-center space-x-1 px-2 py-1 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-xs"
-            >
-              <Plus className="w-3 h-3" />
-              <span>New</span>
-            </button>
-            
-            <button
-              onClick={handleSave}
-              className="flex items-center space-x-1 px-2 py-1 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors text-xs"
-            >
-              <Save className="w-3 h-3" />
-              <span>Save</span>
-            </button>
-            
-            <button
-              onClick={handleExport}
-              className="flex items-center space-x-1 px-2 py-1 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-xs"
-            >
-              <Download className="w-3 h-3" />
-              <span>Export</span>
-            </button>
-            
-            <button
-              onClick={handleHelp}
-              className="flex items-center space-x-1 px-2 py-1 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors text-xs"
-            >
-              <HelpCircle className="w-3 h-3" />
-              <span>Help</span>
-            </button>
+        )}
 
-            {/* Chat Panel Toggle */}
-            <button
-              onClick={toggleChatPanel}
-              className="flex items-center space-x-1 px-2 py-1 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors text-xs"
-            >
-              {showChatPanel ? <PanelRightClose className="w-3 h-3" /> : <PanelRightOpen className="w-3 h-3" />}
-              <span>{showChatPanel ? 'Hide' : 'Show'} Assistant</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Planning Section (Collapsible) - FIXED HEIGHT WITH SCROLLING */}
-      {showPlanning && (
-        <div className="bg-white border-b border-gray-200 shadow-sm flex-shrink-0" style={{ maxHeight: '200px' }}>
-          <div className="px-0 h-full overflow-y-auto p-3">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 px-4">
-              {writingSteps.map((step) => (
-                <div key={step.id} className="space-y-1">
-                  <div className="flex items-center space-x-2">
-                    {completedSteps.includes(step.id) ? (
-                      <CheckCircle className="w-3 h-3 text-green-600" />
-                    ) : (
-                      <step.icon className="w-3 h-3 text-gray-400" />
-                    )}
-                    <label className="font-medium text-gray-700 text-xs">{step.title}</label>
-                  </div>
-                  <textarea
-                    value={templateData[step.field]}
-                    onChange={(e) => handleTemplateChange(step.field, e.target.value)}
-                    placeholder={step.description}
-                    className="w-full h-12 p-2 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-xs"
+        {/* Compact Toolbar - Above writing area, left aligned */}
+        <div className="bg-white border-b border-gray-200 p-2 shadow-sm flex-shrink-0">
+          <div className="px-4 flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              {/* Planning Toggle */}
+              <div className="flex items-center space-x-2">
+                <label className="flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={showPlanning}
+                    onChange={togglePlanning}
+                    className="sr-only"
                   />
+                  <div className={`relative inline-flex h-4 w-8 items-center rounded-full transition-colors ${
+                    showPlanning ? 'bg-blue-600' : 'bg-gray-300'
+                  }`}>
+                    <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
+                      showPlanning ? 'translate-x-4' : 'translate-x-0.5'
+                    }`} />
+                  </div>
+                  <span className="ml-2 text-xs font-medium text-gray-700">Planning</span>
+                </label>
+              </div>
+
+              {/* Action Buttons - Moved to left */}
+              <button
+                onClick={handleNewStory}
+                className="flex items-center space-x-1 px-2 py-1 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-xs"
+              >
+                <Plus className="w-3 h-3" />
+                <span>New</span>
+              </button>
+              
+              <button
+                onClick={handleSave}
+                className="flex items-center space-x-1 px-2 py-1 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors text-xs"
+              >
+                <Save className="w-3 h-3" />
+                <span>Save</span>
+              </button>
+              
+              <button
+                onClick={handleExport}
+                className="flex items-center space-x-1 px-2 py-1 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-xs"
+              >
+                <Download className="w-3 h-3" />
+                <span>Export</span>
+              </button>
+              
+              <button
+                onClick={handleHelp}
+                className="flex items-center space-x-1 px-2 py-1 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors text-xs"
+              >
+                <HelpCircle className="w-3 h-3" />
+                <span>Help</span>
+              </button>
+
+              {/* Show Writing Buddy Button when hidden */}
+              {!showWritingBuddy && (
+                <button
+                  onClick={toggleWritingBuddy}
+                  className="flex items-center space-x-1 px-2 py-1 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors text-xs"
+                >
+                  <Bot className="w-3 h-3" />
+                  <span>Writing Buddy</span>
+                </button>
+              )}
+            </div>
+            
+            <div className="flex items-center space-x-3">
+              {/* Word Count */}
+              <div className="flex items-center space-x-1 text-xs text-gray-600">
+                <Type className="w-3 h-3" />
+                <span className="font-medium">{wordCount} words</span>
+              </div>
+
+              {/* Writing Stats */}
+              <div className="flex items-center space-x-2 text-xs">
+                <div className="bg-green-100 px-2 py-0.5 rounded-full">
+                  <span className="font-medium">{Math.round(timeSpent / 60)} min</span>
                 </div>
-              ))}
+                <div className="bg-purple-100 px-2 py-0.5 rounded-full">
+                  <span className="font-medium">{writingStreak} day streak</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
-      )}
 
-      {/* Main Writing Area with Optional Chat Panel - FULL WIDTH, NO PADDING */}
-      <div className="writing-main-content flex-1 overflow-hidden min-h-0 flex">
-        {/* Writing Area - Uses specific templates, NO PADDING, FULL WIDTH */}
-        <div className={`writing-textarea-wrapper ${showChatPanel ? 'flex-1' : 'w-full'} min-h-0`}>
+        {/* Planning Section (Collapsible) - FIXED HEIGHT WITH SCROLLING */}
+        {showPlanning && (
+          <div className="bg-white border-b border-gray-200 shadow-sm flex-shrink-0" style={{ maxHeight: '200px' }}>
+            <div className="px-0 h-full overflow-y-auto p-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 px-4">
+                {writingSteps.map((step) => (
+                  <div key={step.id} className="space-y-1 w-full md:w-1/2">
+                    <div className="flex items-center space-x-2">
+                      {completedSteps.includes(step.id) ? (
+                        <CheckCircle className="w-3 h-3 text-green-600" />
+                      ) : (
+                        <step.icon className="w-3 h-3 text-gray-400" />
+                      )}
+                      <label className="font-medium text-gray-700 text-xs">{step.title}</label>
+                    </div>
+                    <textarea
+                      value={templateData[step.field]}
+                      onChange={(e) => handleTemplateChange(step.field, e.target.value)}
+                      placeholder={step.description}
+                      className="w-full h-12 p-2 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-xs"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Writing Area - Full height */}
+        <div className="writing-textarea-wrapper flex-1 min-h-0">
           <div className="h-full">
             <WritingArea
               content={content}
@@ -339,25 +342,40 @@ export function EnhancedWritingLayout({
             />
           </div>
         </div>
+      </div>
 
-        {/* Right Sidebar - Chat Panel (Optional) - INCREASED WIDTH FOR BETTER READABILITY */}
-        {showChatPanel && (
-          <div className="w-[30%] flex-shrink-0 bg-white border-l border-gray-200 flex flex-col min-h-0">
-            <div className="flex-1 p-3 overflow-hidden">
-              <div className="h-full">
-                <TabbedCoachPanel
-                  content={content}
-                  textType={textType}
-                  assistanceLevel={assistanceLevel}
-                  selectedText={selectedText}
-                  onNavigate={onNavigate}
-                  wordCount={wordCount}
-                />
+      {/* Right Sidebar - Writing Buddy Panel - Extended to full height */}
+      {showWritingBuddy && (
+        <div className="writing-buddy-panel w-[350px] flex-shrink-0 bg-white border-l border-gray-200 flex flex-col min-h-0">
+          {/* Writing Buddy Header */}
+          <div className="writing-buddy-header bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30 p-3 border-b border-gray-200 flex-shrink-0">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Bot className="w-5 h-5 text-purple-600" />
+                <h3 className="font-semibold text-purple-800">Writing Buddy</h3>
               </div>
+              <button
+                onClick={toggleWritingBuddy}
+                className="p-1 hover:bg-purple-200 rounded-lg transition-colors"
+              >
+                <PanelRightClose className="w-4 h-4 text-purple-600" />
+              </button>
             </div>
           </div>
-        )}
-      </div>
+
+          {/* Chat Panel Content - Full height */}
+          <div className="flex-1 overflow-hidden">
+            <TabbedCoachPanel
+              content={content}
+              textType={textType}
+              assistanceLevel={assistanceLevel}
+              selectedText={selectedText}
+              onNavigate={onNavigate}
+              wordCount={wordCount}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
