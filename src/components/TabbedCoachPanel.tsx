@@ -45,7 +45,7 @@ export function TabbedCoachPanel({
   ];
 
   return (
-    <div className="h-full flex flex-col coach-panel-container">
+    <div className="h-full flex flex-col coach-panel-container" style={{ height: 'calc(100vh - 100px)' }}>
       {/* Tab Navigation */}
       <div className="coach-panel-header border-b-0 bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30">
         <div className="flex space-x-2 bg-white dark:bg-gray-800 p-2 rounded-2xl shadow-md">
