@@ -3,9 +3,9 @@ import { BookOpen, Clock, Brain, Sparkles, ArrowRight, BarChart2, Zap, Target, P
 
 export function WritingTypesSection() {
   return (
-    <section className="py-16 bg-white dark:bg-gray-900" id="writing-types">
+    <section className="py-12 bg-white dark:bg-gray-900" id="writing-types">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-12">
+        <div className="text-center mb-8">
           <h2 className="text-3xl md:text-4xl font-bold mb-4 text-gray-900 dark:text-white bg-gradient-to-r from-indigo-700 to-purple-700 dark:from-indigo-300 dark:to-purple-300 text-transparent bg-clip-text">
             Writing Types for NSW Selective Exam
           </h2>
@@ -14,9 +14,9 @@ export function WritingTypesSection() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           <WritingTypeCard 
-            icon={<PenTool className="w-6 h-6 text-blue-700 dark:text-blue-300" />}
+            icon={<PenTool className="w-5 h-5 text-blue-700 dark:text-blue-300" />}
             title="Storytelling & Creative Writing"
             description="Master the art of creative storytelling and narrative techniques"
             types={[
@@ -28,7 +28,7 @@ export function WritingTypesSection() {
           />
 
           <WritingTypeCard 
-            icon={<Target className="w-6 h-6 text-purple-700 dark:text-purple-300" />}
+            icon={<Target className="w-5 h-5 text-purple-700 dark:text-purple-300" />}
             title="Argument & Debate Writing"
             description="Learn to craft compelling arguments and balanced discussions"
             types={[
@@ -39,7 +39,7 @@ export function WritingTypesSection() {
           />
 
           <WritingTypeCard 
-            icon={<Award className="w-6 h-6 text-green-700 dark:text-green-300" />}
+            icon={<Award className="w-5 h-5 text-green-700 dark:text-green-300" />}
             title="Essay Scorer"
             description="Get detailed feedback and scores based on NSW marking criteria"
             features={[
@@ -52,7 +52,7 @@ export function WritingTypesSection() {
           />
 
           <WritingTypeCard 
-            icon={<BookOpen className="w-6 h-6 text-blue-700 dark:text-blue-300" />}
+            icon={<BookOpen className="w-5 h-5 text-blue-700 dark:text-blue-300" />}
             title="Informative & Reflective Writing"
             description="Develop clear explanations and thoughtful reflections"
             types={[
@@ -63,7 +63,7 @@ export function WritingTypesSection() {
           />
 
           <WritingTypeCard 
-            icon={<Sparkles className="w-6 h-6 text-orange-700 dark:text-orange-300" />}
+            icon={<Sparkles className="w-5 h-5 text-orange-700 dark:text-orange-300" />}
             title="Descriptive & Expressive Writing"
             description="Paint vivid pictures with words and express emotions"
             types={[
@@ -116,57 +116,57 @@ function WritingTypeCard({ icon, title, description, types, features, color }: W
   };
 
   return (
-    <div className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm border ${colorClasses[color].border} ${colorClasses[color].hover} transition-all duration-300 overflow-hidden h-full flex flex-col`}>
-      <div className={`p-6 ${colorClasses[color].bg}`}>
-        <div className="flex items-center mb-4">
-          <div className="mr-3">
+    <div className={`bg-white dark:bg-gray-800 rounded-lg shadow-sm border ${colorClasses[color].border} ${colorClasses[color].hover} transition-all duration-300 overflow-hidden flex flex-col h-auto`}>
+      <div className={`p-4 ${colorClasses[color].bg}`}>
+        <div className="flex items-center mb-2">
+          <div className="mr-2">
             {icon}
           </div>
-          <h3 className="text-xl font-semibold text-gray-900 dark:text-white">{title}</h3>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white leading-tight">{title}</h3>
         </div>
-        <p className="text-gray-700 dark:text-gray-200 mb-2">{description}</p>
+        <p className="text-sm text-gray-700 dark:text-gray-200">{description}</p>
       </div>
       
-      <div className="p-6 flex-grow">
+      <div className="p-4 flex-grow">
         {types && types.map((type, index) => (
-          <div key={index} className="mb-6 last:mb-0">
-            <div className="flex items-center justify-between mb-2">
-              <h4 className="font-medium text-gray-900 dark:text-white">{type.name}</h4>
+          <div key={index} className="mb-3 last:mb-0">
+            <div className="flex items-center justify-between mb-1">
+              <h4 className="text-sm font-medium text-gray-900 dark:text-white">{type.name}</h4>
               <span className="text-gray-500 dark:text-gray-400">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                 </svg>
               </span>
             </div>
-            <p className="text-sm text-gray-600 dark:text-gray-300">{type.description}</p>
-            <button className={`mt-3 flex items-center text-sm font-medium ${colorClasses[color].text}`}>
+            <p className="text-xs text-gray-600 dark:text-gray-300 mb-2">{type.description}</p>
+            <button className={`flex items-center text-xs font-medium ${colorClasses[color].text}`}>
               Sign In to Start
-              <ArrowRight className="ml-1 w-4 h-4" />
+              <ArrowRight className="ml-1 w-3 h-3" />
             </button>
           </div>
         ))}
         
         {features && features.map((feature, index) => (
-          <div key={index} className="mb-4 last:mb-0">
+          <div key={index} className="mb-3 last:mb-0">
             <div className="flex items-start">
-              <div className={`mt-1 mr-3 ${colorClasses[color].text}`}>
-                {index === 0 && <BarChart2 className="w-5 h-5" />}
-                {index === 1 && <Target className="w-5 h-5" />}
-                {index === 2 && <BookOpen className="w-5 h-5" />}
-                {index === 3 && <Clock className="w-5 h-5" />}
+              <div className={`mt-0.5 mr-2 ${colorClasses[color].text}`}>
+                {index === 0 && <BarChart2 className="w-4 h-4" />}
+                {index === 1 && <Target className="w-4 h-4" />}
+                {index === 2 && <BookOpen className="w-4 h-4" />}
+                {index === 3 && <Clock className="w-4 h-4" />}
               </div>
               <div>
-                <h4 className="font-medium text-gray-900 dark:text-white">{feature.name}</h4>
-                <p className="text-sm text-gray-600 dark:text-gray-300">{feature.description}</p>
+                <h4 className="text-sm font-medium text-gray-900 dark:text-white">{feature.name}</h4>
+                <p className="text-xs text-gray-600 dark:text-gray-300">{feature.description}</p>
               </div>
             </div>
           </div>
         ))}
         
         {features && (
-          <button className={`mt-4 w-full py-3 px-4 rounded-md bg-green-700 hover:bg-green-800 text-white font-medium flex items-center justify-center`}>
+          <button className={`mt-3 w-full py-2 px-3 rounded-md bg-green-700 hover:bg-green-800 text-white text-sm font-medium flex items-center justify-center`}>
             Sign In to Score Essays
-            <ArrowRight className="ml-2 w-4 h-4" />
+            <ArrowRight className="ml-2 w-3 h-3" />
           </button>
         )}
       </div>
