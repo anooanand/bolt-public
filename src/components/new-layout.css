@@ -1,0 +1,100 @@
+/* New Layout CSS for Writing Buddy Extension */
+
+.enhanced-writing-layout {
+  height: 100vh;
+  overflow: hidden;
+}
+
+.writing-left-section {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.writing-buddy-panel {
+  background: white;
+  border-left: 1px solid #e5e7eb;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+}
+
+.writing-buddy-header {
+  flex-shrink: 0;
+  background: linear-gradient(to right, #f3e8ff, #fce7f3);
+  border-bottom: 1px solid #e5e7eb;
+  padding: 12px;
+}
+
+.writing-textarea-wrapper {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Ensure the writing area takes full height */
+.writing-textarea-wrapper > div {
+  height: 100%;
+}
+
+/* Make sure the TabbedCoachPanel fills the available space */
+.coach-panel-container {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .writing-buddy-panel {
+    width: 300px !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .enhanced-writing-layout {
+    flex-direction: column;
+  }
+  
+  .writing-buddy-panel {
+    width: 100% !important;
+    height: 40vh;
+    border-left: none;
+    border-top: 1px solid #e5e7eb;
+  }
+  
+  .writing-left-section {
+    height: 60vh;
+  }
+}
+
+/* Ensure proper scrolling in planning section */
+.planning-section {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+/* Button hover effects */
+.toolbar-button {
+  transition: all 0.2s ease-in-out;
+}
+
+.toolbar-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Writing prompt styling */
+.writing-prompt-container {
+  background: linear-gradient(to right, #dbeafe, #e0e7ff);
+  border-bottom: 1px solid #bfdbfe;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.writing-prompt-content {
+  background: white;
+  border-left: 4px solid #2563eb;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
