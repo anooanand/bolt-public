@@ -3,12 +3,14 @@
 .enhanced-writing-layout {
   height: 100vh;
   overflow: hidden;
+  display: flex;
 }
 
 .writing-left-section {
   display: flex;
   flex-direction: column;
   min-height: 0;
+  flex: 65; /* 65% width */
 }
 
 .writing-buddy-panel {
@@ -18,6 +20,8 @@
   flex-direction: column;
   min-height: 0;
   height: 100%;
+  flex: 25; /* 25% width */
+  min-width: 300px; /* Minimum width to ensure usability */
 }
 
 .writing-buddy-header {
@@ -45,44 +49,32 @@
   flex-direction: column;
 }
 
-/* Responsive adjustments */
-@media (max-width: 768px) {
-  .writing-buddy-panel {
-    width: 300px !important;
-  }
-}
-
-@media (max-width: 640px) {
-  .enhanced-writing-layout {
-    flex-direction: column;
-  }
-  
-  .writing-buddy-panel {
-    width: 100% !important;
-    height: 40vh;
-    border-left: none;
-    border-top: 1px solid #e5e7eb;
-  }
-  
-  .writing-left-section {
-    height: 60vh;
-  }
-}
-
-/* Ensure proper scrolling in planning section */
-.planning-section {
-  max-height: 200px;
-  overflow-y: auto;
-}
-
-/* Button hover effects */
+/* Ensure buttons are visible and properly styled */
 .toolbar-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 500;
   transition: all 0.2s ease-in-out;
+  border: none;
+  cursor: pointer;
 }
 
 .toolbar-button:hover {
   transform: translateY(-1px);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Planning section styling */
+.planning-section {
+  max-height: 200px;
+  overflow-y: auto;
+  background: white;
+  border-bottom: 1px solid #e5e7eb;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 /* Writing prompt styling */
@@ -97,4 +89,51 @@
   border-left: 4px solid #2563eb;
   border-radius: 8px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Responsive adjustments */
+@media (max-width: 1024px) {
+  .writing-left-section {
+    flex: 60;
+  }
+  
+  .writing-buddy-panel {
+    flex: 40;
+    min-width: 250px;
+  }
+}
+
+@media (max-width: 768px) {
+  .enhanced-writing-layout {
+    flex-direction: column;
+  }
+  
+  .writing-left-section {
+    flex: 1;
+    height: 60vh;
+  }
+  
+  .writing-buddy-panel {
+    flex: none;
+    height: 40vh;
+    min-width: unset;
+    border-left: none;
+    border-top: 1px solid #e5e7eb;
+  }
+}
+
+/* Ensure proper spacing and visibility of all elements */
+.enhanced-writing-layout * {
+  box-sizing: border-box;
+}
+
+/* Fix for missing buttons - ensure they're always visible */
+.enhanced-writing-layout button {
+  display: inline-flex !important;
+  visibility: visible !important;
+}
+
+/* Ensure planning toggle is visible */
+.enhanced-writing-layout input[type="checkbox"] + div {
+  display: inline-flex !important;
 }
