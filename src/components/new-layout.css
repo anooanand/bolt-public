@@ -11,7 +11,7 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
-  flex: 1; /* Flexible width */
+  flex: 0 0 70%; /* Fixed 70% width */
 }
 
 .writing-buddy-panel {
@@ -21,7 +21,7 @@
   flex-direction: column;
   min-height: 0;
   height: 100%;
-  flex: 1; /* Flexible width to fill remaining space */
+  flex: 0 0 30%; /* Fixed 30% width */
   min-width: 300px;
 }
 
@@ -104,11 +104,11 @@
 /* Responsive adjustments */
 @media (max-width: 1024px) {
   .writing-left-section {
-    flex: 1 !important;
+    flex: 0 0 65% !important;
   }
   
   .writing-buddy-panel {
-    flex: 1 !important;
+    flex: 0 0 35% !important;
     min-width: 250px;
   }
 }
