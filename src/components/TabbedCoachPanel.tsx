@@ -10,6 +10,7 @@ interface TabbedCoachPanelProps {
   assistanceLevel: string;
   selectedText: string;
   onNavigate?: (page: string) => void;
+  wordCount: number;
 }
 
 type TabType = 'coach' | 'paraphrase';
@@ -19,7 +20,8 @@ export function TabbedCoachPanel({
   textType,
   assistanceLevel,
   selectedText,
-  onNavigate
+  onNavigate,
+  wordCount
 }: TabbedCoachPanelProps) {
   const [activeTab, setActiveTab] = useState<TabType>('coach');
   const [localAssistanceLevel, setLocalAssistanceLevel] = useState<string>(assistanceLevel);
@@ -90,6 +92,7 @@ export function TabbedCoachPanel({
             content={content}
             textType={textType}
             assistanceLevel={localAssistanceLevel}
+            wordCount={wordCount}
           />
         ) : (
           <ParaphrasePanel
