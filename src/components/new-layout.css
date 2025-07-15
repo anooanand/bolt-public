@@ -3,14 +3,15 @@
 .enhanced-writing-layout {
   height: 100vh;
   overflow: hidden;
-  display: flex;
+  display: flex !important;
+  flex-direction: row !important; /* Force horizontal layout */
 }
 
 .writing-left-section {
   display: flex;
   flex-direction: column;
   min-height: 0;
-  flex: 65; /* 65% width */
+  flex: 0 0 65%; /* Fixed 65% width */
 }
 
 .writing-buddy-panel {
@@ -20,8 +21,8 @@
   flex-direction: column;
   min-height: 0;
   height: 100%;
-  flex: 25; /* 25% width */
-  min-width: 300px; /* Minimum width to ensure usability */
+  flex: 0 0 25%; /* Fixed 25% width */
+  min-width: 300px;
 }
 
 .writing-buddy-header {
@@ -47,6 +48,15 @@
   height: 100%;
   display: flex;
   flex-direction: column;
+}
+
+/* Override any conflicting styles that might cause vertical layout */
+.enhanced-writing-layout > * {
+  flex-shrink: 0;
+}
+
+.enhanced-writing-layout .writing-left-section {
+  flex-shrink: 1;
 }
 
 /* Ensure buttons are visible and properly styled */
@@ -94,27 +104,27 @@
 /* Responsive adjustments */
 @media (max-width: 1024px) {
   .writing-left-section {
-    flex: 60;
+    flex: 0 0 60% !important;
   }
   
   .writing-buddy-panel {
-    flex: 40;
+    flex: 0 0 40% !important;
     min-width: 250px;
   }
 }
 
 @media (max-width: 768px) {
   .enhanced-writing-layout {
-    flex-direction: column;
+    flex-direction: column !important;
   }
   
   .writing-left-section {
-    flex: 1;
+    flex: 1 1 60vh !important;
     height: 60vh;
   }
   
   .writing-buddy-panel {
-    flex: none;
+    flex: 0 0 40vh !important;
     height: 40vh;
     min-width: unset;
     border-left: none;
