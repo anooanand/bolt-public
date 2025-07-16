@@ -445,7 +445,7 @@ export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelPro
       )}
 
       {/* Content Area */}
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 overflow-hidden flex flex-col">
         {isChatMode ? (
           /* Chat Mode */
           <div className="h-full flex flex-col">
@@ -504,7 +504,7 @@ export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelPro
             </div>
 
             {/* Chat Input */}
-            <div className="border-t border-gray-200 dark:border-gray-700 p-4">
+            <div className="border-t border-gray-200 dark:border-gray-700 p-4 flex-shrink-0">
               <form onSubmit={handleChatSubmit} className="flex space-x-2">
                 <input
                   type="text"
@@ -675,7 +675,7 @@ export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelPro
 
       {/* Suggested prompts for chat mode */}
       {isChatMode && showPrompts && (
-        <div className="border-t border-gray-200 dark:border-gray-700 p-4">
+        <div className="border-t border-gray-200 dark:border-gray-700 p-4 flex-shrink-0">
           <div className="space-y-2 bg-white dark:bg-gray-800 rounded-xl p-4 border-2 border-blue-100 dark:border-blue-800 shadow-inner max-h-40 overflow-y-auto">
             {commonPrompts.map((prompt, index) => (
               <button
