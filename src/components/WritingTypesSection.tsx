@@ -144,7 +144,7 @@ function WritingTypeCard({ icon, title, description, types, features, color }: W
               <ArrowRight className="ml-1 w-3 h-3" />
             </button>
           </div>
-        ))}
+         ))}
         
         {features && features.map((feature, index) => (
           <div key={index} className="mb-3 last:mb-0">
