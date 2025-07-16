@@ -503,7 +503,7 @@ export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelPro
               <div ref={chatMessagesEndRef} />
             </div>
 
-            {/* Chat Input */}
+            {/* Chat Input - FIXED: Always visible in chat mode */}
             <div className="border-t border-gray-200 dark:border-gray-700 p-4 flex-shrink-0">
               <form onSubmit={handleChatSubmit} className="flex space-x-2">
                 <input
@@ -522,7 +522,36 @@ export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelPro
                   <Send className="w-5 h-5" />
                 </button>
               </form>
+              
+              {/* Suggested prompts button for chat mode */}
+              <div className="mt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowPrompts(!showPrompts)}
+                  className="text-sm text-purple-600 dark:text-purple-400 hover:text-purple-800 dark:hover:text-purple-200 transition-colors"
+                >
+                  {showPrompts ? 'Hide suggestions' : 'Show suggested questions'}
+                </button>
+              </div>
             </div>
+
+            {/* Suggested prompts for chat mode - FIXED: Show below input */}
+            {showPrompts && (
+              <div className="border-t border-gray-200 dark:border-gray-700 p-4 flex-shrink-0">
+                <div className="space-y-2 bg-white dark:bg-gray-800 rounded-xl p-4 border-2 border-blue-100 dark:border-blue-800 shadow-inner max-h-40 overflow-y-auto">
+                  {commonPrompts.map((prompt, index) => (
+                    <button
+                      type="button"
+                      key={index}
+                      onClick={() => handlePromptClick(prompt)}
+                      className="w-full text-left text-sm px-3 py-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-all duration-300"
+                    >
+                      {prompt}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           /* Pop-up Questions Mode */
@@ -670,24 +699,6 @@ export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelPro
               Ask Me!
             </button>
           </form>
-        </div>
-      )}
-
-      {/* Suggested prompts for chat mode */}
-      {isChatMode && showPrompts && (
-        <div className="border-t border-gray-200 dark:border-gray-700 p-4 flex-shrink-0">
-          <div className="space-y-2 bg-white dark:bg-gray-800 rounded-xl p-4 border-2 border-blue-100 dark:border-blue-800 shadow-inner max-h-40 overflow-y-auto">
-            {commonPrompts.map((prompt, index) => (
-              <button
-                type="button"
-                key={index}
-                onClick={() => handlePromptClick(prompt)}
-                className="w-full text-left text-sm px-3 py-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-all duration-300"
-              >
-                {prompt}
-              </button>
-            ))}
-          </div>
         </div>
       )}
     </div>
