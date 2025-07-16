@@ -444,15 +444,15 @@ export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelPro
         </div>
       )}
 
-      {/* Content Area - FIXED: Proper flex layout to ensure chat input is always visible */}
+      {/* Content Area - IMPROVED: Better layout for chat visibility */}
       <div className="flex-1 flex flex-col min-h-0">
         {isChatMode ? (
-          /* Chat Mode - FIXED: Proper layout structure */
+          /* Chat Mode - IMPROVED: More visible chat input */
           <div className="flex-1 flex flex-col min-h-0">
-            {/* Chat Messages - FIXED: Scrollable area that doesn't push input off screen */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0">
+            {/* Chat Messages - IMPROVED: Reduced height to make room for larger input area */}
+            <div className="flex-1 overflow-y-auto p-3 space-y-3 min-h-0" style={{ maxHeight: 'calc(100% - 140px)' }}>
               {chatMessages.length === 0 && (
-                <div className="text-center py-8">
+                <div className="text-center py-6">
                   <Bot className="w-12 h-12 mx-auto mb-4 text-purple-400" />
                   <p className="text-gray-500 dark:text-gray-400 text-lg font-medium">
                     Hi! I'm your Writing Buddy! 👋
@@ -503,33 +503,40 @@ export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelPro
               <div ref={chatMessagesEndRef} />
             </div>
 
-            {/* Chat Input - FIXED: Always visible at bottom */}
-            <div className="border-t border-gray-200 dark:border-gray-700 p-4 flex-shrink-0 bg-white dark:bg-gray-800">
-              <form onSubmit={handleChatSubmit} className="space-y-3">
-                <div className="flex space-x-2">
-                  <input
-                    type="text"
-                    value={chatInput}
-                    onChange={(e) => setChatInput(e.target.value)}
-                    placeholder="Ask me anything about your writing..."
-                    className="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-full bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-purple-500 focus:border-transparent text-base"
-                    disabled={isChatLoading}
-                  />
+            {/* Chat Input - IMPROVED: Much more prominent and visible */}
+            <div className="border-t-2 border-purple-200 dark:border-purple-700 p-6 flex-shrink-0 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20" style={{ minHeight: '140px' }}>
+              <form onSubmit={handleChatSubmit} className="space-y-4">
+                <div className="flex space-x-3">
+                  <div className="flex-1 relative">
+                    <input
+                      type="text"
+                      value={chatInput}
+                      onChange={(e) => setChatInput(e.target.value)}
+                      placeholder="Ask me anything about your writing..."
+                      className="w-full px-6 py-4 border-2 border-purple-300 dark:border-purple-600 rounded-2xl bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-4 focus:ring-purple-200 focus:border-purple-500 text-lg font-medium shadow-lg transition-all duration-200"
+                      disabled={isChatLoading}
+                      style={{ fontSize: '16px', minHeight: '56px' }}
+                    />
+                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                      <MessageSquare className="w-5 h-5 text-purple-400" />
+                    </div>
+                  </div>
                   <button
                     type="submit"
                     disabled={isChatLoading || !chatInput.trim()}
-                    className="bg-purple-500 text-white hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed p-3 rounded-full transition-all duration-200 flex-shrink-0"
+                    className="bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:from-purple-600 hover:to-pink-600 disabled:opacity-50 disabled:cursor-not-allowed px-6 py-4 rounded-2xl transition-all duration-200 flex-shrink-0 shadow-lg transform hover:scale-105 font-bold"
+                    style={{ minHeight: '56px', minWidth: '56px' }}
                   >
-                    <Send className="w-5 h-5" />
+                    <Send className="w-6 h-6" />
                   </button>
                 </div>
                 
-                {/* Suggested prompts toggle */}
+                {/* Suggested prompts toggle - More prominent */}
                 <div className="text-center">
                   <button
                     type="button"
                     onClick={() => setShowPrompts(!showPrompts)}
-                    className="text-sm text-purple-600 dark:text-purple-400 hover:text-purple-800 dark:hover:text-purple-200 transition-colors"
+                    className="text-base text-purple-700 dark:text-purple-300 hover:text-purple-900 dark:hover:text-purple-100 transition-colors font-medium bg-white dark:bg-gray-800 px-4 py-2 rounded-full shadow-md border border-purple-200 dark:border-purple-600"
                   >
                     {showPrompts ? 'Hide suggestions' : 'Show suggested questions'}
                   </button>
@@ -537,16 +544,16 @@ export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelPro
               </form>
             </div>
 
-            {/* Suggested prompts for chat mode - FIXED: Show below input */}
+            {/* Suggested prompts for chat mode - IMPROVED: Better visibility */}
             {showPrompts && (
-              <div className="border-t border-gray-200 dark:border-gray-700 p-4 flex-shrink-0 bg-gray-50 dark:bg-gray-900">
-                <div className="space-y-2 max-h-40 overflow-y-auto">
-                  {commonPrompts.map((prompt, index) => (
+              <div className="border-t border-gray-200 dark:border-gray-700 p-4 flex-shrink-0 bg-white dark:bg-gray-800 shadow-inner">
+                <div className="space-y-2 max-h-32 overflow-y-auto">
+                  {commonPrompts.slice(0, 6).map((prompt, index) => (
                     <button
                       type="button"
                       key={index}
                       onClick={() => handlePromptClick(prompt)}
-                      className="w-full text-left text-sm px-3 py-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-all duration-300 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
+                      className="w-full text-left text-sm px-4 py-3 rounded-xl text-gray-700 dark:text-gray-300 hover:bg-purple-50 dark:hover:bg-purple-900/30 transition-all duration-300 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 font-medium"
                     >
                       {prompt}
                     </button>
@@ -556,7 +563,7 @@ export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelPro
             )}
           </div>
         ) : (
-          /* Pop-up Questions Mode */
+          /* Pop-up Questions Mode - Unchanged */
           <div className="flex-1 flex flex-col min-h-0">
             <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0">
               {structuredFeedback?.overallComment && !isOverallCommentHidden && (
