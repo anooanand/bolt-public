@@ -48,11 +48,9 @@ export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelPro
   // Chat functionality state
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState('');
+  const [isChatMode, setIsChatMode] = useState(false);
   const [isChatLoading, setIsChatLoading] = useState(false);
   const chatMessagesEndRef = useRef<HTMLDivElement>(null);
-
-  // New state for help dropdown
-  const [selectedHelpType, setSelectedHelpType] = useState('');
 
   const getNSWSelectivePrompts = (textType: string) => {
     const basePrompts = [
@@ -310,7 +308,11 @@ export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelPro
   };
 
   const handlePromptClick = (promptText: string) => {
-    setChatInput(promptText);
+    if (isChatMode) {
+      setChatInput(promptText);
+    } else {
+      setQuestion(promptText);
+    }
     setShowPrompts(false);
   };
 
@@ -332,12 +334,22 @@ export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelPro
   // Calculate current word count for display
   const currentWordCount = countWords(content);
   const wordsNeeded = Math.max(0, 50 - currentWordCount);
+  const targetWordCount = 250;
+  const isNearTarget = currentWordCount >= 200 && currentWordCount <= 300;
+  const isOverTarget = currentWordCount > 300;
+
+  const getWordCountMessage = () => {
+    if (currentWordCount < 50) {
+      return `Write ${wordsNeeded} more word${wordsNeeded !== 1 ? 's' : ''} to get help (${currentWordCount}/50)`;
+    }
+    return `Great start! Try to write about ${targetWordCount} words (${currentWordCount}/${targetWordCount})`;
+  };
 
   const getWordCountColor = () => {
     if (currentWordCount < 50) return 'text-gray-700 dark:text-gray-400';
     if (currentWordCount < 200) return 'text-blue-700 dark:text-blue-400';
-    if (currentWordCount >= 200 && currentWordCount <= 300) return 'text-green-700 dark:text-green-400';
-    if (currentWordCount > 300) return 'text-amber-700 dark:text-amber-400';
+    if (isNearTarget) return 'text-green-700 dark:text-green-400';
+    if (isOverTarget) return 'text-amber-700 dark:text-amber-400';
     return 'text-gray-700 dark:text-gray-400';
   };
 
@@ -357,49 +369,66 @@ export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelPro
     setLocalAssistanceLevel(e.target.value);
   };
 
-  const handleHelpTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setSelectedHelpType(e.target.value);
-    if (e.target.value) {
-      setChatInput(e.target.value);
-    }
-  };
-
   return (
     <div className="h-full flex flex-col" style={{ height: '100%', maxHeight: '100%' }}>
-      {/* Simplified header with dropdown */}
-      <div className="px-4 py-2 border-b-2 border-purple-200 dark:border-purple-800 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 flex-shrink-0">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">I need</span>
-            <select
-              value={selectedHelpType}
-              onChange={handleHelpTypeChange}
-              className="text-sm rounded-lg border border-purple-300 py-1 px-2 text-gray-900 dark:text-gray-100 dark:bg-gray-700 focus:ring-2 focus:ring-purple-200 focus:border-purple-500 font-medium"
-            >
-              <option value="">Select help type...</option>
-              <option value="🌟 Lots of help with my writing">🌟 Lots of help</option>
-              <option value="⭐ Some help with specific areas">⭐ Some help</option>
-              <option value="✨ Just a little guidance">✨ Little help</option>
-            </select>
-          </div>
-          
+      {/* Word count indicator */}
+      <div className="px-4 py-3 border-b-4 border-purple-200 dark:border-purple-800 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 flex-shrink-0">
+        <div className={`text-base flex items-center font-bold ${getWordCountColor()}`}>
+          <Sparkles className="w-5 h-5 mr-2" />
+          {getWordCountMessage()}
+          {isNearTarget && <Star className="w-5 h-5 ml-2 text-yellow-500 fill-current" />}
+        </div>
+        
+        {/* Assistance Level Selector */}
+        <div className="relative">
           <select
             value={localAssistanceLevel}
             onChange={handleAssistanceLevelChange}
-            className="text-xs rounded-lg border border-purple-300 py-1 px-2 text-gray-900 dark:text-gray-100 dark:bg-gray-700 focus:ring-2 focus:ring-purple-200 focus:border-purple-500 font-medium"
+            className="block rounded-xl border-3 border-purple-300 py-1 pl-3 pr-8 text-gray-900 dark:text-gray-100 dark:bg-gray-700 focus:ring-2 focus:ring-purple-200 focus:border-purple-500 text-sm font-medium shadow-sm transition-all duration-200 hover:border-purple-400"
           >
             <option value="detailed">🌟 Lots of Help</option>
             <option value="moderate">⭐ Some Help</option>
             <option value="minimal">✨ Just a Little Help</option>
           </select>
+          <div className="absolute -top-1 -right-1 w-4 h-4 bg-purple-400 rounded-full flex items-center justify-center animate-pulse">
+            <Sparkles className="w-2 h-2 text-white" />
+          </div>
+        </div>
+      </div>
+
+      {/* Mode Toggle */}
+      <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex-shrink-0">
+        <div className="flex space-x-2">
+          <button
+            onClick={() => setIsChatMode(false)}
+            className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all duration-200 ${
+              !isChatMode 
+                ? 'bg-purple-500 text-white shadow-md' 
+                : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+            }`}
+          >
+            <Sparkles className="w-4 h-4 inline mr-2" />
+            Pop-up Questions
+          </button>
+          <button
+            onClick={() => setIsChatMode(true)}
+            className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all duration-200 ${
+              isChatMode 
+                ? 'bg-purple-500 text-white shadow-md' 
+                : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+            }`}
+          >
+            <MessageSquare className="w-4 h-4 inline mr-2" />
+            Chat with Buddy
+          </button>
         </div>
       </div>
 
       {/* Error indicator */}
       {error && (
-        <div className="px-4 py-2 border-b border-amber-200 dark:border-amber-800 bg-gradient-to-r from-amber-50 to-red-50 dark:from-amber-900/20 dark:to-red-900/20 flex-shrink-0">
-          <div className="text-sm text-amber-700 dark:text-amber-400 flex items-center font-medium">
-            <AlertCircle className="w-4 h-4 mr-2" />
+        <div className="px-4 py-3 border-b-4 border-amber-200 dark:border-amber-800 bg-gradient-to-r from-amber-50 to-red-50 dark:from-amber-900/20 dark:to-red-900/20 flex-shrink-0">
+          <div className="text-base text-amber-700 dark:text-amber-400 flex items-center font-bold">
+            <AlertCircle className="w-5 h-5 mr-2" />
             {error}
           </div>
         </div>
@@ -407,176 +436,276 @@ export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelPro
 
       {/* Loading indicator */}
       {isLoading && (
-        <div className="px-4 py-2 border-b border-blue-200 dark:border-blue-800 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 flex-shrink-0">
-          <div className="text-sm text-blue-700 dark:text-blue-400 flex items-center font-medium">
-            <div className="loading-spinner mr-2"></div>
+        <div className="px-4 py-3 border-b-4 border-blue-200 dark:border-blue-800 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 flex-shrink-0">
+          <div className="text-base text-blue-700 dark:text-blue-400 flex items-center font-bold">
+            <div className="loading-spinner mr-3"></div>
             Thinking about your story...
           </div>
         </div>
       )}
 
-      {/* Single Chat Interface */}
+      {/* Content Area - IMPROVED: Better layout for chat visibility */}
       <div className="flex-1 flex flex-col min-h-0">
-        {/* Chat Messages */}
-        <div className="flex-1 overflow-y-auto p-3 space-y-3 min-h-0" style={{ maxHeight: 'calc(100% - 120px)' }}>
-          {chatMessages.length === 0 && (
-            <div className="text-center py-4">
-              <Bot className="w-10 h-10 mx-auto mb-3 text-purple-400" />
-              <p className="text-gray-500 dark:text-gray-400 text-base font-medium">
-                Hi! I'm your Writing Buddy! 👋
-              </p>
-              <p className="text-gray-400 dark:text-gray-500 text-sm mt-1">
-                Ask me anything about your writing!
-              </p>
-            </div>
-          )}
-          
-          {/* Show feedback items as chat messages */}
-          {structuredFeedback?.overallComment && !isOverallCommentHidden && (
-            <div className="flex justify-start">
-              <div className="max-w-xs lg:max-w-md bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-900/30 dark:to-blue-900/30 text-indigo-700 dark:text-indigo-300 rounded-2xl px-4 py-3 border border-indigo-200 dark:border-indigo-800 relative">
-                <button 
-                  onClick={handleHideOverallComment}
-                  className="absolute top-1 right-1 p-1 rounded-full bg-white dark:bg-gray-700 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors cursor-pointer"
-                  aria-label="Close feedback"
-                >
-                  <X className="w-3 h-3" />
-                </button>
-                <div className="flex items-center mb-1">
-                  <Bot className="w-4 h-4 mr-2 text-purple-500" />
-                  <span className="text-xs font-medium text-purple-600 dark:text-purple-400">Writing Buddy</span>
+        {isChatMode ? (
+          /* Chat Mode - IMPROVED: More visible chat input */
+          <div className="flex-1 flex flex-col min-h-0">
+            {/* Chat Messages - IMPROVED: Reduced height to make room for larger input area */}
+            <div className="flex-1 overflow-y-auto p-3 space-y-3 min-h-0" style={{ maxHeight: 'calc(100% - 140px)' }}>
+              {chatMessages.length === 0 && (
+                <div className="text-center py-6">
+                  <Bot className="w-12 h-12 mx-auto mb-4 text-purple-400" />
+                  <p className="text-gray-500 dark:text-gray-400 text-lg font-medium">
+                    Hi! I'm your Writing Buddy! 👋
+                  </p>
+                  <p className="text-gray-400 dark:text-gray-500 text-sm mt-2">
+                    Ask me anything about your writing!
+                  </p>
                 </div>
-                <p className="text-sm leading-relaxed">{structuredFeedback.overallComment}</p>
-              </div>
+              )}
+              
+              {chatMessages.map((message) => (
+                <div
+                  key={message.id}
+                  className={`flex ${message.isUser ? 'justify-end' : 'justify-start'}`}
+                >
+                  <div
+                    className={`max-w-xs lg:max-w-md px-4 py-2 rounded-2xl ${
+                      message.isUser
+                        ? 'bg-purple-500 text-white'
+                        : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
+                    }`}
+                  >
+                    {!message.isUser && (
+                      <div className="flex items-center mb-1">
+                        <Bot className="w-4 h-4 mr-2 text-purple-500" />
+                        <span className="text-xs font-medium text-purple-600 dark:text-purple-400">Writing Buddy</span>
+                      </div>
+                    )}
+                    <p className="text-sm leading-relaxed">{message.text}</p>
+                  </div>
+                </div>
+              ))}
+              
+              {isChatLoading && (
+                <div className="flex justify-start">
+                  <div className="bg-gray-100 dark:bg-gray-700 px-4 py-2 rounded-2xl">
+                    <div className="flex items-center">
+                      <Bot className="w-4 h-4 mr-2 text-purple-500" />
+                      <div className="flex space-x-1">
+                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.4s'}}></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+              <div ref={chatMessagesEndRef} />
             </div>
-          )}
 
-          {structuredFeedback?.feedbackItems?.filter((_, index) => !hiddenFeedbackItems.includes(index)).map((item, index) => {
-            const originalIndex = structuredFeedback.feedbackItems.findIndex(i => i === item);
-            return (
-              <div key={originalIndex} className="flex justify-start">
-                <div className="max-w-xs lg:max-w-md bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-2xl px-4 py-3 relative">
+            {/* Chat Input - IMPROVED: Much more prominent and visible */}
+            <div className="border-t-2 border-purple-200 dark:border-purple-700 p-6 flex-shrink-0 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20" style={{ minHeight: '140px' }}>
+              <form onSubmit={handleChatSubmit} className="space-y-4">
+                <div className="flex space-x-3">
+                  <div className="flex-1 relative">
+                    <input
+                      type="text"
+                      value={chatInput}
+                      onChange={(e) => setChatInput(e.target.value)}
+                      placeholder="Ask me anything about your writing..."
+                      className="w-full px-6 py-4 border-2 border-purple-300 dark:border-purple-600 rounded-2xl bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-4 focus:ring-purple-200 focus:border-purple-500 text-lg font-medium shadow-lg transition-all duration-200"
+                      disabled={isChatLoading}
+                      style={{ fontSize: '16px', minHeight: '56px' }}
+                    />
+                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                      <MessageSquare className="w-5 h-5 text-purple-400" />
+                    </div>
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={isChatLoading || !chatInput.trim()}
+                    className="bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:from-purple-600 hover:to-pink-600 disabled:opacity-50 disabled:cursor-not-allowed px-6 py-4 rounded-2xl transition-all duration-200 flex-shrink-0 shadow-lg transform hover:scale-105 font-bold"
+                    style={{ minHeight: '56px', minWidth: '56px' }}
+                  >
+                    <Send className="w-6 h-6" />
+                  </button>
+                </div>
+                
+                {/* Suggested prompts toggle - More prominent */}
+                <div className="text-center">
+                  <button
+                    type="button"
+                    onClick={() => setShowPrompts(!showPrompts)}
+                    className="text-base text-purple-700 dark:text-purple-300 hover:text-purple-900 dark:hover:text-purple-100 transition-colors font-medium bg-white dark:bg-gray-800 px-4 py-2 rounded-full shadow-md border border-purple-200 dark:border-purple-600"
+                  >
+                    {showPrompts ? 'Hide suggestions' : 'Show suggested questions'}
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            {/* Suggested prompts for chat mode - IMPROVED: Better visibility */}
+            {showPrompts && (
+              <div className="border-t border-gray-200 dark:border-gray-700 p-4 flex-shrink-0 bg-white dark:bg-gray-800 shadow-inner">
+                <div className="space-y-2 max-h-32 overflow-y-auto">
+                  {commonPrompts.slice(0, 6).map((prompt, index) => (
+                    <button
+                      type="button"
+                      key={index}
+                      onClick={() => handlePromptClick(prompt)}
+                      className="w-full text-left text-sm px-4 py-3 rounded-xl text-gray-700 dark:text-gray-300 hover:bg-purple-50 dark:hover:bg-purple-900/30 transition-all duration-300 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 font-medium"
+                    >
+                      {prompt}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          /* Pop-up Questions Mode - Unchanged */
+          <div className="flex-1 flex flex-col min-h-0">
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0">
+              {structuredFeedback?.overallComment && !isOverallCommentHidden && (
+                <div className="p-5 bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-900/30 dark:to-blue-900/30 text-indigo-700 dark:text-indigo-300 rounded-2xl text-base border-2 border-indigo-200 dark:border-indigo-800 shadow-md relative">
                   <button 
-                    onClick={() => handleHideFeedbackItem(originalIndex)}
-                    className="absolute top-1 right-1 p-1 rounded-full bg-white dark:bg-gray-600 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors cursor-pointer"
+                    onClick={handleHideOverallComment}
+                    className="absolute top-2 right-2 p-1 rounded-full bg-white dark:bg-gray-700 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors cursor-pointer"
                     aria-label="Close feedback"
                   >
-                    <X className="w-3 h-3" />
+                    <X className="w-4 h-4" />
                   </button>
-                  <div className="flex items-center mb-1">
-                    <Bot className="w-4 h-4 mr-2 text-purple-500" />
-                    <span className="text-xs font-medium text-purple-600 dark:text-purple-400">Writing Buddy</span>
-                  </div>
-                  <p className="text-sm font-medium capitalize mb-1">{item.area}</p>
-                  <p className="text-sm leading-relaxed">{item.text}</p>
-                  {item.exampleFromText && (
-                    <p className="text-xs italic mt-2 p-2 bg-white dark:bg-gray-600 rounded-lg">
-                      <span className="font-medium">From your story:</span> "{item.exampleFromText}"
-                    </p>
-                  )}
-                  {item.suggestionForImprovement && (
-                    <p className="text-xs mt-2 p-2 bg-white dark:bg-gray-600 rounded-lg">
-                      <span className="font-medium">Try this:</span> {item.suggestionForImprovement}
-                    </p>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-          
-          {chatMessages.map((message) => (
-            <div
-              key={message.id}
-              className={`flex ${message.isUser ? 'justify-end' : 'justify-start'}`}
-            >
-              <div
-                className={`max-w-xs lg:max-w-md px-4 py-2 rounded-2xl ${
-                  message.isUser
-                    ? 'bg-purple-500 text-white'
-                    : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
-                }`}
-              >
-                {!message.isUser && (
-                  <div className="flex items-center mb-1">
-                    <Bot className="w-4 h-4 mr-2 text-purple-500" />
-                    <span className="text-xs font-medium text-purple-600 dark:text-purple-400">Writing Buddy</span>
-                  </div>
-                )}
-                <p className="text-sm leading-relaxed">{message.text}</p>
-              </div>
-            </div>
-          ))}
-          
-          {isChatLoading && (
-            <div className="flex justify-start">
-              <div className="bg-gray-100 dark:bg-gray-700 px-4 py-2 rounded-2xl">
-                <div className="flex items-center">
-                  <Bot className="w-4 h-4 mr-2 text-purple-500" />
-                  <div className="flex space-x-1">
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.4s'}}></div>
+                  <div className="flex items-start">
+                    <Heart className="w-6 h-6 text-indigo-500 mr-3 mt-1 shrink-0" />
+                    <div>
+                      <p className="font-bold text-lg mb-2">A friendly thought:</p>
+                      <p className="leading-relaxed">{structuredFeedback.overallComment}</p>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </div>
-          )}
-          <div ref={chatMessagesEndRef} />
-        </div>
+              )}
 
-        {/* Chat Input */}
-        <div className="border-t border-purple-200 dark:border-purple-700 p-3 flex-shrink-0 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20" style={{ minHeight: '120px' }}>
-          <form onSubmit={handleChatSubmit} className="space-y-3">
-            <div className="flex space-x-2">
-              <div className="flex-1 relative">
-                <input
-                  type="text"
-                  value={chatInput}
-                  onChange={(e) => setChatInput(e.target.value)}
-                  placeholder="Ask me anything about your writing..."
-                  className="w-full px-4 py-3 border border-purple-300 dark:border-purple-600 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-purple-200 focus:border-purple-500 text-sm font-medium"
-                  disabled={isChatLoading}
-                />
-                <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                  <MessageSquare className="w-4 h-4 text-purple-400" />
+              {structuredFeedback?.feedbackItems?.filter((_, index) => !hiddenFeedbackItems.includes(index)).map((item, index) => {
+                const { icon, bgColor, textColor } = getFeedbackItemStyle(item.type);
+                const originalIndex = structuredFeedback.feedbackItems.findIndex(i => i === item);
+                return (
+                  <div key={originalIndex} className={`feedback-item feedback-item-${item.type} flex transform hover:scale-102 transition-all duration-300 relative`}>
+                    <button 
+                      onClick={() => handleHideFeedbackItem(originalIndex)}
+                      className="absolute top-2 right-2 p-1 rounded-full bg-white dark:bg-gray-700 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors cursor-pointer"
+                      aria-label="Close feedback"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                    <div>{icon}</div>
+                    <div className="flex-grow relative">
+                      <p className="font-bold text-lg capitalize">{item.area}</p>
+                      <p className="mt-2 text-base leading-relaxed">{item.text}</p>
+                      {item.exampleFromText && (
+                        <p className="mt-3 text-sm italic border-l-4 border-current pl-3 ml-2 opacity-90 bg-white bg-opacity-50 p-2 rounded-r-lg">
+                          <span className="font-bold">From your story:</span> "{item.exampleFromText}"
+                        </p>
+                      )}
+                      {item.suggestionForImprovement && (
+                        <p className="mt-3 text-sm border-l-4 border-current pl-3 ml-2 opacity-90 bg-white bg-opacity-50 p-2 rounded-r-lg">
+                          <span className="font-bold">Try this:</span> {item.suggestionForImprovement}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+
+              {(!structuredFeedback?.feedbackItems || structuredFeedback.feedbackItems.length === 0 || 
+                (structuredFeedback.feedbackItems.length > 0 && hiddenFeedbackItems.length === structuredFeedback.feedbackItems.length)) && 
+                currentWordCount >= 50 && !isLoading && (
+                <div className="p-6 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 text-gray-700 dark:text-gray-300 rounded-2xl text-base text-center border-2 border-gray-200 dark:border-gray-700 shadow-md">
+                  <Sparkles className="w-10 h-10 mx-auto mb-3 text-gray-400 dark:text-gray-500" />
+                  <p className="font-bold text-lg mb-2">Your writing buddy is thinking...</p>
+                  <p>Keep writing while I look at your story!</p>
+                  <div className="mt-4 flex justify-center space-x-1">
+                    <div className="w-3 h-3 bg-gray-300 dark:bg-gray-600 rounded-full animate-bounce"></div>
+                    <div className="w-3 h-3 bg-gray-300 dark:bg-gray-600 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                    <div className="w-3 h-3 bg-gray-300 dark:bg-gray-600 rounded-full animate-bounce" style={{animationDelay: '0.4s'}}></div>
+                  </div>
                 </div>
-              </div>
-              <button
-                type="submit"
-                disabled={isChatLoading || !chatInput.trim()}
-                className="bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:from-purple-600 hover:to-pink-600 disabled:opacity-50 disabled:cursor-not-allowed px-4 py-3 rounded-xl transition-all duration-200 flex-shrink-0 font-medium"
-              >
-                <Send className="w-4 h-4" />
-              </button>
+              )}
+
+              {structuredFeedback?.focusForNextTime && structuredFeedback.focusForNextTime.length > 0 && !isFocusForNextTimeHidden && (
+                <div className="p-5 bg-gradient-to-r from-blue-50 to-green-50 dark:from-blue-900/20 dark:to-green-900/20 text-gray-700 dark:text-gray-300 rounded-2xl text-base border-2 border-blue-200 dark:border-blue-800 shadow-md relative">
+                  <button 
+                    onClick={handleHideFocusForNextTime}
+                    className="absolute top-2 right-2 p-1 rounded-full bg-white dark:bg-gray-700 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors cursor-pointer"
+                    aria-label="Close feedback"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                  <div className="flex items-start">
+                    <Star className="w-6 h-6 text-blue-500 mr-3 mt-1 shrink-0" />
+                    <div>
+                      <p className="font-bold text-lg mb-2">For next time:</p>
+                      <ul className="list-none space-y-2">
+                        {structuredFeedback.focusForNextTime.map((focus, idx) => (
+                          <li key={idx} className="flex items-start">
+                            <div className="w-5 h-5 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center mr-2 mt-0.5 text-blue-600 dark:text-blue-400 font-bold text-xs">
+                              {idx + 1}
+                            </div>
+                            <span>{focus}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
-            
-            {/* Suggested prompts toggle */}
-            <div className="text-center">
+
+            {/* Footer - only show in pop-up questions mode */}
+            <div className="border-t border-gray-200 dark:border-gray-700 p-4 space-y-4 flex-shrink-0 bg-white dark:bg-gray-800">
               <button
                 type="button"
                 onClick={() => setShowPrompts(!showPrompts)}
-                className="text-sm text-purple-700 dark:text-purple-300 hover:text-purple-900 dark:hover:text-purple-100 transition-colors font-medium bg-white dark:bg-gray-800 px-3 py-1 rounded-full border border-purple-200 dark:border-purple-600"
+                className="w-full flex items-center justify-between px-4 py-3 bg-gradient-to-r from-blue-100 to-purple-100 dark:from-blue-900/30 dark:to-purple-900/30 rounded-xl text-base font-bold text-blue-800 dark:text-blue-200 hover:from-blue-200 hover:to-purple-200 dark:hover:from-blue-800/40 dark:hover:to-purple-800/40 transition-all duration-300 shadow-md transform hover:scale-102 border-2 border-blue-200 dark:border-blue-800"
               >
-                {showPrompts ? 'Hide suggestions' : 'Show suggested questions'}
+                <span className="flex items-center">
+                  <Star className="w-5 h-5 mr-2 text-yellow-500" />
+                  Questions to Ask Your Writing Buddy
+                </span>
+                {showPrompts ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
               </button>
-            </div>
-          </form>
-        </div>
 
-        {/* Suggested prompts */}
-        {showPrompts && (
-          <div className="border-t border-gray-200 dark:border-gray-700 p-3 flex-shrink-0 bg-white dark:bg-gray-800">
-            <div className="space-y-2 max-h-32 overflow-y-auto">
-              {commonPrompts.slice(0, 6).map((prompt, index) => (
+              {showPrompts && (
+                <div className="space-y-2 bg-white dark:bg-gray-800 rounded-xl p-4 border-2 border-blue-100 dark:border-blue-800 shadow-inner max-h-40 overflow-y-auto">
+                  {commonPrompts.map((prompt, index) => (
+                    <button
+                      type="button"
+                      key={index}
+                      onClick={() => handlePromptClick(prompt)}
+                      className="w-full text-left text-base px-4 py-2 rounded-xl text-gray-700 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-all duration-300 font-medium"
+                    >
+                      {prompt}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              <form onSubmit={handleQuestionSubmit} className="flex space-x-3">
+                <input
+                  type="text"
+                  value={question}
+                  onChange={(e) => setQuestion(e.target.value)}
+                  placeholder="Ask me anything about your writing..."
+                  className="flex-1 form-input rounded-xl border-3 border-yellow-300 dark:border-yellow-800 text-base py-3 px-4 shadow-md focus:border-yellow-400 focus:ring-4 focus:ring-yellow-200"
+                />
                 <button
-                  type="button"
-                  key={index}
-                  onClick={() => handlePromptClick(prompt)}
-                  className="w-full text-left text-sm px-3 py-2 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-purple-50 dark:hover:bg-purple-900/30 transition-all duration-300 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600"
+                  type="submit"
+                  disabled={isLoading || !question.trim()}
+                  className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white hover:from-yellow-600 hover:to-orange-600 disabled:opacity-50 disabled:cursor-not-allowed touch-friendly-button rounded-xl px-6 py-3 font-bold text-base shadow-md transform hover:scale-105 transition-all duration-300 flex items-center"
                 >
-                  {prompt}
+                  <Sparkles className="w-5 h-5 mr-2" />
+                  Ask Me!
                 </button>
-              ))}
+              </form>
             </div>
           </div>
         )}
@@ -584,3 +713,4 @@ export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelPro
     </div>
   );
 }
+
