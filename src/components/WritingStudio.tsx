@@ -1,3 +1,4 @@
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Save, 
   Download, 
@@ -12,6 +13,8 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { WritingTypeSelectionModal } from './WritingTypeSelectionModal';
+import { EnhancedNSWCriteriaTracker } from './EnhancedNSWCriteriaTracker'; // Import the new component
+import { getNSWSelectiveFeedback } from '../lib/openai'; // Import the new function
 
 interface WritingStudioProps {
   onNavigate: (page: string) => void;
@@ -54,6 +57,9 @@ export const WritingStudio: React.FC<WritingStudioProps> = ({ onNavigate }) => {
     improvements: [],
     suggestions: []
   });
+
+  // New state for NSW Selective Feedback
+  const [nswFeedback, setNswFeedback] = useState<any>(null);
 
   // Calculate writing statistics
   useEffect(() => {
@@ -108,9 +114,21 @@ export const WritingStudio: React.FC<WritingStudioProps> = ({ onNavigate }) => {
     }
 
     setIsAnalyzing(true);
+    setNswFeedback(null); // Clear previous NSW feedback
     
-    // Simulate AI analysis
-    setTimeout(() => {
+    // Call the new NSW Selective Feedback function
+    try {
+      const feedback = await getNSWSelectiveFeedback(
+        content, 
+        'narrative', // Assuming 'narrative' for now, you might need to make this dynamic
+        'medium', 
+        []
+      );
+      setNswFeedback(feedback);
+      setShowAnalysis(true);
+    } catch (error) {
+      console.error('Error getting NSW Selective feedback:', error);
+      // Fallback to mock AI analysis if NSW feedback fails
       const mockAnalysis: AIAnalysis = {
         score: Math.floor(Math.random() * 20) + 80, // 80-100
         strengths: [
@@ -132,11 +150,10 @@ export const WritingStudio: React.FC<WritingStudioProps> = ({ onNavigate }) => {
           'Add a compelling hook to the introduction'
         ].slice(0, Math.floor(Math.random() * 3) + 2)
       };
-      
       setAiAnalysis(mockAnalysis);
       setShowAnalysis(true);
-      setIsAnalyzing(false);
-    }, 2000);
+    }
+    setIsAnalyzing(false);
   };
 
   const handleExport = () => {
@@ -157,6 +174,7 @@ export const WritingStudio: React.FC<WritingStudioProps> = ({ onNavigate }) => {
     setTitle('Untitled Document');
     setShowAnalysis(false);
     setLastSaved(null);
+    setNswFeedback(null); // Clear NSW feedback
     
     // Clear localStorage
     localStorage.removeItem('writingContent');
@@ -358,8 +376,13 @@ export const WritingStudio: React.FC<WritingStudioProps> = ({ onNavigate }) => {
               </div>
             </div>
 
-            {/* AI Analysis Results */}
-            {showAnalysis && (
+            {/* AI Analysis Results (Conditional Rendering for NSW Feedback) */}
+            {showAnalysis && nswFeedback ? (
+              <EnhancedNSWCriteriaTracker 
+                feedbackData={nswFeedback} 
+                essay={content} 
+              />
+            ) : showAnalysis && aiAnalysis ? (
               <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
                   AI Analysis
@@ -423,7 +446,7 @@ export const WritingStudio: React.FC<WritingStudioProps> = ({ onNavigate }) => {
                   </ul>
                 </div>
               </div>
-            )}
+            ) : null}
 
             {/* Upgrade Prompt for Free Users */}
             {!isPaidUser && (
