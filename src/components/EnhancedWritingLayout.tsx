@@ -42,18 +42,9 @@ export function EnhancedWritingLayout({
   onShowHelpCenter,
   onStartNewEssay
 }: EnhancedWritingLayoutProps) {
-  const [templateData, setTemplateData] = useState<TemplateData>({
-    setting: '',
-    characters: '',
-    plot: '',
-    theme: ''
-  });
-  
-  const [showPlanning, setShowPlanning] = useState(false);
   const [showWritingBuddy, setShowWritingBuddy] = useState(true);
   const [wordCount, setWordCount] = useState(0);
   const [characterCount, setCharacterCount] = useState(0);
-  const [completedSteps, setCompletedSteps] = useState<number[]>([]);
   const [writingStreak, setWritingStreak] = useState(3);
   const [timeSpent, setTimeSpent] = useState(0);
   
@@ -106,39 +97,6 @@ export function EnhancedWritingLayout({
     return () => clearInterval(timer);
   }, []);
 
-  const writingSteps = [
-    { id: 1, title: "Setting", icon: Settings, description: "Where and when your story unfolds", field: 'setting' as keyof TemplateData },
-    { id: 2, title: "Characters", icon: Users, description: "The people who bring your story to life", field: 'characters' as keyof TemplateData },
-    { id: 3, title: "Plot", icon: Target, description: "The sequence of events in your story", field: 'plot' as keyof TemplateData },
-    { id: 4, title: "Theme", icon: Star, description: "The deeper meaning or message", field: 'theme' as keyof TemplateData }
-  ];
-
-  const updateCompletedSteps = (data: TemplateData) => {
-    const completed: number[] = [];
-    if (data.setting.trim()) completed.push(1);
-    if (data.characters.trim()) completed.push(2);
-    if (data.plot.trim()) completed.push(3);
-    if (data.theme.trim()) completed.push(4);
-    setCompletedSteps(completed);
-  };
-
-  const handleTemplateChange = (field: keyof TemplateData, value: string) => {
-    const newData = {
-      ...templateData,
-      [field]: value
-    };
-    setTemplateData(newData);
-    updateCompletedSteps(newData);
-  };
-
-  const getProgressPercentage = () => {
-    return Math.round((completedSteps.length / writingSteps.length) * 100);
-  };
-
-  const togglePlanning = () => {
-    setShowPlanning(!showPlanning);
-  };
-
   const toggleWritingBuddy = () => {
     setShowWritingBuddy(!showWritingBuddy);
   };
@@ -148,13 +106,6 @@ export function EnhancedWritingLayout({
       onStartNewEssay();
     } else {
       onChange('');
-      setTemplateData({
-        setting: '',
-        characters: '',
-        plot: '',
-        theme: ''
-      });
-      setCompletedSteps([]);
       // Clear generated prompt when starting new story
       setGeneratedPrompt('');
       if (onNavigate) {
@@ -166,7 +117,6 @@ export function EnhancedWritingLayout({
   const handleSave = () => {
     // Save functionality
     localStorage.setItem('writingContent', content);
-    localStorage.setItem('writingTemplateData', JSON.stringify(templateData));
   };
 
   const handleExport = () => {
@@ -214,26 +164,6 @@ export function EnhancedWritingLayout({
         <div className="bg-white border-b border-gray-200 p-2 shadow-sm flex-shrink-0">
           <div className="px-4 flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              {/* Planning Toggle */}
-              <div className="flex items-center space-x-2">
-                <label className="flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={showPlanning}
-                    onChange={togglePlanning}
-                    className="sr-only"
-                  />
-                  <div className={`relative inline-flex h-4 w-8 items-center rounded-full transition-colors ${
-                    showPlanning ? 'bg-blue-600' : 'bg-gray-300'
-                  }`}>
-                    <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
-                      showPlanning ? 'translate-x-4' : 'translate-x-0.5'
-                    }`} />
-                  </div>
-                  <span className="ml-2 text-xs font-medium text-gray-700">Planning</span>
-                </label>
-              </div>
-
               {/* Action Buttons - Moved to left */}
               <button
                 onClick={handleNewStory}
@@ -298,34 +228,6 @@ export function EnhancedWritingLayout({
             </div>
           </div>
         </div>
-
-        {/* Planning Section (Collapsible) - FIXED HEIGHT WITH SCROLLING */}
-        {showPlanning && (
-          <div className="bg-white border-b border-gray-200 shadow-sm flex-shrink-0" style={{ maxHeight: '200px' }}>
-            <div className="px-0 h-full overflow-y-auto p-3">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 px-4">
-                {writingSteps.map((step) => (
-                  <div key={step.id} className="space-y-1 w-full md:w-1/2">
-                    <div className="flex items-center space-x-2">
-                      {completedSteps.includes(step.id) ? (
-                        <CheckCircle className="w-3 h-3 text-green-600" />
-                      ) : (
-                        <step.icon className="w-3 h-3 text-gray-400" />
-                      )}
-                      <label className="font-medium text-gray-700 text-xs">{step.title}</label>
-                    </div>
-                    <textarea
-                      value={templateData[step.field]}
-                      onChange={(e) => handleTemplateChange(step.field, e.target.value)}
-                      placeholder={step.description}
-                      className="w-full h-12 p-2 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-xs"
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Writing Area - Full height */}
         <div className="writing-textarea-wrapper flex-1 min-h-0">
