@@ -70,7 +70,7 @@ export function EnhancedWritingLayout({
       'news report': 'Write a news report that informs readers about current events. Use the 5 W\'s and H (Who, What, When, Where, Why, How).',
       'letter': 'Write a letter that communicates effectively with your intended audience. Use appropriate tone and format.',
       'diary entry': 'Write a diary entry that captures your personal thoughts and experiences. Be authentic and reflective.',
-      'speech': 'Write a speech that engages and persuades your audience. Use rhetorical devices and clear structure.',
+      'speech': 'Write a speech that engages and and persuades your audience. Use rhetorical devices and clear structure.',
       'default': 'Write a well-structured piece that demonstrates your writing skills. Focus on clear expression, good organization, and engaging content.'
     };
     
@@ -224,7 +224,7 @@ export function EnhancedWritingLayout({
                 </div>
                 <div className="writing-stats bg-purple-100 px-2 py-0.5 rounded-full">
                   <span className="font-medium">{writingStreak} day streak</span>
-                }
+                </div>
               </div>
             </div>
           </div>
