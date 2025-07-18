@@ -32,9 +32,9 @@ export function TabbedCoachPanel({
   const tabs = [
     {
       id: 'coach' as TabType,
-      label: 'Writing Buddy & Questions',
+      label: 'Writing Buddy',
       icon: Bot,
-      description: 'Get help with your writing and ask questions'
+      description: 'Chat with your writing buddy and get instant feedback'
     },
     {
       id: 'paraphrase' as TabType,
