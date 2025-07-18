@@ -163,29 +163,48 @@ export function NavBar({
 
             {/* User Menu or Sign In */}
             {user ? (
-              <div className="relative">
-                <button
-                  onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                  className="w-10 h-10 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-sm hover:shadow-lg transition-all duration-200 transform hover:scale-105"
+              <div className="flex items-center space-x-3">
+                <Link
+                  to="/dashboard"
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  onClick={() => onNavigate('dashboard')}
                 >
-                  {getUserInitial()}
-                </button>
+                  🏠 My Space
+                </Link>
+                <div className="relative">
+                  <button
+                    onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                    className="w-10 h-10 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-sm hover:shadow-lg transition-all duration-200 transform hover:scale-105"
+                  >
+                    {getUserInitial()}
+                  </button>
                 
-                {isUserMenuOpen && (
-                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-200/50 py-2 z-50">
-                    <div className="px-4 py-2 border-b border-gray-100">
-                      <div className="text-sm font-medium text-gray-900">Signed in as</div>
-                      <div className="text-sm text-gray-500 truncate">{user.email}</div>
+                  {isUserMenuOpen && (
+                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-200/50 py-2 z-50">
+                      <div className="px-4 py-2 border-b border-gray-100">
+                        <div className="text-sm font-medium text-gray-900">Signed in as</div>
+                        <div className="text-sm text-gray-500 truncate">{user.email}</div>
+                      </div>
+                      <Link
+                        to="/dashboard"
+                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-200"
+                        onClick={() => {
+                          onNavigate('dashboard');
+                          setIsUserMenuOpen(false);
+                        }}
+                      >
+                        🏠 My Space
+                      </Link>
+                      <button
+                        onClick={handleSignOut}
+                        className="w-full text-left px-4 py-2 text-red-600 hover:bg-red-50 transition-colors duration-200 flex items-center space-x-2"
+                      >
+                        <LogOut className="w-4 h-4" />
+                        <span>Sign Out</span>
+                      </button>
                     </div>
-                    <button
-                      onClick={handleSignOut}
-                      className="w-full text-left px-4 py-2 text-red-600 hover:bg-red-50 transition-colors duration-200 flex items-center space-x-2"
-                    >
-                      <LogOut className="w-4 h-4" />
-                      <span>Sign Out</span>
-                    </button>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             ) : (
               <div className="flex items-center space-x-2">
@@ -264,6 +283,16 @@ export function NavBar({
                   <div className="px-4 py-2 text-sm text-gray-500">
                     {user.email}
                   </div>
+                  <Link
+                    to="/dashboard"
+                    className="block w-full text-left px-4 py-3 bg-blue-600 text-white rounded-lg font-medium mb-2"
+                    onClick={() => {
+                      onNavigate('dashboard');
+                      setIsMenuOpen(false);
+                    }}
+                  >
+                    🏠 My Space
+                  </Link>
                   <button
                     onClick={handleSignOut}
                     className="w-full text-left px-4 py-3 text-red-600 hover:bg-red-50 rounded-lg transition-colors duration-200 flex items-center space-x-2"
