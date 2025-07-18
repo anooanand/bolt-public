@@ -25,24 +25,90 @@ export const isOpenAIAvailable = (): boolean => {
   return openai !== null;
 };
 
-// Helper function to make OpenAI API calls with error handling
-async function makeOpenAICall(messages: any[], maxTokens: number = 1000): Promise<string> {
-  if (!openai) {
-    throw new Error('OpenAI client not available');
-  }
-
+// Helper function to make API calls to the enhanced backend
+async function makeBackendCall(operation: string, data: any): Promise<any> {
   try {
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: messages,
-      max_tokens: maxTokens,
-      temperature: 0.7,
+    const response = await fetch('/.netlify/functions/ai-operations', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        operation,
+        ...data
+      })
     });
 
-    return response.choices[0]?.message?.content || '';
+    if (!response.ok) {
+      throw new Error(`Backend call failed: ${response.status}`);
+    }
+
+    return await response.json();
   } catch (error) {
-    console.error('OpenAI API call failed:', error);
+    console.error('Backend call error:', error);
     throw error;
+  }
+}
+
+// Enhanced NSW Selective Writing Feedback Function
+export async function getNSWSelectiveFeedback(
+  content: string, 
+  textType: string, 
+  assistanceLevel: string = 'medium', 
+  feedbackHistory: any[] = []
+): Promise<any> {
+  try {
+    return await makeBackendCall('getNSWSelectiveFeedback', {
+      content,
+      textType,
+      assistanceLevel,
+      feedbackHistory
+    });
+  } catch (error) {
+    console.error('Error getting NSW Selective feedback:', error);
+    
+    // Fallback response with NSW criteria structure
+    return {
+      overallComment: "Your writing shows good effort and understanding of the narrative form. Let's work on developing it further using NSW Selective exam criteria.",
+      criteriaFeedback: {
+        ideasAndContent: {
+          score: 6,
+          maxScore: 10,
+          strengths: ["You have attempted to create a narrative with a clear storyline"],
+          improvements: ["Develop your ideas with more specific details and depth"],
+          suggestions: ["Add more descriptive details about characters, setting, and emotions"],
+          nextSteps: ["Focus on expanding one key moment in your story with rich detail"]
+        },
+        textStructureAndOrganization: {
+          score: 6,
+          maxScore: 10,
+          strengths: ["Your writing has a clear beginning"],
+          improvements: ["Ensure smooth transitions between ideas"],
+          suggestions: ["Use connecting words like 'meanwhile', 'suddenly', 'after that' to link your ideas"],
+          nextSteps: ["Plan your story structure before writing - beginning, middle, end"]
+        },
+        languageFeaturesAndVocabulary: {
+          score: 6,
+          maxScore: 10,
+          strengths: ["You've used some descriptive words"],
+          improvements: ["Vary your sentence structure and use more sophisticated vocabulary"],
+          suggestions: ["Try starting sentences in different ways and use more specific adjectives"],
+          nextSteps: ["Practice using literary devices like similes or metaphors"]
+        },
+        spellingPunctuationGrammar: {
+          score: 7,
+          maxScore: 10,
+          strengths: ["Generally good control of basic grammar and spelling"],
+          improvements: ["Check for any minor errors and ensure consistent tense"],
+          suggestions: ["Proofread your work carefully, reading it aloud to catch errors"],
+          nextSteps: ["Focus on maintaining past tense throughout your narrative"]
+        }
+      },
+      priorityFocus: ["Develop ideas with more specific details", "Improve sentence variety and vocabulary"],
+      examStrategies: ["Plan your story structure before writing", "Use the full time allocation for planning, writing, and checking"],
+      interactiveQuestions: ["What specific emotions does your main character feel?", "How can you make your setting more vivid for the reader?"],
+      revisionSuggestions: ["Choose one paragraph to expand with more sensory details", "Rewrite two sentences to start them differently"]
+    };
   }
 }
 
@@ -86,158 +152,14 @@ function analyzeContentStructure(content: string) {
 // Enhanced function to get contextual writing feedback
 export async function getWritingFeedback(content: string, textType: string, assistanceLevel: string, feedbackHistory: any[]): Promise<any> {
   try {
-    if (!openai) {
-      throw new Error('OpenAI not available');
-    }
-
-    // Analyze the content structure for contextual insights
-    const contentAnalysis = analyzeContentStructure(content);
-    
-    // Create a detailed analysis prompt based on the actual content
-    const contextualAnalysis = `
-CONTENT ANALYSIS:
-- Word count: ${contentAnalysis.wordCount}
-- Sentence count: ${contentAnalysis.sentenceCount}
-- Paragraph count: ${contentAnalysis.paragraphCount}
-- Average sentence length: ${Math.round(contentAnalysis.averageSentenceLength)} words
-- Opening: "${contentAnalysis.firstSentence}"
-- Closing: "${contentAnalysis.lastSentence}"
-- Characters mentioned: ${contentAnalysis.potentialCharacters.join(', ') || 'None identified'}
-- Contains dialogue: ${contentAnalysis.hasDialogue ? 'Yes (' + contentAnalysis.dialogueCount + ' instances)' : 'No'}
-- Descriptive language used: ${contentAnalysis.descriptiveWords.slice(0, 5).join(', ') || 'Limited'}
-`;
-
-    const messages = [
-      {
-        role: 'system',
-        content: `You are an expert writing coach for NSW Selective High School Placement Test writing assessments for students aged 10-12 years in Australia. 
-
-NSW SELECTIVE WRITING TEST CONTEXT:
-- This is preparation for the official NSW Department of Education Selective High School Placement Test
-- Assessment criteria focus on: title (where appropriate), creative ideas, fluent and complex language (sentence variety, vocabulary, punctuation, grammar, spelling), and clear structure (beginning, middle, end)
-- Target length: approximately 250 words with emphasis on quality over quantity
-- Students must demonstrate writing skills appropriate for selective school entry
-
-IMPORTANT: Provide CONTEXTUAL, SPECIFIC feedback based on the actual content the student has written. Avoid generic advice.
-
-Your feedback should be:
-1. **Content-specific**: Reference actual elements from their writing with exact quotes
-2. **Actionable**: Give concrete suggestions they can implement immediately
-3. **Encouraging**: Highlight what they're doing well specifically
-4. **Age-appropriate**: Suitable for 10-12 year olds preparing for selective school entry
-5. **NSW curriculum aligned**: Follow official NSW Department of Education assessment criteria
-
-ANALYSIS APPROACH:
-- Examine their opening sentence and suggest specific improvements
-- Look at their character development and plot progression (for narratives)
-- Analyze their vocabulary choices and suggest specific alternatives
-- Check their sentence variety and structure patterns
-- Evaluate their ending and how it connects to the beginning
-- Assess title appropriateness (where applicable)
-- Focus on 250-word target and quality writing techniques
-
-Assistance Level: ${assistanceLevel}
-
-Return your response as a JSON object with this exact structure:
-{
-  "overallComment": "A specific comment about their actual writing, mentioning concrete elements",
-  "feedbackItems": [
-    {
-      "type": "praise|suggestion|question|challenge",
-      "area": "specific area like 'Opening Sentence', 'Character Development', 'Vocabulary Choice', etc.",
-      "text": "specific feedback referencing their actual writing",
-      "exampleFromText": "exact quote from their writing",
-      "suggestionForImprovement": "specific, actionable suggestion with examples"
-    }
-  ],
-  "focusForNextTime": ["specific focus point based on their writing", "another specific point", "third specific point"]
-}`
-      },
-      {
-        role: 'user',
-        content: `Please provide CONTEXTUAL feedback on this ${textType} writing by a student aged 9-11:
-
-"${content}"
-
-${contextualAnalysis}
-
-Text Type: ${textType}
-Assistance Level: ${assistanceLevel}
-
-IMPORTANT: Base your feedback on the actual content above. Reference specific words, phrases, sentences, or elements from their writing. Avoid generic advice - make it personal to what they've written.`
-      }
-    ];
-
-    const result = await makeOpenAICall(messages, 1800);
-    
-    try {
-      const parsedResult = JSON.parse(result);
-      
-      // Enhance the feedback with additional contextual suggestions
-      if (parsedResult.feedbackItems) {
-        parsedResult.feedbackItems = parsedResult.feedbackItems.map((item: any) => {
-          // Add more specific suggestions based on content analysis
-          if (item.area === 'Structure' && contentAnalysis.paragraphCount === 1) {
-            item.suggestionForImprovement += " Try breaking your writing into 2-3 paragraphs to make it easier to read.";
-          }
-          
-          if (item.area === 'Vocabulary' && contentAnalysis.descriptiveWords.length < 3) {
-            item.suggestionForImprovement += " Add more describing words (adjectives and adverbs) to paint a clearer picture.";
-          }
-          
-          if (textType.toLowerCase() === 'narrative' && !contentAnalysis.hasDialogue) {
-            if (item.area === 'Character Development') {
-              item.suggestionForImprovement += " Consider adding dialogue to show what your characters are thinking or feeling.";
-            }
-          }
-          
-          return item;
-        });
-
-        // Add NSW Selective specific feedback about word count and quality
-        const wordCount = contentAnalysis.wordCount;
-        if (wordCount < 200) {
-          parsedResult.feedbackItems.push({
-            type: "suggestion",
-            area: "Length for NSW Selective",
-            text: `Your writing is ${wordCount} words. NSW Selective assessors look for approximately 250 words.`,
-            suggestionForImprovement: "Develop your ideas further with more specific details, examples, or elaboration to reach the target length while maintaining quality."
-          });
-        } else if (wordCount > 300) {
-          parsedResult.feedbackItems.push({
-            type: "suggestion",
-            area: "Conciseness for NSW Selective",
-            text: `Your writing is ${wordCount} words. NSW Selective values quality over quantity.`,
-            suggestionForImprovement: "Consider editing for conciseness. Remove unnecessary words and focus on making every sentence count."
-          });
-        } else if (wordCount >= 200 && wordCount <= 300) {
-          parsedResult.feedbackItems.push({
-            type: "praise",
-            area: "Length for NSW Selective",
-            text: `Excellent! Your ${wordCount}-word response is ideal for NSW Selective standards.`,
-            suggestionForImprovement: "Now focus on refining the quality of your ideas, vocabulary, and sentence structure."
-          });
-        }
-      }   
-      return parsedResult;
-    } catch (parseError) {
-      console.error('JSON parsing failed, creating structured response from text');
-      return {
-        overallComment: `Your writing about "${contentAnalysis.firstSentence.substring(0, 50)}..." shows good effort and creativity!`,
-        feedbackItems: [
-          {
-            type: "praise",
-            area: "Content",
-            text: "You've written a solid piece with clear ideas.",
-            exampleFromText: contentAnalysis.firstSentence,
-            suggestionForImprovement: "Continue developing your ideas with more specific details."
-          }
-        ],
-        focusForNextTime: ["Add more descriptive details", "Vary your sentence lengths", "Check your spelling and punctuation"]
-      };
-    }
+    return await makeBackendCall('getWritingFeedback', {
+      content,
+      textType,
+      assistanceLevel,
+      feedbackHistory
+    });
   } catch (error) {
-    console.error('Error getting contextual writing feedback:', error);
+    console.error('Error getting writing feedback:', error);
     
     // Provide contextual fallback based on content analysis
     const analysis = analyzeContentStructure(content);
@@ -270,231 +192,34 @@ IMPORTANT: Base your feedback on the actual content above. Reference specific wo
 // Enhanced function for specialized text type feedback with contextual analysis
 export async function getSpecializedTextTypeFeedback(content: string, textType: string): Promise<any> {
   try {
-    if (!openai) {
-      throw new Error('OpenAI not available');
-    }
-
-    const contentAnalysis = analyzeContentStructure(content);
-    
-    // Text-type specific analysis
-    let textTypeSpecificAnalysis = '';
-    
-    switch (textType.toLowerCase()) {
-      case 'advertisement':
-        textTypeSpecificAnalysis = `
-ADVERTISEMENT ANALYSIS:
-- Headline effectiveness: "${contentAnalysis.firstSentence}"
-- Persuasive elements: ${content.includes('!') ? 'Exclamation marks present' : 'Limited excitement markers'}
-- Call to action: ${content.toLowerCase().includes('buy') || content.toLowerCase().includes('visit') || content.toLowerCase().includes('call') ? 'Present' : 'Missing'}
-- Target audience appeal: ${contentAnalysis.wordCount} words used
-`;
-        break;
-      case 'advice sheet':
-        textTypeSpecificAnalysis = `
-ADVICE SHEET ANALYSIS:
-- Instructional clarity: ${contentAnalysis.sentenceCount} sentences providing guidance
-- Organization: ${contentAnalysis.paragraphCount} paragraph(s)
-- Helpful tone: "${contentAnalysis.firstSentence}"
-- Practical examples: ${content.includes('example') || content.includes('for instance') ? 'Present' : 'Limited'}
-`;
-        break;
-      case 'diary entry':
-        textTypeSpecificAnalysis = `
-DIARY ENTRY ANALYSIS:
-- Personal voice: "${contentAnalysis.firstSentence}"
-- Emotional expression: ${contentAnalysis.descriptiveWords.length} descriptive words
-- Reflective elements: ${content.includes('I felt') || content.includes('I thought') || content.includes('I realized') ? 'Present' : 'Limited'}
-- Chronological structure: ${contentAnalysis.paragraphCount} paragraph(s)
-`;
-        break;
-      case 'discussion':
-        textTypeSpecificAnalysis = `
-DISCUSSION ANALYSIS:
-- Multiple perspectives: ${content.includes('however') || content.includes('on the other hand') || content.includes('alternatively') ? 'Present' : 'Limited'}
-- Balanced analysis: ${contentAnalysis.paragraphCount} paragraph(s)
-- Evidence presentation: ${content.includes('because') || content.includes('evidence') || content.includes('research') ? 'Present' : 'Limited'}
-- Opening statement: "${contentAnalysis.firstSentence}"
-`;
-        break;
-      case 'guide':
-        textTypeSpecificAnalysis = `
-GUIDE ANALYSIS:
-- Step-by-step structure: ${content.includes('first') || content.includes('next') || content.includes('then') || content.includes('finally') ? 'Present' : 'Limited'}
-- Clear instructions: ${contentAnalysis.sentenceCount} instructional sentences
-- User-friendly format: ${contentAnalysis.paragraphCount} paragraph(s)
-- Opening guidance: "${contentAnalysis.firstSentence}"
-`;
-        break;
-      case 'letter':
-        textTypeSpecificAnalysis = `
-LETTER ANALYSIS:
-- Appropriate format: ${content.includes('Dear') ? 'Formal greeting present' : 'Greeting needs attention'}
-- Clear purpose: "${contentAnalysis.firstSentence}"
-- Suitable tone: ${contentAnalysis.wordCount} words used
-- Proper conventions: ${content.includes('Yours') || content.includes('Sincerely') ? 'Closing present' : 'Closing needs attention'}
-`;
-        break;
-      case 'narrative':
-      case 'narrative/creative':
-      case 'creative':
-        textTypeSpecificAnalysis = `
-NARRATIVE ANALYSIS:
-- Story elements: ${contentAnalysis.potentialCharacters.length > 0 ? 'Characters identified' : 'No clear characters yet'}
-- Dialogue usage: ${contentAnalysis.hasDialogue ? 'Present' : 'Missing'}
-- Story progression: ${contentAnalysis.paragraphCount > 1 ? 'Multi-paragraph structure' : 'Single paragraph'}
-- Opening hook: "${contentAnalysis.firstSentence}"
-- Resolution: "${contentAnalysis.lastSentence}"
-`;
-        break;
-      case 'news report':
-        textTypeSpecificAnalysis = `
-NEWS REPORT ANALYSIS:
-- Lead paragraph: "${contentAnalysis.firstSentence}"
-- 5 W's coverage: ${content.includes('who') || content.includes('what') || content.includes('when') || content.includes('where') || content.includes('why') ? 'Some present' : 'Limited'}
-- Objective tone: ${contentAnalysis.wordCount} words used
-- Factual structure: ${contentAnalysis.paragraphCount} paragraph(s)
-`;
-        break;
-      case 'persuasive':
-        textTypeSpecificAnalysis = `
-PERSUASIVE ANALYSIS:
-- Argument structure: ${contentAnalysis.paragraphCount} paragraph(s)
-- Opening statement: "${contentAnalysis.firstSentence}"
-- Conclusion: "${contentAnalysis.lastSentence}"
-- Evidence/examples: ${content.includes('because') || content.includes('for example') || content.includes('research shows') ? 'Some present' : 'Limited'}
-- Persuasive techniques: ${content.includes('!') || content.includes('must') || content.includes('should') ? 'Present' : 'Limited'}
-`;
-        break;
-      case 'review':
-        textTypeSpecificAnalysis = `
-REVIEW ANALYSIS:
-- Critical analysis: ${contentAnalysis.paragraphCount} paragraph(s)
-- Personal opinion: "${contentAnalysis.firstSentence}"
-- Supporting details: ${contentAnalysis.descriptiveWords.length} descriptive elements
-- Recommendation: "${contentAnalysis.lastSentence}"
-`;
-        break;
-      case 'speech':
-        textTypeSpecificAnalysis = `
-SPEECH ANALYSIS:
-- Audience engagement: "${contentAnalysis.firstSentence}"
-- Clear structure: ${contentAnalysis.paragraphCount} paragraph(s)
-- Rhetorical devices: ${content.includes('?') || content.includes('!') || content.includes('we') || content.includes('you') ? 'Present' : 'Limited'}
-- Strong conclusion: "${contentAnalysis.lastSentence}"
-`;
-        break;
-      default:
-        textTypeSpecificAnalysis = `
-GENERAL ANALYSIS:
-- Structure: ${contentAnalysis.paragraphCount} paragraph(s)
-- Opening: "${contentAnalysis.firstSentence}"
-- Closing: "${contentAnalysis.lastSentence}"
-- Word usage: ${contentAnalysis.wordCount} words
-`;
-        break;
-    }
-
-    const messages = [
-      {
-        role: 'system',
-        content: `You are a specialized writing coach for NSW Selective High School Placement Test focusing on ${textType} writing for students aged 10-12 years. 
-
-NSW SELECTIVE WRITING TEST CONTEXT:
-- This is preparation for the official NSW Department of Education Selective High School Placement Test
-- Assessment criteria focus on: title (where appropriate), creative ideas, fluent and complex language (sentence variety, vocabulary, punctuation, grammar, spelling), and clear structure (beginning, middle, end)
-- Target length: approximately 250 words with emphasis on quality over quantity
-- Students must demonstrate ${textType} writing skills appropriate for selective school entry
-
-IMPORTANT: Provide SPECIFIC feedback based on the actual content and how well it meets ${textType} writing requirements for NSW Selective tests.
-
-Analyze their writing for:
-- ${textType}-specific structure and organization appropriate for selective school assessment
-- Appropriate language features for ${textType} writing at selective school level
-- How well they've achieved the purpose of ${textType} writing for the test context
-- Age-appropriate use of ${textType} conventions for 10-12 year olds
-- Quality and sophistication expected for selective school entry
-
-Return your response as a JSON object with this structure:
-{
-  "overallComment": "specific comment about their ${textType} writing based on actual content",
-  "textTypeSpecificFeedback": {
-    "structure": "specific feedback about their ${textType} structure with examples from their text",
-    "language": "specific feedback about their language choices with examples",
-    "purpose": "how well they achieved the ${textType} purpose, with specific references",
-    "audience": "feedback about audience awareness with examples from their writing"
-  },
-  "strengthsInTextType": ["specific strength 1 with example", "specific strength 2 with example", "specific strength 3 with example"],
-  "improvementAreas": ["specific area 1 with example from their text", "specific area 2 with example", "specific area 3 with example"],
-  "nextSteps": ["specific step 1 based on their writing", "specific step 2", "specific step 3"]
-}`
-      },
-      {
-        role: 'user',
-        content: `Analyze this ${textType} writing for text-type specific features:
-
-"${content}"
-
-${textTypeSpecificAnalysis}
-
-Focus on how well the student has used the conventions and features specific to ${textType} writing. Reference their actual content in your feedback.`
-      }
-    ];
-
-    const result = await makeOpenAICall(messages, 1500);
-    
-    try {
-      return JSON.parse(result);
-    } catch (parseError) {
-      const analysis = analyzeContentStructure(content);
-      return {
-        overallComment: `Your ${textType} writing shows understanding of the task. I can see you're working with ${analysis.wordCount} words to develop your ideas.`,
-        textTypeSpecificFeedback: {
-          structure: `Your writing has ${analysis.paragraphCount} paragraph(s). ${textType} writing benefits from clear organization.`,
-          language: `You're using appropriate language for ${textType} writing. Your opening "${analysis.firstSentence}" sets the tone.`,
-          purpose: `Your writing addresses the ${textType} purpose. Continue developing this focus.`,
-          audience: "Consider your reader and what they need to understand your ideas."
-        },
-        strengthsInTextType: [
-          `Good attempt at ${textType} writing`,
-          `Appropriate length with ${analysis.wordCount} words`,
-          `Clear opening: "${analysis.firstSentence.substring(0, 30)}..."`
-        ],
-        improvementAreas: [
-          analysis.paragraphCount === 1 ? "Consider using multiple paragraphs" : "Good paragraph structure",
-          analysis.descriptiveWords.length < 3 ? "Add more descriptive language" : "Good use of descriptive words",
-          "Continue practicing this text type"
-        ],
-        nextSteps: [
-          `Study more examples of ${textType} writing`,
-          "Practice the key features of this text type",
-          "Get feedback from teachers or peers"
-        ]
-      };
-    }
+    return await makeBackendCall('getSpecializedTextTypeFeedback', {
+      content,
+      textType
+    });
   } catch (error) {
     console.error('Error getting specialized text type feedback:', error);
     return {
-      overallComment: `Your ${textType} writing shows understanding of the requirements.`,
+      overallComment: "Unable to provide specialized feedback at this time. Your writing shows good understanding of the task.",
       textTypeSpecificFeedback: {
-        structure: "Your writing follows the basic structure, but could benefit from clearer organization.",
-        language: "You've used appropriate language for this writing style.",
-        purpose: "Your writing addresses the main purpose of this text type.",
-        audience: "Consider your target audience when writing."
+        structure: "Your writing has a clear structure appropriate for this text type.",
+        language: "You've used suitable language for this writing style.",
+        purpose: "Your writing addresses the main purpose effectively.",
+        audience: "Consider your audience when refining your writing."
       },
       strengthsInTextType: [
-        "Shows understanding of the text type",
-        "Appropriate attempt at the required format",
-        "Good effort in addressing the task"
+        "Good understanding of the text type requirements",
+        "Appropriate structure and organization",
+        "Clear attempt at the required style"
       ],
       improvementAreas: [
-        "Continue practicing this text type",
-        "Focus on specific features of this writing style",
-        "Review examples of excellent writing in this format"
+        "Continue developing text type knowledge",
+        "Practice specific language features",
+        "Strengthen understanding of conventions"
       ],
       nextSteps: [
-        "Practice more examples of this text type",
-        "Study the key features and structure",
-        "Get feedback from teachers or peers"
+        "Review examples of this text type",
+        "Practice with guided exercises",
+        "Seek additional feedback and support"
       ]
     };
   }
@@ -503,117 +228,35 @@ Focus on how well the student has used the conventions and features specific to 
 // Enhanced function to identify specific mistakes in context
 export async function identifyCommonMistakes(content: string, textType: string) {
   try {
-    if (!openai) {
-      throw new Error('OpenAI not available');
-    }
-
-    const contentAnalysis = analyzeContentStructure(content);
-
-    const messages = [
-      {
-        role: 'system',
-        content: `You are a writing coach specializing in identifying specific mistakes in student writing for NSW Selective High School Placement Test (ages 10-12 years). 
-
-NSW SELECTIVE WRITING TEST CONTEXT:
-- This is preparation for the official NSW Department of Education Selective High School Placement Test
-- Assessment criteria focus on: title (where appropriate), creative ideas, fluent and complex language (sentence variety, vocabulary, punctuation, grammar, spelling), and clear structure (beginning, middle, end)
-- Target length: approximately 250 words with emphasis on quality over quantity
-- Mistakes should be identified with selective school writing standards in mind
-
-IMPORTANT: Analyze the actual content and identify SPECIFIC errors with EXACT quotes from their writing.
-
-Look for:
-- Grammar errors with exact examples that would impact selective school assessment
-- Spelling mistakes with exact words
-- Punctuation issues with specific instances
-- Sentence structure problems with examples
-- Word choice issues with specific suggestions for selective school level writing
-
-Return a JSON object with this structure:
-{
-  "overallAssessment": "specific assessment based on their actual writing",
-  "mistakesIdentified": [
-    {
-      "type": "grammar|spelling|punctuation|structure|vocabulary",
-      "description": "specific description of the mistake",
-      "example": "exact quote from their text showing the error",
-      "correction": "exact correction with explanation",
-      "location": "where in the text this appears"
-    }
-  ],
-  "patternAnalysis": "analysis of patterns in their specific writing",
-  "priorityFixes": ["most important fix based on their writing", "second priority", "third priority"],
-  "positiveElements": ["specific positive element from their text", "another specific positive"]
-}`
-      },
-      {
-        role: 'user',
-        content: `Analyze this ${textType} writing for specific mistakes and patterns:
-
-"${content}"
-
-CONTENT ANALYSIS:
-- ${contentAnalysis.wordCount} words, ${contentAnalysis.sentenceCount} sentences
-- Opening: "${contentAnalysis.firstSentence}"
-- Closing: "${contentAnalysis.lastSentence}"
-
-Identify specific errors with exact quotes from the text above.`
-      }
-    ];
-
-    const result = await makeOpenAICall(messages, 1500);
-    
-    try {
-      return JSON.parse(result);
-    } catch (parseError) {
-      const analysis = analyzeContentStructure(content);
-      return {
-        overallAssessment: `Your ${analysis.wordCount}-word piece shows good effort. I can see you're developing your writing skills.`,
-        mistakesIdentified: [],
-        patternAnalysis: `Your writing shows ${analysis.sentenceCount} sentences with an average length of ${Math.round(analysis.averageSentenceLength)} words. Continue focusing on clear expression.`,
-        priorityFixes: [
-          analysis.averageSentenceLength < 6 ? "Try writing some longer, more detailed sentences" : "Good sentence length variety",
-          "Proofread carefully for spelling and grammar",
-          "Read your work aloud to check if it flows well"
-        ],
-        positiveElements: [
-          `Strong opening: "${analysis.firstSentence.substring(0, 40)}..."`,
-          `Good effort with ${analysis.wordCount} words written`
-        ]
-      };
-    }
+    return await makeBackendCall('identifyCommonMistakes', {
+      content,
+      textType
+    });
   } catch (error) {
     console.error('Error identifying common mistakes:', error);
+    const analysis = analyzeContentStructure(content);
     return {
-      overallAssessment: "Your writing shows good effort and understanding.",
+      overallAssessment: `Your ${analysis.wordCount}-word piece shows good effort. I can see you're developing your writing skills.`,
       mistakesIdentified: [],
-      patternAnalysis: "Continue focusing on careful proofreading and clear expression.",
-      priorityFixes: ["Proofread carefully", "Check spelling and grammar", "Ensure clear expression"],
-      positiveElements: ["Good effort in completing the task", "Appropriate attempt at the text type"]
+      patternAnalysis: `Your writing shows ${analysis.sentenceCount} sentences with an average length of ${Math.round(analysis.averageSentenceLength)} words. Continue focusing on clear expression.`,
+      priorityFixes: [
+        analysis.averageSentenceLength < 6 ? "Try writing some longer, more detailed sentences" : "Good sentence length variety",
+        "Proofread carefully for spelling and grammar",
+        "Read your work aloud to check if it flows well"
+      ],
+      positiveElements: [
+        `Strong opening: "${analysis.firstSentence.substring(0, 40)}..."`,
+        `Good effort with ${analysis.wordCount} words written`
+      ]
     };
   }
 }
 
-// Keep all other existing functions unchanged
+// Keep all other existing functions unchanged but route through backend
 export async function generatePrompt(textType: string): Promise<string> {
   try {
-    if (!openai) {
-      throw new Error('OpenAI not available');
-    }
-
-    const messages = [
-      {
-        role: 'system',
-        content: `You are a writing coach for NSW Selective High School Placement Test writing assessments for students aged 10-12 years in Australia. Generate engaging, age-appropriate writing prompts that align with NSW Department of Education assessment standards. The prompts should be creative, relatable to children's experiences, encourage imaginative thinking, and be suitable for selective school entry preparation.`
-      },
-      {
-        role: 'user',
-        content: `Generate a creative and engaging ${textType} writing prompt suitable for NSW Selective High School Placement Test for students aged 10-12 years. Make it interesting and relatable to children's experiences while maintaining the sophistication expected for selective school entry. Return only the prompt text, no additional formatting.`
-      }
-    ];
-
-    const result = await makeOpenAICall(messages, 200);
-    return result.trim();
+    const result = await makeBackendCall('generatePrompt', { textType });
+    return result.prompt || "Write about a memorable experience that taught you something important.";
   } catch (error) {
     console.error('Error generating prompt:', error);
     
@@ -633,23 +276,8 @@ export async function generatePrompt(textType: string): Promise<string> {
 
 export async function getSynonyms(word: string): Promise<string[]> {
   try {
-    if (!openai) {
-      throw new Error('OpenAI not available');
-    }
-
-    const messages = [
-      {
-        role: 'system',
-        content: 'You are a vocabulary coach for students aged 10-12 years preparing for NSW Selective High School Placement Test. Provide age-appropriate synonyms that will help improve their writing to selective school standards. Return only a comma-separated list of 3-5 synonyms, no additional text.'
-      },
-      {
-        role: 'user',
-        content: `Provide 3-5 age-appropriate synonyms for the word "${word}" suitable for students aged 10-12 years preparing for selective school entry.`
-      }
-    ];
-
-    const result = await makeOpenAICall(messages, 100);
-    return result.split(',').map(s => s.trim()).filter(s => s.length > 0);
+    const result = await makeBackendCall('getSynonyms', { content: word });
+    return Array.isArray(result) ? result : [result];
   } catch (error) {
     console.error('Error getting synonyms:', error);
     
@@ -669,23 +297,8 @@ export async function getSynonyms(word: string): Promise<string[]> {
 
 export async function rephraseSentence(sentence: string): Promise<string> {
   try {
-    if (!openai) {
-      throw new Error('OpenAI not available');
-    }
-
-    const messages = [
-      {
-        role: 'system',
-        content: 'You are a writing coach helping students aged 10-12 years improve their sentence structure for NSW Selective High School Placement Test preparation. Provide 2-3 alternative ways to express the same idea, keeping the language age-appropriate but sophisticated enough for selective school standards. Return only the alternatives separated by " | ", no additional text.'
-      },
-      {
-        role: 'user',
-        content: `Provide 2-3 alternative ways to rephrase this sentence for a student aged 10-12 years preparing for selective school entry: "${sentence}"`
-      }
-    ];
-
-    const result = await makeOpenAICall(messages, 200);
-    return result.trim();
+    const result = await makeBackendCall('rephraseSentence', { content: sentence });
+    return result || `[Rephrasing not available at the moment] Original: ${sentence}`;
   } catch (error) {
     console.error('Error rephrasing sentence:', error);
     return `[Rephrasing not available at the moment] Original: ${sentence}`;
@@ -694,60 +307,10 @@ export async function rephraseSentence(sentence: string): Promise<string> {
 
 export async function getTextTypeVocabulary(textType: string, contentSample: string): Promise<any> {
   try {
-    if (!openai) {
-      throw new Error('OpenAI not available');
-    }
-
-    const messages = [
-      {
-        role: 'system',
-        content: `You are a vocabulary coach for NSW Selective High School Placement Test. Provide vocabulary specific to ${textType} writing that would help students aged 10-12 years improve their writing to selective school standards.
-
-Return a JSON object with this structure:
-{
-  "textType": "${textType}",
-  "categories": [
-    {
-      "name": "category name",
-      "words": ["word1", "word2", "word3"],
-      "examples": ["example sentence 1", "example sentence 2"]
-    }
-  ],
-  "phrasesAndExpressions": ["phrase 1", "phrase 2", "phrase 3"],
-  "transitionWords": ["transition 1", "transition 2", "transition 3"]
-}`
-      },
-      {
-        role: 'user',
-        content: `Provide vocabulary suggestions for ${textType} writing based on this sample: "${contentSample}"`
-      }
-    ];
-
-    const result = await makeOpenAICall(messages, 800);
-    
-    try {
-      return JSON.parse(result);
-    } catch (parseError) {
-      return {
-        textType: textType,
-        categories: [
-          {
-            name: "General Words",
-            words: ["interesting", "important", "different", "special", "amazing"],
-            examples: ["This is an interesting topic.", "It's important to remember."]
-          }
-        ],
-        phrasesAndExpressions: [
-          "In my opinion",
-          "For example",
-          "In conclusion",
-          "On the other hand"
-        ],
-        transitionWords: [
-          "First", "Second", "Next", "Then", "Finally", "However", "Because", "Therefore"
-        ]
-      };
-    }
+    return await makeBackendCall('getTextTypeVocabulary', {
+      textType,
+      content: contentSample
+    });
   } catch (error) {
     console.error('Error getting text type vocabulary:', error);
     return {
@@ -774,83 +337,10 @@ Return a JSON object with this structure:
 
 export async function evaluateEssay(content: string, textType: string): Promise<any> {
   try {
-    if (!openai) {
-      throw new Error('OpenAI not available');
-    }
-
-    const messages = [
-      {
-        role: 'system',
-        content: `You are an expert evaluator for NSW Selective High School Placement Test writing assessments for students aged 10-12 years. 
-
-NSW SELECTIVE WRITING TEST CONTEXT:
-- This is evaluation for the official NSW Department of Education Selective High School Placement Test
-- Assessment criteria focus on: title (where appropriate), creative ideas, fluent and complex language (sentence variety, vocabulary, punctuation, grammar, spelling), and clear structure (beginning, middle, end)
-- Target length: approximately 250 words with emphasis on quality over quantity
-- Evaluation should reflect selective school entry standards
-
-EVALUATION CRITERIA:
-- Ideas and Content: Creativity, originality, development of ideas appropriate for selective school level
-- Structure: Clear beginning, middle, end with logical organization
-- Language: Sentence variety, sophisticated vocabulary for age group, fluent expression
-- Mechanics: Grammar, spelling, punctuation accuracy expected at selective school level
-
-Provide a comprehensive evaluation using NSW Department of Education assessment standards.
-
-Return a JSON object with this structure:
-{
-  "overallScore": number (1-10),
-  "strengths": ["strength 1", "strength 2", "strength 3"],
-  "areasForImprovement": ["area 1", "area 2", "area 3"],
-  "specificFeedback": {
-    "structure": "feedback about structure",
-    "language": "feedback about language use",
-    "ideas": "feedback about ideas and content",
-    "mechanics": "feedback about grammar, spelling, punctuation"
-  },
-  "nextSteps": ["step 1", "step 2", "step 3"]
-}`
-      },
-      {
-        role: 'user',
-        content: `Evaluate this ${textType} writing by a student aged 9-11 according to NSW curriculum standards:
-
-"${content}"
-
-Provide a comprehensive evaluation with specific, constructive feedback.`
-      }
-    ];
-
-    const result = await makeOpenAICall(messages, 1000);
-    
-    try {
-      return JSON.parse(result);
-    } catch (parseError) {
-      return {
-        overallScore: 6,
-        strengths: [
-          "Attempt at addressing the topic",
-          "Basic structure present",
-          "Shows understanding of the task"
-        ],
-        areasForImprovement: [
-          "Need more development of ideas",
-          "Work on grammar and spelling",
-          "Improve organization"
-        ],
-        specificFeedback: {
-          structure: "Your essay has a basic structure, but could benefit from clearer organization.",
-          language: "Consider using more varied vocabulary and sentence structures.",
-          ideas: "Your ideas are present but need more development and supporting details.",
-          mechanics: "Review your work for grammar and spelling errors."
-        },
-        nextSteps: [
-          "Review basic grammar and spelling rules",
-          "Practice organizing your ideas before writing",
-          "Read examples of strong essays in this style"
-        ]
-      };
-    }
+    return await makeBackendCall('evaluateEssay', {
+      content,
+      textType
+    });
   } catch (error) {
     console.error('Error evaluating essay:', error);
     return {
@@ -882,33 +372,7 @@ Provide a comprehensive evaluation with specific, constructive feedback.`
 
 export async function getWritingStructure(textType: string): Promise<string> {
   try {
-    if (!openai) {
-      throw new Error('OpenAI not available');
-    }
-
-    const messages = [
-      {
-        role: 'system',
-        content: `You are a writing structure expert for NSW Selective High School Placement Test. Provide a comprehensive guide to ${textType} writing structure for students aged 10-12 years preparing for selective school entry.
-
-Return a JSON string with this structure:
-{
-  "title": "Guide to ${textType} Writing",
-  "sections": [
-    {
-      "heading": "section heading",
-      "content": "detailed content for this section"
-    }
-  ]
-}`
-      },
-      {
-        role: 'user',
-        content: `Provide a comprehensive structure guide for ${textType} writing suitable for NSW Selective High School Placement Test students aged 10-12 years.`
-      }
-    ];
-
-    const result = await makeOpenAICall(messages, 800);
+    const result = await makeBackendCall('getWritingStructure', { textType });
     return result;
   } catch (error) {
     console.error('Error getting writing structure:', error);
@@ -939,42 +403,7 @@ Return a JSON string with this structure:
 // New function for grammar and spelling check
 export async function checkGrammarAndSpelling(content: string): Promise<any> {
   try {
-    if (!openai) {
-      throw new Error('OpenAI not available');
-    }
-
-    const messages = [
-      {
-        role: 'system',
-        content: `You are a grammar and spelling checker for students aged 10-12 years preparing for NSW Selective High School Placement Test. Identify errors and provide corrections in a supportive way, focusing on standards expected for selective school entry.
-
-Return a JSON object with this structure:
-{
-  "corrections": [
-    {
-      "type": "grammar|spelling|punctuation",
-      "text": "the error text",
-      "suggestion": "the correction",
-      "explanation": "simple explanation for the student"
-    }
-  ]
-}`
-      },
-      {
-        role: 'user',
-        content: `Check this text for grammar and spelling errors: "${content}"`
-      }
-    ];
-
-    const result = await makeOpenAICall(messages, 600);
-    
-    try {
-      return JSON.parse(result);
-    } catch (parseError) {
-      return {
-        corrections: []
-      };
-    }
+    return await makeBackendCall('checkGrammarAndSpelling', { content });
   } catch (error) {
     console.error('Error checking grammar and spelling:', error);
     return {
@@ -986,41 +415,7 @@ Return a JSON object with this structure:
 // New function for sentence structure analysis
 export async function analyzeSentenceStructure(content: string): Promise<any> {
   try {
-    if (!openai) {
-      throw new Error('OpenAI not available');
-    }
-
-    const messages = [
-      {
-        role: 'system',
-        content: `You are a sentence structure analyzer for students aged 10-12 years preparing for NSW Selective High School Placement Test. Identify patterns and suggest improvements that meet selective school writing standards.
-
-Return a JSON object with this structure:
-{
-  "analysis": [
-    {
-      "type": "repetitive_beginning|choppy_sentences|run_on|variety_needed",
-      "sentence": "example sentence",
-      "suggestion": "how to improve it"
-    }
-  ]
-}`
-      },
-      {
-        role: 'user',
-        content: `Analyze the sentence structure in this text: "${content}"`
-      }
-    ];
-
-    const result = await makeOpenAICall(messages, 600);
-    
-    try {
-      return JSON.parse(result);
-    } catch (parseError) {
-      return {
-        analysis: []
-      };
-    }
+    return await makeBackendCall('analyzeSentenceStructure', { content });
   } catch (error) {
     console.error('Error analyzing sentence structure:', error);
     return {
@@ -1032,41 +427,7 @@ Return a JSON object with this structure:
 // New function for vocabulary enhancement
 export async function enhanceVocabulary(content: string): Promise<any> {
   try {
-    if (!openai) {
-      throw new Error('OpenAI not available');
-    }
-
-    const messages = [
-      {
-        role: 'system',
-        content: `You are a vocabulary enhancement coach for students aged 10-12 years preparing for NSW Selective High School Placement Test. Suggest better word choices that are age-appropriate but sophisticated enough for selective school standards.
-
-Return a JSON object with this structure:
-{
-  "suggestions": [
-    {
-      "word": "basic word found in text",
-      "suggestion": "better alternatives",
-      "context": "how to use it"
-    }
-  ]
-}`
-      },
-      {
-        role: 'user',
-        content: `Suggest vocabulary improvements for this text: "${content}"`
-      }
-    ];
-
-    const result = await makeOpenAICall(messages, 600);
-    
-    try {
-      return JSON.parse(result);
-    } catch (parseError) {
-      return {
-        suggestions: []
-      };
-    }
+    return await makeBackendCall('enhanceVocabulary', { content });
   } catch (error) {
     console.error('Error enhancing vocabulary:', error);
     return {
@@ -1078,6 +439,7 @@ Return a JSON object with this structure:
 export default {
   generatePrompt,
   getWritingFeedback,
+  getNSWSelectiveFeedback,
   getSpecializedTextTypeFeedback,
   identifyCommonMistakes,
   getSynonyms,
@@ -1090,4 +452,3 @@ export default {
   enhanceVocabulary,
   isOpenAIAvailable
 };
-
