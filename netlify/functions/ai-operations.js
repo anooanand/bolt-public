@@ -38,6 +38,9 @@ exports.handler = async (event) => {
       case "getWritingFeedback":
         result = await getWritingFeedback(content, textType, assistanceLevel, feedbackHistory);
         break;
+      case "getNSWSelectiveFeedback":
+        result = await getNSWSelectiveFeedback(content, textType, assistanceLevel, feedbackHistory);
+        break;
       case "identifyCommonMistakes":
         result = await identifyCommonMistakes(content, textType);
         break;
@@ -90,7 +93,147 @@ exports.handler = async (event) => {
   }
 };
 
-// OpenAI function implementations
+// Enhanced NSW Selective Writing Exam Feedback Function
+async function getNSWSelectiveFeedback(content, textType, assistanceLevel, feedbackHistory) {
+  try {
+    const completion = await openai.chat.completions.create({
+      messages: [
+        {
+          role: "system",
+          content: `You are an expert NSW Selective Writing exam assessor providing detailed, criterion-referenced feedback for Year 5-6 students. Evaluate the ${textType} writing against the four key NSW Selective Writing exam criteria:
+
+1. Ideas and Content (30%): Originality, creativity, relevance to prompt, development and elaboration, depth of thinking, audience engagement
+2. Text Structure and Organization (25%): Clear beginning/middle/end, logical sequence, effective paragraph structure, coherence and cohesion, appropriate to text type
+3. Language Features and Vocabulary (25%): Sophisticated vocabulary, literary devices, sentence variety, appropriate tone and style, precision and clarity
+4. Spelling, Punctuation, and Grammar (20%): Accurate spelling, correct punctuation, grammatical accuracy, consistent tense and point of view
+
+For each criterion, provide:
+- Specific strengths with examples from the text
+- Areas for improvement with concrete suggestions
+- Examples of how to improve (rewrite sentences, suggest alternatives)
+- Actionable next steps
+
+Consider the student's ${assistanceLevel} assistance level and previous feedback: ${JSON.stringify(feedbackHistory || [])}
+
+Return feedback in this exact JSON format:
+{
+  "overallComment": "Brief, encouraging overall assessment with specific reference to NSW exam standards",
+  "criteriaFeedback": {
+    "ideasAndContent": {
+      "score": 7,
+      "maxScore": 10,
+      "strengths": ["Specific strength with example from text"],
+      "improvements": ["Specific area for improvement"],
+      "suggestions": ["Concrete suggestion with example"],
+      "nextSteps": ["Actionable step for this criterion"]
+    },
+    "textStructureAndOrganization": {
+      "score": 6,
+      "maxScore": 10,
+      "strengths": ["Specific strength with example from text"],
+      "improvements": ["Specific area for improvement"],
+      "suggestions": ["Concrete suggestion with example"],
+      "nextSteps": ["Actionable step for this criterion"]
+    },
+    "languageFeaturesAndVocabulary": {
+      "score": 8,
+      "maxScore": 10,
+      "strengths": ["Specific strength with example from text"],
+      "improvements": ["Specific area for improvement"],
+      "suggestions": ["Concrete suggestion with example"],
+      "nextSteps": ["Actionable step for this criterion"]
+    },
+    "spellingPunctuationGrammar": {
+      "score": 9,
+      "maxScore": 10,
+      "strengths": ["Specific strength with example from text"],
+      "improvements": ["Specific area for improvement"],
+      "suggestions": ["Concrete suggestion with example"],
+      "nextSteps": ["Actionable step for this criterion"]
+    }
+  },
+  "priorityFocus": ["1-2 most important areas to focus on next"],
+  "examStrategies": ["Specific NSW exam strategies relevant to this writing"],
+  "interactiveQuestions": ["Questions to help student think deeper about their writing"],
+  "revisionSuggestions": ["Specific sentences or sections to revise with examples"]
+}`
+        },
+        {
+          role: "user",
+          content: `Text type: ${textType}\n\nStudent writing:\n${content}`
+        }
+      ],
+      model: "gpt-4",
+      temperature: 0.7,
+      max_tokens: 2000
+    });
+
+    const responseContent = completion.choices[0].message.content;
+    if (!responseContent) {
+      throw new Error("Empty response from OpenAI");
+    }
+
+    // Parse and validate the response
+    const parsed = JSON.parse(responseContent);
+    
+    // Validate required structure
+    if (!parsed.overallComment || 
+        !parsed.criteriaFeedback ||
+        !parsed.criteriaFeedback.ideasAndContent ||
+        !parsed.criteriaFeedback.textStructureAndOrganization ||
+        !parsed.criteriaFeedback.languageFeaturesAndVocabulary ||
+        !parsed.criteriaFeedback.spellingPunctuationGrammar) {
+      throw new Error("Invalid response format: missing required criteria feedback");
+    }
+
+    return parsed;
+  } catch (error) {
+    console.error("OpenAI NSW Selective feedback error:", error);
+    return {
+      overallComment: "Your writing shows good effort and understanding of the narrative form. Let's work on developing it further using NSW Selective exam criteria.",
+      criteriaFeedback: {
+        ideasAndContent: {
+          score: 6,
+          maxScore: 10,
+          strengths: ["You have attempted to create a narrative with a clear storyline"],
+          improvements: ["Develop your ideas with more specific details and depth"],
+          suggestions: ["Add more descriptive details about characters, setting, and emotions"],
+          nextSteps: ["Focus on expanding one key moment in your story with rich detail"]
+        },
+        textStructureAndOrganization: {
+          score: 6,
+          maxScore: 10,
+          strengths: ["Your writing has a clear beginning"],
+          improvements: ["Ensure smooth transitions between ideas"],
+          suggestions: ["Use connecting words like 'meanwhile', 'suddenly', 'after that' to link your ideas"],
+          nextSteps: ["Plan your story structure before writing - beginning, middle, end"]
+        },
+        languageFeaturesAndVocabulary: {
+          score: 6,
+          maxScore: 10,
+          strengths: ["You've used some descriptive words"],
+          improvements: ["Vary your sentence structure and use more sophisticated vocabulary"],
+          suggestions: ["Try starting sentences in different ways and use more specific adjectives"],
+          nextSteps: ["Practice using literary devices like similes or metaphors"]
+        },
+        spellingPunctuationGrammar: {
+          score: 7,
+          maxScore: 10,
+          strengths: ["Generally good control of basic grammar and spelling"],
+          improvements: ["Check for any minor errors and ensure consistent tense"],
+          suggestions: ["Proofread your work carefully, reading it aloud to catch errors"],
+          nextSteps: ["Focus on maintaining past tense throughout your narrative"]
+        }
+      },
+      priorityFocus: ["Develop ideas with more specific details", "Improve sentence variety and vocabulary"],
+      examStrategies: ["Plan your story structure before writing", "Use the full time allocation for planning, writing, and checking"],
+      interactiveQuestions: ["What specific emotions does your main character feel?", "How can you make your setting more vivid for the reader?"],
+      revisionSuggestions: ["Choose one paragraph to expand with more sensory details", "Rewrite two sentences to start them differently"]
+    };
+  }
+}
+
+// Original OpenAI function implementations (keeping existing functionality)
 async function generatePrompt(textType) {
   try {
     const completion = await openai.chat.completions.create({
@@ -593,180 +736,3 @@ async function enhanceVocabulary(content) {
     };
   }
 }
-
-async function evaluateEssay(content, textType) {
-  try {
-    const completion = await openai.chat.completions.create({
-      messages: [
-        {
-          role: "system",
-          content: `You are an expert writing teacher evaluating a Year 5-6 student's ${textType} essay. Provide comprehensive feedback and scoring. Return the evaluation in this exact JSON format:\n{\n  "overallScore": 7,\n  "strengths": [\n    "Clear thesis statement",\n    "Good use of transition words",\n    "Varied sentence structure"\n  ],\n  "areasForImprovement": [\n    "Needs more supporting evidence",\n    "Some spelling errors",\n    "Conclusion could be stronger"\n  ],\n  "specificFeedback": {\n    "structure": "Detailed feedback on essay structure",\n    "language": "Feedback on language use and vocabulary",\n    "ideas": "Feedback on ideas and content development",\n    "mechanics": "Feedback on grammar, spelling, and punctuation"\n  },\n  "nextSteps": [\n    "Review and correct spelling errors",\n    "Add more supporting evidence to main points",\n    "Strengthen conclusion by restating main ideas"\n  ]\n}`
-        },
-        {
-          role: "user",
-          content: content
-        }
-      ],
-      model: "gpt-4",
-      temperature: 0.7,
-      max_tokens: 1000
-    });
-
-    const responseContent = completion.choices[0].message.content;
-    if (!responseContent) {
-      throw new Error("Empty response from OpenAI");
-    }
-
-    const parsed = JSON.parse(responseContent);
-    
-    if (typeof parsed.overallScore !== "number" || 
-        !Array.isArray(parsed.strengths) || 
-        !Array.isArray(parsed.areasForImprovement) ||
-        !parsed.specificFeedback ||
-        !Array.isArray(parsed.nextSteps)) {
-      throw new Error("Invalid response format: missing required fields");
-    }
-
-    return parsed;
-  } catch (error) {
-    console.error("OpenAI essay evaluation error:", error);
-    return {
-      overallScore: 6,
-      strengths: [
-        "Attempt at addressing the topic",
-        "Basic structure present",
-        "Shows understanding of the task"
-      ],
-      areasForImprovement: [
-        "Need more development of ideas",
-        "Work on grammar and spelling",
-        "Improve organization"
-      ],
-      specificFeedback: {
-        structure: "Your essay has a basic structure, but could benefit from clearer organization.",
-        language: "Consider using more varied vocabulary and sentence structures.",
-        ideas: "Your ideas are present but need more development and supporting details.",
-        mechanics: "Review your work for grammar and spelling errors."
-      },
-      nextSteps: [
-        "Review basic grammar and spelling rules",
-        "Practice organizing your ideas before writing",
-        "Read examples of strong essays in this style"
-      ]
-    };
-  }
-}
-
-async function getSpecializedTextTypeFeedback(content, textType) {
-  try {
-    const completion = await openai.chat.completions.create({
-      messages: [
-        {
-          role: "system",
-          content: `You are an expert writing teacher providing specialized feedback for Year 5-6 students on ${textType} writing. Focus specifically on how well the student has understood and applied the conventions, structure, and features of this text type. Return feedback in this exact JSON format:\n{\n  "overallComment": "Brief assessment of how well the student has handled this text type",\n  "textTypeSpecificFeedback": {\n    "structure": "Feedback on how well the student followed the expected structure for this text type",\n    "language": "Feedback on use of language features specific to this text type",\n    "purpose": "How well the student achieved the purpose of this text type",\n    "audience": "How well the student considered their audience"\n  },\n  "strengthsInTextType": [\n    "Specific strengths in handling this text type",\n    "What the student did well for this writing style"\n  ],\n  "improvementAreas": [\n    "Areas where the student can improve their understanding of this text type",\n    "Specific features they need to work on"\n  ],\n  "nextSteps": [\n    "Specific actions to improve in this text type",\n    "Resources or practice suggestions"\n  ]\n}`
-        },
-        {
-          role: "user",
-          content: `Text type: ${textType}\n\nStudent writing:\n${content}`
-        }
-      ],
-      model: "gpt-4",
-      temperature: 0.7,
-      max_tokens: 1000
-    });
-
-    const responseContent = completion.choices[0].message.content;
-    if (!responseContent) {
-      throw new Error("Empty response from OpenAI");
-    }
-
-    const parsed = JSON.parse(responseContent);
-    
-    if (!parsed.overallComment || 
-        !parsed.textTypeSpecificFeedback ||
-        !Array.isArray(parsed.strengthsInTextType) ||
-        !Array.isArray(parsed.improvementAreas) ||
-        !Array.isArray(parsed.nextSteps)) {
-      throw new Error("Invalid response format: missing required fields");
-    }
-
-    return parsed;
-  } catch (error) {
-    console.error("OpenAI specialized text type feedback error:", error);
-    return {
-      overallComment: "Unable to provide specialized feedback at this time. Your writing shows good understanding of the task.",
-      textTypeSpecificFeedback: {
-        structure: "Your writing has a clear structure appropriate for this text type.",
-        language: "You've used suitable language for this writing style.",
-        purpose: "Your writing addresses the main purpose effectively.",
-        audience: "Consider your audience when refining your writing."
-      },
-      strengthsInTextType: [
-        "Good understanding of the text type requirements",
-        "Appropriate structure and organization",
-        "Clear attempt at the required style"
-      ],
-      improvementAreas: [
-        "Continue developing text type knowledge",
-        "Practice specific language features",
-        "Strengthen understanding of conventions"
-      ],
-      nextSteps: [
-        "Review examples of this text type",
-        "Practice with guided exercises",
-        "Seek additional feedback and support"
-      ]
-    };
-  }
-}
-
-async function getWritingStructure(textType) {
-  try {
-    const completion = await openai.chat.completions.create({
-      messages: [
-        {
-          role: "system",
-          content: `You are an expert writing teacher creating a guide for Year 5-6 students on ${textType} writing. Create a structured guide with sections covering key aspects of this writing type. Return the guide in this exact JSON format:\n{\n  "title": "Guide to ${textType} Writing",\n  "sections": [\n    {\n      "heading": "Structure",\n      "content": "Detailed explanation of the structure for this writing type"\n    },\n    {\n      "heading": "Language Features",\n      "content": "Explanation of key language features and techniques"\n    },\n    {\n      "heading": "Common Mistakes",\n      "content": "Common mistakes to avoid in this writing type"\n    },\n    {\n      "heading": "Planning Tips",\n      "content": "How to plan effectively for this writing type"\n    }\n  ]\n}`
-        },
-        {
-          role: "user",
-          content: `Text type: ${textType}`
-        }
-      ],
-      model: "gpt-4",
-      temperature: 0.7,
-      max_tokens: 1000
-    });
-
-    const responseContent = completion.choices[0].message.content;
-    if (!responseContent) {
-      throw new Error("Empty response from OpenAI");
-    }
-
-    return responseContent;
-  } catch (error) {
-    console.error("OpenAI writing structure generation error:", error);
-    return JSON.stringify({
-      title: `Guide to ${textType} Writing`,
-      sections: [
-        {
-          heading: "Structure",
-          content: "Every piece of writing should have a clear beginning, middle, and end. The beginning introduces your main idea, the middle develops it with details, and the end summarizes your key points."
-        },
-        {
-          heading: "Language Features",
-          content: "Use descriptive language, varied sentence structures, and appropriate vocabulary for your topic."
-        },
-        {
-          heading: "Common Mistakes",
-          content: "Avoid rushing your writing, forgetting to proofread, and using repetitive words or phrases."
-        },
-        {
-          heading: "Planning Tips",
-          content: "Before you start writing, take time to brainstorm ideas, create a simple outline, and think about your audience."
-        }
-      ]
-    });
-  }
-}
-
