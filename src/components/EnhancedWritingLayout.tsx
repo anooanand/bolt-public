@@ -5,6 +5,7 @@ import { Lightbulb, Type, Save, Settings, Sparkles, Users, Target, Star, CheckCi
 import './layout-fix.css';
 import './full-width-fix.css';
 import './new-layout.css';
+import './space-optimization.css'; // <--- ADD THIS LINE
 
 interface EnhancedWritingLayoutProps {
   content: string;
@@ -139,20 +140,20 @@ export function EnhancedWritingLayout({
   };
 
   return (
-    <div className="enhanced-writing-layout bg-gray-50 overflow-hidden min-h-0 h-full flex flex-row">
-      {/* Left Side - Writing Area with Toolbar and Prompt - 65% width */}
+    <div className="enhanced-writing-layout space-optimized bg-gray-50 overflow-hidden min-h-0 h-full flex flex-row">
+      {/* Left Side - Writing Area with Toolbar and Prompt - 70% width */}
       <div className="writing-left-section flex-1 flex flex-col min-h-0" style={{ flex: '0 0 70%' }}>
-        {/* Writing Prompt at Top - BOLD AND PROMINENT */}
+        {/* Writing Prompt at Top - OPTIMIZED SPACING */}
         {(textType && (generatedPrompt || getWritingPrompt())) && (
-          <div className="bg-gradient-to-r from-blue-50 to-purple-50 border-b border-blue-200 p-4 shadow-lg flex-shrink-0">
+          <div className="writing-prompt-container bg-gradient-to-r from-blue-50 to-purple-50 border-b border-blue-200 shadow-lg flex-shrink-0">
             <div className="px-0">
-              <div className="flex items-center space-x-3 mb-3 px-4">
-                <Sparkles className="w-6 h-6 text-blue-600" />
-                <h3 className="font-bold text-blue-800 text-lg">Your Writing Prompt</h3>
+              <div className="flex items-center space-x-3 mb-2 px-4">
+                <Sparkles className="w-5 h-5 text-blue-600" />
+                <h3 className="font-bold text-blue-800 text-base">Your Writing Prompt</h3>
               </div>
-              {/* ENHANCED PROMPT STYLING - BOLD AND PROMINENT */}
-              <div className="bg-white rounded-lg p-4 border-l-4 border-blue-600 shadow-md mx-4">
-                <p className="text-gray-800 leading-relaxed text-lg font-semibold">
+              {/* OPTIMIZED PROMPT STYLING */}
+              <div className="writing-prompt-content bg-white rounded-lg border-l-4 border-blue-600 shadow-md mx-4">
+                <p className="text-gray-800 leading-relaxed text-base font-medium">
                   {getWritingPrompt()}
                 </p>
               </div>
@@ -160,14 +161,14 @@ export function EnhancedWritingLayout({
           </div>
         )}
 
-        {/* Compact Toolbar - Above writing area, left aligned */}
-        <div className="bg-white border-b border-gray-200 p-2 shadow-sm flex-shrink-0">
-          <div className="px-4 flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              {/* Action Buttons - Moved to left */}
+        {/* Compact Toolbar - OPTIMIZED SPACING */}
+        <div className="bg-white border-b border-gray-200 p-1 shadow-sm flex-shrink-0">
+          <div className="px-3 flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              {/* Action Buttons - Compact */}
               <button
                 onClick={handleNewStory}
-                className="flex items-center space-x-1 px-2 py-1 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-xs"
+                className="toolbar-button flex items-center space-x-1 px-2 py-1 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-xs"
               >
                 <Plus className="w-3 h-3" />
                 <span>New</span>
@@ -175,7 +176,7 @@ export function EnhancedWritingLayout({
               
               <button
                 onClick={handleSave}
-                className="flex items-center space-x-1 px-2 py-1 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors text-xs"
+                className="toolbar-button flex items-center space-x-1 px-2 py-1 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors text-xs"
               >
                 <Save className="w-3 h-3" />
                 <span>Save</span>
@@ -183,7 +184,7 @@ export function EnhancedWritingLayout({
               
               <button
                 onClick={handleExport}
-                className="flex items-center space-x-1 px-2 py-1 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-xs"
+                className="toolbar-button flex items-center space-x-1 px-2 py-1 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-xs"
               >
                 <Download className="w-3 h-3" />
                 <span>Export</span>
@@ -191,7 +192,7 @@ export function EnhancedWritingLayout({
               
               <button
                 onClick={handleHelp}
-                className="flex items-center space-x-1 px-2 py-1 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors text-xs"
+                className="toolbar-button flex items-center space-x-1 px-2 py-1 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors text-xs"
               >
                 <HelpCircle className="w-3 h-3" />
                 <span>Help</span>
@@ -201,7 +202,7 @@ export function EnhancedWritingLayout({
               {!showWritingBuddy && (
                 <button
                   onClick={toggleWritingBuddy}
-                  className="flex items-center space-x-1 px-2 py-1 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors text-xs"
+                  className="toolbar-button flex items-center space-x-1 px-2 py-1 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors text-xs"
                 >
                   <Bot className="w-3 h-3" />
                   <span>Writing Buddy</span>
@@ -209,21 +210,21 @@ export function EnhancedWritingLayout({
               )}
             </div>
             
-            <div className="flex items-center space-x-3">
-              {/* Word Count */}
+            <div className="flex items-center space-x-2">
+              {/* Word Count - Compact */}
               <div className="flex items-center space-x-1 text-xs text-gray-600">
                 <Type className="w-3 h-3" />
                 <span className="font-medium">{wordCount} words</span>
               </div>
 
-              {/* Writing Stats */}
-              <div className="flex items-center space-x-2 text-xs">
-                <div className="bg-green-100 px-2 py-0.5 rounded-full">
+              {/* Writing Stats - Compact */}
+              <div className="flex items-center space-x-1 text-xs">
+                <div className="writing-stats bg-green-100 px-2 py-0.5 rounded-full">
                   <span className="font-medium">{Math.round(timeSpent / 60)} min</span>
                 </div>
-                <div className="bg-purple-100 px-2 py-0.5 rounded-full">
+                <div className="writing-stats bg-purple-100 px-2 py-0.5 rounded-full">
                   <span className="font-medium">{writingStreak} day streak</span>
-                </div>
+                }
               </div>
             </div>
           </div>
@@ -246,15 +247,15 @@ export function EnhancedWritingLayout({
         </div>
       </div>
 
-      {/* Right Sidebar - Writing Buddy Panel - 25% width */}
+      {/* Right Sidebar - Writing Buddy Panel - 30% width */}
       {showWritingBuddy && (
         <div className="writing-buddy-panel bg-white border-l border-gray-200 flex flex-col min-h-0" style={{ flex: '0 0 30%', minWidth: '300px' }}>
-          {/* Writing Buddy Header */}
-          <div className="writing-buddy-header bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30 p-3 border-b border-gray-200 flex-shrink-0">
+          {/* Writing Buddy Header - OPTIMIZED */}
+          <div className="writing-buddy-header bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30 border-b border-gray-200 flex-shrink-0">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
-                <Bot className="w-5 h-5 text-purple-600" />
-                <h3 className="font-semibold text-purple-800">Writing Buddy</h3>
+                <Bot className="w-4 h-4 text-purple-600" />
+                <h3 className="font-semibold text-purple-800 text-sm">Writing Buddy</h3>
               </div>
               <button
                 onClick={toggleWritingBuddy}
