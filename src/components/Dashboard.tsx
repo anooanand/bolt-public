@@ -1,3 +1,5 @@
+// Enhanced Dashboard Component - Copy and paste this to replace your existing Dashboard.tsx
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -19,16 +21,29 @@ import {
   Sparkles,
   Smile,
   Target,
-  Gift
+  Gift,
+  Flame,
+  TrendingUp,
+  Award,
+  Rocket,
+  Crown,
+  Gem,
+  Wand2,
+  Palette,
+  Music,
+  Camera,
+  Gamepad2
 } from 'lucide-react';
 
 interface DashboardProps {
   user?: any;
   emailVerified?: boolean;
   paymentCompleted?: boolean;
+  onNavigate?: (page: string) => void;
+  onSignOut?: () => void;
 }
 
-export function Dashboard({ user: propUser, emailVerified: propEmailVerified, paymentCompleted: propPaymentCompleted }: DashboardProps) {
+export function Dashboard({ user: propUser, emailVerified: propEmailVerified, paymentCompleted: propPaymentCompleted, onNavigate, onSignOut }: DashboardProps) {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [isVerified, setIsVerified] = useState(false);
@@ -171,12 +186,20 @@ export function Dashboard({ user: propUser, emailVerified: propEmailVerified, pa
 
   const handleStartWriting = () => {
     console.log('🚀 Dashboard: Navigating to writing area...');
-    navigate('/writing');
+    if (onNavigate) {
+      onNavigate('writing');
+    } else {
+      navigate('/writing');
+    }
   };
 
   const handlePracticeExam = () => {
     console.log('🚀 Dashboard: Navigating to practice exam...');
-    navigate('/exam');
+    if (onNavigate) {
+      onNavigate('exam');
+    } else {
+      navigate('/exam');
+    }
   };
 
   const formatDateTime = (dateString: string) => {
@@ -208,8 +231,9 @@ export function Dashboard({ user: propUser, emailVerified: propEmailVerified, pa
   const getUserName = () => {
     if (currentUser?.email) {
       const emailPart = currentUser.email.split('@')[0];
-      // Capitalize first letter
-      return emailPart.charAt(0).toUpperCase() + emailPart.slice(1);
+      // Capitalize first letter and handle dots
+      const namePart = emailPart.split('.')[0];
+      return namePart.charAt(0).toUpperCase() + namePart.slice(1);
     }
     return 'Friend';
   };
@@ -229,68 +253,88 @@ export function Dashboard({ user: propUser, emailVerified: propEmailVerified, pa
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 relative overflow-hidden">
+      {/* Floating Background Elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-20 left-10 w-32 h-32 bg-yellow-200 rounded-full opacity-20 animate-pulse"></div>
+        <div className="absolute top-40 right-20 w-24 h-24 bg-pink-200 rounded-full opacity-30 animate-bounce"></div>
+        <div className="absolute bottom-32 left-1/4 w-40 h-40 bg-purple-200 rounded-full opacity-15 animate-pulse"></div>
+        <div className="absolute bottom-20 right-1/3 w-28 h-28 bg-green-200 rounded-full opacity-25 animate-bounce"></div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative z-10">
         
-        {/* Kid-Friendly Header with Mascot */}
+        {/* Enhanced Header with Animated Mascot */}
         <div className="mb-8 text-center">
-          <div className="flex items-center justify-center mb-4">
-            <div className="w-16 h-16 bg-gradient-to-r from-yellow-400 to-orange-400 rounded-full flex items-center justify-center mr-4 shadow-lg">
-              <Sparkles className="h-8 w-8 text-white" />
+          <div className="flex items-center justify-center mb-6">
+            <div className="relative">
+              <div className="w-20 h-20 bg-gradient-to-r from-yellow-400 via-orange-400 to-pink-400 rounded-full flex items-center justify-center mr-6 shadow-2xl transform hover:scale-110 transition-all duration-300 animate-pulse">
+                <Sparkles className="h-10 w-10 text-white animate-spin" style={{ animationDuration: '3s' }} />
+              </div>
+              <div className="absolute -top-2 -right-2 w-8 h-8 bg-gradient-to-r from-green-400 to-blue-400 rounded-full flex items-center justify-center shadow-lg animate-bounce">
+                <Crown className="h-4 w-4 text-white" />
+              </div>
             </div>
             <div className="text-left">
-              <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              <h1 className="text-5xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent mb-2">
                 Hi there, {getUserName()}! 🌟
               </h1>
-              <p className="text-xl text-gray-700 mt-1">Let's write something awesome today!</p>
+              <p className="text-2xl text-gray-700 font-medium bg-gradient-to-r from-orange-500 to-pink-500 bg-clip-text text-transparent">
+                Let's write something awesome today!
+              </p>
             </div>
           </div>
         </div>
 
-        {/* Celebration Welcome Message for Premium Users */}
+        {/* Enhanced Welcome Message for Premium Users */}
         {showWelcomeMessage && accessType === 'permanent' && (
-          <div className="bg-gradient-to-r from-green-100 via-blue-100 to-purple-100 border-2 border-green-300 rounded-3xl p-8 mb-8 relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-yellow-200 rounded-full -mr-16 -mt-16 opacity-50"></div>
-            <div className="absolute bottom-0 left-0 w-24 h-24 bg-pink-200 rounded-full -ml-12 -mb-12 opacity-50"></div>
+          <div className="bg-gradient-to-r from-green-100 via-blue-100 to-purple-100 border-4 border-green-300 rounded-3xl p-8 mb-8 relative overflow-hidden shadow-2xl">
+            <div className="absolute top-0 right-0 w-40 h-40 bg-yellow-200 rounded-full -mr-20 -mt-20 opacity-30 animate-pulse"></div>
+            <div className="absolute bottom-0 left-0 w-32 h-32 bg-pink-200 rounded-full -ml-16 -mb-16 opacity-40 animate-bounce"></div>
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-gradient-to-r from-purple-200 to-blue-200 rounded-full opacity-10 animate-spin" style={{ animationDuration: '20s' }}></div>
             
             <button
               onClick={handleDismissWelcome}
-              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 bg-white rounded-full p-2 shadow-md"
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 bg-white rounded-full p-3 shadow-lg hover:shadow-xl transform hover:scale-110 transition-all duration-300"
             >
-              <X className="h-5 w-5" />
+              <X className="h-6 w-6" />
             </button>
             
             <div className="flex items-center relative z-10">
-              <div className="w-20 h-20 bg-gradient-to-r from-green-400 to-blue-400 rounded-full flex items-center justify-center mr-6 shadow-lg">
-                <Trophy className="h-10 w-10 text-white" />
+              <div className="w-24 h-24 bg-gradient-to-r from-green-400 via-blue-400 to-purple-400 rounded-full flex items-center justify-center mr-8 shadow-2xl animate-bounce">
+                <Trophy className="h-12 w-12 text-white" />
               </div>
               <div className="flex-1">
-                <h3 className="text-3xl font-bold text-green-900 mb-3">🎉 Hooray! You're All Set!</h3>
-                <p className="text-green-800 mb-4 text-lg">
+                <h3 className="text-4xl font-bold text-green-900 mb-4 flex items-center">
+                  🎉 Hooray! You're All Set! 
+                  <Gem className="h-8 w-8 text-yellow-500 ml-3 animate-pulse" />
+                </h3>
+                <p className="text-green-800 mb-6 text-xl font-medium">
                   Welcome to your writing adventure! You now have access to all the cool features:
                 </p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-green-700 mb-6">
-                  <div className="flex items-center bg-white bg-opacity-50 rounded-lg p-3">
-                    <Zap className="h-5 w-5 text-green-600 mr-3" />
-                    <span className="font-medium">Smart Writing Helper</span>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-green-700 mb-8">
+                  <div className="flex items-center bg-white bg-opacity-70 rounded-2xl p-4 shadow-lg transform hover:scale-105 transition-all duration-300">
+                    <Zap className="h-6 w-6 text-green-600 mr-4" />
+                    <span className="font-bold text-lg">Smart Writing Helper</span>
                   </div>
-                  <div className="flex items-center bg-white bg-opacity-50 rounded-lg p-3">
-                    <Target className="h-5 w-5 text-green-600 mr-3" />
-                    <span className="font-medium">Fun Practice Tests</span>
+                  <div className="flex items-center bg-white bg-opacity-70 rounded-2xl p-4 shadow-lg transform hover:scale-105 transition-all duration-300">
+                    <Target className="h-6 w-6 text-green-600 mr-4" />
+                    <span className="font-bold text-lg">Fun Practice Tests</span>
                   </div>
-                  <div className="flex items-center bg-white bg-opacity-50 rounded-lg p-3">
-                    <Heart className="h-5 w-5 text-green-600 mr-3" />
-                    <span className="font-medium">Helpful Feedback</span>
+                  <div className="flex items-center bg-white bg-opacity-70 rounded-2xl p-4 shadow-lg transform hover:scale-105 transition-all duration-300">
+                    <Heart className="h-6 w-6 text-green-600 mr-4" />
+                    <span className="font-bold text-lg">Helpful Feedback</span>
                   </div>
-                  <div className="flex items-center bg-white bg-opacity-50 rounded-lg p-3">
-                    <Star className="h-5 w-5 text-green-600 mr-3" />
-                    <span className="font-medium">Progress Tracking</span>
+                  <div className="flex items-center bg-white bg-opacity-70 rounded-2xl p-4 shadow-lg transform hover:scale-105 transition-all duration-300">
+                    <Star className="h-6 w-6 text-green-600 mr-4" />
+                    <span className="font-bold text-lg">Progress Tracking</span>
                   </div>
                 </div>
                 <button
                   onClick={handleStartWriting}
-                  className="bg-gradient-to-r from-green-500 to-blue-500 text-white px-8 py-4 rounded-2xl hover:from-green-600 hover:to-blue-600 transition-all duration-300 font-bold text-lg shadow-lg transform hover:scale-105"
+                  className="bg-gradient-to-r from-green-500 via-blue-500 to-purple-500 text-white px-10 py-5 rounded-3xl hover:from-green-600 hover:via-blue-600 hover:to-purple-600 transition-all duration-300 font-bold text-xl shadow-2xl transform hover:scale-110 flex items-center"
                 >
+                  <Rocket className="h-6 w-6 mr-3" />
                   🚀 Start Writing Now!
                 </button>
               </div>
@@ -298,200 +342,218 @@ export function Dashboard({ user: propUser, emailVerified: propEmailVerified, pa
           </div>
         )}
 
-        {/* Simplified Status Messages */}
+        {/* Enhanced Status Messages */}
         {isLoading ? (
-          <div className="bg-white border-2 border-blue-200 rounded-3xl p-8 mb-8 shadow-lg">
+          <div className="bg-white border-4 border-blue-200 rounded-3xl p-8 mb-8 shadow-2xl">
             <div className="flex items-center justify-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-200 border-t-blue-600 mr-4"></div>
+              <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-200 border-t-blue-600 mr-6"></div>
               <div className="text-center">
-                <h3 className="text-2xl font-bold text-gray-900 mb-2">Getting things ready...</h3>
-                <p className="text-gray-600 text-lg">Just a moment while we set up your writing space!</p>
+                <h3 className="text-3xl font-bold text-gray-900 mb-3">Getting things ready...</h3>
+                <p className="text-gray-600 text-xl">Just a moment while we set up your writing space!</p>
               </div>
             </div>
           </div>
         ) : accessType === 'temporary' ? (
-          <div className="bg-gradient-to-r from-yellow-100 to-orange-100 border-2 border-yellow-300 rounded-3xl p-8 mb-8 shadow-lg">
+          <div className="bg-gradient-to-r from-yellow-100 to-orange-100 border-4 border-yellow-300 rounded-3xl p-8 mb-8 shadow-2xl">
             <div className="flex items-center">
-              <div className="w-16 h-16 bg-gradient-to-r from-yellow-400 to-orange-400 rounded-full flex items-center justify-center mr-6 shadow-lg">
-                <Clock className="h-8 w-8 text-white" />
+              <div className="w-20 h-20 bg-gradient-to-r from-yellow-400 to-orange-400 rounded-full flex items-center justify-center mr-8 shadow-2xl animate-pulse">
+                <Clock className="h-10 w-10 text-white" />
               </div>
               <div className="flex-1">
-                <h3 className="text-2xl font-bold text-yellow-900 mb-2">Almost ready! ⏰</h3>
-                <p className="text-yellow-800 text-lg mb-3">
+                <h3 className="text-3xl font-bold text-yellow-900 mb-3">Almost ready! ⏰</h3>
+                <p className="text-yellow-800 text-xl mb-4 font-medium">
                   You can start writing now while we finish setting up your account!
                 </p>
-                <p className="text-yellow-700 font-medium">
-                  Time left: <strong>{getTimeRemaining(tempAccessUntil!)}</strong>
+                <p className="text-yellow-700 font-bold text-lg">
+                  Time left: <strong className="text-2xl">{getTimeRemaining(tempAccessUntil!)}</strong>
                 </p>
               </div>
             </div>
-            <div className="mt-6">
+            <div className="mt-8">
               <button 
                 onClick={handleManualRefresh}
-                className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white px-6 py-3 rounded-2xl hover:from-yellow-600 hover:to-orange-600 transition-all duration-300 font-bold shadow-lg"
+                className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white px-8 py-4 rounded-3xl hover:from-yellow-600 hover:to-orange-600 transition-all duration-300 font-bold text-lg shadow-2xl transform hover:scale-105"
               >
                 Check if I'm Ready!
               </button>
             </div>
           </div>
         ) : accessType === 'none' ? (
-          <div className="bg-gradient-to-r from-blue-100 to-purple-100 border-2 border-blue-300 rounded-3xl p-8 mb-8 shadow-lg">
+          <div className="bg-gradient-to-r from-blue-100 to-purple-100 border-4 border-blue-300 rounded-3xl p-8 mb-8 shadow-2xl">
             <div className="flex items-center">
-              <div className="w-16 h-16 bg-gradient-to-r from-blue-400 to-purple-400 rounded-full flex items-center justify-center mr-6 shadow-lg">
-                <Mail className="h-8 w-8 text-white" />
+              <div className="w-20 h-20 bg-gradient-to-r from-blue-400 to-purple-400 rounded-full flex items-center justify-center mr-8 shadow-2xl animate-bounce">
+                <Mail className="h-10 w-10 text-white" />
               </div>
               <div className="flex-1">
-                <h3 className="text-2xl font-bold text-blue-900 mb-2">One more step! 📧</h3>
-                <p className="text-blue-800 text-lg mb-3">
+                <h3 className="text-3xl font-bold text-blue-900 mb-3">One more step! 📧</h3>
+                <p className="text-blue-800 text-xl mb-4 font-medium">
                   We sent you a special email! Please check your inbox and click the magic link.
                 </p>
-                <p className="text-blue-700">
-                  Email: <strong>{currentUser?.email}</strong>
+                <p className="text-blue-700 text-lg">
+                  Email: <strong className="text-xl">{currentUser?.email}</strong>
                 </p>
               </div>
             </div>
-            <div className="mt-6 flex flex-wrap gap-3">
+            <div className="mt-8 flex flex-wrap gap-4">
               <button 
                 onClick={handleManualRefresh}
-                className="bg-gradient-to-r from-blue-500 to-purple-500 text-white px-6 py-3 rounded-2xl hover:from-blue-600 hover:to-purple-600 transition-all duration-300 font-bold shadow-lg"
+                className="bg-gradient-to-r from-blue-500 to-purple-500 text-white px-8 py-4 rounded-3xl hover:from-blue-600 hover:to-purple-600 transition-all duration-300 font-bold text-lg shadow-2xl transform hover:scale-105"
               >
                 I clicked the link!
               </button>
-              <button className="bg-gray-200 text-gray-800 px-6 py-3 rounded-2xl hover:bg-gray-300 transition-all duration-300 font-bold shadow-lg">
+              <button className="bg-gray-200 text-gray-800 px-8 py-4 rounded-3xl hover:bg-gray-300 transition-all duration-300 font-bold text-lg shadow-2xl transform hover:scale-105">
                 Send it again
               </button>
             </div>
           </div>
         ) : null}
 
-        {/* Kid-Friendly Progress Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        {/* Enhanced Progress Cards with Better Visual Design */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
           
-          {/* Writing Streak */}
-          <div className="bg-white rounded-3xl shadow-lg p-6 border-2 border-orange-200 hover:border-orange-300 transition-all duration-300 hover:shadow-xl">
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-12 h-12 bg-gradient-to-r from-orange-400 to-red-400 rounded-2xl flex items-center justify-center">
-                <Zap className="h-6 w-6 text-white" />
+          {/* Writing Streak Card */}
+          <div className="bg-white rounded-3xl shadow-2xl p-8 border-4 border-orange-200 hover:border-orange-400 transition-all duration-300 hover:shadow-3xl transform hover:scale-105 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-20 h-20 bg-orange-100 rounded-full -mr-10 -mt-10 opacity-50"></div>
+            <div className="flex items-center justify-between mb-6">
+              <div className="w-16 h-16 bg-gradient-to-r from-orange-400 to-red-400 rounded-3xl flex items-center justify-center shadow-xl">
+                <Flame className="h-8 w-8 text-white" />
               </div>
               <div className="flex space-x-1">
-                <Star className="h-5 w-5 text-yellow-400 fill-current" />
-                <Star className="h-5 w-5 text-yellow-400 fill-current" />
-                <Star className="h-5 w-5 text-yellow-400 fill-current" />
+                <Star className="h-6 w-6 text-yellow-400 fill-current animate-pulse" />
+                <Star className="h-6 w-6 text-yellow-400 fill-current animate-pulse" style={{ animationDelay: '0.2s' }} />
+                <Star className="h-6 w-6 text-yellow-400 fill-current animate-pulse" style={{ animationDelay: '0.4s' }} />
               </div>
             </div>
-            <h3 className="text-lg font-bold text-gray-900 mb-1">Writing Streak</h3>
-            <p className="text-3xl font-bold text-orange-600 mb-2">3 days</p>
-            <p className="text-sm text-gray-600">Keep it up! 🔥</p>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">Writing Streak</h3>
+            <p className="text-4xl font-bold text-orange-600 mb-3">3 days</p>
+            <p className="text-sm text-gray-600 font-medium">Keep it up! 🔥</p>
           </div>
           
-          {/* Stories Created */}
-          <div className="bg-white rounded-3xl shadow-lg p-6 border-2 border-blue-200 hover:border-blue-300 transition-all duration-300 hover:shadow-xl">
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-12 h-12 bg-gradient-to-r from-blue-400 to-purple-400 rounded-2xl flex items-center justify-center">
-                <BookOpen className="h-6 w-6 text-white" />
+          {/* Stories Created Card */}
+          <div className="bg-white rounded-3xl shadow-2xl p-8 border-4 border-blue-200 hover:border-blue-400 transition-all duration-300 hover:shadow-3xl transform hover:scale-105 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-20 h-20 bg-blue-100 rounded-full -mr-10 -mt-10 opacity-50"></div>
+            <div className="flex items-center justify-between mb-6">
+              <div className="w-16 h-16 bg-gradient-to-r from-blue-400 to-purple-400 rounded-3xl flex items-center justify-center shadow-xl">
+                <BookOpen className="h-8 w-8 text-white" />
               </div>
-              <Gift className="h-6 w-6 text-blue-400" />
+              <Gift className="h-8 w-8 text-blue-400 animate-bounce" />
             </div>
-            <h3 className="text-lg font-bold text-gray-900 mb-1">Stories Created</h3>
-            <p className="text-3xl font-bold text-blue-600 mb-2">5</p>
-            <p className="text-sm text-gray-600">Amazing work! 📚</p>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">Stories Created</h3>
+            <p className="text-4xl font-bold text-blue-600 mb-3">5</p>
+            <p className="text-sm text-gray-600 font-medium">Amazing work! 📚</p>
           </div>
           
-          {/* Words Adventure */}
-          <div className="bg-white rounded-3xl shadow-lg p-6 border-2 border-green-200 hover:border-green-300 transition-all duration-300 hover:shadow-xl">
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-12 h-12 bg-gradient-to-r from-green-400 to-teal-400 rounded-2xl flex items-center justify-center">
-                <PenTool className="h-6 w-6 text-white" />
+          {/* Words Written Card */}
+          <div className="bg-white rounded-3xl shadow-2xl p-8 border-4 border-green-200 hover:border-green-400 transition-all duration-300 hover:shadow-3xl transform hover:scale-105 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-20 h-20 bg-green-100 rounded-full -mr-10 -mt-10 opacity-50"></div>
+            <div className="flex items-center justify-between mb-6">
+              <div className="w-16 h-16 bg-gradient-to-r from-green-400 to-teal-400 rounded-3xl flex items-center justify-center shadow-xl">
+                <PenTool className="h-8 w-8 text-white" />
               </div>
               <div className="text-right">
-                <div className="w-16 h-2 bg-green-200 rounded-full">
-                  <div className="w-12 h-2 bg-green-500 rounded-full"></div>
+                <div className="w-20 h-3 bg-green-200 rounded-full">
+                  <div className="w-16 h-3 bg-green-500 rounded-full animate-pulse"></div>
                 </div>
               </div>
             </div>
-            <h3 className="text-lg font-bold text-gray-900 mb-1">Words Written</h3>
-            <p className="text-3xl font-bold text-green-600 mb-2">1,250</p>
-            <p className="text-sm text-gray-600">You're on fire! ✨</p>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">Words Written</h3>
+            <p className="text-4xl font-bold text-green-600 mb-3">1,250</p>
+            <p className="text-sm text-gray-600 font-medium">You're on fire! ✨</p>
           </div>
           
-          {/* Fun Level */}
-          <div className="bg-white rounded-3xl shadow-lg p-6 border-2 border-purple-200 hover:border-purple-300 transition-all duration-300 hover:shadow-xl">
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-12 h-12 bg-gradient-to-r from-purple-400 to-pink-400 rounded-2xl flex items-center justify-center">
-                <Smile className="h-6 w-6 text-white" />
+          {/* Fun Level Card */}
+          <div className="bg-white rounded-3xl shadow-2xl p-8 border-4 border-purple-200 hover:border-purple-400 transition-all duration-300 hover:shadow-3xl transform hover:scale-105 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-20 h-20 bg-purple-100 rounded-full -mr-10 -mt-10 opacity-50"></div>
+            <div className="flex items-center justify-between mb-6">
+              <div className="w-16 h-16 bg-gradient-to-r from-purple-400 to-pink-400 rounded-3xl flex items-center justify-center shadow-xl">
+                <Smile className="h-8 w-8 text-white" />
               </div>
-              <div className="flex space-x-1">
-                <div className="w-3 h-3 bg-purple-400 rounded-full"></div>
-                <div className="w-3 h-3 bg-purple-400 rounded-full"></div>
-                <div className="w-3 h-3 bg-purple-300 rounded-full"></div>
+              <div className="flex space-x-2">
+                <div className="w-4 h-4 bg-purple-400 rounded-full animate-bounce"></div>
+                <div className="w-4 h-4 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                <div className="w-4 h-4 bg-purple-300 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
               </div>
             </div>
-            <h3 className="text-lg font-bold text-gray-900 mb-1">Fun Level</h3>
-            <p className="text-3xl font-bold text-purple-600 mb-2">Super!</p>
-            <p className="text-sm text-gray-600">Keep having fun! 🎉</p>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">Fun Level</h3>
+            <p className="text-4xl font-bold text-purple-600 mb-3">Super!</p>
+            <p className="text-sm text-gray-600 font-medium">Keep having fun! 🎉</p>
           </div>
         </div>
 
-        {/* Big Action Buttons */}
-        <div className="bg-white rounded-3xl shadow-xl mb-8 overflow-hidden border-2 border-gray-100">
-          <div className="bg-gradient-to-r from-blue-500 to-purple-500 px-8 py-6">
-            <h2 className="text-2xl font-bold text-white flex items-center">
-              <Sparkles className="h-7 w-7 mr-3" />
+        {/* Enhanced Action Buttons Section */}
+        <div className="bg-white rounded-3xl shadow-2xl mb-12 overflow-hidden border-4 border-gray-100">
+          <div className="bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 px-10 py-8">
+            <h2 className="text-3xl font-bold text-white flex items-center">
+              <Wand2 className="h-8 w-8 mr-4 animate-pulse" />
               What would you like to do?
             </h2>
           </div>
-          <div className="p-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div className="p-10">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
               
-              {/* Start Writing Button */}
+              {/* Enhanced Start Writing Button */}
               <div 
-                className="group bg-gradient-to-br from-blue-50 to-purple-50 border-3 border-blue-200 rounded-3xl p-8 hover:border-blue-300 hover:shadow-2xl transition-all duration-300 cursor-pointer transform hover:scale-105" 
+                className="group bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 border-4 border-blue-200 rounded-3xl p-10 hover:border-blue-400 hover:shadow-3xl transition-all duration-300 cursor-pointer transform hover:scale-105 relative overflow-hidden" 
                 onClick={handleStartWriting}
               >
-                <div className="flex items-center mb-6">
-                  <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-500 rounded-3xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300">
-                    <PenTool className="h-8 w-8 text-white" />
+                <div className="absolute top-0 right-0 w-32 h-32 bg-blue-100 rounded-full -mr-16 -mt-16 opacity-30 group-hover:opacity-50 transition-opacity duration-300"></div>
+                <div className="flex items-center mb-8 relative z-10">
+                  <div className="w-20 h-20 bg-gradient-to-r from-blue-500 to-purple-500 rounded-3xl flex items-center justify-center shadow-2xl group-hover:shadow-3xl transition-all duration-300 transform group-hover:scale-110">
+                    <PenTool className="h-10 w-10 text-white" />
                   </div>
-                  <div className="ml-6">
-                    <h3 className="text-2xl font-bold text-gray-900 mb-2">Start Writing!</h3>
-                    <p className="text-gray-600 text-lg">Create amazing stories with help from your AI friend</p>
+                  <div className="ml-8">
+                    <h3 className="text-3xl font-bold text-gray-900 mb-3">Start Writing!</h3>
+                    <p className="text-gray-600 text-xl font-medium">Create amazing stories with help from your AI friend</p>
                   </div>
                 </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex space-x-2">
-                    <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">✨ AI Helper</span>
-                    <span className="bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-sm font-medium">📝 Stories</span>
+                <div className="flex items-center justify-between relative z-10">
+                  <div className="flex space-x-3">
+                    <span className="bg-blue-100 text-blue-800 px-4 py-2 rounded-full text-sm font-bold flex items-center">
+                      <Sparkles className="h-4 w-4 mr-2" />
+                      ✨ AI Helper
+                    </span>
+                    <span className="bg-purple-100 text-purple-800 px-4 py-2 rounded-full text-sm font-bold flex items-center">
+                      <BookOpen className="h-4 w-4 mr-2" />
+                      📝 Stories
+                    </span>
                   </div>
                   {accessType === 'none' && (
-                    <div className="bg-yellow-100 border border-yellow-300 rounded-2xl px-4 py-2">
-                      <p className="text-sm text-yellow-800 font-medium">Almost ready!</p>
+                    <div className="bg-yellow-100 border-2 border-yellow-300 rounded-2xl px-6 py-3">
+                      <p className="text-sm text-yellow-800 font-bold">Almost ready!</p>
                     </div>
                   )}
                 </div>
               </div>
 
-              {/* Practice Exam Button */}
+              {/* Enhanced Practice Exam Button */}
               <div 
-                className="group bg-gradient-to-br from-green-50 to-teal-50 border-3 border-green-200 rounded-3xl p-8 hover:border-green-300 hover:shadow-2xl transition-all duration-300 cursor-pointer transform hover:scale-105" 
+                className="group bg-gradient-to-br from-green-50 via-teal-50 to-blue-50 border-4 border-green-200 rounded-3xl p-10 hover:border-green-400 hover:shadow-3xl transition-all duration-300 cursor-pointer transform hover:scale-105 relative overflow-hidden" 
                 onClick={handlePracticeExam}
               >
-                <div className="flex items-center mb-6">
-                  <div className="w-16 h-16 bg-gradient-to-r from-green-500 to-teal-500 rounded-3xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300">
-                    <Target className="h-8 w-8 text-white" />
+                <div className="absolute top-0 right-0 w-32 h-32 bg-green-100 rounded-full -mr-16 -mt-16 opacity-30 group-hover:opacity-50 transition-opacity duration-300"></div>
+                <div className="flex items-center mb-8 relative z-10">
+                  <div className="w-20 h-20 bg-gradient-to-r from-green-500 to-teal-500 rounded-3xl flex items-center justify-center shadow-2xl group-hover:shadow-3xl transition-all duration-300 transform group-hover:scale-110">
+                    <Target className="h-10 w-10 text-white" />
                   </div>
-                  <div className="ml-6">
-                    <h3 className="text-2xl font-bold text-gray-900 mb-2">Practice Fun!</h3>
-                    <p className="text-gray-600 text-lg">Take fun practice tests and improve your skills</p>
+                  <div className="ml-8">
+                    <h3 className="text-3xl font-bold text-gray-900 mb-3">Practice Fun!</h3>
+                    <p className="text-gray-600 text-xl font-medium">Take fun practice tests and improve your skills</p>
                   </div>
                 </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex space-x-2">
-                    <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">🎯 Practice</span>
-                    <span className="bg-teal-100 text-teal-800 px-3 py-1 rounded-full text-sm font-medium">🏆 Skills</span>
+                <div className="flex items-center justify-between relative z-10">
+                  <div className="flex space-x-3">
+                    <span className="bg-green-100 text-green-800 px-4 py-2 rounded-full text-sm font-bold flex items-center">
+                      <Target className="h-4 w-4 mr-2" />
+                      🎯 Practice
+                    </span>
+                    <span className="bg-teal-100 text-teal-800 px-4 py-2 rounded-full text-sm font-bold flex items-center">
+                      <Trophy className="h-4 w-4 mr-2" />
+                      🏆 Skills
+                    </span>
                   </div>
                   {accessType === 'none' && (
-                    <div className="bg-yellow-100 border border-yellow-300 rounded-2xl px-4 py-2">
-                      <p className="text-sm text-yellow-800 font-medium">Almost ready!</p>
+                    <div className="bg-yellow-100 border-2 border-yellow-300 rounded-2xl px-6 py-3">
+                      <p className="text-sm text-yellow-800 font-bold">Almost ready!</p>
                     </div>
                   )}
                 </div>
@@ -500,43 +562,45 @@ export function Dashboard({ user: propUser, emailVerified: propEmailVerified, pa
           </div>
         </div>
 
-        {/* My Writing Adventures */}
-        <div className="bg-white rounded-3xl shadow-xl border-2 border-gray-100 overflow-hidden">
-          <div className="bg-gradient-to-r from-orange-400 to-pink-400 px-8 py-6">
-            <h2 className="text-2xl font-bold text-white flex items-center">
-              <BookOpen className="h-7 w-7 mr-3" />
+        {/* Enhanced Writing Adventures Section */}
+        <div className="bg-white rounded-3xl shadow-2xl border-4 border-gray-100 overflow-hidden mb-12">
+          <div className="bg-gradient-to-r from-orange-400 via-pink-400 to-purple-400 px-10 py-8">
+            <h2 className="text-3xl font-bold text-white flex items-center">
+              <BookOpen className="h-8 w-8 mr-4" />
               My Writing Adventures
             </h2>
           </div>
-          <div className="p-8">
-            <div className="text-center py-12">
-              <div className="w-24 h-24 bg-gradient-to-r from-orange-100 to-pink-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Sparkles className="h-12 w-12 text-orange-500" />
+          <div className="p-10">
+            <div className="text-center py-16">
+              <div className="w-32 h-32 bg-gradient-to-r from-orange-100 via-pink-100 to-purple-100 rounded-full flex items-center justify-center mx-auto mb-8 shadow-2xl">
+                <Sparkles className="h-16 w-16 text-orange-500 animate-pulse" />
               </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-4">Ready for your first adventure?</h3>
-              <p className="text-gray-600 text-lg mb-8 max-w-md mx-auto">
+              <h3 className="text-3xl font-bold text-gray-900 mb-6">Ready for your first adventure?</h3>
+              <p className="text-gray-600 text-xl mb-10 max-w-2xl mx-auto font-medium">
                 Start writing your first story and it will appear here! You can see all your amazing work and track your progress.
               </p>
               <button 
                 onClick={handleStartWriting}
-                className="bg-gradient-to-r from-orange-500 to-pink-500 text-white px-8 py-4 rounded-2xl hover:from-orange-600 hover:to-pink-600 transition-all duration-300 font-bold text-lg shadow-lg transform hover:scale-105"
+                className="bg-gradient-to-r from-orange-500 via-pink-500 to-purple-500 text-white px-12 py-6 rounded-3xl hover:from-orange-600 hover:via-pink-600 hover:to-purple-600 transition-all duration-300 font-bold text-xl shadow-2xl transform hover:scale-110 flex items-center mx-auto"
               >
+                <Rocket className="h-8 w-8 mr-4" />
                 🚀 Start My First Story!
               </button>
             </div>
           </div>
         </div>
 
-        {/* Encouragement Section */}
-        <div className="mt-8 text-center">
-          <div className="bg-gradient-to-r from-yellow-100 via-pink-100 to-purple-100 rounded-3xl p-8 border-2 border-yellow-200">
-            <div className="flex items-center justify-center mb-4">
-              <Heart className="h-8 w-8 text-pink-500 mr-2" />
-              <Star className="h-6 w-6 text-yellow-500 fill-current" />
-              <Heart className="h-8 w-8 text-pink-500 ml-2" />
+        {/* Enhanced Encouragement Section */}
+        <div className="text-center">
+          <div className="bg-gradient-to-r from-yellow-100 via-pink-100 to-purple-100 rounded-3xl p-10 border-4 border-yellow-200 shadow-2xl relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-r from-yellow-200 via-pink-200 to-purple-200 opacity-20 animate-pulse"></div>
+            <div className="flex items-center justify-center mb-6 relative z-10">
+              <Heart className="h-10 w-10 text-pink-500 mr-3 animate-pulse" />
+              <Star className="h-8 w-8 text-yellow-500 fill-current animate-bounce" />
+              <Heart className="h-10 w-10 text-pink-500 ml-3 animate-pulse" />
             </div>
-            <h3 className="text-2xl font-bold text-gray-900 mb-3">You're doing great!</h3>
-            <p className="text-gray-700 text-lg max-w-2xl mx-auto">
+            <h3 className="text-3xl font-bold text-gray-900 mb-4 relative z-10">You're doing great!</h3>
+            <p className="text-gray-700 text-xl max-w-3xl mx-auto font-medium relative z-10">
               Every great writer started with their first word. Keep practicing, stay curious, and remember - 
               every story you write makes you a better writer! 🌟
             </p>
@@ -546,4 +610,3 @@ export function Dashboard({ user: propUser, emailVerified: propEmailVerified, pa
     </div>
   );
 }
-
