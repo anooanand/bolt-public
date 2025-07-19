@@ -24,14 +24,14 @@ exports.handler = async (event) => {
   }
 
   try {
-    // Parse request body
+    // Parse request body - UPDATED to include action and text
     const body = JSON.parse(event.body);
-    const { operation, content, textType, assistanceLevel, feedbackHistory } = body;
+    const { operation, content, textType, assistanceLevel, feedbackHistory, action, text } = body;
 
     let result;
 
-    // Route to appropriate function based on operation
-    switch (operation) {
+    // Route to appropriate function based on operation or action - UPDATED
+    switch (operation || action) {
       case "generatePrompt":
         result = await generatePrompt(textType);
         break;
@@ -65,6 +65,9 @@ exports.handler = async (event) => {
       case "checkGrammarAndSpelling":
         result = await checkGrammarAndSpelling(content);
         break;
+      case "check-grammar":  // NEW CASE FOR ENHANCED EDITOR
+        result = await checkGrammarForEditor(text || content);
+        break;
       case "analyzeSentenceStructure":
         result = await analyzeSentenceStructure(content);
         break;
@@ -72,7 +75,7 @@ exports.handler = async (event) => {
         result = await enhanceVocabulary(content);
         break;
       default:
-        throw new Error(`Unknown operation: ${operation}`);
+        throw new Error(`Unknown operation: ${operation || action}`);
     }
 
     return {
@@ -93,79 +96,53 @@ exports.handler = async (event) => {
   }
 };
 
-// Enhanced NSW Selective Writing Exam Feedback Function
-async function getNSWSelectiveFeedback(content, textType, assistanceLevel, feedbackHistory) {
+// NEW FUNCTION: Enhanced grammar checking for the writing editor
+async function checkGrammarForEditor(text) {
   try {
     const completion = await openai.chat.completions.create({
       messages: [
         {
           role: "system",
-          content: `You are an expert NSW Selective Writing exam assessor providing detailed, criterion-referenced feedback for Year 5-6 students. Evaluate the ${textType} writing against the four key NSW Selective Writing exam criteria:
+          content: `You are an expert writing assistant that analyzes text for grammar, spelling, punctuation, and style issues. For each error found, provide the exact character positions (start and end), error type, message, and contextual suggestions.
 
-1. Ideas and Content (30%): Originality, creativity, relevance to prompt, development and elaboration, depth of thinking, audience engagement
-2. Text Structure and Organization (25%): Clear beginning/middle/end, logical sequence, effective paragraph structure, coherence and cohesion, appropriate to text type
-3. Language Features and Vocabulary (25%): Sophisticated vocabulary, literary devices, sentence variety, appropriate tone and style, precision and clarity
-4. Spelling, Punctuation, and Grammar (20%): Accurate spelling, correct punctuation, grammatical accuracy, consistent tense and point of view
-
-For each criterion, provide:
-- Specific strengths with examples from the text
-- Areas for improvement with concrete suggestions
-- Examples of how to improve (rewrite sentences, suggest alternatives)
-- Actionable next steps
-
-Consider the student's ${assistanceLevel} assistance level and previous feedback: ${JSON.stringify(feedbackHistory || [])}
-
-Return feedback in this exact JSON format:
+Return the analysis in this exact JSON format:
 {
-  "overallComment": "Brief, encouraging overall assessment with specific reference to NSW exam standards",
-  "criteriaFeedback": {
-    "ideasAndContent": {
-      "score": 7,
-      "maxScore": 10,
-      "strengths": ["Specific strength with example from text"],
-      "improvements": ["Specific area for improvement"],
-      "suggestions": ["Concrete suggestion with example"],
-      "nextSteps": ["Actionable step for this criterion"]
+  "errors": [
+    {
+      "start": 15,
+      "end": 19,
+      "message": "Spelling error: 'yung' should be 'young'",
+      "type": "spelling",
+      "suggestions": ["young"],
+      "context": "there was a yung adventurer"
     },
-    "textStructureAndOrganization": {
-      "score": 6,
-      "maxScore": 10,
-      "strengths": ["Specific strength with example from text"],
-      "improvements": ["Specific area for improvement"],
-      "suggestions": ["Concrete suggestion with example"],
-      "nextSteps": ["Actionable step for this criterion"]
-    },
-    "languageFeaturesAndVocabulary": {
-      "score": 8,
-      "maxScore": 10,
-      "strengths": ["Specific strength with example from text"],
-      "improvements": ["Specific area for improvement"],
-      "suggestions": ["Concrete suggestion with example"],
-      "nextSteps": ["Actionable step for this criterion"]
-    },
-    "spellingPunctuationGrammar": {
-      "score": 9,
-      "maxScore": 10,
-      "strengths": ["Specific strength with example from text"],
-      "improvements": ["Specific area for improvement"],
-      "suggestions": ["Concrete suggestion with example"],
-      "nextSteps": ["Actionable step for this criterion"]
+    {
+      "start": 45,
+      "end": 51,
+      "message": "Grammar error: Subject-verb disagreement",
+      "type": "grammar", 
+      "suggestions": ["were"],
+      "context": "The trees was tall"
     }
-  },
-  "priorityFocus": ["1-2 most important areas to focus on next"],
-  "examStrategies": ["Specific NSW exam strategies relevant to this writing"],
-  "interactiveQuestions": ["Questions to help student think deeper about their writing"],
-  "revisionSuggestions": ["Specific sentences or sections to revise with examples"]
-}`
+  ]
+}
+
+Analyze the text carefully for:
+- Spelling errors (misspelled words)
+- Grammar errors (subject-verb agreement, tense consistency, etc.)
+- Punctuation errors (missing periods, comma splices, etc.)
+- Style issues (repetitive words, unclear phrasing)
+
+Be precise with character positions and provide helpful, contextual suggestions.`
         },
         {
           role: "user",
-          content: `Text type: ${textType}\n\nStudent writing:\n${content}`
+          content: `Please analyze this text for errors:\n\n${text}`
         }
       ],
       model: "gpt-4",
-      temperature: 0.7,
-      max_tokens: 2000
+      temperature: 0.2,
+      max_tokens: 1500
     });
 
     const responseContent = completion.choices[0].message.content;
@@ -173,67 +150,136 @@ Return feedback in this exact JSON format:
       throw new Error("Empty response from OpenAI");
     }
 
-    // Parse and validate the response
     const parsed = JSON.parse(responseContent);
     
-    // Validate required structure
-    if (!parsed.overallComment || 
-        !parsed.criteriaFeedback ||
-        !parsed.criteriaFeedback.ideasAndContent ||
-        !parsed.criteriaFeedback.textStructureAndOrganization ||
-        !parsed.criteriaFeedback.languageFeaturesAndVocabulary ||
-        !parsed.criteriaFeedback.spellingPunctuationGrammar) {
-      throw new Error("Invalid response format: missing required criteria feedback");
+    // Validate the response format
+    if (!parsed.errors || !Array.isArray(parsed.errors)) {
+      throw new Error("Invalid response format: errors not an array");
     }
 
-    return parsed;
+    // Validate each error object
+    const validatedErrors = parsed.errors.filter(error => {
+      return typeof error.start === 'number' &&
+             typeof error.end === 'number' &&
+             typeof error.message === 'string' &&
+             typeof error.type === 'string' &&
+             Array.isArray(error.suggestions);
+    });
+
+    return { errors: validatedErrors };
+  } catch (error) {
+    console.error("OpenAI grammar check for editor error:", error);
+    // Return empty errors array as fallback
+    return { errors: [] };
+  }
+}
+
+// Enhanced NSW Selective Writing Exam Feedback Function
+async function getNSWSelectiveFeedback(content, textType, assistanceLevel, feedbackHistory) {
+  try {
+    const completion = await openai.chat.completions.create({
+      messages: [
+        {
+          role: "system",
+          content: `You are an expert NSW Selective Schools Test writing examiner and teacher. Analyze this ${textType} writing piece according to NSW Selective Test criteria and provide detailed feedback for Year 5-6 students preparing for the selective schools entrance exam.
+
+NSW Selective Test Writing Assessment Criteria:
+1. Ideas and Content (25%) - Originality, depth, relevance to prompt
+2. Organization and Structure (25%) - Clear beginning/middle/end, logical flow
+3. Voice and Style (25%) - Engaging tone, appropriate for audience and purpose
+4. Language Conventions (25%) - Grammar, spelling, punctuation, sentence variety
+
+Provide feedback in this exact JSON format:
+{
+  "overallScore": 7,
+  "bandLevel": "Above Average",
+  "criteriaScores": {
+    "ideasAndContent": 7,
+    "organizationAndStructure": 6,
+    "voiceAndStyle": 8,
+    "languageConventions": 6
+  },
+  "strengths": [
+    "Strong opening that engages the reader",
+    "Creative use of descriptive language",
+    "Clear narrative structure"
+  ],
+  "areasForImprovement": [
+    "Develop the conclusion more fully",
+    "Check subject-verb agreement",
+    "Add more varied sentence beginnings"
+  ],
+  "selectiveTestSpecificFeedback": {
+    "promptResponse": "How well the writing addresses the given prompt",
+    "timeManagement": "Advice for 40-minute writing conditions",
+    "examStrategy": "Specific strategies for selective test success"
+  },
+  "nextSteps": [
+    "Practice writing conclusions that tie back to the opening",
+    "Review grammar rules for subject-verb agreement",
+    "Read examples of strong narrative writing"
+  ],
+  "estimatedSelectiveScore": "Band 6-7 (Above Average to High)"
+}`
+        },
+        {
+          role: "user",
+          content: `Text Type: ${textType}
+Assistance Level: ${assistanceLevel}
+Previous Feedback: ${JSON.stringify(feedbackHistory || [])}
+
+Student Writing:
+${content}`
+        }
+      ],
+      model: "gpt-4",
+      temperature: 0.7,
+      max_tokens: 1200
+    });
+
+    const responseContent = completion.choices[0].message.content;
+    if (!responseContent) {
+      throw new Error("Empty response from OpenAI");
+    }
+
+    return JSON.parse(responseContent);
   } catch (error) {
     console.error("OpenAI NSW Selective feedback error:", error);
     return {
-      overallComment: "Your writing shows good effort and understanding of the narrative form. Let's work on developing it further using NSW Selective exam criteria.",
-      criteriaFeedback: {
-        ideasAndContent: {
-          score: 6,
-          maxScore: 10,
-          strengths: ["You have attempted to create a narrative with a clear storyline"],
-          improvements: ["Develop your ideas with more specific details and depth"],
-          suggestions: ["Add more descriptive details about characters, setting, and emotions"],
-          nextSteps: ["Focus on expanding one key moment in your story with rich detail"]
-        },
-        textStructureAndOrganization: {
-          score: 6,
-          maxScore: 10,
-          strengths: ["Your writing has a clear beginning"],
-          improvements: ["Ensure smooth transitions between ideas"],
-          suggestions: ["Use connecting words like 'meanwhile', 'suddenly', 'after that' to link your ideas"],
-          nextSteps: ["Plan your story structure before writing - beginning, middle, end"]
-        },
-        languageFeaturesAndVocabulary: {
-          score: 6,
-          maxScore: 10,
-          strengths: ["You've used some descriptive words"],
-          improvements: ["Vary your sentence structure and use more sophisticated vocabulary"],
-          suggestions: ["Try starting sentences in different ways and use more specific adjectives"],
-          nextSteps: ["Practice using literary devices like similes or metaphors"]
-        },
-        spellingPunctuationGrammar: {
-          score: 7,
-          maxScore: 10,
-          strengths: ["Generally good control of basic grammar and spelling"],
-          improvements: ["Check for any minor errors and ensure consistent tense"],
-          suggestions: ["Proofread your work carefully, reading it aloud to catch errors"],
-          nextSteps: ["Focus on maintaining past tense throughout your narrative"]
-        }
+      overallScore: 6,
+      bandLevel: "Average",
+      criteriaScores: {
+        ideasAndContent: 6,
+        organizationAndStructure: 6,
+        voiceAndStyle: 6,
+        languageConventions: 6
       },
-      priorityFocus: ["Develop ideas with more specific details", "Improve sentence variety and vocabulary"],
-      examStrategies: ["Plan your story structure before writing", "Use the full time allocation for planning, writing, and checking"],
-      interactiveQuestions: ["What specific emotions does your main character feel?", "How can you make your setting more vivid for the reader?"],
-      revisionSuggestions: ["Choose one paragraph to expand with more sensory details", "Rewrite two sentences to start them differently"]
+      strengths: [
+        "Shows understanding of the writing task",
+        "Demonstrates effort and engagement",
+        "Basic structure is present"
+      ],
+      areasForImprovement: [
+        "Develop ideas more fully",
+        "Improve organization and flow",
+        "Work on language conventions"
+      ],
+      selectiveTestSpecificFeedback: {
+        promptResponse: "Continue working on fully addressing all parts of the prompt",
+        timeManagement: "Practice planning and writing within time limits",
+        examStrategy: "Focus on clear structure and strong examples"
+      },
+      nextSteps: [
+        "Practice with more writing prompts",
+        "Review examples of high-quality writing",
+        "Work on specific grammar and spelling skills"
+      ],
+      estimatedSelectiveScore: "Band 5-6 (Average)"
     };
   }
 }
 
-// Original OpenAI function implementations (keeping existing functionality)
+// OpenAI function implementations (keeping existing functions)
 async function generatePrompt(textType) {
   try {
     const completion = await openai.chat.completions.create({
@@ -281,7 +327,6 @@ async function getWritingFeedback(content, textType, assistanceLevel, feedbackHi
       throw new Error("Empty response from OpenAI");
     }
 
-    // Parse and validate the response
     return JSON.parse(responseContent);
   } catch (error) {
     console.error("OpenAI writing feedback error:", error);
@@ -323,10 +368,8 @@ async function identifyCommonMistakes(content, textType) {
       throw new Error("Empty response from OpenAI");
     }
 
-    // Parse and validate the response
     const parsed = JSON.parse(responseContent);
     
-    // Ensure all required fields are present
     if (!parsed.overallAssessment || !Array.isArray(parsed.mistakesIdentified)) {
       throw new Error("Invalid response format: missing required fields");
     }
