@@ -30,6 +30,16 @@ interface ChatMessage {
   text: string;
   isUser: boolean;
   timestamp: Date;
+  questionType?: string;
+  operation?: string;
+}
+
+// Enhanced question analysis and routing
+interface QuestionAnalysis {
+  type: 'vocabulary' | 'structure' | 'grammar' | 'content' | 'general';
+  operation: string;
+  confidence: number;
+  keywords: string[];
 }
 
 export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelProps) {
@@ -43,13 +53,144 @@ export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelPro
   const [lastProcessedContent, setLastProcessedContent] = useState('');
   const [error, setError] = useState<string | null>(null);
   
-  // Chat functionality state
+  // Enhanced chat functionality state
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState('');
   const [isChatLoading, setIsChatLoading] = useState(false);
   const [showPrompts, setShowPrompts] = useState(false);
-  const [question, setQuestion] = useState('');
+  const [conversationContext, setConversationContext] = useState<ChatMessage[]>([]);
   const chatMessagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Enhanced question analysis function
+  const analyzeUserQuestion = useCallback((question: string): QuestionAnalysis => {
+    const lowerQuestion = question.toLowerCase();
+    
+    // Vocabulary-related keywords
+    const vocabularyKeywords = ['word', 'vocabulary', 'synonym', 'better word', 'stronger word', 'replace', 'enhance', 'improve word'];
+    const vocabularyScore = vocabularyKeywords.filter(keyword => lowerQuestion.includes(keyword)).length;
+    
+    // Structure-related keywords
+    const structureKeywords = ['structure', 'organize', 'paragraph', 'introduction', 'conclusion', 'flow', 'transition', 'order'];
+    const structureScore = structureKeywords.filter(keyword => lowerQuestion.includes(keyword)).length;
+    
+    // Grammar-related keywords
+    const grammarKeywords = ['grammar', 'spelling', 'punctuation', 'sentence', 'tense', 'correct'];
+    const grammarScore = grammarKeywords.filter(keyword => lowerQuestion.includes(keyword)).length;
+    
+    // Content-related keywords
+    const contentKeywords = ['idea', 'content', 'topic', 'theme', 'argument', 'evidence', 'example', 'detail'];
+    const contentScore = contentKeywords.filter(keyword => lowerQuestion.includes(keyword)).length;
+    
+    // Determine the most likely question type
+    const scores = {
+      vocabulary: vocabularyScore,
+      structure: structureScore,
+      grammar: grammarScore,
+      content: contentScore
+    };
+    
+    const maxScore = Math.max(...Object.values(scores));
+    const questionType = Object.keys(scores).find(key => scores[key] === maxScore) || 'general';
+    
+    // Map question types to operations
+    const operationMap = {
+      vocabulary: 'enhanceVocabulary',
+      structure: 'getWritingStructure',
+      grammar: 'checkGrammarAndSpelling',
+      content: 'getSpecializedTextTypeFeedback',
+      general: 'getWritingFeedback'
+    };
+    
+    return {
+      type: questionType as QuestionAnalysis['type'],
+      operation: operationMap[questionType],
+      confidence: maxScore > 0 ? maxScore / vocabularyKeywords.length : 0.5,
+      keywords: [vocabularyKeywords, structureKeywords, grammarKeywords, contentKeywords].flat().filter(keyword => lowerQuestion.includes(keyword))
+    };
+  }, []);
+
+  // Enhanced API call routing function
+  const routeQuestionToOperation = useCallback(async (question: string, analysis: QuestionAnalysis) => {
+    const apiUrl = '/.netlify/functions/ai-operations';
+    
+    // Prepare the request based on question type
+    const baseRequest = {
+      content,
+      textType,
+      assistanceLevel: localAssistanceLevel,
+      feedbackHistory: conversationContext.slice(-5), // Include recent conversation context
+      userQuestion: question
+    };
+    
+    try {
+      let response;
+      
+      switch (analysis.operation) {
+        case 'enhanceVocabulary':
+          response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              operation: 'enhanceVocabulary',
+              ...baseRequest
+            })
+          });
+          break;
+          
+        case 'getWritingStructure':
+          response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              operation: 'getWritingStructure',
+              ...baseRequest
+            })
+          });
+          break;
+          
+        case 'checkGrammarAndSpelling':
+          response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              operation: 'checkGrammarAndSpelling',
+              ...baseRequest
+            })
+          });
+          break;
+          
+        case 'getSpecializedTextTypeFeedback':
+          response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              operation: 'getSpecializedTextTypeFeedback',
+              ...baseRequest
+            })
+          });
+          break;
+          
+        default:
+          response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              operation: 'getWritingFeedback',
+              ...baseRequest
+            })
+          });
+      }
+      
+      if (!response.ok) {
+        throw new Error(`API request failed: ${response.status}`);
+      }
+      
+      return await response.json();
+    } catch (error) {
+      console.error('Error in API routing:', error);
+      throw error;
+    }
+  }, [content, textType, localAssistanceLevel, conversationContext]);
 
   const getNSWSelectivePrompts = (textType: string) => {
     const basePrompts = [
@@ -196,7 +337,7 @@ export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelPro
     setLocalAssistanceLevel(assistanceLevel);
   }, [assistanceLevel]);
 
-  // Unified Chat functionality
+  // Enhanced Chat functionality with intelligent routing
   const handleChatSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (chatInput.trim()) {
@@ -208,41 +349,60 @@ export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelPro
       };
 
       setChatMessages(prev => [...prev, userMessage]);
+      setConversationContext(prev => [...prev, userMessage]);
+      
       const currentInput = chatInput.trim();
       setChatInput('');
       setIsChatLoading(true);
       setShowPrompts(false);
 
       try {
-        const userQueryText = `Question about my ${textType} writing: ${currentInput}\n\nCurrent text: ${content}`;
-        const response = await getWritingFeedback(userQueryText, textType, localAssistanceLevel, feedbackHistory);
+        // Analyze the user's question
+        const questionAnalysis = analyzeUserQuestion(currentInput);
+        
+        // Route to appropriate operation
+        const response = await routeQuestionToOperation(currentInput, questionAnalysis);
         
         let botResponseText = '';
-        if (response && response.feedbackItems && response.feedbackItems.length > 0) {
+        
+        // Process response based on operation type
+        if (questionAnalysis.operation === 'enhanceVocabulary' && response.suggestions) {
+          botResponseText = `Here are some vocabulary suggestions for your ${textType}:\n\n${response.suggestions.slice(0, 3).join('\n\n')}`;
+        } else if (questionAnalysis.operation === 'getWritingStructure' && response.structure) {
+          botResponseText = `For ${textType} writing, here's the recommended structure:\n\n${response.structure}`;
+        } else if (questionAnalysis.operation === 'checkGrammarAndSpelling' && response.corrections) {
+          botResponseText = `I found some areas to improve:\n\n${response.corrections.slice(0, 3).map(c => `• ${c.suggestion}`).join('\n')}`;
+        } else if (response && response.feedbackItems && response.feedbackItems.length > 0) {
           botResponseText = response.feedbackItems[0].text;
         } else if (response && response.overallComment) {
           botResponseText = response.overallComment;
         } else {
-          botResponseText = `Great question about ${textType} writing! Keep practicing and focus on the key elements like structure, vocabulary, and engaging your reader.`;
+          botResponseText = `Great question about ${textType} writing! Based on your question about ${questionAnalysis.keywords.join(', ')}, keep practicing and focus on the key elements like structure, vocabulary, and engaging your reader.`;
         }
 
         const botMessage: ChatMessage = {
           id: (Date.now() + 1).toString(),
           text: botResponseText,
           isUser: false,
-          timestamp: new Date()
+          timestamp: new Date(),
+          questionType: questionAnalysis.type,
+          operation: questionAnalysis.operation
         };
 
         setChatMessages(prev => [...prev, botMessage]);
+        setConversationContext(prev => [...prev, botMessage]);
 
-        // Also add to feedback if it's a substantial response
+        // Add to feedback history if it's a substantial response
         if (response && response.feedbackItems) {
           const questionFeedbackItem: FeedbackItem = {
               type: 'question',
-              area: 'Chat Question',
+              area: `${questionAnalysis.type.charAt(0).toUpperCase() + questionAnalysis.type.slice(1)} Question`,
               text: `You asked: ${currentInput}`
           };
-          const answerItems = response.feedbackItems.map(item => ({...item, area: `Answer: ${currentInput.substring(0, 30)}...`}));
+          const answerItems = response.feedbackItems.map(item => ({
+            ...item, 
+            area: `Answer: ${questionAnalysis.type} - ${currentInput.substring(0, 30)}...`
+          }));
           
           setFeedbackHistory(prevHistory => [...prevHistory, questionFeedbackItem, ...answerItems.filter(item => 
               !prevHistory.some(histItem => histItem.text === item.text && histItem.area === item.area)
@@ -298,299 +458,243 @@ export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelPro
     return `Great start! Try to write about ${targetWordCount} words (${currentWordCount}/${targetWordCount})`;
   };
 
-  const getWordCountColor = () => {
-    if (currentWordCount < 50) return 'text-gray-700 dark:text-gray-400';
-    if (currentWordCount < 200) return 'text-blue-700 dark:text-blue-400';
-    if (isNearTarget) return 'text-green-700 dark:text-green-400';
-    if (isOverTarget) return 'text-amber-700 dark:text-amber-400';
-    return 'text-gray-700 dark:text-gray-400';
-  };
-
-  const handleHideFeedbackItem = (index: number) => {
-    setHiddenFeedbackItems(prev => [...prev, index]);
-  };
-
-  const handleHideOverallComment = () => {
-    setIsOverallCommentHidden(true);
-  };
-
-  const handleHideFocusForNextTime = () => {
-    setIsFocusForNextTimeHidden(true);
-  };
-
-  const handleAssistanceLevelChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setLocalAssistanceLevel(e.target.value);
-  };
-
   return (
-    <div className="h-full flex flex-col" style={{ height: '100%', maxHeight: '100%' }}>
-      {/* Word count indicator */}
-      <div className="px-4 py-3 border-b-4 border-purple-200 dark:border-purple-800 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 flex-shrink-0">
-        <div className={`text-base flex items-center font-bold ${getWordCountColor()}`}>
-          <Sparkles className="w-5 h-5 mr-2" />
-          {getWordCountMessage()}
-          {isNearTarget && <Star className="w-5 h-5 ml-2 text-yellow-500 fill-current" />}
-        </div>
-        
-        {/* Assistance Level Selector */}
-        <div className="relative">
-          <select
-            value={localAssistanceLevel}
-            onChange={handleAssistanceLevelChange}
-            className="block rounded-xl border-3 border-purple-300 py-1 pl-3 pr-8 text-gray-900 dark:text-gray-100 dark:bg-gray-700 focus:ring-2 focus:ring-purple-200 focus:border-purple-500 text-sm font-medium shadow-sm transition-all duration-200 hover:border-purple-400"
-          >
-            <option value="detailed">🌟 Lots of Help</option>
-            <option value="moderate">⭐ Some Help</option>
-            <option value="minimal">✨ Just a Little Help</option>
-          </select>
-          <div className="absolute -top-1 -right-1 w-4 h-4 bg-purple-400 rounded-full flex items-center justify-center animate-pulse">
-            <Sparkles className="w-2 h-2 text-white" />
+    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 h-full flex flex-col">
+      {/* Header */}
+      <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="p-2 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg">
+              <Bot className="h-6 w-6 text-white" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">AI Writing Coach</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Enhanced with intelligent question routing</p>
+            </div>
+          </div>
+          <div className="flex items-center space-x-2">
+            <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+              currentWordCount < 50 
+                ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                : isNearTarget 
+                  ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                  : isOverTarget
+                    ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+                    : 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+            }`}>
+              {getWordCountMessage()}
+            </span>
           </div>
         </div>
       </div>
 
-      {/* Error indicator */}
-      {error && (
-        <div className="px-4 py-3 border-b-4 border-amber-200 dark:border-amber-800 bg-gradient-to-r from-amber-50 to-red-50 dark:from-amber-900/20 dark:to-red-900/20 flex-shrink-0">
-          <div className="text-base text-amber-700 dark:text-amber-400 flex items-center font-bold">
-            <AlertCircle className="w-5 h-5 mr-2" />
-            {error}
+      {/* Chat Messages */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {chatMessages.length === 0 && (
+          <div className="text-center py-8">
+            <Bot className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <p className="text-gray-600 dark:text-gray-400 mb-2">Ask me anything about your {textType} writing!</p>
+            <p className="text-sm text-gray-500 dark:text-gray-500">I can help with vocabulary, structure, grammar, and content.</p>
           </div>
-        </div>
-      )}
-
-      {/* Loading indicator */}
-      {isLoading && (
-        <div className="px-4 py-3 border-b-4 border-blue-200 dark:border-blue-800 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 flex-shrink-0">
-          <div className="text-base text-blue-700 dark:text-blue-400 flex items-center font-bold">
-            <div className="loading-spinner mr-3"></div>
-            Thinking about your story...
-          </div>
-        </div>
-      )}
-
-      {/* Content Area - Unified Interface */}
-      <div className="flex-1 flex flex-col min-h-0">
-        {/* Chat Messages and Feedback - Combined */}
-        <div className="flex-1 overflow-y-auto p-3 space-y-3 min-h-0" style={{ maxHeight: 'calc(100% - 180px)' }}>
-          {/* Chat Messages */}
-          {chatMessages.length > 0 && (
-            <div className="space-y-3">
-              <div className="text-center">
-                <div className="inline-flex items-center px-3 py-1 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 text-sm font-medium">
-                  <MessageSquare className="w-4 h-4 mr-2" />
-                  Chat History
-                </div>
-              </div>
-              {chatMessages.map((message) => (
-                <div
-                  key={message.id}
-                  className={`flex ${message.isUser ? 'justify-end' : 'justify-start'}`}
-                >
-                  <div
-                    className={`max-w-xs lg:max-w-md px-4 py-2 rounded-2xl ${
-                      message.isUser
-                        ? 'bg-purple-500 text-white'
-                        : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
-                    }`}
-                  >
-                    {!message.isUser && (
-                      <div className="flex items-center mb-1">
-                        <Bot className="w-4 h-4 mr-2 text-purple-500" />
-                        <span className="text-xs font-medium text-purple-600 dark:text-purple-400">Writing Buddy</span>
-                      </div>
-                    )}
-                    <p className="text-sm leading-relaxed">{message.text}</p>
-                  </div>
-                </div>
-              ))}
-              
-              {isChatLoading && (
-                <div className="flex justify-start">
-                  <div className="bg-gray-100 dark:bg-gray-700 px-4 py-2 rounded-2xl">
-                    <div className="flex items-center">
-                      <Bot className="w-4 h-4 mr-2 text-purple-500" />
-                      <div className="flex space-x-1">
-                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
-                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.4s'}}></div>
-                      </div>
-                    </div>
-                  </div>
+        )}
+        
+        {chatMessages.map((message) => (
+          <div key={message.id} className={`flex ${message.isUser ? 'justify-end' : 'justify-start'}`}>
+            <div className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
+              message.isUser 
+                ? 'bg-blue-500 text-white' 
+                : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white'
+            }`}>
+              {!message.isUser && message.questionType && (
+                <div className="text-xs opacity-75 mb-1">
+                  {message.questionType.charAt(0).toUpperCase() + message.questionType.slice(1)} Help
                 </div>
               )}
+              <p className="text-sm whitespace-pre-wrap">{message.text}</p>
+              <p className="text-xs opacity-75 mt-1">
+                {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </p>
             </div>
-          )}
+          </div>
+        ))}
+        
+        {isChatLoading && (
+          <div className="flex justify-start">
+            <div className="bg-gray-100 dark:bg-gray-700 rounded-lg px-4 py-2">
+              <div className="flex space-x-1">
+                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+              </div>
+            </div>
+          </div>
+        )}
+        <div ref={chatMessagesEndRef} />
+      </div>
 
-          {/* Welcome message when no chat history */}
-          {chatMessages.length === 0 && (
-            <div className="text-center py-6">
-              <Bot className="w-12 h-12 mx-auto mb-4 text-purple-400" />
-              <p className="text-gray-500 dark:text-gray-400 text-lg font-medium">
-                Hi! I'm your Writing Buddy! 👋
-              </p>
-              <p className="text-gray-400 dark:text-gray-500 text-sm mt-2">
-                Ask me anything about your writing or get automatic feedback!
-              </p>
+      {/* Quick Prompts */}
+      {showPrompts && (
+        <div className="border-t border-gray-200 dark:border-gray-700 p-4">
+          <div className="grid grid-cols-1 gap-2 max-h-40 overflow-y-auto">
+            {commonPrompts.slice(0, 6).map((prompt, index) => (
+              <button
+                key={index}
+                onClick={() => handlePromptClick(prompt)}
+                className="text-left p-2 text-sm bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 rounded-lg transition-colors"
+              >
+                {prompt}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Chat Input */}
+      <div className="border-t border-gray-200 dark:border-gray-700 p-4">
+        <form onSubmit={handleChatSubmit} className="flex space-x-2">
+          <button
+            type="button"
+            onClick={() => setShowPrompts(!showPrompts)}
+            className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+          >
+            <Sparkles className="h-5 w-5" />
+          </button>
+          <input
+            type="text"
+            value={chatInput}
+            onChange={(e) => setChatInput(e.target.value)}
+            placeholder="Ask about vocabulary, structure, grammar, or content..."
+            className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+            disabled={isChatLoading}
+          />
+          <button
+            type="submit"
+            disabled={!chatInput.trim() || isChatLoading}
+            className="p-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Send className="h-5 w-5" />
+          </button>
+        </form>
+      </div>
+
+      {/* Feedback Section */}
+      {structuredFeedback && (
+        <div className="border-t border-gray-200 dark:border-gray-700 p-4">
+          <h4 className="font-semibold text-gray-900 dark:text-white mb-3">Writing Feedback</h4>
+          
+          {/* Overall Comment */}
+          {structuredFeedback.overallComment && !isOverallCommentHidden && (
+            <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+              <div className="flex items-start justify-between">
+                <div className="flex items-start">
+                  <MessageSquare className="h-5 w-5 text-blue-500 mr-3 mt-0.5 shrink-0" />
+                  <p className="text-blue-800 dark:text-blue-200 text-sm">{structuredFeedback.overallComment}</p>
+                </div>
+                <button
+                  onClick={() => setIsOverallCommentHidden(true)}
+                  className="text-blue-400 hover:text-blue-600 ml-2"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
             </div>
           )}
 
           {/* Feedback Items */}
-          {structuredFeedback?.overallComment && !isOverallCommentHidden && (
-            <div className="p-5 bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-900/30 dark:to-blue-900/30 text-indigo-700 dark:text-indigo-300 rounded-2xl text-base border-2 border-indigo-200 dark:border-indigo-800 shadow-md relative">
-              <button 
-                onClick={handleHideOverallComment}
-                className="absolute top-2 right-2 p-1 rounded-full bg-white dark:bg-gray-700 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors cursor-pointer"
-                aria-label="Close feedback"
-              >
-                <X className="w-4 h-4" />
-              </button>
-              <div className="flex items-start">
-                <Heart className="w-6 h-6 text-indigo-500 mr-3 mt-1 shrink-0" />
-                <div>
-                  <p className="font-bold text-lg mb-2">A friendly thought:</p>
-                  <p className="leading-relaxed">{structuredFeedback.overallComment}</p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {structuredFeedback?.feedbackItems?.filter((_, index) => !hiddenFeedbackItems.includes(index)).map((item, index) => {
-            const { icon, bgColor, textColor } = getFeedbackItemStyle(item.type);
-            const originalIndex = structuredFeedback.feedbackItems.findIndex(i => i === item);
-            return (
-              <div key={originalIndex} className={`feedback-item feedback-item-${item.type} flex transform hover:scale-102 transition-all duration-300 relative`}>
-                <button 
-                  onClick={() => handleHideFeedbackItem(originalIndex)}
-                  className="absolute top-2 right-2 p-1 rounded-full bg-white dark:bg-gray-700 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors cursor-pointer"
-                  aria-label="Close feedback"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-                <div>{icon}</div>
-                <div className="flex-grow relative">
-                  <p className="font-bold text-lg capitalize">{item.area}</p>
-                  <p className="mt-2 text-base leading-relaxed">{item.text}</p>
-                  {item.exampleFromText && (
-                    <p className="mt-3 text-sm italic border-l-4 border-current pl-3 ml-2 opacity-90 bg-white bg-opacity-50 p-2 rounded-r-lg">
-                      <span className="font-bold">From your story:</span> "{item.exampleFromText}"
-                    </p>
-                  )}
-                  {item.suggestionForImprovement && (
-                    <p className="mt-3 text-sm border-l-4 border-current pl-3 ml-2 opacity-90 bg-white bg-opacity-50 p-2 rounded-r-lg">
-                      <span className="font-bold">Try this:</span> {item.suggestionForImprovement}
-                    </p>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-
-          {(!structuredFeedback?.feedbackItems || structuredFeedback.feedbackItems.length === 0 || 
-            (structuredFeedback.feedbackItems.length > 0 && hiddenFeedbackItems.length === structuredFeedback.feedbackItems.length)) && 
-            currentWordCount >= 50 && !isLoading && (
-            <div className="p-6 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 text-gray-700 dark:text-gray-300 rounded-2xl text-base text-center border-2 border-gray-200 dark:border-gray-700 shadow-md">
-              <Sparkles className="w-10 h-10 mx-auto mb-3 text-gray-400 dark:text-gray-500" />
-              <p className="font-bold text-lg mb-2">Your writing buddy is thinking...</p>
-              <p>Keep writing while I look at your story!</p>
-              <div className="mt-4 flex justify-center space-x-1">
-                <div className="w-3 h-3 bg-gray-300 dark:bg-gray-600 rounded-full animate-bounce"></div>
-                <div className="w-3 h-3 bg-gray-300 dark:bg-gray-600 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
-                <div className="w-3 h-3 bg-gray-300 dark:bg-gray-600 rounded-full animate-bounce" style={{animationDelay: '0.4s'}}></div>
-              </div>
-            </div>
-          )}
-
-          {structuredFeedback?.focusForNextTime && structuredFeedback.focusForNextTime.length > 0 && !isFocusForNextTimeHidden && (
-            <div className="p-5 bg-gradient-to-r from-blue-50 to-green-50 dark:from-blue-900/20 dark:to-green-900/20 text-gray-700 dark:text-gray-300 rounded-2xl text-base border-2 border-blue-200 dark:border-blue-800 shadow-md relative">
-              <button 
-                onClick={handleHideFocusForNextTime}
-                className="absolute top-2 right-2 p-1 rounded-full bg-white dark:bg-gray-700 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors cursor-pointer"
-                aria-label="Close feedback"
-              >
-                <X className="w-4 h-4" />
-              </button>
-              <div className="flex items-start">
-                <Star className="w-6 h-6 text-blue-500 mr-3 mt-1 shrink-0" />
-                <div>
-                  <p className="font-bold text-lg mb-2">For next time:</p>
-                  <ul className="list-none space-y-2">
-                    {structuredFeedback.focusForNextTime.map((focus, idx) => (
-                      <li key={idx} className="flex items-start">
-                        <div className="w-5 h-5 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center mr-2 mt-0.5 text-blue-600 dark:text-blue-400 font-bold text-xs">
-                          {idx + 1}
+          {structuredFeedback.feedbackItems && structuredFeedback.feedbackItems.length > 0 && (
+            <div className="space-y-3 mb-4">
+              {structuredFeedback.feedbackItems.map((item, index) => {
+                if (hiddenFeedbackItems.includes(index)) return null;
+                
+                const style = getFeedbackItemStyle(item.type);
+                return (
+                  <div key={index} className={`p-4 rounded-lg border ${style.bgColor} border-opacity-50`}>
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-start flex-1">
+                        {style.icon}
+                        <div className="flex-1">
+                          <div className="flex items-center mb-1">
+                            <span className={`text-xs font-medium px-2 py-1 rounded-full ${style.textColor} bg-white bg-opacity-50`}>
+                              {item.area}
+                            </span>
+                          </div>
+                          <p className={`${style.textColor} text-sm mb-2`}>{item.text}</p>
+                          {item.exampleFromText && (
+                            <div className="mt-2 p-2 bg-white bg-opacity-50 rounded border-l-4 border-current">
+                              <p className="text-xs font-medium mb-1">From your text:</p>
+                              <p className="text-sm italic">"{item.exampleFromText}"</p>
+                            </div>
+                          )}
+                          {item.suggestionForImprovement && (
+                            <div className="mt-2 p-2 bg-white bg-opacity-50 rounded border-l-4 border-current">
+                              <p className="text-xs font-medium mb-1">Try this instead:</p>
+                              <p className="text-sm">{item.suggestionForImprovement}</p>
+                            </div>
+                          )}
                         </div>
-                        <span>{focus}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
+                      </div>
+                      <button
+                        onClick={() => setHiddenFeedbackItems(prev => [...prev, index])}
+                        className={`${style.textColor} hover:opacity-75 ml-2`}
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
-          <div ref={chatMessagesEndRef} />
-        </div>
 
-        {/* Suggested Questions - Always visible */}
-        <div className="border-t border-gray-200 dark:border-gray-700 p-4 flex-shrink-0 bg-white dark:bg-gray-800">
-          <button
-            type="button"
-            onClick={() => setShowPrompts(!showPrompts)}
-            className="w-full flex items-center justify-between px-4 py-3 bg-gradient-to-r from-blue-100 to-purple-100 dark:from-blue-900/30 dark:to-purple-900/30 rounded-xl text-base font-bold text-blue-800 dark:text-blue-200 hover:from-blue-200 hover:to-purple-200 dark:hover:from-blue-800/40 dark:hover:to-purple-800/40 transition-all duration-300 shadow-md transform hover:scale-102 border-2 border-blue-200 dark:border-blue-800"
-          >
-            <span className="flex items-center">
-              <Star className="w-5 h-5 mr-2 text-yellow-500" />
-              Quick Questions to Ask
-            </span>
-            {showPrompts ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
-          </button>
-
-          {showPrompts && (
-            <div className="space-y-2 bg-white dark:bg-gray-800 rounded-xl p-4 border-2 border-blue-100 dark:border-blue-800 shadow-inner max-h-32 overflow-y-auto mt-2">
-              {commonPrompts.slice(0, 6).map((prompt, index) => (
+          {/* Focus for Next Time */}
+          {structuredFeedback.focusForNextTime && structuredFeedback.focusForNextTime.length > 0 && !isFocusForNextTimeHidden && (
+            <div className="p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
+              <div className="flex items-start justify-between">
+                <div className="flex items-start">
+                  <Target className="h-5 w-5 text-purple-500 mr-3 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="text-purple-800 dark:text-purple-200 text-sm font-medium mb-2">Focus for next time:</p>
+                    <ul className="text-purple-700 dark:text-purple-300 text-sm space-y-1">
+                      {structuredFeedback.focusForNextTime.map((focus, index) => (
+                        <li key={index} className="flex items-start">
+                          <span className="mr-2">•</span>
+                          <span>{focus}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
                 <button
-                  type="button"
-                  key={index}
-                  onClick={() => handlePromptClick(prompt)}
-                  className="w-full text-left text-sm px-4 py-2 rounded-xl text-gray-700 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-all duration-300 font-medium"
+                  onClick={() => setIsFocusForNextTimeHidden(true)}
+                  className="text-purple-400 hover:text-purple-600 ml-2"
                 >
-                  {prompt}
+                  <X className="h-4 w-4" />
                 </button>
-              ))}
+              </div>
             </div>
           )}
         </div>
+      )}
 
-        {/* Enhanced Chat Input - Much more prominent */}
-        <div className="border-t-2 border-purple-200 dark:border-purple-700 p-6 flex-shrink-0 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20" style={{ minHeight: '120px' }}>
-          <form onSubmit={handleChatSubmit} className="space-y-3">
-            <div className="flex space-x-3">
-              <div className="flex-1 relative">
-                <input
-                  type="text"
-                  value={chatInput}
-                  onChange={(e) => setChatInput(e.target.value)}
-                  placeholder="Ask me anything about your writing..."
-                  className="w-full px-6 py-4 border-2 border-purple-300 dark:border-purple-600 rounded-2xl bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-4 focus:ring-purple-200 focus:border-purple-500 text-base font-medium shadow-lg transition-all duration-200"
-                  disabled={isChatLoading}
-                  style={{ fontSize: '16px', minHeight: '56px' }}
-                />
-                <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                  <MessageSquare className="w-5 h-5 text-purple-400" />
-                </div>
-              </div>
-              <button
-                type="submit"
-                disabled={isChatLoading || !chatInput.trim()}
-                className="bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:from-purple-600 hover:to-pink-600 disabled:opacity-50 disabled:cursor-not-allowed px-6 py-4 rounded-2xl transition-all duration-200 flex-shrink-0 shadow-lg transform hover:scale-105 font-bold"
-                style={{ minHeight: '56px', minWidth: '56px' }}
-              >
-                <Send className="w-6 h-6" />
-              </button>
-            </div>
-          </form>
+      {/* Loading State */}
+      {isLoading && (
+        <div className="border-t border-gray-200 dark:border-gray-700 p-4">
+          <div className="flex items-center space-x-3">
+            <RefreshCw className="h-5 w-5 text-blue-500 animate-spin" />
+            <span className="text-sm text-gray-600 dark:text-gray-400">Analyzing your writing...</span>
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* Error State */}
+      {error && (
+        <div className="border-t border-gray-200 dark:border-gray-700 p-4">
+          <div className="flex items-center space-x-3 text-red-600 dark:text-red-400">
+            <AlertCircle className="h-5 w-5" />
+            <span className="text-sm">{error}</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
