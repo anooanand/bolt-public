@@ -1,4 +1,5 @@
 import React from 'react';
+import openai from '../lib/openai'; // Import the openai utility
 
 // NSW text type guides for enhanced OpenAI prompts
 const NSW_TEXT_TYPE_GUIDES = {
@@ -29,73 +30,6 @@ const NSW_TEXT_TYPE_GUIDES = {
   }
 };
 
-// Enhanced OpenAI prompt generator for NSW-specific feedback
-async function generateNSWFeedback(essay, textType) {
-  const typeGuide = NSW_TEXT_TYPE_GUIDES[textType] || {};
-  
-  const prompt = `
-    As an expert in NSW Selective School writing assessment, provide feedback on this ${textType}.
-    
-    Focus on these NSW Selective criteria:
-    - Relevance to Prompt: "Does your story directly address the prompt?"
-    - Content Depth: "Can you add more descriptive language here?", "How can you make this character more interesting?"
-    - Structural Cohesion: "Does this paragraph flow well from the previous one?", "Consider adding a stronger concluding sentence."
-    - Genre Suitability: "Does this sound like a persuasive argument?"
-    - Vocabulary Enhancement (Contextual): Suggestions for stronger verbs or more precise adjectives relevant to the context of the story.
-    
-    SET A (15 marks):
-    - Content: relevance, originality, detail
-    - Structure: organization, paragraphing, cohesion
-    - Style: vocabulary, language features appropriate for ${textType}
-    
-    SET B (10 marks):
-    - Sentences: variety, complexity, correctness
-    - Punctuation: accuracy and range
-    - Spelling: accuracy
-    
-    Text type guidance for ${textType}:
-    - Structure: ${typeGuide.structure || "Well-organized with clear beginning, middle, and end"}
-    - Language: ${typeGuide.language || "Age-appropriate vocabulary and style"}
-    - Focus: ${typeGuide.focus || "Clear purpose and audience awareness"}
-    
-    Essay: ${essay}
-    
-    Provide specific scores for each criterion with justification and suggestions for improvement.
-    Format your response to be encouraging and constructive for a student aged 9-11.
-  `;
-  
-  try {
-    // This would connect to the OpenAI API in production
-    // For this implementation, we'll return a simulated response
-    console.log("Generating NSW-specific feedback with enhanced prompt");
-    
-    // Simulated response - in production this would call the OpenAI API
-    return {
-      setA: {
-        content: Math.floor(Math.random() * 3) + 3,
-        structure: Math.floor(Math.random() * 3) + 2,
-        style: Math.floor(Math.random() * 3) + 2
-      },
-      setB: {
-        sentences: Math.floor(Math.random() * 2) + 2,
-        punctuation: Math.floor(Math.random() * 2) + 1,
-        spelling: Math.floor(Math.random() * 2) + 1
-      },
-      feedback: [
-        "Your writing shows good understanding of the topic.",
-        "Try to organize your ideas into clearer paragraphs.",
-        "Use more descriptive words to make your writing more vivid.",
-        "Practice using different sentence types to add variety.",
-        "Remember to check your punctuation, especially commas and apostrophes.",
-        "Double-check the spelling of longer words."
-      ]
-    };
-  } catch (error) {
-    console.error("Error generating NSW feedback:", error);
-    return null;
-  }
-}
-
 // Enhanced feedback component with color-coded highlights
 export function EnhancedNSWFeedback({ essay, textType }) {
   const [feedback, setFeedback] = React.useState(null);
@@ -104,7 +38,8 @@ export function EnhancedNSWFeedback({ essay, textType }) {
   const getFeedback = async () => {
     setLoading(true);
     try {
-      const result = await generateNSWFeedback(essay, textType);
+      // Call the actual AI feedback function from openai.ts
+      const result = await openai.getNSWSelectiveFeedback(essay, textType);
       setFeedback(result);
     } catch (error) {
       console.error("Error getting feedback:", error);
@@ -136,28 +71,70 @@ export function EnhancedNSWFeedback({ essay, textType }) {
       <h3 className="text-lg font-medium text-gray-900 mb-4">NSW Selective Writing Feedback</h3>
       
       <div className="space-y-4">
-        <div className="p-3 bg-green-50 rounded-md border border-green-200">
-          <h4 className="font-medium text-green-800 mb-2">Strengths</h4>
-          <p className="text-green-700">{feedback.feedback[0]}</p>
-        </div>
-        
-        <div className="p-3 bg-amber-50 rounded-md border border-amber-200">
-          <h4 className="font-medium text-amber-800 mb-2">Areas for Improvement</h4>
-          <ul className="list-disc pl-5 text-amber-700 space-y-1">
-            {feedback.feedback.slice(1, 4).map((item, index) => (
-              <li key={index}>{item}</li>
-            ))}
-          </ul>
-        </div>
-        
-        <div className="p-3 bg-blue-50 rounded-md border border-blue-200">
-          <h4 className="font-medium text-blue-800 mb-2">Suggestions</h4>
-          <ul className="list-disc pl-5 text-blue-700 space-y-1">
-            {feedback.feedback.slice(4).map((item, index) => (
-              <li key={index}>{item}</li>
-            ))}
-          </ul>
-        </div>
+        {feedback.overallComment && (
+          <div className="p-3 bg-blue-50 rounded-md border border-blue-200">
+            <h4 className="font-medium text-blue-800 mb-2">Overall Feedback</h4>
+            <p className="text-blue-700">{feedback.overallComment}</p>
+          </div>
+        )}
+
+        {feedback.criteriaFeedback && Object.entries(feedback.criteriaFeedback).map(([criterion, data]) => (
+          <div key={criterion} className="p-3 bg-gray-50 rounded-md border border-gray-200">
+            <h4 className="font-medium text-gray-800 mb-2">{criterion.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())} ({data.score}/{data.maxScore})</h4>
+            {data.strengths && data.strengths.length > 0 && (
+              <div className="mb-2">
+                <h5 className="font-medium text-green-700">Strengths:</h5>
+                <ul className="list-disc pl-5 text-green-600 space-y-1">
+                  {data.strengths.map((item, index) => <li key={index}>{item}</li>)}
+                </ul>
+              </div>
+            )}
+            {data.improvements && data.improvements.length > 0 && (
+              <div className="mb-2">
+                <h5 className="font-medium text-amber-700">Areas for Improvement:</h5>
+                <ul className="list-disc pl-5 text-amber-600 space-y-1">
+                  {data.improvements.map((item, index) => <li key={index}>{item}</li>)}
+                </ul>
+              </div>
+            )}
+            {data.suggestions && data.suggestions.length > 0 && (
+              <div>
+                <h5 className="font-medium text-blue-700">Suggestions:</h5>
+                <ul className="list-disc pl-5 text-blue-600 space-y-1">
+                  {data.suggestions.map((item, index) => <li key={index}>{item}</li>)}
+                </ul>
+              </div>
+            )}
+          </div>
+        ))}
+
+        {feedback.priorityFocus && feedback.priorityFocus.length > 0 && (
+          <div className="p-3 bg-red-50 rounded-md border border-red-200">
+            <h4 className="font-medium text-red-800 mb-2">Priority Focus for Next Time</h4>
+            <ul className="list-disc pl-5 text-red-700 space-y-1">
+              {feedback.priorityFocus.map((item, index) => <li key={index}>{item}</li>)}
+            </ul>
+          </div>
+        )}
+
+        {feedback.interactiveQuestions && feedback.interactiveQuestions.length > 0 && (
+          <div className="p-3 bg-purple-50 rounded-md border border-purple-200">
+            <h4 className="font-medium text-purple-800 mb-2">Questions for Reflection</h4>
+            <ul className="list-disc pl-5 text-purple-700 space-y-1">
+              {feedback.interactiveQuestions.map((item, index) => <li key={index}>{item}</li>)}
+            </ul>
+          </div>
+        )}
+
+        {feedback.revisionSuggestions && feedback.revisionSuggestions.length > 0 && (
+          <div className="p-3 bg-green-50 rounded-md border border-green-200">
+            <h4 className="font-medium text-green-800 mb-2">Specific Revision Tasks</h4>
+            <ul className="list-disc pl-5 text-green-700 space-y-1">
+              {feedback.revisionSuggestions.map((item, index) => <li key={index}>{item}</li>)}
+            </ul>
+          </div>
+        )}
+
       </div>
     </div>
   );
