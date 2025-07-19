@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Lightbulb, Type, Save, Settings, Sparkles, ChevronDown, ChevronUp, Users, Target, Star, CheckCircle } from 'lucide-react';
+import { EnhancedWritingEditor } from './EnhancedWritingEditor';
 
 interface NarrativeWritingTemplateRedesignedProps {
   content: string;
@@ -158,14 +159,14 @@ export function NarrativeWritingTemplateRedesigned({
           </div>
         )}
 
-        {/* Main Writing Area - Maximized */}
+        {/* Main Writing Area - Enhanced with AI Grammar Checking */}
         <div className="flex-1 p-6 bg-white">
           <div className="max-w-4xl mx-auto h-full">
-            <textarea
-              value={content}
-              onChange={(e) => onChange(e.target.value)}
+            <EnhancedWritingEditor
+              content={content}
+              onChange={onChange}
               placeholder="Start writing your amazing story here! Let your creativity flow and bring your ideas to life... ✨"
-              className="w-full h-full p-6 border-2 border-gray-200 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg leading-relaxed shadow-sm"
+              className="w-full h-full"
               style={{ 
                 fontFamily: 'Georgia, serif',
                 minHeight: showPlanning ? '400px' : '500px'
