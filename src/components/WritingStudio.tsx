@@ -15,7 +15,9 @@ import { useAuth } from '../contexts/AuthContext';
 import { WritingTypeSelectionModal } from './WritingTypeSelectionModal';
 import { EnhancedNSWCriteriaTracker } from './EnhancedNSWCriteriaTracker'; // Import the new component
 import { getNSWSelectiveFeedback } from '../lib/openai'; // Import the new function
-
+import { TextHighlighter } from './TextHighlighter';
+import { VocabularyBuilder } from './VocabularyBuilder';
+import { SentenceAnalyzer } from './SentenceAnalyzer';
 interface WritingStudioProps {
   onNavigate: (page: string) => void;
 }
@@ -291,7 +293,26 @@ export const WritingStudio: React.FC<WritingStudioProps> = ({ onNavigate }) => {
                   style={{ minHeight: '800px' }}
                 />
               </div>
-              
+              <div className="enhanced-features space-y-4 mt-4">
+                <TextHighlighter 
+                  text={content} 
+                  highlights={[]} 
+                  onHighlightClick={(highlight) => console.log('Highlight clicked:', highlight)}
+                />
+                <VocabularyBuilder 
+                  textType="general" 
+                  currentContent={content}
+                  onWordSelect={(word) => console.log('Word selected:', word)}
+                />
+                <SentenceAnalyzer 
+                  content={content} 
+                  textType="general"
+                  onSuggestionApply={(original, suggestion) => {
+                    const newContent = content.replace(original, suggestion);
+                    setContent(newContent);
+                  }}
+                />
+              </div>
               {/* Editor Actions */}
               <div className="border-t border-gray-200 dark:border-gray-700 p-4">
                 <div className="flex items-center justify-between">
