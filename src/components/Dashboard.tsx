@@ -1,9 +1,10 @@
-// Enhanced Dashboard Component - Copy and paste this to replace your existing Dashboard.tsx
+// FIXED Dashboard Component - Replace your existing Dashboard.tsx with this code
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { isEmailVerified, hasAnyAccess, getUserAccessStatus } from '../lib/supabase';
+import { WritingTypeSelectionModal } from './WritingTypeSelectionModal'; // ADD THIS IMPORT
 import { 
   Mail, 
   CheckCircle, 
@@ -52,6 +53,9 @@ export function Dashboard({ user: propUser, emailVerified: propEmailVerified, pa
   const [isLoading, setIsLoading] = useState(true);
   const [userAccessData, setUserAccessData] = useState<any>(null);
   const [showWelcomeMessage, setShowWelcomeMessage] = useState(false);
+  
+  // ADD THIS STATE FOR THE MODAL
+  const [showWritingTypeModal, setShowWritingTypeModal] = useState(false);
 
   // Use prop user if provided, otherwise use context user
   const currentUser = propUser || user;
@@ -184,8 +188,23 @@ export function Dashboard({ user: propUser, emailVerified: propEmailVerified, pa
     }
   };
 
+  // MODIFY THIS FUNCTION TO SHOW THE MODAL INSTEAD OF DIRECT NAVIGATION
   const handleStartWriting = () => {
-    console.log('🚀 Dashboard: Navigating to writing area...');
+    console.log('🚀 Dashboard: Opening writing type selection modal...');
+    setShowWritingTypeModal(true); // Show the modal instead of navigating directly
+  };
+
+  // ADD THIS FUNCTION TO HANDLE WRITING TYPE SELECTION
+  const handleWritingTypeSelect = (type: string) => {
+    console.log('📝 Selected writing type:', type);
+    
+    // Store the selected writing type
+    localStorage.setItem('selectedWritingType', type);
+    
+    // Close the modal
+    setShowWritingTypeModal(false);
+    
+    // Navigate to the writing area
     if (onNavigate) {
       onNavigate('writing');
     } else {
@@ -607,6 +626,13 @@ export function Dashboard({ user: propUser, emailVerified: propEmailVerified, pa
           </div>
         </div>
       </div>
+
+      {/* ADD THE MODAL COMPONENT HERE */}
+      <WritingTypeSelectionModal
+        isOpen={showWritingTypeModal}
+        onClose={() => setShowWritingTypeModal(false)}
+        onSelectType={handleWritingTypeSelect}
+      />
     </div>
   );
 }
