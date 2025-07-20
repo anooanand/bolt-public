@@ -1,11 +1,9 @@
-// FIXED Dashboard Component v2 - Replace your existing Dashboard.tsx with this code
+// Enhanced Dashboard Component - Copy and paste this to replace your existing Dashboard.tsx
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { isEmailVerified, hasAnyAccess, getUserAccessStatus } from '../lib/supabase';
-import { WritingTypeSelectionModal } from './WritingTypeSelectionModal'; // ADD THIS IMPORT
-import { PromptOptionsModal } from './PromptOptionsModal'; // ADD THIS IMPORT
 import { 
   Mail, 
   CheckCircle, 
@@ -54,11 +52,6 @@ export function Dashboard({ user: propUser, emailVerified: propEmailVerified, pa
   const [isLoading, setIsLoading] = useState(true);
   const [userAccessData, setUserAccessData] = useState<any>(null);
   const [showWelcomeMessage, setShowWelcomeMessage] = useState(false);
-  
-  // ADD THESE STATES FOR THE MODALS
-  const [showWritingTypeModal, setShowWritingTypeModal] = useState(false);
-  const [showPromptOptionsModal, setShowPromptOptionsModal] = useState(false);
-  const [selectedWritingType, setSelectedWritingType] = useState<string>('');
 
   // Use prop user if provided, otherwise use context user
   const currentUser = propUser || user;
@@ -191,45 +184,8 @@ export function Dashboard({ user: propUser, emailVerified: propEmailVerified, pa
     }
   };
 
-  // MODIFY THIS FUNCTION TO SHOW THE MODAL INSTEAD OF DIRECT NAVIGATION
   const handleStartWriting = () => {
-    console.log('🚀 Dashboard: Opening writing type selection modal...');
-    setShowWritingTypeModal(true); // Show the modal instead of navigating directly
-  };
-
-  // MODIFY THIS FUNCTION TO SHOW PROMPT OPTIONS MODAL
-  const handleWritingTypeSelect = (type: string) => {
-    console.log('📝 Selected writing type:', type);
-    
-    // Store the selected writing type
-    setSelectedWritingType(type);
-    localStorage.setItem('selectedWritingType', type);
-    
-    // Close the writing type modal
-    setShowWritingTypeModal(false);
-    
-    // Show the prompt options modal
-    setShowPromptOptionsModal(true);
-  };
-
-  // ADD THESE NEW FUNCTIONS FOR PROMPT OPTIONS
-  const handleGeneratePrompt = () => {
-    console.log('🎯 Generating prompt for:', selectedWritingType);
-    setShowPromptOptionsModal(false);
-    
-    // Navigate to the writing area
-    if (onNavigate) {
-      onNavigate('writing');
-    } else {
-      navigate('/writing');
-    }
-  };
-
-  const handleCustomPrompt = () => {
-    console.log('✏️ Using custom prompt for:', selectedWritingType);
-    setShowPromptOptionsModal(false);
-    
-    // Navigate to the writing area
+    console.log('🚀 Dashboard: Navigating to writing area...');
     if (onNavigate) {
       onNavigate('writing');
     } else {
@@ -651,21 +607,6 @@ export function Dashboard({ user: propUser, emailVerified: propEmailVerified, pa
           </div>
         </div>
       </div>
-
-      {/* ADD THE MODAL COMPONENTS HERE */}
-      <WritingTypeSelectionModal
-        isOpen={showWritingTypeModal}
-        onClose={() => setShowWritingTypeModal(false)}
-        onSelectType={handleWritingTypeSelect}
-      />
-
-      <PromptOptionsModal
-        isOpen={showPromptOptionsModal}
-        onClose={() => setShowPromptOptionsModal(false)}
-        onGeneratePrompt={handleGeneratePrompt}
-        onCustomPrompt={handleCustomPrompt}
-        textType={selectedWritingType}
-      />
     </div>
   );
 }
