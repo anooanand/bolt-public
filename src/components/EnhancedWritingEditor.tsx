@@ -1,12 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { AlertCircle, CheckCircle, Lightbulb, Loader2 } from 'lucide-react';
+import { AlertCircle, CheckCircle, Lightbulb, Loader2, Star, Target, Zap } from 'lucide-react';
+import { TextHighlighter, useTextHighlights } from './TextHighlighter';
 
-interface EnhancedWritingEditorProps {
+interface EnhancedWritingEditorWithHighlightingProps {
   content: string;
   onChange: (content: string) => void;
   placeholder?: string;
   className?: string;
   style?: React.CSSProperties;
+  textType?: string;
+  onGetFeedback?: (content: string) => Promise<any>;
 }
 
 interface GrammarError {
@@ -18,22 +21,60 @@ interface GrammarError {
   context?: string;
 }
 
-export function EnhancedWritingEditor({ 
+interface AIFeedback {
+  feedbackItems?: Array<{
+    type: 'praise' | 'suggestion' | 'improvement';
+    text: string;
+    exampleFromText?: string;
+    suggestionForImprovement?: string;
+    area?: string;
+  }>;
+  corrections?: Array<{
+    original: string;
+    suggestion: string;
+    explanation?: string;
+  }>;
+  vocabularyEnhancements?: Array<{
+    original: string;
+    suggestion: string;
+  }>;
+  overallScore?: number;
+  criteriaScores?: {
+    ideas: number;
+    structure: number;
+    language: number;
+    accuracy: number;
+  };
+  strengths?: string[];
+  areasForImprovement?: string[];
+}
+
+export function EnhancedWritingEditorWithHighlighting({ 
   content, 
   onChange, 
   placeholder = "Start writing your amazing story here! Let your creativity flow and bring your ideas to life... ✨",
   className = "",
-  style = {}
-}: EnhancedWritingEditorProps) {
+  style = {},
+  textType = "narrative",
+  onGetFeedback
+}: EnhancedWritingEditorWithHighlightingProps) {
   const [errors, setErrors] = useState<GrammarError[]>([]);
+  const [aiFeedback, setAiFeedback] = useState<AIFeedback | null>(null);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedError, setSelectedError] = useState<GrammarError | null>(null);
   const [isChecking, setIsChecking] = useState(false);
+  const [isGettingAIFeedback, setIsGettingAIFeedback] = useState(false);
+  const [showAIHighlights, setShowAIHighlights] = useState(true);
+  const [showGrammarHighlights, setShowGrammarHighlights] = useState(true);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
   const checkTimeoutRef = useRef<NodeJS.Timeout>();
+  const feedbackTimeoutRef = useRef<NodeJS.Timeout>();
 
-  // AI-powered grammar and spelling checker
+  // Generate highlights from AI feedback using the existing hook
+  const aiHighlights = useTextHighlights(content, aiFeedback);
+
+  // AI-powered grammar and spelling checker (from latest EnhancedWritingEditor)
   const checkTextWithAI = async (text: string): Promise<GrammarError[]> => {
     if (!text.trim() || text.length < 10) return [];
     
@@ -68,7 +109,45 @@ export function EnhancedWritingEditor({
     }
   };
 
-  // Client-side fallback using browser APIs and contextual analysis
+  // Get AI feedback for highlighting
+  const getAIFeedbackForHighlighting = async (text: string) => {
+    if (!text.trim() || text.length < 50) return;
+    
+    try {
+      setIsGettingAIFeedback(true);
+      
+      if (onGetFeedback) {
+        const feedback = await onGetFeedback(text);
+        setAiFeedback(feedback);
+      } else {
+        // Fallback to direct API call
+        const response = await fetch('/netlify/functions/ai-operations', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ 
+            action: 'getNSWSelectiveFeedback',
+            content: text,
+            textType: textType,
+            assistanceLevel: 'detailed',
+            feedbackHistory: []
+          }),
+        });
+
+        if (response.ok) {
+          const feedback = await response.json();
+          setAiFeedback(feedback);
+        }
+      }
+    } catch (error) {
+      console.error('AI feedback error:', error);
+    } finally {
+      setIsGettingAIFeedback(false);
+    }
+  };
+
+  // Client-side fallback using browser APIs and contextual analysis (from latest EnhancedWritingEditor)
   const checkTextClientSide = async (text: string): Promise<GrammarError[]> => {
     const errors: GrammarError[] = [];
     
@@ -87,7 +166,7 @@ export function EnhancedWritingEditor({
     return errors;
   };
 
-  // Advanced contextual spelling checker
+  // Advanced contextual spelling checker (from latest EnhancedWritingEditor)
   const checkSpellingInContext = async (text: string): Promise<GrammarError[]> => {
     const errors: GrammarError[] = [];
     const words = text.match(/\b\w+\b/g) || [];
@@ -118,7 +197,7 @@ export function EnhancedWritingEditor({
     return errors;
   };
 
-  // Analyze word in context for spelling and usage
+  // Analyze word in context for spelling and usage (from latest EnhancedWritingEditor)
   const analyzeWordInContext = async (word: string, context: string, prevWord: string, nextWord: string): Promise<{message: string, suggestions: string[]} | null> => {
     const lowerWord = word.toLowerCase();
     
@@ -175,7 +254,7 @@ export function EnhancedWritingEditor({
     return null;
   };
 
-  // Advanced grammar checking using contextual patterns
+  // Advanced grammar checking using contextual patterns (from latest EnhancedWritingEditor)
   const checkGrammarPatterns = async (text: string): Promise<GrammarError[]> => {
     const errors: GrammarError[] = [];
     const sentences = text.split(/[.!?]+/).filter(s => s.trim());
@@ -200,7 +279,7 @@ export function EnhancedWritingEditor({
     return errors;
   };
 
-  // Check subject-verb agreement
+  // Check subject-verb agreement (from latest EnhancedWritingEditor)
   const checkSubjectVerbAgreement = (sentence: string, fullText: string): GrammarError[] => {
     const errors: GrammarError[] = [];
     
@@ -247,7 +326,7 @@ export function EnhancedWritingEditor({
     return errors;
   };
 
-  // Check tense consistency
+  // Check tense consistency (from latest EnhancedWritingEditor)
   const checkTenseConsistency = (sentence: string, fullText: string): GrammarError[] => {
     const errors: GrammarError[] = [];
     
@@ -271,7 +350,7 @@ export function EnhancedWritingEditor({
     return errors;
   };
 
-  // Check common grammar patterns
+  // Check common grammar patterns (from latest EnhancedWritingEditor)
   const checkCommonGrammarPatterns = (sentence: string, fullText: string): GrammarError[] => {
     const errors: GrammarError[] = [];
     
@@ -311,7 +390,7 @@ export function EnhancedWritingEditor({
     return errors;
   };
 
-  // Check punctuation
+  // Check punctuation (from latest EnhancedWritingEditor)
   const checkPunctuation = (text: string): GrammarError[] => {
     const errors: GrammarError[] = [];
     
@@ -343,56 +422,62 @@ export function EnhancedWritingEditor({
     return errors;
   };
 
-  // Get context around a word for better suggestions
+  // Get context around a word for better suggestions (from latest EnhancedWritingEditor)
   const getWordContext = (text: string, start: number, length: number): string => {
     const contextStart = Math.max(0, start - 20);
     const contextEnd = Math.min(text.length, start + length + 20);
     return text.substring(contextStart, contextEnd);
   };
 
-  // Update errors when content changes (debounced)
+  // Update grammar errors when content changes (debounced)
   useEffect(() => {
     if (checkTimeoutRef.current) {
       clearTimeout(checkTimeoutRef.current);
     }
 
     checkTimeoutRef.current = setTimeout(async () => {
-      if (content.trim()) {
+      if (content.trim() && showGrammarHighlights) {
         const newErrors = await checkTextWithAI(content);
         setErrors(newErrors);
       } else {
         setErrors([]);
       }
-    }, 1000); // Debounce for 1 second
+    }, 1000);
 
     return () => {
       if (checkTimeoutRef.current) {
         clearTimeout(checkTimeoutRef.current);
       }
     };
-  }, [content]);
+  }, [content, showGrammarHighlights]);
 
-  // Create highlighted text overlay
-  const createHighlightedText = () => {
-    if (!content) return '';
-    
-    let highlightedText = content;
-    const sortedErrors = [...errors].sort((a, b) => b.start - a.start);
-    
-    sortedErrors.forEach((error) => {
-      const before = highlightedText.substring(0, error.start);
-      const errorText = highlightedText.substring(error.start, error.end);
-      const after = highlightedText.substring(error.end);
-      
-      const className = `${error.type}-error`;
-      highlightedText = `${before}<span class="${className}" data-error="${encodeURIComponent(JSON.stringify(error))}">${errorText}</span>${after}`;
-    });
-    
-    return highlightedText.replace(/\n/g, '<br>');
-  };
+  // Update AI feedback when content changes (debounced longer)
+  useEffect(() => {
+    if (feedbackTimeoutRef.current) {
+      clearTimeout(feedbackTimeoutRef.current);
+    }
+
+    feedbackTimeoutRef.current = setTimeout(async () => {
+      if (content.trim() && showAIHighlights) {
+        await getAIFeedbackForHighlighting(content);
+      } else {
+        setAiFeedback(null);
+      }
+    }, 3000); // Longer debounce for AI feedback
+
+    return () => {
+      if (feedbackTimeoutRef.current) {
+        clearTimeout(feedbackTimeoutRef.current);
+      }
+    };
+  }, [content, showAIHighlights, textType]);
 
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     onChange(e.target.value);
+  };
+
+  const handleHighlightClick = (highlight: any) => {
+    console.log('AI Highlight clicked:', highlight);
   };
 
   const applySuggestion = (error: GrammarError, suggestion: string) => {
@@ -408,7 +493,7 @@ export function EnhancedWritingEditor({
     const textarea = e.currentTarget;
     const cursorPosition = textarea.selectionStart;
     
-    // Find if cursor is on an error
+    // Find if cursor is on a grammar error
     const errorAtCursor = errors.find(error => 
       cursorPosition >= error.start && cursorPosition <= error.end
     );
@@ -452,129 +537,106 @@ export function EnhancedWritingEditor({
     }
   };
 
+  // Convert grammar errors to highlights format for overlay
+  const grammarHighlights = errors.map(error => ({
+    start: error.start,
+    end: error.end,
+    type: 'improvement' as const,
+    feedback: error.message,
+    suggestion: error.suggestions[0],
+    category: 'Grammar & Spelling'
+  }));
+
+  // Combine AI highlights and grammar highlights
+  const allHighlights = showAIHighlights && showGrammarHighlights 
+    ? [...aiHighlights, ...grammarHighlights]
+    : showAIHighlights 
+    ? aiHighlights 
+    : showGrammarHighlights 
+    ? grammarHighlights 
+    : [];
+
   return (
     <div className={`relative ${className}`} style={style}>
-      <style jsx>{`
-        .writing-editor-container {
-          position: relative;
-        }
-        
-        .writing-textarea {
-          width: 100%;
-          height: 100%;
-          padding: 1.5rem;
-          border: 2px solid #e5e7eb;
-          border-radius: 0.75rem;
-          resize: none;
-          font-family: Georgia, serif;
-          font-size: 1.125rem;
-          line-height: 1.75;
-          background: transparent;
-          z-index: 2;
-          position: relative;
-        }
-        
-        .writing-textarea:focus {
-          outline: none;
-          border-color: #3b82f6;
-          box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-        }
-        
-        .highlight-overlay {
-          position: absolute;
-          top: 0;
-          left: 0;
-          width: 100%;
-          height: 100%;
-          padding: 1.5rem;
-          font-family: Georgia, serif;
-          font-size: 1.125rem;
-          line-height: 1.75;
-          color: transparent;
-          pointer-events: none;
-          z-index: 1;
-          white-space: pre-wrap;
-          word-wrap: break-word;
-          overflow: hidden;
-        }
-        
-        .spelling-error {
-          background-color: rgba(239, 68, 68, 0.2);
-          border-bottom: 2px wavy #ef4444;
-          color: transparent;
-        }
-        
-        .grammar-error {
-          background-color: rgba(59, 130, 246, 0.2);
-          border-bottom: 2px wavy #3b82f6;
-          color: transparent;
-        }
-        
-        .punctuation-error {
-          background-color: rgba(249, 115, 22, 0.2);
-          border-bottom: 2px wavy #f97316;
-          color: transparent;
-        }
-        
-        .style-error {
-          background-color: rgba(168, 85, 247, 0.2);
-          border-bottom: 2px wavy #a855f7;
-          color: transparent;
-        }
-        
-        .suggestions-popup {
-          position: absolute;
-          background: white;
-          border: 1px solid #e5e7eb;
-          border-radius: 0.5rem;
-          box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-          z-index: 10;
-          max-width: 300px;
-          padding: 0.75rem;
-        }
-        
-        .suggestion-item {
-          padding: 0.5rem;
-          cursor: pointer;
-          border-radius: 0.25rem;
-          transition: background-color 0.2s;
-        }
-        
-        .suggestion-item:hover {
-          background-color: #f3f4f6;
-        }
-      `}</style>
-      
-      <div className="writing-editor-container">
-        {/* Highlight overlay */}
-        <div 
-          ref={overlayRef}
-          className="highlight-overlay"
-          dangerouslySetInnerHTML={{ __html: createHighlightedText() }}
-        />
-        
-        {/* Textarea */}
-        <textarea
-          ref={textareaRef}
-          value={content}
-          onChange={handleTextChange}
-          onClick={handleTextareaClick}
-          placeholder={placeholder}
-          className="writing-textarea"
-          spellCheck={true}
-        />
-        
-        {/* Loading indicator */}
-        {isChecking && (
-          <div className="absolute top-4 right-4 flex items-center text-blue-600">
-            <Loader2 className="w-4 h-4 animate-spin mr-2" />
-            <span className="text-sm">AI Checking...</span>
+      {/* Control Panel */}
+      <div className="mb-4 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-sm font-medium text-gray-700">AI Writing Assistant</h3>
+          <div className="flex items-center space-x-4">
+            {(isChecking || isGettingAIFeedback) && (
+              <div className="flex items-center text-blue-600">
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                <span className="text-sm">
+                  {isGettingAIFeedback ? 'Getting AI feedback...' : 'Checking grammar...'}
+                </span>
+              </div>
+            )}
           </div>
+        </div>
+        
+        <div className="flex items-center space-x-6">
+          <label className="flex items-center">
+            <input
+              type="checkbox"
+              checked={showAIHighlights}
+              onChange={(e) => setShowAIHighlights(e.target.checked)}
+              className="mr-2"
+            />
+            <Star className="w-4 h-4 text-green-500 mr-1" />
+            <span className="text-sm text-gray-600">AI Feedback Highlights</span>
+          </label>
+          
+          <label className="flex items-center">
+            <input
+              type="checkbox"
+              checked={showGrammarHighlights}
+              onChange={(e) => setShowGrammarHighlights(e.target.checked)}
+              className="mr-2"
+            />
+            <Target className="w-4 h-4 text-blue-500 mr-1" />
+            <span className="text-sm text-gray-600">Grammar & Spelling</span>
+          </label>
+        </div>
+      </div>
+
+      {/* Writing Area with Highlighting */}
+      <div className="relative">
+        {content && allHighlights.length > 0 ? (
+          <div className="relative">
+            <TextHighlighter
+              text={content}
+              highlights={allHighlights}
+              onHighlightClick={handleHighlightClick}
+              className="min-h-[400px] p-6 border-2 border-gray-200 rounded-lg bg-white font-serif text-lg leading-relaxed"
+            />
+            {/* Invisible textarea for input */}
+            <textarea
+              ref={textareaRef}
+              value={content}
+              onChange={handleTextChange}
+              onClick={handleTextareaClick}
+              placeholder={placeholder}
+              className="absolute inset-0 w-full h-full p-6 bg-transparent border-none outline-none resize-none font-serif text-lg leading-relaxed text-transparent caret-black"
+              style={{ caretColor: 'black' }}
+              spellCheck={true}
+            />
+          </div>
+        ) : (
+          <textarea
+            ref={textareaRef}
+            value={content}
+            onChange={handleTextChange}
+            onClick={handleTextareaClick}
+            placeholder={placeholder}
+            className="w-full min-h-[400px] p-6 border-2 border-gray-200 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white font-serif text-lg leading-relaxed"
+            spellCheck={true}
+          />
         )}
         
-        {/* Suggestions popup */}
+        {/* Grammar suggestions popup */}
         {showSuggestions && selectedError && (
-          <div className="suggestions-popup" style={{ top: '100px', left: '20px' }}>
+          <div className="absolute z-50 bg-white border border-gray-200 rounded-lg shadow-lg p-4 max-w-sm" 
+               style={{ top: '100px', left: '20px' }}>
             <div className="flex items-center mb-2">
               {getErrorTypeIcon(selectedError.type)}
               <span className={`text-sm font-medium ml-2 ${getErrorTypeColor(selectedError.type)}`}>
@@ -589,33 +651,81 @@ export function EnhancedWritingEditor({
             )}
             <div className="space-y-1">
               {selectedError.suggestions.map((suggestion, index) => (
-                <div
+                <button
                   key={index}
-                  className="suggestion-item text-sm"
+                  className="block w-full text-left px-3 py-2 text-sm hover:bg-gray-50 rounded"
                   onClick={() => applySuggestion(selectedError, suggestion)}
                 >
                   {suggestion}
-                </div>
+                </button>
               ))}
             </div>
           </div>
         )}
       </div>
-      
-      {/* Error summary */}
-      {errors.length > 0 && (
-        <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-          <div className="flex items-center mb-2">
-            <Lightbulb className="w-4 h-4 text-blue-600 mr-2" />
-            <span className="text-sm font-medium text-blue-800">AI Writing Assistant</span>
-          </div>
-          <p className="text-sm text-blue-700">
-            Found {errors.filter(e => e.type === 'spelling').length} spelling, {' '}
-            {errors.filter(e => e.type === 'grammar').length} grammar, {' '}
-            {errors.filter(e => e.type === 'punctuation').length} punctuation, and {' '}
-            {errors.filter(e => e.type === 'style').length} style suggestions. 
-            Click on highlighted text to see contextual AI suggestions.
-          </p>
+
+      {/* Feedback Summary */}
+      {(aiFeedback || errors.length > 0) && (
+        <div className="mt-4 space-y-3">
+          {/* AI Feedback Summary */}
+          {aiFeedback && showAIHighlights && (
+            <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+              <div className="flex items-center mb-2">
+                <Zap className="w-5 h-5 text-green-600 mr-2" />
+                <span className="text-sm font-medium text-green-800">NSW Selective AI Feedback</span>
+                {aiFeedback.overallScore && (
+                  <span className="ml-auto text-sm font-bold text-green-700">
+                    Score: {aiFeedback.overallScore}/100
+                  </span>
+                )}
+              </div>
+              
+              {aiFeedback.criteriaScores && (
+                <div className="grid grid-cols-4 gap-2 mb-3">
+                  <div className="text-center">
+                    <div className="text-xs text-gray-600">Ideas</div>
+                    <div className="font-medium text-green-700">{aiFeedback.criteriaScores.ideas}/25</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-xs text-gray-600">Structure</div>
+                    <div className="font-medium text-green-700">{aiFeedback.criteriaScores.structure}/25</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-xs text-gray-600">Language</div>
+                    <div className="font-medium text-green-700">{aiFeedback.criteriaScores.language}/25</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-xs text-gray-600">Accuracy</div>
+                    <div className="font-medium text-green-700">{aiFeedback.criteriaScores.accuracy}/25</div>
+                  </div>
+                </div>
+              )}
+              
+              <p className="text-sm text-green-700">
+                Found {aiHighlights.filter(h => h.type === 'strength').length} strengths, {' '}
+                {aiHighlights.filter(h => h.type === 'improvement').length} improvements, and {' '}
+                {aiHighlights.filter(h => h.type === 'suggestion').length} suggestions. 
+                Click on highlighted text to see detailed feedback.
+              </p>
+            </div>
+          )}
+
+          {/* Grammar Summary */}
+          {errors.length > 0 && showGrammarHighlights && (
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex items-center mb-2">
+                <Lightbulb className="w-4 h-4 text-blue-600 mr-2" />
+                <span className="text-sm font-medium text-blue-800">Grammar & Spelling Assistant</span>
+              </div>
+              <p className="text-sm text-blue-700">
+                Found {errors.filter(e => e.type === 'spelling').length} spelling, {' '}
+                {errors.filter(e => e.type === 'grammar').length} grammar, {' '}
+                {errors.filter(e => e.type === 'punctuation').length} punctuation, and {' '}
+                {errors.filter(e => e.type === 'style').length} style suggestions. 
+                Click on highlighted text to see contextual AI suggestions.
+              </p>
+            </div>
+          )}
         </div>
       )}
     </div>
