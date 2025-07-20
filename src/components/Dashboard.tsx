@@ -206,24 +206,40 @@ export function Dashboard({ user: propUser, emailVerified: propEmailVerified, pa
     setShowPromptOptionsModal(true);
   };
 
-  // NEW: Handle prompt generation
+  // FIXED: Handle prompt generation with proper navigation
   const handleGeneratePrompt = () => {
     console.log('🎯 Generating prompt for:', selectedWritingType);
     setShowPromptOptionsModal(false);
+    
+    // Store the writing type in localStorage for the writing page
+    localStorage.setItem('selectedWritingType', selectedWritingType);
+    localStorage.setItem('promptType', 'generated');
+    
+    // Navigate to writing page
     if (onNavigate) {
+      console.log('📍 Navigating via onNavigate to writing page');
       onNavigate('writing');
     } else {
+      console.log('📍 Navigating via navigate to /writing');
       navigate('/writing');
     }
   };
 
-  // NEW: Handle custom prompt
+  // FIXED: Handle custom prompt with proper navigation
   const handleCustomPrompt = () => {
     console.log('✏️ Using custom prompt for:', selectedWritingType);
     setShowPromptOptionsModal(false);
+    
+    // Store the writing type in localStorage for the writing page
+    localStorage.setItem('selectedWritingType', selectedWritingType);
+    localStorage.setItem('promptType', 'custom');
+    
+    // Navigate to writing page
     if (onNavigate) {
+      console.log('📍 Navigating via onNavigate to writing page');
       onNavigate('writing');
     } else {
+      console.log('📍 Navigating via navigate to /writing');
       navigate('/writing');
     }
   };
