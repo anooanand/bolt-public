@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Lightbulb, Type, Save, Settings, Sparkles, ChevronDown, ChevronUp, Users, Target, Star, CheckCircle } from 'lucide-react';
-import { EnhancedWritingEditorWithHighlighting } from './EnhancedWritingEditorWithHighlighting';
+import { EnhancedWritingEditorWithHighlighting } from './EnhancedWritingEditor';
 import { getNSWSelectiveFeedback } from '../lib/openai';
 
 interface NarrativeWritingTemplateRedesignedProps {
