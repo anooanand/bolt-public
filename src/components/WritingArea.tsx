@@ -1,3 +1,5 @@
+// FIXED WritingArea.tsx - Enhanced modal handling and navigation support
+
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { generatePrompt, getSynonyms, rephraseSentence, evaluateEssay } from '../lib/openai';
 import { dbOperations } from '../lib/database';
@@ -56,37 +58,89 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [showHighlights, setShowHighlights] = useState(true);
   
-  // New state for popup management
+  // Enhanced state for popup management
   const [showWritingTypeModal, setShowWritingTypeModal] = useState(false);
   const [showPromptOptionsModal, setShowPromptOptionsModal] = useState(false);
   const [showCustomPromptModal, setShowCustomPromptModal] = useState(false);
   const [selectedWritingType, setSelectedWritingType] = useState('');
   const [showEvaluationModal, setShowEvaluationModal] = useState(false);
+  const [modalInitialized, setModalInitialized] = useState(false);
   
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const highlightLayerRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Initialize popup flow when component mounts or when textType is empty
+  // ENHANCED: Initialize popup flow when component mounts or when textType is empty
   useEffect(() => {
+    console.log('🔄 WritingArea: Initializing component...');
+    console.log('📊 Current textType:', textType);
+    console.log('📊 Modal initialized:', modalInitialized);
+    
     const savedContent = localStorage.getItem('writingContent');
     const savedWritingType = localStorage.getItem('selectedWritingType');
+    const navigationSource = localStorage.getItem('navigationSource');
+    const promptType = localStorage.getItem('promptType');
 
-    if (savedContent) {
+    console.log('💾 Saved content length:', savedContent?.length || 0);
+    console.log('💾 Saved writing type:', savedWritingType);
+    console.log('💾 Navigation source:', navigationSource);
+    console.log('💾 Prompt type:', promptType);
+
+    // Restore saved content
+    if (savedContent && savedContent !== content) {
+      console.log('📝 Restoring saved content');
       onChange(savedContent);
     }
-    if (savedWritingType) {
+    
+    // Handle writing type initialization
+    if (savedWritingType && savedWritingType !== selectedWritingType) {
+      console.log('📝 Setting writing type from localStorage:', savedWritingType);
       setSelectedWritingType(savedWritingType);
       if (onTextTypeChange) {
         onTextTypeChange(savedWritingType);
       }
     }
     
-    // Initialize the writing type selection flow
-    if (!textType && !selectedWritingType) {
-      setShowWritingTypeModal(true);
+    // FIXED: Initialize modal flow based on navigation context
+    if (!modalInitialized) {
+      console.log('🚀 Initializing modal flow...');
+      
+      if (navigationSource === 'dashboard' && savedWritingType) {
+        // User came from dashboard with a selected writing type
+        console.log('✅ Dashboard navigation detected with writing type:', savedWritingType);
+        setSelectedWritingType(savedWritingType);
+        if (onTextTypeChange) {
+          onTextTypeChange(savedWritingType);
+        }
+        
+        // Check if we need to show prompt options or go straight to writing
+        if (promptType === 'generated' || promptType === 'custom') {
+          console.log('✅ Prompt type specified, proceeding to writing interface');
+          // User has already made their choice, proceed to writing
+          setModalInitialized(true);
+          if (onPopupCompleted) {
+            onPopupCompleted();
+          }
+        } else {
+          console.log('❓ No prompt type, showing prompt options modal');
+          setShowPromptOptionsModal(true);
+        }
+      } else if (!textType && !savedWritingType) {
+        // No writing type selected, show writing type modal
+        console.log('❓ No writing type selected, showing writing type modal');
+        setShowWritingTypeModal(true);
+      } else {
+        // Writing type is available, mark as initialized
+        console.log('✅ Writing type available, marking as initialized');
+        setModalInitialized(true);
+        if (onPopupCompleted) {
+          onPopupCompleted();
+        }
+      }
+      
+      setModalInitialized(true);
     }
-  }, [textType, selectedWritingType, onChange, onTextTypeChange]);
+  }, [textType, selectedWritingType, onChange, onTextTypeChange, onPopupCompleted, modalInitialized, content]);
 
   useEffect(() => {
     if (prompt) {
@@ -94,12 +148,14 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
     }
   }, [prompt, onTimerStart]);
 
-  // Load saved prompt from localStorage
+  // ENHANCED: Load saved prompt from localStorage with better error handling
   useEffect(() => {
-    if (selectedWritingType || textType) {
-      const currentTextType = textType || selectedWritingType;
+    const currentTextType = textType || selectedWritingType;
+    if (currentTextType) {
+      console.log('🔍 Looking for saved prompt for type:', currentTextType);
       const savedPrompt = localStorage.getItem(`${currentTextType}_prompt`);
-      if (savedPrompt) {
+      if (savedPrompt && savedPrompt !== prompt) {
+        console.log('📝 Loading saved prompt:', savedPrompt.substring(0, 100) + '...');
         setPrompt(savedPrompt);
         // Pass the loaded prompt to parent
         if (onPromptGenerated) {
@@ -107,7 +163,7 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
         }
       }
     }
-  }, [selectedWritingType, textType, onPromptGenerated]);
+  }, [selectedWritingType, textType, onPromptGenerated, prompt]);
 
   // Pass prompt to parent whenever it changes
   useEffect(() => {
@@ -116,14 +172,90 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
     }
   }, [prompt, onPromptGenerated]);
 
-  // Persist content and selectedWritingType to localStorage
+  // ENHANCED: Persist content and selectedWritingType to localStorage with debouncing
   useEffect(() => {
-    localStorage.setItem('writingContent', content);
+    const timeoutId = setTimeout(() => {
+      if (content !== localStorage.getItem('writingContent')) {
+        localStorage.setItem('writingContent', content);
+        console.log('💾 Content saved to localStorage');
+      }
+    }, 500); // Debounce saves
+
+    return () => clearTimeout(timeoutId);
   }, [content]);
 
   useEffect(() => {
-    localStorage.setItem('selectedWritingType', selectedWritingType);
+    if (selectedWritingType && selectedWritingType !== localStorage.getItem('selectedWritingType')) {
+      localStorage.setItem('selectedWritingType', selectedWritingType);
+      console.log('💾 Writing type saved to localStorage:', selectedWritingType);
+    }
   }, [selectedWritingType]);
+
+  // ENHANCED: Handle writing type selection from modal
+  const handleWritingTypeSelect = (type: string) => {
+    console.log('📝 Writing type selected:', type);
+    setSelectedWritingType(type);
+    localStorage.setItem('selectedWritingType', type);
+    setShowWritingTypeModal(false);
+    setShowPromptOptionsModal(true);
+    
+    if (onTextTypeChange) {
+      onTextTypeChange(type);
+    }
+  };
+
+  // ENHANCED: Handle prompt generation
+  const handleGeneratePrompt = async () => {
+    console.log('🎯 Generating prompt for:', selectedWritingType);
+    setShowPromptOptionsModal(false);
+    setIsGenerating(true);
+    
+    try {
+      const generatedPrompt = await generatePrompt(selectedWritingType);
+      console.log('✅ Prompt generated:', generatedPrompt.substring(0, 100) + '...');
+      setPrompt(generatedPrompt);
+      localStorage.setItem(`${selectedWritingType}_prompt`, generatedPrompt);
+      
+      if (onPromptGenerated) {
+        onPromptGenerated(generatedPrompt);
+      }
+      
+      if (onPopupCompleted) {
+        onPopupCompleted();
+      }
+    } catch (error) {
+      console.error('❌ Error generating prompt:', error);
+      // Fallback to a default prompt
+      const fallbackPrompt = `Write a ${selectedWritingType} piece that showcases your creativity and writing skills.`;
+      setPrompt(fallbackPrompt);
+      localStorage.setItem(`${selectedWritingType}_prompt`, fallbackPrompt);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  // ENHANCED: Handle custom prompt
+  const handleCustomPrompt = () => {
+    console.log('✏️ Using custom prompt for:', selectedWritingType);
+    setShowPromptOptionsModal(false);
+    setShowCustomPromptModal(true);
+  };
+
+  // ENHANCED: Handle custom prompt submission
+  const handleCustomPromptSubmit = (customPrompt: string) => {
+    console.log('✅ Custom prompt submitted:', customPrompt.substring(0, 100) + '...');
+    setPrompt(customPrompt);
+    localStorage.setItem(`${selectedWritingType}_prompt`, customPrompt);
+    setShowCustomPromptModal(false);
+    
+    if (onPromptGenerated) {
+      onPromptGenerated(customPrompt);
+    }
+    
+    if (onPopupCompleted) {
+      onPopupCompleted();
+    }
+  };
 
   const analyzeText = useCallback((text: string) => {
     const newIssues: WritingIssue[] = [];
@@ -148,31 +280,13 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
 
     // Grammar patterns (only incorrect grammar)
     const grammarPatterns = {
-      'i am': 'I am',
-      'i have': 'I have',
-      'i will': 'I will',
-      'i was': 'I was'
-    };
-
-    // Vocabulary improvements with multiple suggestions
-    const vocabularyPatterns = {
-      'good': 'excellent, outstanding, remarkable',
-      'bad': 'poor, inadequate, unsatisfactory',
-      'said': 'exclaimed, declared, announced',
-      'nice': 'pleasant, delightful, charming',
-      'big': 'enormous, massive, substantial',
-      'small': 'tiny, minute, compact',
-      'happy': 'joyful, delighted, cheerful',
-      'sad': 'unhappy, gloomy, melancholy',
-      'walk': 'stroll, amble, wander',
-      'run': 'dash, sprint, race',
-      'look': 'gaze, stare, observe',
-      'went': 'traveled, journeyed, ventured',
-      'saw': 'noticed, observed, spotted',
-      'got': 'received, obtained, acquired',
-      'make': 'create, produce, construct',
-      'think': 'believe, consider, ponder',
-      'started': 'began, commenced, initiated'
+      'was ran': 'was run',
+      'have went': 'have gone',
+      'should of': 'should have',
+      'could of': 'could have',
+      'would of': 'would have',
+      'me and': 'I and',
+      'between you and I': 'between you and me'
     };
 
     // Check spelling
@@ -182,9 +296,9 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
       while ((match = regex.exec(text)) !== null) {
         newIssues.push({
           start: match.index,
-          end: match.index + incorrect.length,
+          end: match.index + match[0].length,
           type: 'spelling',
-          message: `This word is misspelled. The correct spelling is "${correct}".`,
+          message: `"${match[0]}" might be misspelled`,
           suggestion: correct
         });
       }
@@ -197,25 +311,10 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
       while ((match = regex.exec(text)) !== null) {
         newIssues.push({
           start: match.index,
-          end: match.index + incorrect.length,
+          end: match.index + match[0].length,
           type: 'grammar',
-          message: `This needs proper capitalization.`,
+          message: `Grammar issue: "${match[0]}"`,
           suggestion: correct
-        });
-      }
-    });
-
-    // Check vocabulary
-    Object.entries(vocabularyPatterns).forEach(([basic, improvements]) => {
-      const regex = new RegExp(`\\b${basic}\\b`, 'gi');
-      let match;
-      while ((match = regex.exec(text)) !== null) {
-        newIssues.push({
-          start: match.index,
-          end: match.index + basic.length,
-          type: 'vocabulary',
-          message: `Consider using a more descriptive word instead of "${basic}".`,
-          suggestion: improvements.split(', ')[0] // Use first suggestion as primary
         });
       }
     });
@@ -224,384 +323,207 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
   }, []);
 
   useEffect(() => {
-    if (content) {
+    if (content.length > 0) {
       const timeoutId = setTimeout(() => {
         analyzeText(content);
       }, 1000);
       return () => clearTimeout(timeoutId);
+    } else {
+      setIssues([]);
     }
   }, [content, analyzeText]);
 
-  const saveContent = useCallback(async () => {
-    if (!content.trim() || isSaving) return;
+  const handleTextClick = (event: React.MouseEvent<HTMLTextAreaElement>) => {
+    const textarea = event.currentTarget;
+    const clickPosition = textarea.selectionStart;
     
-    setIsSaving(true);
-    try {
-      await dbOperations.saveWriting({
-        content,
-        textType: textType || selectedWritingType,
-        prompt,
-        wordCount: countWords(content),
-        createdAt: new Date()
-      });
-      setLastSaved(new Date());
-    } catch (error) {
-      console.error('Failed to save content:', error);
-    } finally {
-      setIsSaving(false);
-    }
-  }, [content, textType, selectedWritingType, prompt, isSaving]);
-
-  useEffect(() => {
-    const interval = setInterval(saveContent, 30000);
-    return () => clearInterval(interval);
-  }, [saveContent]);
-
-  const countWords = (text: string): number => {
-    return text.trim().split(/\s+/).filter(word => word.length > 0).length;
-  };
-
-  const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    onChange(e.target.value);
-  };
-
-  const handleTextareaClick = (e: React.MouseEvent<HTMLTextAreaElement>) => {
-    const textarea = e.currentTarget;
-    const rect = textarea.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    
-    const clickedIssue = issues.find(issue => {
-      const start = getTextPosition(textarea, issue.start);
-      const end = getTextPosition(textarea, issue.end);
-      return x >= start.x && x <= end.x && y >= start.y && y <= end.y;
-    });
+    const clickedIssue = issues.find(issue => 
+      clickPosition >= issue.start && clickPosition <= issue.end
+    );
     
     if (clickedIssue) {
-      const containerRect = containerRef.current?.getBoundingClientRect();
-      if (containerRect) {
-        let popupX = x;
-        let popupY = y + 20;
-
-        const maxX = containerRect.width - 300;
-        if (popupX > maxX) popupX = maxX;
-        if (popupX < 0) popupX = 0;
-
-        const maxY = containerRect.height - 200;
-        if (popupY > maxY) popupY = y - 220;
-
-        setPopupPosition({ x: popupX, y: popupY });
-        setSelectedIssue(clickedIssue);
-        setSuggestions([]);
-      }
+      setSelectedIssue(clickedIssue);
+      const rect = textarea.getBoundingClientRect();
+      setPopupPosition({
+        x: event.clientX - rect.left,
+        y: event.clientY - rect.top
+      });
+    } else {
+      setSelectedIssue(null);
     }
   };
 
-  const getTextPosition = (textarea: HTMLTextAreaElement, index: number) => {
-    const text = textarea.value;
-    const lines = text.substring(0, index).split('\n');
-    const lineHeight = 24;
-    const charWidth = 8;
-    
-    return {
-      x: lines[lines.length - 1].length * charWidth,
-      y: (lines.length - 1) * lineHeight
-    };
-  };
-
-  const handleApplySuggestion = (suggestion: string, start: number, end: number) => {
-    const newContent = content.slice(0, start) + suggestion + content.slice(end);
-    onChange(newContent);
-    setSelectedIssue(null);
-    setSuggestions([]);
-  };
-
-  const handleParaphrase = async () => {
+  const applySuggestion = (suggestion: string) => {
     if (selectedIssue) {
-      setIsLoadingSuggestions(true);
-      try {
-        const text = content.slice(selectedIssue.start, selectedIssue.end);
-        const alternatives = await rephraseSentence(text);
-        setSuggestions(alternatives.split(',').map(s => s.trim()));
-      } catch (error) {
-        console.error('Error getting alternatives:', error);
-      } finally {
-        setIsLoadingSuggestions(false);
-      }
+      const newContent = 
+        content.substring(0, selectedIssue.start) + 
+        suggestion + 
+        content.substring(selectedIssue.end);
+      onChange(newContent);
+      setSelectedIssue(null);
     }
   };
 
-  const handleThesaurus = async () => {
-    if (selectedIssue) {
-      setIsLoadingSuggestions(true);
-      try {
-        const word = content.slice(selectedIssue.start, selectedIssue.end).toLowerCase();
-        const synonyms = await getSynonyms(word);
-        setSuggestions(synonyms);
-      } catch (error) {
-        console.error('Error getting synonyms:', error);
-      } finally {
-        setIsLoadingSuggestions(false);
-      }
+  const getSynonymSuggestions = async (word: string) => {
+    setIsLoadingSuggestions(true);
+    try {
+      const synonyms = await getSynonyms(word);
+      setSuggestions(synonyms);
+    } catch (error) {
+      console.error('Error getting synonyms:', error);
+      setSuggestions([]);
+    } finally {
+      setIsLoadingSuggestions(false);
     }
   };
 
-  const renderHighlightedText = () => {
-    if (!showHighlights || !content) return null;
+  const renderTextWithHighlights = () => {
+    if (!showHighlights || issues.length === 0) {
+      return content;
+    }
 
+    let result = '';
     let lastIndex = 0;
-    const elements: React.ReactNode[] = [];
 
-    // Sort issues by start position
-    const sortedIssues = [...issues].sort((a, b) => a.start - b.start);
-
-    sortedIssues.forEach((issue, index) => {
-      // Add text before the issue
-      if (issue.start > lastIndex) {
-        elements.push(
-          <span key={`text-${index}`}>
-            {content.slice(lastIndex, issue.start)}
-          </span>
-        );
-      }
-
-      // Add the highlighted issue
-      const issueText = content.slice(issue.start, issue.end);
-      elements.push(
-        <span
-          key={`issue-${index}`}
-          className={`writing-highlight writing-highlight-${issue.type}`}
-          data-issue-type={issue.type}
-          data-message={issue.message}
-          data-suggestion={issue.suggestion}
-        >
-          {issueText}
-        </span>
-      );
-
+    issues.forEach((issue, index) => {
+      result += content.substring(lastIndex, issue.start);
+      
+      const issueText = content.substring(issue.start, issue.end);
+      const colorClass = {
+        spelling: 'bg-red-200',
+        grammar: 'bg-yellow-200',
+        vocabulary: 'bg-blue-200',
+        structure: 'bg-green-200',
+        style: 'bg-purple-200'
+      }[issue.type];
+      
+      result += `<span class="${colorClass} cursor-pointer" data-issue-index="${index}">${issueText}</span>`;
       lastIndex = issue.end;
     });
 
-    // Add remaining text
-    if (lastIndex < content.length) {
-      elements.push(
-        <span key="text-end">
-          {content.slice(lastIndex)}
-        </span>
-      );
-    }
-
-    return elements;
-  };
-
-  // Handle writing type selection
-  const handleWritingTypeSelect = (type: string) => {
-    setSelectedWritingType(type);
-    localStorage.setItem('selectedWritingType', type);
-    
-    // Close the writing type modal and show prompt options modal
-    setShowWritingTypeModal(false);
-    
-    // Add a small delay to ensure smooth transition
-    setTimeout(() => {
-      setShowPromptOptionsModal(true);
-    }, 100);
-    
-    // Call the callback to update parent component
-    if (onTextTypeChange) {
-      onTextTypeChange(type);
-    }
-  };
-
-  // Handle prompt generation
-  const handleGeneratePrompt = async () => {
-    setShowPromptOptionsModal(false);
-    setIsGenerating(true);
-    
-    // Use the current text type (either from props or local state)
-    const currentTextType = textType || selectedWritingType;
-    const newPrompt = await generatePrompt(currentTextType);
-    
-    if (newPrompt) {
-      setPrompt(newPrompt);
-      
-      // Save prompt to localStorage using the current text type
-      if (currentTextType) {
-        localStorage.setItem(`${currentTextType}_prompt`, newPrompt);
-      }
-      
-      // Pass the generated prompt to parent immediately
-      if (onPromptGenerated) {
-        onPromptGenerated(newPrompt);
-      }
-    }
-    setIsGenerating(false);
-    
-    // Call the callback to indicate popup flow is completed
-    if (onPopupCompleted) {
-      onPopupCompleted();
-    }
-  };
-
-  // Handle custom prompt option
-  const handleCustomPromptOption = () => {
-    setShowPromptOptionsModal(false);
-    setShowCustomPromptModal(true);
-  };
-
-  // Handle custom prompt submission
-  const handleCustomPromptSubmit = (customPrompt: string) => {
-    setPrompt(customPrompt);
-    
-    // Use the current text type (either from props or local state)
-    const currentTextType = textType || selectedWritingType;
-    
-    // Save prompt to localStorage using the current text type
-    if (currentTextType) {
-      localStorage.setItem(`${currentTextType}_prompt`, customPrompt);
-    }
-    
-    // Pass the custom prompt to parent immediately
-    if (onPromptGenerated) {
-      onPromptGenerated(customPrompt);
-    }
-    
-    setShowCustomPromptModal(false);
-    
-    // Call the callback to indicate popup flow is completed
-    if (onPopupCompleted) {
-      onPopupCompleted();
-    }
-  };
-
-  const handleEvaluateEssay = () => {
-    setShowEvaluationModal(true);
+    result += content.substring(lastIndex);
+    return result;
   };
 
   const renderWritingTemplate = () => {
-    const currentTextType = textType || selectedWritingType;
+    const currentType = textType || selectedWritingType;
     
-    switch (currentTextType) {
+    if (!currentType || !prompt) {
+      return null;
+    }
+
+    const templateProps = {
+      content,
+      onChange,
+      prompt,
+      onSubmit
+    };
+
+    switch (currentType.toLowerCase()) {
       case 'narrative':
-        return <NarrativeWritingTemplateRedesigned 
-          content={content}
-          onChange={onChange}
-          onTimerStart={onTimerStart}
-          onSubmit={onSubmit}
-        />;
+        return <NarrativeWritingTemplateRedesigned {...templateProps} />;
       case 'persuasive':
-        return <PersuasiveWritingTemplate 
-          content={content}
-          onChange={onChange}
-          onTimerStart={onTimerStart}
-          onSubmit={onSubmit}
-        />;
+        return <PersuasiveWritingTemplate {...templateProps} />;
       case 'expository':
-        return <ExpositoryWritingTemplate 
-          content={content}
-          onChange={onChange}
-          onTimerStart={onTimerStart}
-          onSubmit={onSubmit}
-        />;
+        return <ExpositoryWritingTemplate {...templateProps} />;
       case 'reflective':
-        return <ReflectiveWritingTemplate 
-          content={content}
-          onChange={onChange}
-          onTimerStart={onTimerStart}
-          onSubmit={onSubmit}
-        />;
+        return <ReflectiveWritingTemplate {...templateProps} />;
       case 'descriptive':
-        return <DescriptiveWritingTemplate 
-          content={content}
-          onChange={onChange}
-          onTimerStart={onTimerStart}
-          onSubmit={onSubmit}
-        />;
+        return <DescriptiveWritingTemplate {...templateProps} />;
       case 'recount':
-        return <RecountWritingTemplate 
-          content={content}
-          onChange={onChange}
-          onTimerStart={onTimerStart}
-          onSubmit={onSubmit}
-        />;
+        return <RecountWritingTemplate {...templateProps} />;
       case 'discursive':
-        return <DiscursiveWritingTemplate 
-          content={content}
-          onChange={onChange}
-          onTimerStart={onTimerStart}
-          onSubmit={onSubmit}
-        />;
+        return <DiscursiveWritingTemplate {...templateProps} />;
       case 'news report':
-        return <NewsReportWritingTemplate 
-          content={content}
-          onChange={onChange}
-          onTimerStart={onTimerStart}
-          onSubmit={onSubmit}
-        />;
+        return <NewsReportWritingTemplate {...templateProps} />;
       case 'letter':
-        return <LetterWritingTemplate 
-          content={content}
-          onChange={onChange}
-          onTimerStart={onTimerStart}
-          onSubmit={onSubmit}
-        />;
+        return <LetterWritingTemplate {...templateProps} />;
       case 'diary entry':
-        return <DiaryWritingTemplate 
-          content={content}
-          onChange={onChange}
-          onTimerStart={onTimerStart}
-          onSubmit={onSubmit}
-        />;
+        return <DiaryWritingTemplate {...templateProps} />;
       case 'speech':
-        return <SpeechWritingTemplate 
-          content={content}
-          onChange={onChange}
-          onTimerStart={onTimerStart}
-          onSubmit={onSubmit}
-        />;
+        return <SpeechWritingTemplate {...templateProps} />;
       default:
-        return null;
+        return (
+          <div className="writing-template-container bg-white rounded-lg shadow-lg p-6">
+            <div className="mb-4">
+              <h3 className="text-lg font-semibold text-gray-800 mb-2">
+                {currentType} Writing
+              </h3>
+              <div className="bg-blue-50 border-l-4 border-blue-400 p-4 rounded">
+                <p className="text-blue-800 font-medium">{prompt}</p>
+              </div>
+            </div>
+            
+            <div className="relative">
+              <textarea
+                ref={textareaRef}
+                value={content}
+                onChange={(e) => onChange(e.target.value)}
+                onClick={handleTextClick}
+                placeholder={`Start writing your ${currentType} here...`}
+                className="w-full h-96 p-4 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+              
+              {selectedIssue && (
+                <InlineSuggestionPopup
+                  issue={selectedIssue}
+                  position={popupPosition}
+                  onApplySuggestion={applySuggestion}
+                  onClose={() => setSelectedIssue(null)}
+                  onGetSynonyms={getSynonymSuggestions}
+                  suggestions={suggestions}
+                  isLoadingSuggestions={isLoadingSuggestions}
+                />
+              )}
+            </div>
+            
+            <WritingStatusBar
+              wordCount={content.trim().split(/\s+/).filter(word => word.length > 0).length}
+              characterCount={content.length}
+              issuesCount={issues.length}
+              showHighlights={showHighlights}
+              onToggleHighlights={() => setShowHighlights(!showHighlights)}
+              lastSaved={lastSaved}
+              isSaving={isSaving}
+            />
+          </div>
+        );
     }
   };
 
-  const currentTextType = textType || selectedWritingType;
+  // ENHANCED: Show loading state while initializing
+  if (!modalInitialized && !showWritingTypeModal && !showPromptOptionsModal) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Setting up your writing space...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div ref={containerRef} className="writing-area-container h-full flex flex-col p-0 m-0">
-      {/* FIXED: Writing Template Section with Scrolling - Takes remaining space but allows submit button to be visible */}
-      {currentTextType && (
-        <div className="writing-template-section flex-1 overflow-y-auto min-h-0">
+    <div className="writing-area-container relative">
+      {/* Show template if everything is ready */}
+      {modalInitialized && (textType || selectedWritingType) && (
+        <div className="writing-template-wrapper">
           {renderWritingTemplate()}
         </div>
       )}
 
-      {/* FIXED: Status Bar - Always visible at bottom */}
-      <div className="status-section py-1 px-2 flex-shrink-0 bg-white border-t border-gray-200">
-        <WritingStatusBar
-          content={content}
-          textType={currentTextType}
-        />
-      </div>
-
-      {/* FIXED: Submit Button - Always visible at bottom */}
-      <div className="submit-section pt-2 px-2 pb-2 flex-shrink-0 bg-white">
-        <div className="flex justify-center">
-          <button
-            onClick={handleEvaluateEssay}
-            disabled={countWords(content) < 50}
-            className="px-6 py-2 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 disabled:from-gray-400 disabled:to-gray-500 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 disabled:transform-none disabled:cursor-not-allowed flex items-center gap-2"
-            title={countWords(content) < 50 ? 'Write at least 50 words to submit for evaluation' : 'Submit your essay for detailed evaluation'}
-          >
-            <Send className="w-4 h-4" />
-            Submit for Evaluation
-            <span className="text-xs opacity-80 bg-white/20 px-2 py-0.5 rounded-full">
-              {countWords(content)} words
-            </span>
-          </button>
+      {/* Show generating state */}
+      {isGenerating && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-8 text-center">
+            <Sparkles className="h-12 w-12 text-blue-600 mx-auto mb-4 animate-spin" />
+            <h3 className="text-xl font-semibold mb-2">Creating your prompt...</h3>
+            <p className="text-gray-600">This will just take a moment!</p>
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* Popup Modals */}
+      {/* MODAL COMPONENTS */}
       <WritingTypeSelectionModal
         isOpen={showWritingTypeModal}
         onClose={() => setShowWritingTypeModal(false)}
@@ -612,7 +534,7 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
         isOpen={showPromptOptionsModal}
         onClose={() => setShowPromptOptionsModal(false)}
         onGeneratePrompt={handleGeneratePrompt}
-        onCustomPrompt={handleCustomPromptOption}
+        onCustomPrompt={handleCustomPrompt}
         textType={selectedWritingType}
       />
 
@@ -627,7 +549,7 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
         isOpen={showEvaluationModal}
         onClose={() => setShowEvaluationModal(false)}
         content={content}
-        textType={currentTextType}
+        textType={textType || selectedWritingType}
       />
     </div>
   );
