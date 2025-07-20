@@ -18,6 +18,17 @@ export function PromptOptionsModal({
 }: PromptOptionsModalProps) {
   if (!isOpen) return null;
 
+  // FIXED: Ensure navigation happens when buttons are clicked
+  const handleGeneratePrompt = () => {
+    console.log('🎯 PromptOptionsModal: Generate prompt clicked for:', textType);
+    onGeneratePrompt();
+  };
+
+  const handleCustomPrompt = () => {
+    console.log('✏️ PromptOptionsModal: Custom prompt clicked for:', textType);
+    onCustomPrompt();
+  };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
       <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl max-w-md w-full border-4 border-blue-300 dark:border-blue-700">
@@ -47,7 +58,7 @@ export function PromptOptionsModal({
           
           <div className="space-y-6">
             <button
-              onClick={onGeneratePrompt}
+              onClick={handleGeneratePrompt}
               className="w-full flex items-center p-6 border-4 border-purple-200 dark:border-purple-800 rounded-2xl hover:border-purple-400 dark:hover:border-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/30 transition-all duration-300 text-left group transform hover:scale-105 hover:shadow-xl"
             >
               <div className="flex-shrink-0 mr-6">
@@ -66,7 +77,7 @@ export function PromptOptionsModal({
             </button>
 
             <button
-              onClick={onCustomPrompt}
+              onClick={handleCustomPrompt}
               className="w-full flex items-center p-6 border-4 border-blue-200 dark:border-blue-800 rounded-2xl hover:border-blue-400 dark:hover:border-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-all duration-300 text-left group transform hover:scale-105 hover:shadow-xl"
             >
               <div className="flex-shrink-0 mr-6">
