@@ -1,4 +1,4 @@
-// COMPLETE Dashboard.tsx - Replace your entire Dashboard.tsx file with this code
+// FIXED Dashboard.tsx - Complete replacement with robust navigation
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -191,13 +191,13 @@ export function Dashboard({ user: propUser, emailVerified: propEmailVerified, pa
     }
   };
 
-  // UPDATED: Show modal instead of direct navigation
+  // FIXED: Show modal instead of direct navigation
   const handleStartWriting = () => {
     console.log('🚀 Dashboard: Opening writing type selection modal...');
     setShowWritingTypeModal(true);
   };
 
-  // NEW: Handle writing type selection
+  // FIXED: Handle writing type selection
   const handleWritingTypeSelect = (type: string) => {
     console.log('📝 Selected writing type:', type);
     setSelectedWritingType(type);
@@ -211,17 +211,26 @@ export function Dashboard({ user: propUser, emailVerified: propEmailVerified, pa
     console.log('🎯 Generating prompt for:', selectedWritingType);
     setShowPromptOptionsModal(false);
     
-    // Store the writing type in localStorage for the writing page
+    // Store the writing type and prompt type in localStorage for the writing page
     localStorage.setItem('selectedWritingType', selectedWritingType);
     localStorage.setItem('promptType', 'generated');
+    localStorage.setItem('navigationSource', 'dashboard');
     
-    // Navigate to writing page
+    // Clear any existing content to ensure fresh start
+    localStorage.removeItem('writingContent');
+    
+    // Navigate to writing page with multiple fallback methods
+    console.log('📍 Attempting navigation to writing page...');
+    
     if (onNavigate) {
-      console.log('📍 Navigating via onNavigate to writing page');
+      console.log('📍 Using onNavigate callback');
       onNavigate('writing');
-    } else {
-      console.log('📍 Navigating via navigate to /writing');
+    } else if (navigate) {
+      console.log('📍 Using React Router navigate');
       navigate('/writing');
+    } else {
+      console.log('📍 Using window.location fallback');
+      window.location.href = '/writing';
     }
   };
 
@@ -230,17 +239,26 @@ export function Dashboard({ user: propUser, emailVerified: propEmailVerified, pa
     console.log('✏️ Using custom prompt for:', selectedWritingType);
     setShowPromptOptionsModal(false);
     
-    // Store the writing type in localStorage for the writing page
+    // Store the writing type and prompt type in localStorage for the writing page
     localStorage.setItem('selectedWritingType', selectedWritingType);
     localStorage.setItem('promptType', 'custom');
+    localStorage.setItem('navigationSource', 'dashboard');
     
-    // Navigate to writing page
+    // Clear any existing content to ensure fresh start
+    localStorage.removeItem('writingContent');
+    
+    // Navigate to writing page with multiple fallback methods
+    console.log('📍 Attempting navigation to writing page...');
+    
     if (onNavigate) {
-      console.log('📍 Navigating via onNavigate to writing page');
+      console.log('📍 Using onNavigate callback');
       onNavigate('writing');
-    } else {
-      console.log('📍 Navigating via navigate to /writing');
+    } else if (navigate) {
+      console.log('📍 Using React Router navigate');
       navigate('/writing');
+    } else {
+      console.log('📍 Using window.location fallback');
+      window.location.href = '/writing';
     }
   };
 
