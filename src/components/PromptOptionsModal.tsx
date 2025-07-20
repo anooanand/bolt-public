@@ -1,3 +1,5 @@
+// FIXED PromptOptionsModal.tsx - Ensures proper navigation after prompt selection
+
 import React from 'react';
 import { X, Sparkles, Edit3, Wand, Star, Zap } from 'lucide-react';
 
@@ -18,15 +20,37 @@ export function PromptOptionsModal({
 }: PromptOptionsModalProps) {
   if (!isOpen) return null;
 
-  // FIXED: Ensure navigation happens when buttons are clicked
-  const handleGeneratePrompt = () => {
+  // FIXED: Ensure navigation happens when buttons are clicked with proper event handling
+  const handleGeneratePrompt = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     console.log('🎯 PromptOptionsModal: Generate prompt clicked for:', textType);
+    
+    // Store additional navigation context
+    localStorage.setItem('modalAction', 'generate');
+    localStorage.setItem('modalTimestamp', Date.now().toString());
+    
+    // Call the parent handler which should trigger navigation
     onGeneratePrompt();
   };
 
-  const handleCustomPrompt = () => {
+  const handleCustomPrompt = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     console.log('✏️ PromptOptionsModal: Custom prompt clicked for:', textType);
+    
+    // Store additional navigation context
+    localStorage.setItem('modalAction', 'custom');
+    localStorage.setItem('modalTimestamp', Date.now().toString());
+    
+    // Call the parent handler which should trigger navigation
     onCustomPrompt();
+  };
+
+  const handleClose = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onClose();
   };
 
   return (
@@ -42,12 +66,12 @@ export function PromptOptionsModal({
                 Choose Your Prompt
               </h2>
             </div>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors bg-white dark:bg-gray-700 p-2 rounded-full shadow-md hover:shadow-lg transform hover:scale-110 transition-all duration-300"
-          >
-            <X className="w-6 h-6" />
-          </button>
+            <button
+              onClick={handleClose}
+              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors bg-white dark:bg-gray-700 p-2 rounded-full shadow-md hover:shadow-lg transform hover:scale-110 transition-all duration-300"
+            >
+              <X className="w-6 h-6" />
+            </button>
           </div>
         </div>
         
@@ -103,6 +127,12 @@ export function PromptOptionsModal({
                 A good prompt will help you write an amazing {textType} story! Choose one that sounds fun to write about.
               </p>
             </div>
+          </div>
+          
+          {/* DEBUG INFO - Remove in production */}
+          <div className="mt-4 p-3 bg-gray-100 dark:bg-gray-700 rounded-lg text-xs text-gray-600 dark:text-gray-400">
+            <p>Debug: Text Type = {textType}</p>
+            <p>Navigation Source: {localStorage.getItem('navigationSource') || 'unknown'}</p>
           </div>
         </div>
       </div>
