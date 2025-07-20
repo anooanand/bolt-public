@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  Save, 
-  Download, 
-  FileText, 
-  BarChart3, 
+import {
+  Save,
+  Download,
+  FileText,
+  BarChart3,
   RefreshCw,
   Clock,
   Target,
@@ -13,11 +13,13 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { WritingTypeSelectionModal } from './WritingTypeSelectionModal';
-import { EnhancedNSWCriteriaTracker } from './EnhancedNSWCriteriaTracker'; // Import the new component
-import { getNSWSelectiveFeedback } from '../lib/openai'; // Import the new function
+import { PromptOptionsModal } from './PromptOptionsModal'; // ADD THIS IMPORT
+import { EnhancedNSWCriteriaTracker } from './EnhancedNSWCriteriaTracker';
+import { getNSWSelectiveFeedback } from '../lib/openai';
 import { TextHighlighter } from './TextHighlighter';
 import { VocabularyBuilder } from './VocabularyBuilder';
 import { SentenceAnalyzer } from './SentenceAnalyzer';
+
 interface WritingStudioProps {
   onNavigate: (page: string) => void;
 }
@@ -44,6 +46,11 @@ export const WritingStudio: React.FC<WritingStudioProps> = ({ onNavigate }) => {
   const [showAnalysis, setShowAnalysis] = useState<boolean>(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [showWritingTypeModal, setShowWritingTypeModal] = useState<boolean>(false);
+  
+  // ADD THIS STATE FOR PROMPT OPTIONS MODAL
+  const [showPromptOptionsModal, setShowPromptOptionsModal] = useState<boolean>(false);
+  const [selectedWritingType, setSelectedWritingType] = useState<string>(''); // To store the selected writing type
+
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const [stats, setStats] = useState<WritingStats>({
@@ -60,10 +67,8 @@ export const WritingStudio: React.FC<WritingStudioProps> = ({ onNavigate }) => {
     suggestions: []
   });
 
-  // New state for NSW Selective Feedback
   const [nswFeedback, setNswFeedback] = useState<any>(null);
 
-  // Calculate writing statistics
   useEffect(() => {
     const words = content.trim().split(/\s+/).filter(word => word.length > 0);
     const paragraphs = content.split('\n\n').filter(p => p.trim().length > 0);
@@ -72,11 +77,10 @@ export const WritingStudio: React.FC<WritingStudioProps> = ({ onNavigate }) => {
       wordCount: words.length,
       characterCount: content.length,
       paragraphCount: paragraphs.length,
-      readingTime: Math.ceil(words.length / 200) // Average reading speed
+      readingTime: Math.ceil(words.length / 200)
     });
   }, [content]);
 
-  // Auto-save functionality
   useEffect(() => {
     if (content.length > 0) {
       const timer = setTimeout(() => {
@@ -87,7 +91,6 @@ export const WritingStudio: React.FC<WritingStudioProps> = ({ onNavigate }) => {
   }, [content, title]);
 
   const handleSave = () => {
-    // Simulate saving to localStorage or database
     const document = {
       id: Date.now().toString(),
       title,
@@ -105,7 +108,7 @@ export const WritingStudio: React.FC<WritingStudioProps> = ({ onNavigate }) => {
       savedDocs.unshift(document);
     }
     
-    localStorage.setItem('savedDocuments', JSON.stringify(savedDocs.slice(0, 10))); // Keep last 10
+    localStorage.setItem('savedDocuments', JSON.stringify(savedDocs.slice(0, 10)));
     setLastSaved(new Date());
   };
 
@@ -116,13 +119,12 @@ export const WritingStudio: React.FC<WritingStudioProps> = ({ onNavigate }) => {
     }
 
     setIsAnalyzing(true);
-    setNswFeedback(null); // Clear previous NSW feedback
+    setNswFeedback(null);
     
-    // Call the new NSW Selective Feedback function
     try {
       const feedback = await getNSWSelectiveFeedback(
         content, 
-        'narrative', // Assuming 'narrative' for now, you might need to make this dynamic
+        'narrative',
         'medium', 
         []
       );
@@ -130,9 +132,8 @@ export const WritingStudio: React.FC<WritingStudioProps> = ({ onNavigate }) => {
       setShowAnalysis(true);
     } catch (error) {
       console.error('Error getting NSW Selective feedback:', error);
-      // Fallback to mock AI analysis if NSW feedback fails
       const mockAnalysis: AIAnalysis = {
-        score: Math.floor(Math.random() * 20) + 80, // 80-100
+        score: Math.floor(Math.random() * 20) + 80,
         strengths: [
           'Clear thesis statement',
           'Good use of evidence',
@@ -171,32 +172,47 @@ export const WritingStudio: React.FC<WritingStudioProps> = ({ onNavigate }) => {
   };
 
   const handleStartNewEssay = () => {
-    // Clear content and title
     setContent('');
     setTitle('Untitled Document');
     setShowAnalysis(false);
     setLastSaved(null);
-    setNswFeedback(null); // Clear NSW feedback
+    setNswFeedback(null);
     
-    // Clear localStorage
     localStorage.removeItem('writingContent');
     localStorage.removeItem('selectedWritingType');
     
-    // Show writing type selection modal
     setShowWritingTypeModal(true);
   };
 
+  // MODIFY THIS FUNCTION
   const handleWritingTypeSelect = (type: string) => {
-    // Store the selected writing type in localStorage
-    localStorage.setItem('selectedWritingType', type);
-    setShowWritingTypeModal(false);
-    
-    // Focus on the textarea after selection
-    setTimeout(() => {
-      if (textareaRef.current) {
-        textareaRef.current.focus();
-      }
-    }, 100);
+    setSelectedWritingType(type); // Store the selected type
+    setShowWritingTypeModal(false); // Close the writing type modal
+    setShowPromptOptionsModal(true); // Open the prompt options modal
+  };
+
+  // ADD THESE NEW FUNCTIONS
+  const handleGeneratePrompt = () => {
+    console.log('Generating prompt for:', selectedWritingType);
+    setShowPromptOptionsModal(false);
+    // Here you would typically call an API to generate a prompt based on selectedWritingType
+    // For now, we'll just navigate to the writing area
+    if (onNavigate) {
+      onNavigate('writing');
+    } else {
+      window.location.href = '/writing'; // Fallback for direct navigation
+    }
+  };
+
+  const handleCustomPrompt = () => {
+    console.log('Using custom prompt for:', selectedWritingType);
+    setShowPromptOptionsModal(false);
+    // Here you might open another modal for custom prompt input, or just navigate
+    if (onNavigate) {
+      onNavigate('writing');
+    } else {
+      window.location.href = '/writing'; // Fallback for direct navigation
+    }
   };
 
   const quickActions = [
@@ -495,6 +511,15 @@ export const WritingStudio: React.FC<WritingStudioProps> = ({ onNavigate }) => {
         isOpen={showWritingTypeModal}
         onClose={() => setShowWritingTypeModal(false)}
         onSelectType={handleWritingTypeSelect}
+      />
+
+      {/* ADDED Prompt Options Modal */}
+      <PromptOptionsModal
+        isOpen={showPromptOptionsModal}
+        onClose={() => setShowPromptOptionsModal(false)}
+        onGeneratePrompt={handleGeneratePrompt}
+        onCustomPrompt={handleCustomPrompt}
+        textType={selectedWritingType} // Pass the selected writing type to the modal
       />
     </div>
   );
