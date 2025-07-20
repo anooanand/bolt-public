@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Lightbulb, Type, Save, Settings, Sparkles, ChevronDown, ChevronUp, Users, Target, Star, CheckCircle } from 'lucide-react';
-import { EnhancedWritingEditor } from './EnhancedWritingEditor';
+import { EnhancedWritingEditorWithHighlighting } from './EnhancedWritingEditorWithHighlighting';
+import { getNSWSelectiveFeedback } from '../lib/openai';
 
 interface NarrativeWritingTemplateRedesignedProps {
   content: string;
@@ -72,6 +73,16 @@ export function NarrativeWritingTemplateRedesigned({
 
   const togglePlanning = () => {
     setShowPlanning(!showPlanning);
+  };
+
+  // AI Feedback function for the enhanced editor
+  const handleGetFeedback = async (content: string) => {
+    try {
+      return await getNSWSelectiveFeedback(content, 'narrative', 'detailed', []);
+    } catch (error) {
+      console.error('Error getting NSW Selective feedback:', error);
+      return null;
+    }
   };
 
   return (
@@ -159,14 +170,16 @@ export function NarrativeWritingTemplateRedesigned({
           </div>
         )}
 
-        {/* Main Writing Area - Enhanced with AI Grammar Checking */}
+        {/* Main Writing Area - Enhanced with AI Grammar Checking and Interactive Highlighting */}
         <div className="flex-1 p-6 bg-white">
           <div className="max-w-4xl mx-auto h-full">
-            <EnhancedWritingEditor
+            <EnhancedWritingEditorWithHighlighting
               content={content}
               onChange={onChange}
               placeholder="Start writing your amazing story here! Let your creativity flow and bring your ideas to life... ✨"
               className="w-full h-full"
+              textType="narrative"
+              onGetFeedback={handleGetFeedback}
               style={{ 
                 fontFamily: 'Georgia, serif',
                 minHeight: showPlanning ? '400px' : '500px'
