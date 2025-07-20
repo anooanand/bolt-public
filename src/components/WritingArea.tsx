@@ -490,25 +490,75 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
           onSubmit={onSubmit}
         />;
       case 'persuasive':
-        return <PersuasiveWritingTemplate />;
+        return <PersuasiveWritingTemplate 
+          content={content}
+          onChange={onChange}
+          onTimerStart={onTimerStart}
+          onSubmit={onSubmit}
+        />;
       case 'expository':
-        return <ExpositoryWritingTemplate />;
+        return <ExpositoryWritingTemplate 
+          content={content}
+          onChange={onChange}
+          onTimerStart={onTimerStart}
+          onSubmit={onSubmit}
+        />;
       case 'reflective':
-        return <ReflectiveWritingTemplate />;
+        return <ReflectiveWritingTemplate 
+          content={content}
+          onChange={onChange}
+          onTimerStart={onTimerStart}
+          onSubmit={onSubmit}
+        />;
       case 'descriptive':
-        return <DescriptiveWritingTemplate />;
+        return <DescriptiveWritingTemplate 
+          content={content}
+          onChange={onChange}
+          onTimerStart={onTimerStart}
+          onSubmit={onSubmit}
+        />;
       case 'recount':
-        return <RecountWritingTemplate />;
+        return <RecountWritingTemplate 
+          content={content}
+          onChange={onChange}
+          onTimerStart={onTimerStart}
+          onSubmit={onSubmit}
+        />;
       case 'discursive':
-        return <DiscursiveWritingTemplate />;
+        return <DiscursiveWritingTemplate 
+          content={content}
+          onChange={onChange}
+          onTimerStart={onTimerStart}
+          onSubmit={onSubmit}
+        />;
       case 'news report':
-        return <NewsReportWritingTemplate />;
+        return <NewsReportWritingTemplate 
+          content={content}
+          onChange={onChange}
+          onTimerStart={onTimerStart}
+          onSubmit={onSubmit}
+        />;
       case 'letter':
-        return <LetterWritingTemplate />;
+        return <LetterWritingTemplate 
+          content={content}
+          onChange={onChange}
+          onTimerStart={onTimerStart}
+          onSubmit={onSubmit}
+        />;
       case 'diary entry':
-        return <DiaryWritingTemplate />;
+        return <DiaryWritingTemplate 
+          content={content}
+          onChange={onChange}
+          onTimerStart={onTimerStart}
+          onSubmit={onSubmit}
+        />;
       case 'speech':
-        return <SpeechWritingTemplate />;
+        return <SpeechWritingTemplate 
+          content={content}
+          onChange={onChange}
+          onTimerStart={onTimerStart}
+          onSubmit={onSubmit}
+        />;
       default:
         return null;
     }
