@@ -1,4 +1,4 @@
-// FIXED WritingArea.tsx - Enhanced modal handling and navigation support
+// FIXED WritingArea.tsx - Properly handles the modal sequence: My Space > Write Story > Select Writing Type > Prompt > Writing Area
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { generatePrompt, getSynonyms, rephraseSentence, evaluateEssay } from '../lib/openai';
@@ -58,89 +58,123 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [showHighlights, setShowHighlights] = useState(true);
   
-  // Enhanced state for popup management
+  // FIXED: Modal state management for proper sequence
   const [showWritingTypeModal, setShowWritingTypeModal] = useState(false);
   const [showPromptOptionsModal, setShowPromptOptionsModal] = useState(false);
   const [showCustomPromptModal, setShowCustomPromptModal] = useState(false);
   const [selectedWritingType, setSelectedWritingType] = useState('');
   const [showEvaluationModal, setShowEvaluationModal] = useState(false);
-  const [modalInitialized, setModalInitialized] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [showWritingInterface, setShowWritingInterface] = useState(false);
   
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const highlightLayerRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // ENHANCED: Initialize popup flow when component mounts or when textType is empty
+  // FIXED: Initialize based on navigation flow from Dashboard
   useEffect(() => {
     console.log('🔄 WritingArea: Initializing component...');
-    console.log('📊 Current textType:', textType);
-    console.log('📊 Modal initialized:', modalInitialized);
+    console.log('📊 Props - textType:', textType);
+    console.log('📊 State - selectedWritingType:', selectedWritingType);
     
     const savedContent = localStorage.getItem('writingContent');
     const savedWritingType = localStorage.getItem('selectedWritingType');
     const navigationSource = localStorage.getItem('navigationSource');
     const promptType = localStorage.getItem('promptType');
 
-    console.log('💾 Saved content length:', savedContent?.length || 0);
-    console.log('💾 Saved writing type:', savedWritingType);
-    console.log('💾 Navigation source:', navigationSource);
-    console.log('💾 Prompt type:', promptType);
+    console.log('💾 Saved data:', { 
+      savedContent: savedContent?.length || 0, 
+      savedWritingType, 
+      navigationSource, 
+      promptType 
+    });
 
     // Restore saved content
     if (savedContent && savedContent !== content) {
       console.log('📝 Restoring saved content');
       onChange(savedContent);
     }
-    
-    // Handle writing type initialization
-    if (savedWritingType && savedWritingType !== selectedWritingType) {
-      console.log('📝 Setting writing type from localStorage:', savedWritingType);
-      setSelectedWritingType(savedWritingType);
-      if (onTextTypeChange) {
-        onTextTypeChange(savedWritingType);
-      }
-    }
-    
-    // FIXED: Initialize modal flow based on navigation context
-    if (!modalInitialized) {
-      console.log('🚀 Initializing modal flow...');
+
+    // Handle initialization based on navigation source
+    if (navigationSource === 'dashboard') {
+      console.log('🚀 Dashboard navigation detected');
       
-      if (navigationSource === 'dashboard' && savedWritingType) {
-        // User came from dashboard with a selected writing type
-        console.log('✅ Dashboard navigation detected with writing type:', savedWritingType);
+      if (savedWritingType && promptType) {
+        // Complete flow from Dashboard: writing type and prompt type are set
+        console.log('✅ Complete flow detected - showing writing interface');
         setSelectedWritingType(savedWritingType);
         if (onTextTypeChange) {
           onTextTypeChange(savedWritingType);
         }
         
-        // Check if we need to show prompt options or go straight to writing
-        if (promptType === 'generated' || promptType === 'custom') {
-          console.log('✅ Prompt type specified, proceeding to writing interface');
-          // User has already made their choice, proceed to writing
-          setModalInitialized(true);
-          if (onPopupCompleted) {
-            onPopupCompleted();
-          }
-        } else {
-          console.log('❓ No prompt type, showing prompt options modal');
-          setShowPromptOptionsModal(true);
+        // Handle prompt based on type
+        if (promptType === 'generated') {
+          handleGeneratePromptFromDashboard(savedWritingType);
+        } else if (promptType === 'custom') {
+          setShowCustomPromptModal(true);
         }
-      } else if (!textType && !savedWritingType) {
-        // No writing type selected, show writing type modal
-        console.log('❓ No writing type selected, showing writing type modal');
-        setShowWritingTypeModal(true);
+        
+        setIsInitialized(true);
+      } else if (savedWritingType && !promptType) {
+        // Partial flow: writing type set but no prompt type
+        console.log('⚠️ Partial flow - showing prompt options');
+        setSelectedWritingType(savedWritingType);
+        if (onTextTypeChange) {
+          onTextTypeChange(savedWritingType);
+        }
+        setShowPromptOptionsModal(true);
+        setIsInitialized(true);
       } else {
-        // Writing type is available, mark as initialized
-        console.log('✅ Writing type available, marking as initialized');
-        setModalInitialized(true);
-        if (onPopupCompleted) {
-          onPopupCompleted();
-        }
+        // No writing type from Dashboard - show writing type modal
+        console.log('❓ No writing type - showing writing type modal');
+        setShowWritingTypeModal(true);
+        setIsInitialized(true);
+      }
+    } else {
+      // Direct navigation to /writing - start from beginning
+      console.log('🔗 Direct navigation - starting from writing type selection');
+      setShowWritingTypeModal(true);
+      setIsInitialized(true);
+    }
+  }, [textType, onChange, onTextTypeChange]);
+
+  // Handle prompt generation from Dashboard flow
+  const handleGeneratePromptFromDashboard = async (writingType: string) => {
+    console.log('🎯 Generating prompt from Dashboard flow for:', writingType);
+    setIsGenerating(true);
+    
+    try {
+      const generatedPrompt = await generatePrompt(writingType);
+      console.log('✅ Prompt generated successfully');
+      setPrompt(generatedPrompt);
+      localStorage.setItem(`${writingType}_prompt`, generatedPrompt);
+      
+      if (onPromptGenerated) {
+        onPromptGenerated(generatedPrompt);
       }
       
-      setModalInitialized(true);
+      // Show writing interface
+      setShowWritingInterface(true);
+      
+      if (onPopupCompleted) {
+        onPopupCompleted();
+      }
+    } catch (error) {
+      console.error('❌ Error generating prompt:', error);
+      // Fallback to a default prompt
+      const fallbackPrompt = `Write a ${writingType} piece that showcases your creativity and writing skills.`;
+      setPrompt(fallbackPrompt);
+      localStorage.setItem(`${writingType}_prompt`, fallbackPrompt);
+      
+      if (onPromptGenerated) {
+        onPromptGenerated(fallbackPrompt);
+      }
+      
+      setShowWritingInterface(true);
+    } finally {
+      setIsGenerating(false);
     }
-  }, [textType, selectedWritingType, onChange, onTextTypeChange, onPopupCompleted, modalInitialized, content]);
+  };
 
   useEffect(() => {
     if (prompt) {
@@ -148,42 +182,43 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
     }
   }, [prompt, onTimerStart]);
 
-  // ENHANCED: Load saved prompt from localStorage with better error handling
+  // Load saved prompt
   useEffect(() => {
     const currentTextType = textType || selectedWritingType;
-    if (currentTextType) {
+    if (currentTextType && !prompt) {
       console.log('🔍 Looking for saved prompt for type:', currentTextType);
       const savedPrompt = localStorage.getItem(`${currentTextType}_prompt`);
-      if (savedPrompt && savedPrompt !== prompt) {
-        console.log('📝 Loading saved prompt:', savedPrompt.substring(0, 100) + '...');
+      if (savedPrompt) {
+        console.log('📝 Loading saved prompt');
         setPrompt(savedPrompt);
-        // Pass the loaded prompt to parent
         if (onPromptGenerated) {
           onPromptGenerated(savedPrompt);
         }
+        setShowWritingInterface(true);
       }
     }
   }, [selectedWritingType, textType, onPromptGenerated, prompt]);
 
-  // Pass prompt to parent whenever it changes
+  // Pass prompt to parent
   useEffect(() => {
     if (prompt && onPromptGenerated) {
       onPromptGenerated(prompt);
     }
   }, [prompt, onPromptGenerated]);
 
-  // ENHANCED: Persist content and selectedWritingType to localStorage with debouncing
+  // Persist content with debouncing
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       if (content !== localStorage.getItem('writingContent')) {
         localStorage.setItem('writingContent', content);
         console.log('💾 Content saved to localStorage');
       }
-    }, 500); // Debounce saves
+    }, 500);
 
     return () => clearTimeout(timeoutId);
   }, [content]);
 
+  // Persist writing type
   useEffect(() => {
     if (selectedWritingType && selectedWritingType !== localStorage.getItem('selectedWritingType')) {
       localStorage.setItem('selectedWritingType', selectedWritingType);
@@ -191,9 +226,9 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
     }
   }, [selectedWritingType]);
 
-  // ENHANCED: Handle writing type selection from modal
+  // FIXED: Handle writing type selection (Step 2)
   const handleWritingTypeSelect = (type: string) => {
-    console.log('📝 Writing type selected:', type);
+    console.log('📝 WritingArea: Step 2 - Writing type selected:', type);
     setSelectedWritingType(type);
     localStorage.setItem('selectedWritingType', type);
     setShowWritingTypeModal(false);
@@ -204,53 +239,67 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
     }
   };
 
-  // ENHANCED: Handle prompt generation
+  // FIXED: Handle prompt generation (Step 3)
   const handleGeneratePrompt = async () => {
-    console.log('🎯 Generating prompt for:', selectedWritingType);
+    console.log('🎯 WritingArea: Step 3 - Generating prompt for:', selectedWritingType);
     setShowPromptOptionsModal(false);
     setIsGenerating(true);
     
     try {
       const generatedPrompt = await generatePrompt(selectedWritingType);
-      console.log('✅ Prompt generated:', generatedPrompt.substring(0, 100) + '...');
+      console.log('✅ Prompt generated successfully');
       setPrompt(generatedPrompt);
       localStorage.setItem(`${selectedWritingType}_prompt`, generatedPrompt);
+      localStorage.setItem('promptType', 'generated');
       
       if (onPromptGenerated) {
         onPromptGenerated(generatedPrompt);
       }
+      
+      // Show writing interface (Step 4)
+      setShowWritingInterface(true);
       
       if (onPopupCompleted) {
         onPopupCompleted();
       }
     } catch (error) {
       console.error('❌ Error generating prompt:', error);
-      // Fallback to a default prompt
       const fallbackPrompt = `Write a ${selectedWritingType} piece that showcases your creativity and writing skills.`;
       setPrompt(fallbackPrompt);
       localStorage.setItem(`${selectedWritingType}_prompt`, fallbackPrompt);
+      localStorage.setItem('promptType', 'generated');
+      
+      if (onPromptGenerated) {
+        onPromptGenerated(fallbackPrompt);
+      }
+      
+      setShowWritingInterface(true);
     } finally {
       setIsGenerating(false);
     }
   };
 
-  // ENHANCED: Handle custom prompt
+  // FIXED: Handle custom prompt (Step 3)
   const handleCustomPrompt = () => {
-    console.log('✏️ Using custom prompt for:', selectedWritingType);
+    console.log('✏️ WritingArea: Step 3 - Using custom prompt for:', selectedWritingType);
     setShowPromptOptionsModal(false);
     setShowCustomPromptModal(true);
   };
 
-  // ENHANCED: Handle custom prompt submission
+  // FIXED: Handle custom prompt submission (Step 4)
   const handleCustomPromptSubmit = (customPrompt: string) => {
-    console.log('✅ Custom prompt submitted:', customPrompt.substring(0, 100) + '...');
+    console.log('✅ WritingArea: Step 4 - Custom prompt submitted');
     setPrompt(customPrompt);
     localStorage.setItem(`${selectedWritingType}_prompt`, customPrompt);
+    localStorage.setItem('promptType', 'custom');
     setShowCustomPromptModal(false);
     
     if (onPromptGenerated) {
       onPromptGenerated(customPrompt);
     }
+    
+    // Show writing interface (Step 4)
+    setShowWritingInterface(true);
     
     if (onPopupCompleted) {
       onPopupCompleted();
@@ -260,7 +309,7 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
   const analyzeText = useCallback((text: string) => {
     const newIssues: WritingIssue[] = [];
     
-    // Common spelling mistakes (only incorrect spellings)
+    // Common spelling mistakes
     const spellingPatterns = {
       'softley': 'softly',
       'recieve': 'receive',
@@ -278,7 +327,7 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
       'theyre': "they're"
     };
 
-    // Grammar patterns (only incorrect grammar)
+    // Grammar patterns
     const grammarPatterns = {
       'was ran': 'was run',
       'have went': 'have gone',
@@ -377,40 +426,15 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
     }
   };
 
-  const renderTextWithHighlights = () => {
-    if (!showHighlights || issues.length === 0) {
-      return content;
-    }
-
-    let result = '';
-    let lastIndex = 0;
-
-    issues.forEach((issue, index) => {
-      result += content.substring(lastIndex, issue.start);
-      
-      const issueText = content.substring(issue.start, issue.end);
-      const colorClass = {
-        spelling: 'bg-red-200',
-        grammar: 'bg-yellow-200',
-        vocabulary: 'bg-blue-200',
-        structure: 'bg-green-200',
-        style: 'bg-purple-200'
-      }[issue.type];
-      
-      result += `<span class="${colorClass} cursor-pointer" data-issue-index="${index}">${issueText}</span>`;
-      lastIndex = issue.end;
-    });
-
-    result += content.substring(lastIndex);
-    return result;
-  };
-
+  // FIXED: Render writing template when ready
   const renderWritingTemplate = () => {
     const currentType = textType || selectedWritingType;
     
     if (!currentType || !prompt) {
       return null;
     }
+
+    console.log('🎨 Rendering template for type:', currentType);
 
     const templateProps = {
       content,
@@ -444,7 +468,7 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
         return <SpeechWritingTemplate {...templateProps} />;
       default:
         return (
-          <div className="writing-template-container bg-white rounded-lg shadow-lg p-6">
+          <div className="writing-template-container bg-white rounded-lg shadow-lg p-6 h-full">
             <div className="mb-4">
               <h3 className="text-lg font-semibold text-gray-800 mb-2">
                 {currentType} Writing
@@ -454,7 +478,7 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
               </div>
             </div>
             
-            <div className="relative">
+            <div className="relative flex-1">
               <textarea
                 ref={textareaRef}
                 value={content}
@@ -491,8 +515,8 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
     }
   };
 
-  // ENHANCED: Show loading state while initializing
-  if (!modalInitialized && !showWritingTypeModal && !showPromptOptionsModal) {
+  // Show loading state during initialization
+  if (!isInitialized) {
     return (
       <div className="flex items-center justify-center h-96">
         <div className="text-center">
@@ -504,10 +528,10 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
   }
 
   return (
-    <div className="writing-area-container relative">
-      {/* Show template if everything is ready */}
-      {modalInitialized && (textType || selectedWritingType) && (
-        <div className="writing-template-wrapper">
+    <div className="writing-area-container relative h-full">
+      {/* FIXED: Show writing interface only when ready */}
+      {showWritingInterface && (textType || selectedWritingType) && prompt && (
+        <div className="writing-template-wrapper h-full">
           {renderWritingTemplate()}
         </div>
       )}
@@ -523,13 +547,15 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
         </div>
       )}
 
-      {/* MODAL COMPONENTS */}
+      {/* FIXED: Modal Components for proper sequence */}
+      {/* Step 2: Writing Type Selection Modal */}
       <WritingTypeSelectionModal
         isOpen={showWritingTypeModal}
         onClose={() => setShowWritingTypeModal(false)}
         onSelectType={handleWritingTypeSelect}
       />
 
+      {/* Step 3: Prompt Options Modal */}
       <PromptOptionsModal
         isOpen={showPromptOptionsModal}
         onClose={() => setShowPromptOptionsModal(false)}
@@ -538,6 +564,7 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
         textType={selectedWritingType}
       />
 
+      {/* Step 3b: Custom Prompt Modal */}
       <CustomPromptModal
         isOpen={showCustomPromptModal}
         onClose={() => setShowCustomPromptModal(false)}
@@ -545,6 +572,7 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
         textType={selectedWritingType}
       />
 
+      {/* Essay Evaluation Modal */}
       <EssayEvaluationModal
         isOpen={showEvaluationModal}
         onClose={() => setShowEvaluationModal(false)}
