@@ -1,4 +1,4 @@
-// FIXED Dashboard.tsx - Complete replacement with robust navigation
+// FIXED Dashboard.tsx - Ensures proper modal sequence: My Space > Write Story > Select Writing Type > Prompt > Writing Area
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -55,7 +55,7 @@ export function Dashboard({ user: propUser, emailVerified: propEmailVerified, pa
   const [userAccessData, setUserAccessData] = useState<any>(null);
   const [showWelcomeMessage, setShowWelcomeMessage] = useState(false);
   
-  // Modal states
+  // FIXED: Modal states for proper sequence
   const [showWritingTypeModal, setShowWritingTypeModal] = useState(false);
   const [showPromptOptionsModal, setShowPromptOptionsModal] = useState(false);
   const [selectedWritingType, setSelectedWritingType] = useState<string>('');
@@ -191,37 +191,50 @@ export function Dashboard({ user: propUser, emailVerified: propEmailVerified, pa
     }
   };
 
-  // FIXED: Show modal instead of direct navigation
+  // FIXED: Step 1 - "Write Story" button opens writing type selection modal
   const handleStartWriting = () => {
-    console.log('🚀 Dashboard: Opening writing type selection modal...');
+    console.log('🚀 Dashboard: Step 1 - Opening writing type selection modal...');
+    
+    // Clear any existing navigation data to ensure fresh start
+    localStorage.removeItem('selectedWritingType');
+    localStorage.removeItem('promptType');
+    localStorage.removeItem('navigationSource');
+    localStorage.removeItem('writingContent');
+    
+    // Set navigation source to track the flow
+    localStorage.setItem('navigationSource', 'dashboard');
+    
+    // Show the writing type selection modal (Step 2)
     setShowWritingTypeModal(true);
   };
 
-  // FIXED: Handle writing type selection
+  // FIXED: Step 2 - Handle writing type selection, then show prompt options
   const handleWritingTypeSelect = (type: string) => {
-    console.log('📝 Selected writing type:', type);
+    console.log('📝 Dashboard: Step 2 - Writing type selected:', type);
+    
+    // Store the selected writing type
     setSelectedWritingType(type);
     localStorage.setItem('selectedWritingType', type);
+    
+    // Close writing type modal and open prompt options modal (Step 3)
     setShowWritingTypeModal(false);
     setShowPromptOptionsModal(true);
   };
 
-  // FIXED: Handle prompt generation with proper navigation
+  // FIXED: Step 3 - Handle prompt generation, then navigate to writing area
   const handleGeneratePrompt = () => {
-    console.log('🎯 Generating prompt for:', selectedWritingType);
+    console.log('🎯 Dashboard: Step 3 - Generating prompt for:', selectedWritingType);
+    
+    // Store the prompt type
+    localStorage.setItem('promptType', 'generated');
+    
+    // Close prompt options modal
     setShowPromptOptionsModal(false);
     
-    // Store the writing type and prompt type in localStorage for the writing page
-    localStorage.setItem('selectedWritingType', selectedWritingType);
-    localStorage.setItem('promptType', 'generated');
-    localStorage.setItem('navigationSource', 'dashboard');
+    // Navigate to writing page (Step 4 - Writing Area)
+    console.log('📍 Dashboard: Step 4 - Navigating to writing area...');
     
-    // Clear any existing content to ensure fresh start
-    localStorage.removeItem('writingContent');
-    
-    // Navigate to writing page with multiple fallback methods
-    console.log('📍 Attempting navigation to writing page...');
-    
+    // Use multiple navigation methods as fallback
     if (onNavigate) {
       console.log('📍 Using onNavigate callback');
       onNavigate('writing');
@@ -234,22 +247,20 @@ export function Dashboard({ user: propUser, emailVerified: propEmailVerified, pa
     }
   };
 
-  // FIXED: Handle custom prompt with proper navigation
+  // FIXED: Step 3 - Handle custom prompt, then navigate to writing area
   const handleCustomPrompt = () => {
-    console.log('✏️ Using custom prompt for:', selectedWritingType);
+    console.log('✏️ Dashboard: Step 3 - Using custom prompt for:', selectedWritingType);
+    
+    // Store the prompt type
+    localStorage.setItem('promptType', 'custom');
+    
+    // Close prompt options modal
     setShowPromptOptionsModal(false);
     
-    // Store the writing type and prompt type in localStorage for the writing page
-    localStorage.setItem('selectedWritingType', selectedWritingType);
-    localStorage.setItem('promptType', 'custom');
-    localStorage.setItem('navigationSource', 'dashboard');
+    // Navigate to writing page (Step 4 - Writing Area)
+    console.log('📍 Dashboard: Step 4 - Navigating to writing area...');
     
-    // Clear any existing content to ensure fresh start
-    localStorage.removeItem('writingContent');
-    
-    // Navigate to writing page with multiple fallback methods
-    console.log('📍 Attempting navigation to writing page...');
-    
+    // Use multiple navigation methods as fallback
     if (onNavigate) {
       console.log('📍 Using onNavigate callback');
       onNavigate('writing');
@@ -560,7 +571,7 @@ export function Dashboard({ user: propUser, emailVerified: propEmailVerified, pa
           <div className="p-10">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
               
-              {/* Enhanced Start Writing Button */}
+              {/* FIXED: Start Writing Button - Opens modal sequence */}
               <div 
                 className="group bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 border-4 border-blue-200 rounded-3xl p-10 hover:border-blue-400 hover:shadow-3xl transition-all duration-300 cursor-pointer transform hover:scale-105 relative overflow-hidden" 
                 onClick={handleStartWriting}
@@ -571,7 +582,7 @@ export function Dashboard({ user: propUser, emailVerified: propEmailVerified, pa
                     <PenTool className="h-10 w-10 text-white" />
                   </div>
                   <div className="ml-8">
-                    <h3 className="text-3xl font-bold text-gray-900 mb-3">Start Writing!</h3>
+                    <h3 className="text-3xl font-bold text-gray-900 mb-3">Write Story!</h3>
                     <p className="text-gray-600 text-xl font-medium">Create amazing stories with help from your AI friend</p>
                   </div>
                 </div>
@@ -677,13 +688,15 @@ export function Dashboard({ user: propUser, emailVerified: propEmailVerified, pa
         </div>
       </div>
 
-      {/* MODAL COMPONENTS - These are essential for the modal functionality */}
+      {/* FIXED: Modal Components for proper sequence */}
+      {/* Step 2: Writing Type Selection Modal */}
       <WritingTypeSelectionModal
         isOpen={showWritingTypeModal}
         onClose={() => setShowWritingTypeModal(false)}
         onSelectType={handleWritingTypeSelect}
       />
 
+      {/* Step 3: Prompt Options Modal */}
       <PromptOptionsModal
         isOpen={showPromptOptionsModal}
         onClose={() => setShowPromptOptionsModal(false)}
