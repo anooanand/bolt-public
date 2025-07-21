@@ -1,5 +1,3 @@
-// FIXED WritingArea.tsx - Properly handles the modal sequence: My Space > Write Story > Select Writing Type > Prompt > Writing Area
-
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { generatePrompt, getSynonyms, rephraseSentence, evaluateEssay } from '../lib/openai';
 import { dbOperations } from '../lib/database';
@@ -81,12 +79,14 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
     const savedWritingType = localStorage.getItem('selectedWritingType');
     const navigationSource = localStorage.getItem('navigationSource');
     const promptType = localStorage.getItem('promptType');
+    const savedPrompt = savedWritingType ? localStorage.getItem(`${savedWritingType}_prompt`) : null;
 
     console.log('💾 Saved data:', { 
       savedContent: savedContent?.length || 0, 
       savedWritingType, 
       navigationSource, 
-      promptType 
+      promptType,
+      savedPrompt: savedPrompt ? 'exists' : 'none'
     });
 
     // Restore saved content
@@ -99,9 +99,29 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
     if (navigationSource === 'dashboard') {
       console.log('🚀 Dashboard navigation detected');
       
-      if (savedWritingType && promptType) {
-        // Complete flow from Dashboard: writing type and prompt type are set
-        console.log('✅ Complete flow detected - showing writing interface');
+      if (savedWritingType && savedPrompt) {
+        // Complete flow from Dashboard: writing type and prompt are set
+        console.log('✅ Complete flow detected - showing writing interface immediately');
+        setSelectedWritingType(savedWritingType);
+        setPrompt(savedPrompt);
+        
+        if (onTextTypeChange) {
+          onTextTypeChange(savedWritingType);
+        }
+        if (onPromptGenerated) {
+          onPromptGenerated(savedPrompt);
+        }
+        
+        // FIXED: Show writing interface immediately
+        setShowWritingInterface(true);
+        setIsInitialized(true);
+        
+        if (onPopupCompleted) {
+          onPopupCompleted();
+        }
+      } else if (savedWritingType && promptType) {
+        // Partial flow: writing type and prompt type set but no prompt
+        console.log('⚠️ Partial flow - generating prompt');
         setSelectedWritingType(savedWritingType);
         if (onTextTypeChange) {
           onTextTypeChange(savedWritingType);
@@ -138,6 +158,15 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
     }
   }, [textType, onChange, onTextTypeChange]);
 
+  // FIXED: Auto-show writing interface when both type and prompt are available
+  useEffect(() => {
+    const currentType = textType || selectedWritingType;
+    if (currentType && prompt && !showWritingInterface) {
+      console.log('🎯 Auto-showing writing interface - type:', currentType, 'prompt exists:', !!prompt);
+      setShowWritingInterface(true);
+    }
+  }, [textType, selectedWritingType, prompt, showWritingInterface]);
+
   // Handle prompt generation from Dashboard flow
   const handleGeneratePromptFromDashboard = async (writingType: string) => {
     console.log('🎯 Generating prompt from Dashboard flow for:', writingType);
@@ -153,7 +182,7 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
         onPromptGenerated(generatedPrompt);
       }
       
-      // Show writing interface
+      // FIXED: Show writing interface
       setShowWritingInterface(true);
       
       if (onPopupCompleted) {
@@ -170,6 +199,7 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
         onPromptGenerated(fallbackPrompt);
       }
       
+      // FIXED: Show writing interface even with fallback
       setShowWritingInterface(true);
     } finally {
       setIsGenerating(false);
@@ -194,6 +224,7 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
         if (onPromptGenerated) {
           onPromptGenerated(savedPrompt);
         }
+        // FIXED: Show writing interface when prompt is loaded
         setShowWritingInterface(true);
       }
     }
@@ -256,7 +287,7 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
         onPromptGenerated(generatedPrompt);
       }
       
-      // Show writing interface (Step 4)
+      // FIXED: Show writing interface (Step 4)
       setShowWritingInterface(true);
       
       if (onPopupCompleted) {
@@ -273,6 +304,7 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
         onPromptGenerated(fallbackPrompt);
       }
       
+      // FIXED: Show writing interface even with fallback
       setShowWritingInterface(true);
     } finally {
       setIsGenerating(false);
@@ -298,7 +330,7 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
       onPromptGenerated(customPrompt);
     }
     
-    // Show writing interface (Step 4)
+    // FIXED: Show writing interface (Step 4)
     setShowWritingInterface(true);
     
     if (onPopupCompleted) {
@@ -431,6 +463,7 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
     const currentType = textType || selectedWritingType;
     
     if (!currentType || !prompt) {
+      console.log('❌ Cannot render template - missing type or prompt:', { currentType, prompt: !!prompt });
       return null;
     }
 
@@ -529,10 +562,30 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
 
   return (
     <div className="writing-area-container relative h-full">
-      {/* FIXED: Show writing interface only when ready */}
-      {showWritingInterface && (textType || selectedWritingType) && prompt && (
+      {/* FIXED: Show writing interface when ready */}
+      {showWritingInterface && (
         <div className="writing-template-wrapper h-full">
           {renderWritingTemplate()}
+        </div>
+      )}
+
+      {/* FIXED: Show debug info when interface should be visible but isn't */}
+      {!showWritingInterface && (textType || selectedWritingType) && prompt && (
+        <div className="flex items-center justify-center h-96">
+          <div className="text-center bg-yellow-50 border border-yellow-200 rounded-lg p-6">
+            <div className="text-yellow-800">
+              <h3 className="font-semibold mb-2">Debug Info</h3>
+              <p>Type: {textType || selectedWritingType}</p>
+              <p>Prompt: {prompt ? 'Available' : 'Missing'}</p>
+              <p>Show Interface: {showWritingInterface ? 'Yes' : 'No'}</p>
+              <button 
+                onClick={() => setShowWritingInterface(true)}
+                className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+              >
+                Force Show Interface
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
