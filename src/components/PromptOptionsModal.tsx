@@ -21,35 +21,27 @@ export function PromptOptionsModal({
 
   if (!isOpen) return null;
 
-  // FIXED: Direct navigation to writing area with proper state management
+  // FIXED: Let parent component handle the flow instead of navigating directly
   const handleGeneratePrompt = () => {
     console.log('🎯 PromptOptionsModal: Generate prompt clicked for:', textType);
     
-    // Store navigation context
-    localStorage.setItem('modalAction', 'generate');
-    localStorage.setItem('modalTimestamp', Date.now().toString());
+    // Store the choice for the parent component to handle
     localStorage.setItem('promptType', 'generated');
     localStorage.setItem('selectedWritingType', textType);
-    localStorage.setItem('navigationSource', 'dashboard');
     
-    // Close modal and navigate directly
-    onClose();
-    navigate('/writing');
+    // Call the parent's callback to handle prompt generation
+    onGeneratePrompt();
   };
 
   const handleCustomPrompt = () => {
     console.log('✏️ PromptOptionsModal: Custom prompt clicked for:', textType);
     
-    // Store navigation context
-    localStorage.setItem('modalAction', 'custom');
-    localStorage.setItem('modalTimestamp', Date.now().toString());
+    // Store the choice for the parent component to handle
     localStorage.setItem('promptType', 'custom');
     localStorage.setItem('selectedWritingType', textType);
-    localStorage.setItem('navigationSource', 'dashboard');
     
-    // Close modal and navigate directly
-    onClose();
-    navigate('/writing');
+    // Call the parent's callback to handle custom prompt
+    onCustomPrompt();
   };
 
   const handleClose = () => {
