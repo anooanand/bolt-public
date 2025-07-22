@@ -154,10 +154,8 @@ export function WritingTypeSelectionModal({ isOpen, onClose, onSelectType }: Wri
   const handleTypeSelect = (type: string) => {
     onSelectType(type);
     localStorage.setItem('selectedWritingType', type);
-    localStorage.setItem('promptType', 'generated'); // Assuming direct navigation implies generated prompt
-    localStorage.setItem('navigationSource', 'dashboard'); // Or 'modal' if preferred
-    navigate('/writing');
-    onClose(); // Close the modal after navigation
+    // Don't navigate here - let the parent component handle the flow
+    // The onSelectType callback will handle the next steps
   };
 
   const getDifficultyColor = (difficulty: string) => {
@@ -332,4 +330,3 @@ export function WritingTypeSelectionModal({ isOpen, onClose, onSelectType }: Wri
     </div>
   );
 }
-
