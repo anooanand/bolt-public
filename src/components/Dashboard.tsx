@@ -1,6 +1,3 @@
-// FIXED Dashboard.tsx - Simplified navigation that works reliably
-// Copy and paste this to replace your existing Dashboard.tsx
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -56,7 +53,7 @@ export function Dashboard({ user: propUser, emailVerified: propEmailVerified, pa
   const [userAccessData, setUserAccessData] = useState<any>(null);
   const [showWelcomeMessage, setShowWelcomeMessage] = useState(false);
   
-  // Modal states for the writing flow
+  // FIXED: Modal states for proper sequence
   const [showWritingTypeModal, setShowWritingTypeModal] = useState(false);
   const [showPromptOptionsModal, setShowPromptOptionsModal] = useState(false);
   const [selectedWritingType, setSelectedWritingType] = useState<string>('');
@@ -192,7 +189,7 @@ export function Dashboard({ user: propUser, emailVerified: propEmailVerified, pa
     }
   };
 
-  // FIXED: Simplified navigation - directly go to writing page
+  // FIXED: Step 1 - "Write Story" button opens writing type selection modal
   const handleStartWriting = () => {
     console.log('🚀 Dashboard: Starting writing flow...');
     
@@ -205,11 +202,11 @@ export function Dashboard({ user: propUser, emailVerified: propEmailVerified, pa
     // Set navigation source to track the flow
     localStorage.setItem('navigationSource', 'dashboard');
     
-    // Show the writing type selection modal first
+    // Show the writing type selection modal (Step 2)
     setShowWritingTypeModal(true);
   };
 
-  // FIXED: Handle writing type selection and show prompt options
+  // FIXED: Step 2 - Handle writing type selection, then show prompt options
   const handleWritingTypeSelect = (type: string) => {
     console.log('📝 Dashboard: Writing type selected:', type);
     
@@ -217,95 +214,82 @@ export function Dashboard({ user: propUser, emailVerified: propEmailVerified, pa
     setSelectedWritingType(type);
     localStorage.setItem('selectedWritingType', type);
     
-    // Close writing type modal and open prompt options modal
+    // Close writing type modal and open prompt options modal (Step 3)
     setShowWritingTypeModal(false);
     setShowPromptOptionsModal(true);
   };
 
-  // FIXED: Handle prompt generation with reliable navigation
+  // FIXED: Step 3 - Handle prompt generation, then navigate to writing area
   const handleGeneratePrompt = () => {
     console.log('🎯 Dashboard: Generating prompt for:', selectedWritingType);
     
     // Store the prompt type
     localStorage.setItem('promptType', 'generated');
     
-    // Close modal
+    // Close prompt options modal
     setShowPromptOptionsModal(false);
     
-    // Navigate to writing page with multiple fallback methods
+    // Navigate to writing page (Step 4 - Writing Area)
     console.log('📍 Dashboard: Navigating to writing area...');
     
-    // Method 1: Try onNavigate callback first
-    if (onNavigate) {
-      console.log('📍 Using onNavigate callback');
-      onNavigate('writing');
-      return;
-    }
-    
-    // Method 2: Try React Router navigate
-    if (navigate) {
-      console.log('📍 Using React Router navigate');
-      try {
-        navigate('/writing');
-        return;
-      } catch (error) {
-        console.error('❌ React Router navigate failed:', error);
+    // FIXED: Use React Router navigate directly for consistent navigation
+    try {
+      navigate('/writing');
+      console.log('✅ Dashboard: Navigation to /writing initiated');
+    } catch (error) {
+      console.error('❌ Dashboard: Navigation error:', error);
+      // Fallback to onNavigate if available
+      if (onNavigate) {
+        console.log('📍 Dashboard: Using onNavigate fallback');
+        onNavigate('writing');
+      } else {
+        console.log('📍 Dashboard: Using window.location fallback');
+        window.location.href = '/writing';
       }
     }
-    
-    // Method 3: Fallback to window.location
-    console.log('📍 Using window.location fallback');
-    setTimeout(() => {
-      window.location.href = '/writing';
-    }, 100);
   };
 
-  // FIXED: Handle custom prompt with reliable navigation
+  // FIXED: Step 3 - Handle custom prompt, then navigate to writing area
   const handleCustomPrompt = () => {
     console.log('✏️ Dashboard: Using custom prompt for:', selectedWritingType);
     
     // Store the prompt type
     localStorage.setItem('promptType', 'custom');
     
-    // Close modal
+    // Close prompt options modal
     setShowPromptOptionsModal(false);
     
-    // Navigate to writing page with multiple fallback methods
+    // Navigate to writing page (Step 4 - Writing Area)
     console.log('📍 Dashboard: Navigating to writing area...');
     
-    // Method 1: Try onNavigate callback first
-    if (onNavigate) {
-      console.log('📍 Using onNavigate callback');
-      onNavigate('writing');
-      return;
-    }
-    
-    // Method 2: Try React Router navigate
-    if (navigate) {
-      console.log('📍 Using React Router navigate');
-      try {
-        navigate('/writing');
-        return;
-      } catch (error) {
-        console.error('❌ React Router navigate failed:', error);
+    // FIXED: Use React Router navigate directly for consistent navigation
+    try {
+      navigate('/writing');
+      console.log('✅ Dashboard: Navigation to /writing initiated');
+    } catch (error) {
+      console.error('❌ Dashboard: Navigation error:', error);
+      // Fallback to onNavigate if available
+      if (onNavigate) {
+        console.log('📍 Dashboard: Using onNavigate fallback');
+        onNavigate('writing');
+      } else {
+        console.log('📍 Dashboard: Using window.location fallback');
+        window.location.href = '/writing';
       }
     }
-    
-    // Method 3: Fallback to window.location
-    console.log('📍 Using window.location fallback');
-    setTimeout(() => {
-      window.location.href = '/writing';
-    }, 100);
   };
 
   const handlePracticeExam = () => {
     console.log('🚀 Dashboard: Navigating to practice exam...');
-    if (onNavigate) {
-      onNavigate('exam');
-    } else if (navigate) {
+    try {
       navigate('/exam');
-    } else {
-      window.location.href = '/exam';
+    } catch (error) {
+      console.error('❌ Dashboard: Exam navigation error:', error);
+      if (onNavigate) {
+        onNavigate('exam');
+      } else {
+        window.location.href = '/exam';
+      }
     }
   };
 
@@ -598,7 +582,7 @@ export function Dashboard({ user: propUser, emailVerified: propEmailVerified, pa
           <div className="p-10">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
               
-              {/* Start Writing Button */}
+              {/* FIXED: Start Writing Button - Opens modal sequence */}
               <div 
                 className="group bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 border-4 border-blue-200 rounded-3xl p-10 hover:border-blue-400 hover:shadow-3xl transition-all duration-300 cursor-pointer transform hover:scale-105 relative overflow-hidden" 
                 onClick={handleStartWriting}
@@ -715,13 +699,15 @@ export function Dashboard({ user: propUser, emailVerified: propEmailVerified, pa
         </div>
       </div>
 
-      {/* Modal Components */}
+      {/* FIXED: Modal Components for proper sequence */}
+      {/* Step 2: Writing Type Selection Modal */}
       <WritingTypeSelectionModal
         isOpen={showWritingTypeModal}
         onClose={() => setShowWritingTypeModal(false)}
         onSelectType={handleWritingTypeSelect}
       />
 
+      {/* Step 3: Prompt Options Modal */}
       <PromptOptionsModal
         isOpen={showPromptOptionsModal}
         onClose={() => setShowPromptOptionsModal(false)}
