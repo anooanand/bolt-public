@@ -62,6 +62,7 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
   const [showCustomPromptModal, setShowCustomPromptModal] = useState(false);
   const [selectedWritingType, setSelectedWritingType] = useState('');
   const [showEvaluationModal, setShowEvaluationModal] = useState(false);
+  const [popupFlowCompleted, setPopupFlowCompleted] = useState(false);
   
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const highlightLayerRef = useRef<HTMLDivElement>(null);
@@ -80,13 +81,24 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
       if (onTextTypeChange) {
         onTextTypeChange(savedWritingType);
       }
+      
+      // Check if there's already a saved prompt for this writing type
+      const savedPrompt = localStorage.getItem(`${savedWritingType}_prompt`);
+      if (savedPrompt) {
+        setPrompt(savedPrompt);
+        setPopupFlowCompleted(true); // Mark as completed if we have both type and prompt
+        if (onPromptGenerated) {
+          onPromptGenerated(savedPrompt);
+        }
+      }
     }
     
-    // Initialize the writing type selection flow
-    if (!textType && !selectedWritingType) {
+    // Only initialize the writing type selection flow if no textType is set and no saved writing type
+    // AND we haven't already completed the popup flow
+    if (!textType && !savedWritingType && !popupFlowCompleted) {
       setShowWritingTypeModal(true);
     }
-  }, [textType, selectedWritingType, onChange, onTextTypeChange]);
+  }, []); // Remove textType and selectedWritingType from dependencies to prevent loops
 
   useEffect(() => {
     if (prompt) {
@@ -437,6 +449,9 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
     }
     setIsGenerating(false);
     
+    // Mark popup flow as completed
+    setPopupFlowCompleted(true);
+    
     // Call the callback to indicate popup flow is completed
     if (onPopupCompleted) {
       onPopupCompleted();
@@ -467,6 +482,9 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
     }
     
     setShowCustomPromptModal(false);
+    
+    // Mark popup flow as completed
+    setPopupFlowCompleted(true);
     
     // Call the callback to indicate popup flow is completed
     if (onPopupCompleted) {
