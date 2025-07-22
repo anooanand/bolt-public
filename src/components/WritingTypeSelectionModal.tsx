@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { X, BookOpen, Lightbulb, MessageSquare, Megaphone, ScrollText, Sparkles, Newspaper, Mail, Calendar, Rocket, Puzzle, Wand, Compass, MapPin, Target, Mic, Search, Filter, Star, Heart, Zap, Crown, Gem } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 interface WritingTypeSelectionModalProps {
   isOpen: boolean;
@@ -137,6 +138,7 @@ export function WritingTypeSelectionModal({ isOpen, onClose, onSelectType }: Wri
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDifficulty, setSelectedDifficulty] = useState('All');
   const [showPopularOnly, setShowPopularOnly] = useState(false);
+  const navigate = useNavigate();
 
   if (!isOpen) return null;
 
@@ -151,6 +153,11 @@ export function WritingTypeSelectionModal({ isOpen, onClose, onSelectType }: Wri
 
   const handleTypeSelect = (type: string) => {
     onSelectType(type);
+    localStorage.setItem('selectedWritingType', type);
+    localStorage.setItem('promptType', 'generated'); // Assuming direct navigation implies generated prompt
+    localStorage.setItem('navigationSource', 'dashboard'); // Or 'modal' if preferred
+    navigate('/writing');
+    onClose(); // Close the modal after navigation
   };
 
   const getDifficultyColor = (difficulty: string) => {
@@ -325,3 +332,4 @@ export function WritingTypeSelectionModal({ isOpen, onClose, onSelectType }: Wri
     </div>
   );
 }
+
