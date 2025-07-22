@@ -140,46 +140,47 @@ Format your response as a JSON object with this structure:
       const feedbackJson = JSON.parse(feedbackText);
       return feedbackJson;
     } catch (parseError) {
+      console.error("Failed to parse OpenAI feedback as JSON:", parseError);
       return {
-        overallComment: feedbackText.substring(0, 200) + "...",
+        overallComment: "I\'m having trouble analyzing your writing right now. Your work shows good effort - please try again in a moment. (Error: Invalid AI response format)",
         criteriaFeedback: {
           ideasAndContent: {
-            score: 6,
+            score: 5,
             maxScore: 10,
-            strengths: ["Shows understanding of the task"],
-            improvements: ["Needs more specific details and development"],
-            suggestions: ["Add more descriptive details about characters and setting"],
-            nextSteps: ["Choose one character and write 2-3 sentences describing them in detail"]
+            strengths: ["The AI encountered an issue parsing the feedback. Please try again."],
+            improvements: ["The AI encountered an issue parsing the feedback. Please try again."],
+            suggestions: ["The AI encountered an issue parsing the feedback. Please try again."],
+            nextSteps: ["The AI encountered an issue parsing the feedback. Please try again."]
           },
           textStructureAndOrganization: {
-            score: 6,
+            score: 5,
             maxScore: 10,
-            strengths: ["Has a clear beginning"],
-            improvements: ["Needs better paragraph organization"],
-            suggestions: ["Break your writing into 2-3 clear paragraphs"],
-            nextSteps: ["Identify where your story changes focus and start new paragraphs there"]
+            strengths: ["The AI encountered an issue parsing the feedback. Please try again."],
+            improvements: ["The AI encountered an issue parsing the feedback. Please try again."],
+            suggestions: ["The AI encountered an issue parsing the feedback. Please try again."],
+            nextSteps: ["The AI encountered an issue parsing the feedback. Please try again."]
           },
           languageFeaturesAndVocabulary: {
-            score: 6,
+            score: 5,
             maxScore: 10,
-            strengths: ["Uses some descriptive language"],
-            improvements: ["Could use more varied vocabulary"],
-            suggestions: ["Replace common words with more specific alternatives"],
-            nextSteps: ["Find 3 basic words in your writing and replace them with more interesting ones"]
+            strengths: ["The AI encountered an issue parsing the feedback. Please try again."],
+            improvements: ["The AI encountered an issue parsing the feedback. Please try again."],
+            suggestions: ["The AI encountered an issue parsing the feedback. Please try again."],
+            nextSteps: ["The AI encountered an issue parsing the feedback. Please try again."]
           },
           spellingPunctuationGrammar: {
-            score: 7,
+            score: 6,
             maxScore: 10,
-            strengths: ["Generally good spelling and grammar"],
-            improvements: ["Check for any minor errors"],
-            suggestions: ["Read your work aloud to catch mistakes"],
-            nextSteps: ["Proofread your work sentence by sentence"]
+            strengths: ["The AI encountered an issue parsing the feedback. Please try again."],
+            improvements: ["The AI encountered an issue parsing the feedback. Please try again."],
+            suggestions: ["The AI encountered an issue parsing the feedback. Please try again."],
+            nextSteps: ["The AI encountered an issue parsing the feedback. Please try again."]
           }
         },
-        priorityFocus: ["Develop ideas with more specific details", "Improve paragraph organization"],
-        examStrategies: ["Plan your story structure before writing", "Leave time for proofreading"],
-        interactiveQuestions: ["What emotions does your main character feel?", "How can you make your setting more vivid?"],
-        revisionSuggestions: ["Add one sentence of dialogue", "Describe what the character sees, hears, or feels"]
+        priorityFocus: ["Please try again to get detailed feedback."],
+        examStrategies: ["Please try again to get detailed feedback."],
+        interactiveQuestions: ["Please try again to get detailed feedback."],
+        revisionSuggestions: ["Please try again to get detailed feedback."]
       };
     }
 
@@ -188,7 +189,7 @@ Format your response as a JSON object with this structure:
     
     const analysis = analyzeContentStructure(content);
     return {
-      overallComment: `Your ${analysis.wordCount}-word ${textType} shows good effort! I can see you're developing your storytelling skills. Let's work on making it even stronger using NSW Selective exam criteria.`,
+      overallComment: `Your ${analysis.wordCount}-word ${textType} shows good effort! I can see you\'re developing your storytelling skills. Let\'s work on making it even stronger using NSW Selective exam criteria.`,
       criteriaFeedback: {
         ideasAndContent: {
           score: Math.min(8, Math.max(4, Math.floor(analysis.wordCount / 25))),
@@ -202,12 +203,12 @@ Format your response as a JSON object with this structure:
             "Include more specific, vivid details"
           ],
           suggestions: [
-            `Your opening "${analysis.firstSentence.substring(0, 30)}..." could be expanded with more sensory details`,
-            "Show don't tell - instead of saying someone is sad, describe their actions or expressions"
+            `Your opening \"${analysis.firstSentence.substring(0, 30)}...\" could be expanded with more sensory details`,
+            "Show don\'t tell - instead of saying someone is sad, describe their actions or expressions"
           ],
           nextSteps: [
             "Choose one moment in your story and expand it with what the character sees, hears, feels, smells, or tastes",
-            "Add one sentence that shows your character's personality through their actions"
+            "Add one sentence that shows your character\'s personality through their actions"
           ]
         },
         textStructureAndOrganization: {
@@ -222,7 +223,7 @@ Format your response as a JSON object with this structure:
             "Make sure each paragraph has a clear focus"
           ],
           suggestions: [
-            analysis.paragraphCount === 1 ? "Start a new paragraph when the scene, time, or focus changes" : "Use connecting words like 'meanwhile', 'suddenly', 'later' to link ideas",
+            analysis.paragraphCount === 1 ? "Start a new paragraph when the scene, time, or focus changes" : "Use connecting words like \'meanwhile\', \'suddenly\', \'later\' to link ideas",
             "Each paragraph should move your story forward in some way"
           ],
           nextSteps: [
@@ -234,7 +235,7 @@ Format your response as a JSON object with this structure:
           score: Math.min(8, Math.max(4, analysis.descriptiveWords.length + 3)),
           maxScore: 10,
           strengths: [
-            analysis.descriptiveWords.length > 2 ? `Uses descriptive words like: ${analysis.descriptiveWords.slice(0, 3).join(', ')}` : "Attempts to use descriptive language",
+            analysis.descriptiveWords.length > 2 ? `Uses descriptive words like: ${analysis.descriptiveWords.slice(0, 3).join(\", \")}` : "Attempts to use descriptive language",
             analysis.averageSentenceLength > 8 ? "Good sentence length variety" : "Shows basic sentence construction"
           ],
           improvements: [
@@ -242,8 +243,8 @@ Format your response as a JSON object with this structure:
             analysis.averageSentenceLength < 8 ? "Try writing some longer, more detailed sentences" : "Vary your sentence beginnings"
           ],
           suggestions: [
-            "Instead of 'big', try 'enormous', 'massive', or 'towering'",
-            "Instead of 'said', try 'whispered', 'exclaimed', or 'muttered'",
+            "Instead of \'big\', try \'enormous\', \'massive\', or \'towering\'",
+            "Instead of \'said\', try \'whispered\', \'exclaimed\', or \'muttered\'",
             "Add similes (like/as comparisons) or metaphors to make your writing more vivid"
           ],
           nextSteps: [
@@ -264,12 +265,12 @@ Format your response as a JSON object with this structure:
           ],
           suggestions: [
             "Read your work aloud - your ear will catch mistakes your eyes miss",
-            "Pay special attention to apostrophes (it's vs its, you're vs your)",
+            "Pay special attention to apostrophes (it\'s vs its, you\'re vs your)",
             "Check that all sentences end with proper punctuation"
           ],
           nextSteps: [
-            "Proofread your work sentence by sentence, checking each one carefully",
-            "Circle any words you're unsure about and double-check their spelling"
+            "Proofread your work sentence by sentence",
+            "Circle any words you\'re unsure about and double-check their spelling"
           ]
         }
       },
@@ -289,14 +290,16 @@ Format your response as a JSON object with this structure:
         "How does your character change from the beginning to the end?"
       ],
       revisionSuggestions: [
-        `Expand your opening sentence: "${analysis.firstSentence}" - add details about what the character sees, feels, or thinks`,
-        "Add one piece of dialogue to show your character's personality",
+        `Expand your opening sentence: \"${analysis.firstSentence}\" - add details about what the character sees, hears, feels, smells, or tastes`,
+        "Add one piece of dialogue to show your character\'s personality",
         "Include one sentence that appeals to the senses (what does something look, sound, smell, feel, or taste like?)",
-        "Write a stronger ending that shows how your character has changed or what they've learned"
+        "Write a stronger ending that shows how your character has changed or what they\'ve learned"
       ]
     };
   }
 }
+
+
 
 // NEW FUNCTION: Enhanced grammar checking for the writing editor (from user's original file)
 async function checkGrammarForEditor(text) {
