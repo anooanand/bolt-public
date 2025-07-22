@@ -1,5 +1,6 @@
 import React from 'react';
 import { X, Sparkles, Edit3, Wand, Star, Zap } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 interface PromptOptionsModalProps {
   isOpen: boolean;
@@ -16,29 +17,39 @@ export function PromptOptionsModal({
   onCustomPrompt, 
   textType 
 }: PromptOptionsModalProps) {
+  const navigate = useNavigate();
+
   if (!isOpen) return null;
 
-  // FIXED: Removed e.preventDefault() and e.stopPropagation() to allow proper navigation
+  // FIXED: Direct navigation to writing area with proper state management
   const handleGeneratePrompt = () => {
     console.log('🎯 PromptOptionsModal: Generate prompt clicked for:', textType);
     
-    // Store additional navigation context
+    // Store navigation context
     localStorage.setItem('modalAction', 'generate');
     localStorage.setItem('modalTimestamp', Date.now().toString());
+    localStorage.setItem('promptType', 'generated');
+    localStorage.setItem('selectedWritingType', textType);
+    localStorage.setItem('navigationSource', 'dashboard');
     
-    // Call the parent handler which should trigger navigation
-    onGeneratePrompt();
+    // Close modal and navigate directly
+    onClose();
+    navigate('/writing');
   };
 
   const handleCustomPrompt = () => {
     console.log('✏️ PromptOptionsModal: Custom prompt clicked for:', textType);
     
-    // Store additional navigation context
+    // Store navigation context
     localStorage.setItem('modalAction', 'custom');
     localStorage.setItem('modalTimestamp', Date.now().toString());
+    localStorage.setItem('promptType', 'custom');
+    localStorage.setItem('selectedWritingType', textType);
+    localStorage.setItem('navigationSource', 'dashboard');
     
-    // Call the parent handler which should trigger navigation
-    onCustomPrompt();
+    // Close modal and navigate directly
+    onClose();
+    navigate('/writing');
   };
 
   const handleClose = () => {
