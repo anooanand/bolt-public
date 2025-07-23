@@ -204,37 +204,40 @@ export function EnhancedWritingEditorWithHighlighting({
     
     // Common contextual confusions
     const contextualChecks = [
+      {
         words: ["their", "there", "they're"],
+        check: () => {
+          if (lowerWord === 'their' && (context.includes('over') || context.includes('location'))) {
             return { message: 'Consider "there" for location', suggestions: ['there'] };
           }
           if (lowerWord === 'there' && (context.includes('belonging') || nextWord === 'house' || nextWord === 'car')) {
             return { message: 'Consider "their" for possession', suggestions: ['their'] };
           }
           if ((lowerWord === 'their' || lowerWord === 'there') && (context.includes('they are') || nextWord === 'going')) {
-            return { message: 'Consider "they're" for "they are"', suggestions: ['they're'] };
+            return { message: `Consider "they're" for "they are"`, suggestions: ["they're"] };
           }
           return null;
         }
       },
       {
-        words: ['your', 'you're'],
+        words: ["your", "you're"],
         check: () => {
           if (lowerWord === 'your' && (nextWord === 'going' || nextWord === 'coming' || context.includes('you are'))) {
-            return { message: 'Consider "you're" for "you are"', suggestions: ['you're'] };
+            return { message: `Consider "you're" for "you are"`, suggestions: ["you're"] };
           }
-          if (lowerWord === 'you're' && (nextWord === 'house' || nextWord === 'car' || context.includes('belonging'))) {
+          if (lowerWord === "you're" && (nextWord === 'house' || nextWord === 'car' || context.includes('belonging'))) {
             return { message: 'Consider "your" for possession', suggestions: ['your'] };
           }
           return null;
         }
       },
       {
-        words: ['its', 'it's'],
+        words: ["its", "it's"],
         check: () => {
           if (lowerWord === 'its' && (nextWord === 'going' || context.includes('it is'))) {
-            return { message: 'Consider "it's" for "it is"', suggestions: ['it's'] };
+            return { message: `Consider "it's" for "it is"`, suggestions: ["it's"] };
           }
-          if (lowerWord === 'it's' && (nextWord === 'color' || nextWord === 'size' || context.includes('belonging'))) {
+          if (lowerWord === "it's" && (nextWord === 'color' || nextWord === 'size' || context.includes('belonging'))) {
             return { message: 'Consider "its" for possession', suggestions: ['its'] };
           }
           return null;
@@ -296,7 +299,7 @@ export function EnhancedWritingEditorWithHighlighting({
           }
           
           return {
-            message: `Subject-verb disagreement: "${subject}" appears plural, consider "${verb === 'is' ? 'are' : 'were'}"`,
+            message: `Subject-verb disagreement: "${subject}" appears plural, consider "${verb === 'is' ? 'are' : 'were'}"`, 
             suggestions: [verb === 'is' ? 'are' : 'were']
           };
         }
@@ -729,3 +732,4 @@ export function EnhancedWritingEditorWithHighlighting({
     </div>
   );
 }
+
