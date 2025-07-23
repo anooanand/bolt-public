@@ -77,17 +77,17 @@ export function EnhancedWritingEditorWithHighlighting({
   // AI-powered grammar and spelling checker (from latest EnhancedWritingEditor)
   const checkTextWithAI = async (text: string): Promise<GrammarError[]> => {
     if (!text.trim() || text.length < 10) return [];
-
+    
     try {
       setIsChecking(true);
-
+      
       // Try to use OpenAI API for contextual grammar and spelling checking
       const response = await fetch('/netlify/functions/ai-operations', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
+        body: JSON.stringify({ 
           action: 'check-grammar',
           text: text
         }),
@@ -113,10 +113,10 @@ export function EnhancedWritingEditorWithHighlighting({
   const getAIFeedbackForHighlighting = async (text: string) => {
     const words = text.trim().split(/\s+/).filter(w => w.length > 0);
     if (words.length < 50) return;
-
+    
     try {
       setIsGettingAIFeedback(true);
-
+      
       if (onGetFeedback) {
         const feedback = await onGetFeedback(text);
         setAiFeedback(feedback);
@@ -127,7 +127,7 @@ export function EnhancedWritingEditorWithHighlighting({
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({
+          body: JSON.stringify({ 
             action: 'getNSWSelectiveFeedback',
             content: text,
             textType: textType,
@@ -151,7 +151,7 @@ export function EnhancedWritingEditorWithHighlighting({
   // Client-side fallback using browser APIs and contextual analysis (from latest EnhancedWritingEditor)
   const checkTextClientSide = async (text: string): Promise<GrammarError[]> => {
     const errors: GrammarError[] = [];
-
+    
     // Advanced contextual grammar checking
     const grammarErrors = await checkGrammarPatterns(text);
     errors.push(...grammarErrors);
@@ -171,16 +171,16 @@ export function EnhancedWritingEditorWithHighlighting({
   const checkSpellingInContext = async (text: string): Promise<GrammarError[]> => {
     const errors: GrammarError[] = [];
     const words = text.match(/\b\w+\b/g) || [];
-
+    
     for (let i = 0; i < words.length; i++) {
       const word = words[i];
       const wordStart = text.indexOf(word, i > 0 ? text.indexOf(words[i-1]) + words[i-1].length : 0);
-
+      
       // Get context around the word
       const context = getWordContext(text, wordStart, word.length);
       const prevWord = i > 0 ? words[i-1] : '';
       const nextWord = i < words.length - 1 ? words[i+1] : '';
-
+      
       // Check for contextual spelling issues
       const spellingIssue = await analyzeWordInContext(word, context, prevWord, nextWord);
       if (spellingIssue) {
@@ -194,51 +194,48 @@ export function EnhancedWritingEditorWithHighlighting({
         });
       }
     }
-
+    
     return errors;
   };
 
   // Analyze word in context for spelling and usage (from latest EnhancedWritingEditor)
   const analyzeWordInContext = async (word: string, context: string, prevWord: string, nextWord: string): Promise<{message: string, suggestions: string[]} | null> => {
     const lowerWord = word.toLowerCase();
-
+    
     // Common contextual confusions
     const contextualChecks = [
-      {
-        words: ["their", "there", "they\"re"],
-        check: () => {
-          if (lowerWord === "their" && (context.includes("over") || context.includes("location"))) {
-            return { message: "Consider \"there\" for location", suggestions: ["there"] };
+        words: ["their", "there", "they're"],
+            return { message: 'Consider "there" for location', suggestions: ['there'] };
           }
-          if (lowerWord === "there" && (context.includes("belonging") || nextWord === "house" || nextWord === "car")) {
-            return { message: "Consider \"their\" for possession", suggestions: ["their"] };
+          if (lowerWord === 'there' && (context.includes('belonging') || nextWord === 'house' || nextWord === 'car')) {
+            return { message: 'Consider "their" for possession', suggestions: ['their'] };
           }
-          if ((lowerWord === "their" || lowerWord === "there") && (context.includes("they are") || nextWord === "going")) {
-            return { message: "Consider \"they\"re\" for \"they are\"", suggestions: ["they\"re"] };
+          if ((lowerWord === 'their' || lowerWord === 'there') && (context.includes('they are') || nextWord === 'going')) {
+            return { message: 'Consider "they're" for "they are"', suggestions: ['they're'] };
           }
           return null;
         }
       },
       {
-        words: ["your", "you\"re"],
+        words: ['your', 'you're'],
         check: () => {
-          if (lowerWord === "your" && (nextWord === "going" || nextWord === "coming" || context.includes("you are"))) {
-            return { message: "Consider \"you\"re\" for \"you are\"", suggestions: ["you\"re"] };
+          if (lowerWord === 'your' && (nextWord === 'going' || nextWord === 'coming' || context.includes('you are'))) {
+            return { message: 'Consider "you're" for "you are"', suggestions: ['you're'] };
           }
-          if (lowerWord === "you\"re" && (nextWord === "house" || nextWord === "car" || context.includes("belonging"))) {
-            return { message: "Consider \"your\" for possession", suggestions: ["your"] };
+          if (lowerWord === 'you're' && (nextWord === 'house' || nextWord === 'car' || context.includes('belonging'))) {
+            return { message: 'Consider "your" for possession', suggestions: ['your'] };
           }
           return null;
         }
       },
       {
-        words: ["its", "it\"s"],
+        words: ['its', 'it's'],
         check: () => {
-          if (lowerWord === "its" && (nextWord === "going" || context.includes("it is"))) {
-            return { message: "Consider \"it\"s\" for \"it is\"", suggestions: ["it\"s"] };
+          if (lowerWord === 'its' && (nextWord === 'going' || context.includes('it is'))) {
+            return { message: 'Consider "it's" for "it is"', suggestions: ['it's'] };
           }
-          if (lowerWord === "it\"s" && (nextWord === "color" || nextWord === "size" || context.includes("belonging"))) {
-            return { message: "Consider \"its\" for possession", suggestions: ["its"] };
+          if (lowerWord === 'it's' && (nextWord === 'color' || nextWord === 'size' || context.includes('belonging'))) {
+            return { message: 'Consider "its" for possession', suggestions: ['its'] };
           }
           return null;
         }
@@ -259,7 +256,7 @@ export function EnhancedWritingEditorWithHighlighting({
   const checkGrammarPatterns = async (text: string): Promise<GrammarError[]> => {
     const errors: GrammarError[] = [];
     const sentences = text.split(/[.!?]+/).filter(s => s.trim());
-
+    
     for (const sentence of sentences) {
       const trimmed = sentence.trim();
       if (!trimmed) continue;
@@ -283,7 +280,7 @@ export function EnhancedWritingEditorWithHighlighting({
   // Check subject-verb agreement (from latest EnhancedWritingEditor)
   const checkSubjectVerbAgreement = (sentence: string, fullText: string): GrammarError[] => {
     const errors: GrammarError[] = [];
-
+    
     // Pattern for plural subjects with singular verbs
     const patterns = [
       {
@@ -291,13 +288,13 @@ export function EnhancedWritingEditorWithHighlighting({
         check: (match: RegExpMatchArray) => {
           const subject = match[1];
           const verb = match[2].toLowerCase();
-
+          
           // Skip if subject is not actually plural (e.g., "glass is", "class is")
           const nonPluralEndings = ['ss', 'us', 'is', 'as'];
           if (nonPluralEndings.some(ending => subject.toLowerCase().endsWith(ending))) {
             return null;
           }
-
+          
           return {
             message: `Subject-verb disagreement: "${subject}" appears plural, consider "${verb === 'is' ? 'are' : 'were'}"`,
             suggestions: [verb === 'is' ? 'are' : 'were']
@@ -309,15 +306,18 @@ export function EnhancedWritingEditorWithHighlighting({
     patterns.forEach(({ regex, check }) => {
       let match;
       while ((match = regex.exec(sentence)) !== null) {
-        const sentenceStart = fullText.indexOf(sentence);
-        errors.push({
-          start: sentenceStart + match.index!,
-          end: sentenceStart + match.index! + match[0].length,
-          message: result.message,
-          type: 'grammar',
-          suggestions: result.suggestions,
-          context: getWordContext(fullText, sentenceStart + match.index!, match[0].length)
-        });
+        const result = check(match);
+        if (result) {
+          const sentenceStart = fullText.indexOf(sentence);
+          errors.push({
+            start: sentenceStart + match.index!,
+            end: sentenceStart + match.index! + match[0].length,
+            message: result.message,
+            type: 'grammar',
+            suggestions: result.suggestions,
+            context: getWordContext(fullText, sentenceStart + match.index!, match[0].length)
+          });
+        }
       }
     });
 
@@ -327,11 +327,11 @@ export function EnhancedWritingEditorWithHighlighting({
   // Check tense consistency (from latest EnhancedWritingEditor)
   const checkTenseConsistency = (sentence: string, fullText: string): GrammarError[] => {
     const errors: GrammarError[] = [];
-
+    
     // Simple tense inconsistency check
     const pastTenseVerbs = sentence.match(/\b\w+ed\b/g) || [];
     const presentTenseVerbs = sentence.match(/\b(is|are|am|go|goes|come|comes)\b/g) || [];
-
+    
     if (pastTenseVerbs.length > 0 && presentTenseVerbs.length > 0) {
       // This is a simplified check - in a real implementation, you'd use more sophisticated NLP
       const sentenceStart = fullText.indexOf(sentence);
@@ -351,7 +351,7 @@ export function EnhancedWritingEditorWithHighlighting({
   // Check common grammar patterns (from latest EnhancedWritingEditor)
   const checkCommonGrammarPatterns = (sentence: string, fullText: string): GrammarError[] => {
     const errors: GrammarError[] = [];
-
+    
     const patterns = [
       {
         regex: /\b(I|he|she|they)\s+seen\b/gi,
@@ -389,9 +389,9 @@ export function EnhancedWritingEditorWithHighlighting({
   };
 
   // Check punctuation (from latest EnhancedWritingEditor)
-  const checkPunctuation = (text: string): Promise<GrammarError[]> => {
+  const checkPunctuation = (text: string): GrammarError[] => {
     const errors: GrammarError[] = [];
-
+    
     // Check for missing periods at end of sentences
     const sentences = text.split(/[.!?]+/);
     if (sentences.length > 1 && text.trim() && !text.trim().match(/[.!?]$/)) {
@@ -490,12 +490,12 @@ export function EnhancedWritingEditorWithHighlighting({
   const handleTextareaClick = (e: React.MouseEvent<HTMLTextAreaElement>) => {
     const textarea = e.currentTarget;
     const cursorPosition = textarea.selectionStart;
-
+    
     // Find if cursor is on a grammar error
-    const errorAtCursor = errors.find(error =>
+    const errorAtCursor = errors.find(error => 
       cursorPosition >= error.start && cursorPosition <= error.end
     );
-
+    
     if (errorAtCursor) {
       setSelectedError(errorAtCursor);
       setShowSuggestions(true);
@@ -546,12 +546,12 @@ export function EnhancedWritingEditorWithHighlighting({
   }));
 
   // Combine AI highlights and grammar highlights
-  const allHighlights = showAIHighlights && showGrammarHighlights
+  const allHighlights = showAIHighlights && showGrammarHighlights 
     ? [...aiHighlights, ...grammarHighlights]
-    : showAIHighlights
-    ? aiHighlights
-    : showGrammarHighlights
-    ? grammarHighlights
+    : showAIHighlights 
+    ? aiHighlights 
+    : showGrammarHighlights 
+    ? grammarHighlights 
     : [];
 
   return (
@@ -571,7 +571,7 @@ export function EnhancedWritingEditorWithHighlighting({
             )}
           </div>
         </div>
-
+        
         <div className="flex items-center space-x-6">
           <label className="flex items-center">
             <input
@@ -583,7 +583,7 @@ export function EnhancedWritingEditorWithHighlighting({
             <Star className="w-4 h-4 text-green-500 mr-1" />
             <span className="text-sm text-gray-600">AI Feedback Highlights</span>
           </label>
-
+          
           <label className="flex items-center">
             <input
               type="checkbox"
@@ -630,10 +630,10 @@ export function EnhancedWritingEditorWithHighlighting({
             spellCheck={true}
           />
         )}
-
+        
         {/* Grammar suggestions popup */}
         {showSuggestions && selectedError && (
-          <div className="absolute z-50 bg-white border border-gray-200 rounded-lg shadow-lg p-4 max-w-sm"
+          <div className="absolute z-50 bg-white border border-gray-200 rounded-lg shadow-lg p-4 max-w-sm" 
                style={{ top: '100px', left: '20px' }}>
             <div className="flex items-center mb-2">
               {getErrorTypeIcon(selectedError.type)}
@@ -677,7 +677,7 @@ export function EnhancedWritingEditorWithHighlighting({
                   </span>
                 )}
               </div>
-
+              
               {aiFeedback.criteriaScores && (
                 <div className="grid grid-cols-4 gap-2 mb-3">
                   <div className="text-center">
@@ -698,11 +698,11 @@ export function EnhancedWritingEditorWithHighlighting({
                   </div>
                 </div>
               )}
-
+              
               <p className="text-sm text-green-700">
                 Found {aiHighlights.filter(h => h.type === 'strength').length} strengths, {' '}
                 {aiHighlights.filter(h => h.type === 'improvement').length} improvements, and {' '}
-                {aiHighlights.filter(h => h.type === 'suggestion').length} suggestions.
+                {aiHighlights.filter(h => h.type === 'suggestion').length} suggestions. 
                 Click on highlighted text to see detailed feedback.
               </p>
             </div>
@@ -719,7 +719,7 @@ export function EnhancedWritingEditorWithHighlighting({
                 Found {errors.filter(e => e.type === 'spelling').length} spelling, {' '}
                 {errors.filter(e => e.type === 'grammar').length} grammar, {' '}
                 {errors.filter(e => e.type === 'punctuation').length} punctuation, and {' '}
-                {errors.filter(e => e.type === 'style').length} style suggestions.
+                {errors.filter(e => e.type === 'style').length} style suggestions. 
                 Click on highlighted text to see contextual AI suggestions.
               </p>
             </div>
