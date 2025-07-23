@@ -1,224 +1,9 @@
 const OpenAI = require("openai");
 
-// Initialize OpenAI with server-side API key and proper error handling
-let openai = null;
-
-try {
-  const apiKey = process.env.OPENAI_API_KEY;
-  
-  if (apiKey && apiKey.trim() !== '') {
-    openai = new OpenAI({
-      apiKey: apiKey
-    });
-    console.log('[DEBUG] OpenAI client initialized successfully in Netlify function');
-  } else {
-    console.error('[ERROR] OPENAI_API_KEY environment variable is not set in Netlify function');
-  }
-} catch (error) {
-  console.error('[ERROR] Failed to initialize OpenAI client in Netlify function:', error);
-  openai = null;
-}
-
-// Helper function to check if OpenAI is available
-function isOpenAIAvailable() {
-  return openai !== null;
-}
-
-// Generate detailed fallback feedback when OpenAI is not available
-function generateDetailedFallbackFeedback(content, textType, analysis) {
-  const isNarrative = textType.toLowerCase().includes('narrative');
-  const isPersuasive = textType.toLowerCase().includes('persuasive');
-  
-  // Analyze content quality
-  const hasGoodLength = analysis.wordCount >= 150;
-  const hasMultipleParagraphs = analysis.paragraphCount > 1;
-  const hasDialogue = analysis.hasDialogue;
-  const hasDescriptiveWords = analysis.descriptiveWords.length >= 3;
-  const hasVariedSentences = analysis.averageSentenceLength > 8;
-  
-  let overallComment = "";
-  let priorityFocus = [];
-  let interactiveQuestions = [];
-  let revisionSuggestions = [];
-  
-  if (isNarrative) {
-    overallComment = `Great work on your ${analysis.wordCount}-word narrative! I can see you're developing your storytelling skills. ${hasGoodLength ? "Your story has good length and shows sustained effort." : "Try to expand your story with more details to reach 200-300 words."} Let's work together to make your narrative even stronger using NSW Selective exam criteria.`;
-    
-    priorityFocus = [
-      hasDescriptiveWords ? "Continue building sophisticated vocabulary" : "Add more vivid, descriptive words to bring your story to life",
-      hasMultipleParagraphs ? "Improve transitions between paragraphs" : "Organize your story into clear paragraphs (beginning, middle, end)"
-    ];
-    
-    interactiveQuestions = [
-      "What specific emotions does your main character feel at different points in the story?",
-      "If you were filming this story, what would the camera show us in detail?",
-      "What makes your character unique or interesting?",
-      "How does your character change from the beginning to the end?"
-    ];
-    
-    revisionSuggestions = [
-      `Expand your opening: "${analysis.firstSentence.substring(0, 50)}..." - add sensory details (what does the character see, hear, feel, smell, taste?)`,
-      hasDialogue ? "Great use of dialogue! Make sure it shows your character's personality" : "Consider adding dialogue to show your character's personality",
-      "Choose one moment in your story and expand it with specific, vivid details",
-      "Add one sentence that shows (rather than tells) how your character feels"
-    ];
-  } else if (isPersuasive) {
-    overallComment = `Excellent effort on your ${analysis.wordCount}-word persuasive piece! You're developing strong argument skills. ${hasGoodLength ? "Your essay has good length showing thorough thinking." : "Try to expand your arguments with more evidence and examples."} Let's strengthen your persuasive writing using NSW Selective criteria.`;
-    
-    priorityFocus = [
-      hasMultipleParagraphs ? "Strengthen your argument structure" : "Organize your arguments into clear paragraphs",
-      "Add more specific evidence and examples to support your points"
-    ];
-    
-    interactiveQuestions = [
-      "What is your strongest argument and why?",
-      "What evidence or examples support your main points?",
-      "How might someone disagree with you, and how would you respond?",
-      "What action do you want your reader to take?"
-    ];
-    
-    revisionSuggestions = [
-      "Start with a clear thesis statement that states your position",
-      "Add specific examples or statistics to support each argument",
-      "Include a counter-argument and explain why your position is stronger",
-      "End with a call to action that tells readers what to do"
-    ];
-  } else {
-    overallComment = `Well done on your ${analysis.wordCount}-word ${textType} piece! You show good understanding of the writing task. ${hasGoodLength ? "Your writing demonstrates sustained effort and development." : "Consider expanding your ideas with more detail and examples."} Let's work on strengthening your writing using NSW Selective criteria.`;
-    
-    priorityFocus = [
-      hasDescriptiveWords ? "Continue developing sophisticated vocabulary" : "Use more specific and varied vocabulary",
-      hasMultipleParagraphs ? "Improve paragraph organization and flow" : "Organize ideas into clear paragraphs"
-    ];
-    
-    interactiveQuestions = [
-      "What is the main message you want readers to understand?",
-      "What specific details or examples support your main ideas?",
-      "How can you make your writing more engaging for readers?",
-      "What would make your conclusion stronger?"
-    ];
-    
-    revisionSuggestions = [
-      "Add more specific details and examples to support your main ideas",
-      "Use transition words to connect your ideas smoothly",
-      "Vary your sentence beginnings and lengths",
-      "Strengthen your conclusion by restating your main points"
-    ];
-  }
-  
-  return {
-    overallComment,
-    criteriaFeedback: {
-      ideasAndContent: {
-        score: Math.min(8, Math.max(4, Math.floor(analysis.wordCount / 30) + (hasDescriptiveWords ? 1 : 0))),
-        maxScore: 10,
-        strengths: [
-          hasGoodLength ? "Good length showing sustained effort and development" : "Shows understanding of the writing task",
-          analysis.potentialCharacters.length > 0 ? `Introduces character(s): ${analysis.potentialCharacters.slice(0, 2).join(', ')}` : "Attempts to develop ideas and content",
-          hasDescriptiveWords ? `Uses descriptive language: ${analysis.descriptiveWords.slice(0, 3).join(', ')}` : "Shows effort in word choice"
-        ],
-        improvements: [
-          !hasGoodLength ? "Develop ideas with more specific details and examples" : "Add deeper character development and emotional depth",
-          "Include more sensory details to engage readers",
-          "Show rather than tell - use actions and dialogue to reveal character traits"
-        ],
-        suggestions: [
-          `Your opening "${analysis.firstSentence.substring(0, 40)}..." could be expanded with more vivid details`,
-          "Add specific examples that help readers visualize your story",
-          "Include details that appeal to the five senses (sight, sound, touch, smell, taste)"
-        ],
-        nextSteps: [
-          "Choose one paragraph and add three specific details",
-          "Replace one general word with a more specific, interesting alternative",
-          "Add one sentence that shows a character's emotions through their actions"
-        ]
-      },
-      textStructureAndOrganization: {
-        score: Math.min(8, Math.max(4, analysis.paragraphCount * 2 + (hasVariedSentences ? 2 : 1))),
-        maxScore: 10,
-        strengths: [
-          hasMultipleParagraphs ? `Well-organized with ${analysis.paragraphCount} clear paragraphs` : "Has a clear beginning to the story",
-          analysis.sentenceCount > 5 ? `Good sentence variety with ${analysis.sentenceCount} sentences` : "Shows understanding of sentence structure",
-          hasVariedSentences ? "Good sentence length variety" : "Attempts varied sentence construction"
-        ],
-        improvements: [
-          !hasMultipleParagraphs ? "Break writing into clear paragraphs for better organization" : "Strengthen transitions between paragraphs",
-          "Ensure each paragraph has a clear focus and purpose",
-          "Create smoother flow between ideas and sections"
-        ],
-        suggestions: [
-          hasMultipleParagraphs ? "Use connecting words like 'meanwhile', 'suddenly', 'after that' to link paragraphs" : "Start new paragraphs when the scene, time, or focus changes",
-          "Make sure each paragraph moves your story forward",
-          "Consider the logical flow of your ideas from beginning to end"
-        ],
-        nextSteps: [
-          !hasMultipleParagraphs ? "Identify 2-3 main parts of your story and give each its own paragraph" : "Add one transition word or phrase to connect ideas better",
-          "Check that each paragraph has one main focus",
-          "Read your work aloud to check if ideas flow smoothly"
-        ]
-      },
-      languageFeaturesAndVocabulary: {
-        score: Math.min(8, Math.max(4, analysis.descriptiveWords.length + (hasDialogue ? 2 : 0) + (hasVariedSentences ? 1 : 0))),
-        maxScore: 10,
-        strengths: [
-          hasDescriptiveWords ? `Uses descriptive language: ${analysis.descriptiveWords.slice(0, 4).join(', ')}` : "Attempts to use descriptive words",
-          hasDialogue ? "Includes dialogue to develop characters" : "Shows understanding of narrative techniques",
-          hasVariedSentences ? "Good sentence length variety" : "Uses basic sentence structures appropriately"
-        ],
-        improvements: [
-          !hasDescriptiveWords ? "Use more vivid, specific adjectives and adverbs" : "Continue building sophisticated vocabulary",
-          !hasVariedSentences ? "Vary sentence beginnings and lengths" : "Experiment with more complex sentence structures",
-          "Add literary devices like similes or metaphors"
-        ],
-        suggestions: [
-          "Replace basic words: instead of 'big' try 'enormous', 'massive', or 'towering'",
-          "Instead of 'said' try 'whispered', 'exclaimed', 'muttered', or 'declared'",
-          "Add similes (like/as comparisons) to make descriptions more vivid",
-          "Use strong verbs that show action clearly"
-        ],
-        nextSteps: [
-          "Find 3 basic words in your writing and replace them with more interesting alternatives",
-          "Add one simile or metaphor to describe a character, setting, or action",
-          "Rewrite two sentences to start them in different ways"
-        ]
-      },
-      spellingPunctuationGrammar: {
-        score: 7,
-        maxScore: 10,
-        strengths: [
-          "Generally good control of basic spelling and grammar",
-          "Shows understanding of sentence structure and punctuation",
-          "Appropriate attempt at maintaining consistent tense"
-        ],
-        improvements: [
-          "Double-check spelling of longer or more complex words",
-          "Ensure consistent use of past tense throughout narrative",
-          "Check punctuation, especially in dialogue and complex sentences"
-        ],
-        suggestions: [
-          "Read your work aloud - your ear will catch mistakes your eyes miss",
-          "Pay attention to apostrophes (it's vs its, you're vs your)",
-          "Make sure all sentences end with proper punctuation",
-          "Check that dialogue is punctuated correctly"
-        ],
-        nextSteps: [
-          "Proofread your work sentence by sentence",
-          "Circle any words you're unsure about and check their spelling",
-          "Read your work backwards to catch spelling errors"
-        ]
-      }
-    },
-    priorityFocus,
-    examStrategies: [
-      "Spend 5-8 minutes planning your story structure before writing",
-      "Aim for 200-300 words in the exam - practice writing to this length",
-      "Leave 3-4 minutes at the end to proofread and make improvements",
-      "Use the full time allocation - don't rush or finish too early"
-    ],
-    interactiveQuestions,
-    revisionSuggestions
-  };
-}
+// Initialize OpenAI with server-side API key
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY
+});
 
 // Helper function to analyze content structure (NEWLY ADDED)
 function analyzeContentStructure(content) {
@@ -256,13 +41,6 @@ function analyzeContentStructure(content) {
 
 // Enhanced NSW Selective Writing Exam Feedback Function (UPDATED)
 async function getNSWSelectiveFeedback(content, textType, assistanceLevel = "medium", feedbackHistory = []) {
-  // Check if OpenAI is available first
-  if (!isOpenAIAvailable()) {
-    console.error('[ERROR] OpenAI not available for getNSWSelectiveFeedback');
-    const analysis = analyzeContentStructure(content);
-    return generateDetailedFallbackFeedback(content, textType, analysis);
-  }
-
   try {
     const analysis = analyzeContentStructure(content);
     
@@ -364,7 +142,7 @@ Format your response as a JSON object with this structure:
     } catch (parseError) {
       console.error("Failed to parse OpenAI feedback as JSON:", parseError);
       return {
-        overallComment: "I\'m having trouble analyzing your writing right now. Your work shows good effort - please try again in a moment. (Error: Invalid AI response format)",
+       overallComment: "I'm having trouble analyzing your writing right now. Your work shows good effort - please try again in a moment. (Error: Invalid AI response format)",
         criteriaFeedback: {
           ideasAndContent: {
             score: 5,
@@ -594,42 +372,6 @@ async function generatePrompt(textType) {
 }
 
 async function getWritingFeedback(content, textType, assistanceLevel, feedbackHistory) {
-  // Check if OpenAI is available first
-  if (!isOpenAIAvailable()) {
-    console.error('[ERROR] OpenAI not available for getWritingFeedback');
-    const analysis = analyzeContentStructure(content);
-    
-    return {
-      overallComment: `Great work on your ${analysis.wordCount}-word ${textType} piece! I can see you're putting effort into your writing. Let me help you make it even better.`,
-      feedbackItems: [
-        {
-          type: "praise",
-          area: "Effort",
-          text: `Excellent job writing ${analysis.wordCount} words! Your writing shows good understanding of the task.`,
-          exampleFromText: analysis.firstSentence.substring(0, 50) + "...",
-          suggestionForImprovement: "Keep building on this strong foundation by adding more specific details."
-        },
-        {
-          type: "suggestion",
-          area: "Structure",
-          text: analysis.paragraphCount > 1 ? `Good organization with ${analysis.paragraphCount} paragraphs.` : "Your writing is currently in one paragraph.",
-          suggestionForImprovement: analysis.paragraphCount === 1 ? "Try breaking your writing into 2-3 paragraphs for better organization." : "Consider adding transition words to connect your paragraphs smoothly."
-        },
-        {
-          type: "suggestion",
-          area: "Vocabulary",
-          text: analysis.descriptiveWords.length > 2 ? `I notice you're using descriptive words like: ${analysis.descriptiveWords.slice(0, 3).join(', ')}.` : "You're starting to use some descriptive language.",
-          suggestionForImprovement: analysis.descriptiveWords.length > 2 ? "Try adding even more vivid, specific words to paint a clearer picture." : "Add more descriptive words (adjectives and adverbs) to make your writing more engaging."
-        }
-      ],
-      focusForNextTime: [
-        analysis.wordCount < 150 ? "Try to expand your ideas with more specific details and examples" : "Continue developing sophisticated vocabulary and sentence variety",
-        analysis.averageSentenceLength < 8 ? "Practice writing some longer, more detailed sentences" : "Great sentence variety! Keep experimenting with different sentence structures",
-        "Read your work aloud to check that it flows well and makes sense"
-      ]
-    };
-  }
-
   try {
     const completion = await openai.chat.completions.create({
       messages: [
@@ -655,35 +397,28 @@ async function getWritingFeedback(content, textType, assistanceLevel, feedbackHi
     return JSON.parse(responseContent);
   } catch (error) {
     console.error("OpenAI writing feedback error:", error);
-    const analysis = analyzeContentStructure(content);
-    
-    return {
-      overallComment: `Great effort on your ${analysis.wordCount}-word ${textType} piece! I can see you're working hard on your writing. Let me share some helpful feedback to make it even stronger.`,
+    return       overallComment: "It seems I'm having a little trouble processing your request right now, but don't worry! I can still give you some general tips for narrative writing.",
       feedbackItems: [
         {
-          type: "praise",
-          area: "effort",
-          text: `You've written ${analysis.wordCount} words, which shows good commitment to the task.`,
-          suggestionForImprovement: "Keep practicing to continue improving your writing skills."
+          type: "suggestion",
+          area: "Narrative Start",
+          text: "To start your narrative story, try hooking your reader immediately. You can begin with an exciting event, a vivid description of a character or setting, or a compelling piece of dialogue.",
+          suggestionForImprovement: "Consider opening with an action, a mystery, or a strong emotional moment to grab attention."
         },
         {
           type: "suggestion",
-          area: "development",
-          text: analysis.wordCount >= 150 ? "Your writing has good length and development." : "Consider expanding your ideas with more details.",
-          suggestionForImprovement: analysis.wordCount >= 150 ? "Focus on adding more sophisticated vocabulary and varied sentence structures." : "Try to reach 200-300 words by adding specific examples and descriptions."
+          area: "Story Structure",
+          text: "A good narrative usually follows a structure: exposition (introducing characters/setting), rising action (building conflict), climax (the peak of the story), falling action (resolving conflict), and resolution (the end).",
+          suggestionForImprovement: "Outline these key elements before you write to ensure a clear flow."
         },
         {
           type: "suggestion",
-          area: "structure",
-          text: analysis.paragraphCount > 1 ? `You've organized your writing into ${analysis.paragraphCount} paragraphs.` : "Your writing is currently in one paragraph.",
-          suggestionForImprovement: analysis.paragraphCount > 1 ? "Make sure each paragraph has a clear focus and flows smoothly to the next." : "Try breaking your writing into 2-3 paragraphs for better organization."
+          area: "Character Development",
+          text: "To create interesting characters, give them unique traits, motivations, and flaws. Show their personality through their actions and dialogue, rather than just telling the reader.",
+          suggestionForImprovement: "Think about what your character wants, what stands in their way, and how they change throughout the story."
         }
       ],
-      focusForNextTime: [
-        "Continue practicing and developing your writing skills",
-        "Focus on clear expression and organization", 
-        "Add specific details and examples to support your ideas"
-      ]
+      focusForNextTime: ["Practice different narrative hooks", "Map out your story's plot points", "Develop character backstories and motivations"]
     };
   }
 }
