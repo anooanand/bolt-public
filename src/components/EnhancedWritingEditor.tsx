@@ -205,7 +205,7 @@ export function EnhancedWritingEditorWithHighlighting({
     // Common contextual confusions
     const contextualChecks = [
       {
-        words: ['their', 'there', 'they're'],
+        words: ['their', 'there', 'they\'re'],
         check: () => {
           if (lowerWord === 'their' && (context.includes('over') || context.includes('location'))) {
             return { message: 'Consider "there" for location', suggestions: ['there'] };
