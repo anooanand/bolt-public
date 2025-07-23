@@ -10,7 +10,7 @@ function analyzeContentStructure(content) {
   const sentences = content.split(/[.!?]+/).filter(s => s.trim().length > 0);
   const words = content.trim().split(/\s+/).filter(w => w.length > 0);
   const paragraphs = content.split(/\n\s*\n/).filter(p => p.trim().length > 0);
-  
+
   const potentialCharacters = words.filter((word, index) => {
     const isCapitalized = /^[A-Z][a-z]+$/.test(word);
     const isNotSentenceStart = index > 0 && !/[.!?]/.test(words[index - 1]);
@@ -18,11 +18,11 @@ function analyzeContentStructure(content) {
   });
 
   const dialogueMatches = content.match(/"[^"]*"/g) || [];
-  
-  const descriptiveWords = words.filter(word => 
-    /ly$/.test(word) || 
-    /ing$/.test(word) || 
-    /ed$/.test(word) 
+
+  const descriptiveWords = words.filter(word =>
+    /ly$/.test(word) ||
+    /ing$/.test(word) ||
+    /ed$/.test(word)
   );
 
   return {
@@ -43,9 +43,8 @@ function analyzeContentStructure(content) {
 async function getNSWSelectiveFeedback(content, textType, assistanceLevel = "medium", feedbackHistory = []) {
   try {
     const analysis = analyzeContentStructure(content);
-    
-    const prompt = `You are an expert NSW Selective School writing assessor. Analyze this ${textType} writing sample and provide detailed, specific feedback based on NSW Selective criteria.\n\nSTUDENT\'S WRITING:\n"${content}"\n\nCONTENT ANALYSIS:\n- Word count: ${analysis.wordCount}\n- Sentence count: ${analysis.sentenceCount}\n- Paragraph count: ${analysis.paragraphCount}\n- Average sentence length: ${Math.round(analysis.averageSentenceLength)} words\n- Has dialogue: ${analysis.hasDialogue}\n- Potential characters: ${analysis.potentialCharacters.join(\\\', \\\') || \'None identified\'}\n- Descriptive words used: ${analysis.descriptiveWords.slice(0, 5).join(\\\', \\\') || \'Limited\'}\n\nNSW SELECTIVE CRITERIA TO ASSESS:\n\n1. IDEAS AND CONTENT (30%):\n   - Relevance to prompt and task requirements\n   - Originality and creativity of ideas\n   - Development and elaboration of ideas\n   - Depth of thinking and insight\n   - Engagement and audience awareness\n\n2. TEXT STRUCTURE AND ORGANIZATION (25%):\n   - Clear beginning, middle, and end\n   - Logical sequence and flow of ideas\n   - Effective paragraph structure\n   - Coherence and cohesion between sections\n   - Appropriate structure for ${textType}\n\n3. LANGUAGE FEATURES AND VOCABULARY (25%):\n   - Sophisticated and varied vocabulary\n   - Effective use of literary devices\n   - Sentence variety and structure\n   - Appropriate tone and style for purpose\n   - Precision and clarity of expression\n\n4. SPELLING, PUNCTUATION, AND GRAMMAR (20%):\n   - Accurate spelling, including difficult words\n   - Correct and varied punctuation\n   - Grammatical accuracy\n   - Consistent tense and point of view\n\nINSTRUCTIONS:\n1. Provide specific scores out of 10 for each criterion\n2. Give concrete examples from the student\'s text\n3. Offer specific, actionable suggestions for improvement\n4. Include questions that help the student think deeper about their writing\n5. Suggest specific revision tasks they can do right now\n6. Be encouraging but honest about areas needing work\n7. Reference specific words, phrases, or sentences from their writing\n\nFormat your response as a JSON object with this structure:\n{\n  \"overallComment\": \"Brief encouraging overview\",\n  \"criteriaFeedback\": {\n    \"ideasAndContent\": {\n      \"score\": number,\n      \"maxScore\": 10,\n      \"strengths\": [\"specific strength with example from text\"],\n      \"improvements\": [\"specific area needing work\"],\n      \"suggestions\": [\"actionable suggestion with example\"],\n      \"nextSteps\": [\"specific task to improve this area\"]\n    },\n    \"textStructureAndOrganization\": { ... same structure ... },\n    \"languageFeaturesAndVocabulary\": { ... same structure ... },\n    \"spellingPunctuationGrammar\": { ... same structure ... }\n  },\n  \"priorityFocus\": [\"top 2 areas to focus on next\"],\n  \"examStrategies\": [\"specific exam tips based on this writing\"],\n  \"interactiveQuestions\": [\"questions to help student reflect on their writing\"],\n  \"revisionSuggestions\": [\"specific tasks they can do to improve this piece right now\"]\n}\
-`;
+
+    const prompt = `You are an expert NSW Selective School writing assessor. Analyze this ${textType} writing sample and provide detailed, specific feedback based on NSW Selective criteria.\n\nSTUDENT'S WRITING:\n"${content}"\n\nCONTENT ANALYSIS:\n- Word count: ${analysis.wordCount}\n- Sentence count: ${analysis.sentenceCount}\n- Paragraph count: ${analysis.paragraphCount}\n- Average sentence length: ${Math.round(analysis.averageSentenceLength)} words\n- Has dialogue: ${analysis.hasDialogue}\n- Potential characters: ${analysis.potentialCharacters.join(', ') || 'None identified'}\n- Descriptive words used: ${analysis.descriptiveWords.slice(0, 5).join(', ') || 'Limited'}\n\nNSW SELECTIVE CRITERIA TO ASSESS:\n\n1. IDEAS AND CONTENT (30%):\n   - Relevance to prompt and task requirements\n   - Originality and creativity of ideas\n   - Development and elaboration of ideas\n   - Depth of thinking and insight\n   - Engagement and audience awareness\n\n2. TEXT STRUCTURE AND ORGANIZATION (25%):\n   - Clear beginning, middle, and end\n   - Logical sequence and flow of ideas\n   - Effective paragraph structure\n   - Coherence and cohesion between sections\n   - Appropriate structure for ${textType}\n\n3. LANGUAGE FEATURES AND VOCABULARY (25%):\n   - Sophisticated and varied vocabulary\n   - Effective use of literary devices\n   - Sentence variety and structure\n   - Appropriate tone and style for purpose\n   - Precision and clarity of expression\n\n4. SPELLING, PUNCTUATION, AND GRAMMAR (20%):\n   - Accurate spelling, including difficult words\n   - Correct and varied punctuation\n   - Grammatical accuracy\n   - Consistent tense and point of view\n\nINSTRUCTIONS:\n1. Provide specific scores out of 10 for each criterion\n2. Give concrete examples from the student's text\n3. Offer specific, actionable suggestions for improvement\n4. Include questions that help the student think deeper about their writing\n5. Suggest specific revision tasks they can do right now\n6. Be encouraging but honest about areas needing work\n7. Reference specific words, phrases, or sentences from their writing\n\nFormat your response as a JSON object with this structure:\n{\n  "overallComment": "Brief encouraging overview",\n  "criteriaFeedback": {\n    "ideasAndContent": {\n      "score": number,\n      "maxScore": 10,\n      "strengths": ["specific strength with example from text"],\n      "improvements": ["specific area needing work"],\n      "suggestions": ["actionable suggestion with example"],\n      "nextSteps": ["specific task to improve this area"]\n    },\n    "textStructureAndOrganization": { ... same structure ... },\n    "languageFeaturesAndVocabulary": { ... same structure ... },\n    "spellingPunctuationGrammar": { ... same structure ... }\n  },\n  "priorityFocus": ["top 2 areas to focus on next"],\n  "examStrategies": ["specific exam tips based on this writing"],\n  "interactiveQuestions": ["questions to help student reflect on their writing"],\n  "revisionSuggestions": ["specific tasks they can do to improve this piece right now"]\n}`;
 
     const response = await openai.chat.completions.create({
       model: "gpt-4",
@@ -64,14 +63,14 @@ async function getNSWSelectiveFeedback(content, textType, assistanceLevel = "med
     });
 
     const feedbackText = response.choices[0].message.content;
-    
+
     try {
       const feedbackJson = JSON.parse(feedbackText);
       return feedbackJson;
     } catch (parseError) {
       console.error("Failed to parse OpenAI feedback as JSON:", parseError);
       return {
-        overallComment: "I\"m having trouble analyzing your writing right now. Your work shows good effort - please try again in a moment. (Error: Invalid AI response format)",
+       overallComment: "I'm having trouble analyzing your writing right now. Your work shows good effort - please try again in a moment. (Error: Invalid AI response format)",
         criteriaFeedback: {
           ideasAndContent: {
             score: 5,
@@ -115,10 +114,10 @@ async function getNSWSelectiveFeedback(content, textType, assistanceLevel = "med
 
   } catch (error) {
     console.error("Error getting NSW Selective feedback:", error);
-    
+
     const analysis = analyzeContentStructure(content);
     return {
-      overallComment: `Your ${analysis.wordCount}-word ${textType} shows good effort! I can see you\"re developing your storytelling skills. Let\"s work on making it even stronger using NSW Selective exam criteria.`,
+      overallComment: `Your ${analysis.wordCount}-word ${textType} shows good effort! I can see you're developing your storytelling skills. Let's work on making it even stronger using NSW Selective exam criteria.`,
       criteriaFeedback: {
         ideasAndContent: {
           score: Math.min(8, Math.max(4, Math.floor(analysis.wordCount / 25))),
@@ -133,11 +132,11 @@ async function getNSWSelectiveFeedback(content, textType, assistanceLevel = "med
           ],
           suggestions: [
             `Your opening \"${analysis.firstSentence.substring(0, 30)}...\" could be expanded with more sensory details`,
-            "Show don\"t tell - instead of saying someone is sad, describe their actions or expressions"
+            "Show don't tell - instead of saying someone is sad, describe their actions or expressions"
           ],
           nextSteps: [
             "Choose one moment in your story and expand it with what the character sees, hears, feels, smells, or tastes",
-            "Add one sentence that shows your character\"s personality through their actions"
+            "Add one sentence that shows your character's personality through their actions"
           ]
         },
         textStructureAndOrganization: {
@@ -152,7 +151,7 @@ async function getNSWSelectiveFeedback(content, textType, assistanceLevel = "med
             "Make sure each paragraph has a clear focus"
           ],
           suggestions: [
-            analysis.paragraphCount === 1 ? "Start a new paragraph when the scene, time, or focus changes" : "Use connecting words like \"meanwhile\", \"suddenly\", or \"later\" to link ideas",
+            analysis.paragraphCount === 1 ? "Start a new paragraph when the scene, time, or focus changes" : "Use connecting words like 'meanwhile', 'suddenly', 'later' to link ideas",
             "Each paragraph should move your story forward in some way"
           ],
           nextSteps: [
@@ -164,7 +163,7 @@ async function getNSWSelectiveFeedback(content, textType, assistanceLevel = "med
           score: Math.min(8, Math.max(4, analysis.descriptiveWords.length + 3)),
           maxScore: 10,
           strengths: [
-            analysis.descriptiveWords.length > 2 ? `Uses descriptive words like: ${analysis.descriptiveWords.slice(0, 3).join("\\\", \\\"")}` : "Attempts to use descriptive language",
+            analysis.descriptiveWords.length > 2 ? `Uses descriptive words like: ${analysis.descriptiveWords.slice(0, 3).join(", ")}` : "Attempts to use descriptive language",
             analysis.averageSentenceLength > 8 ? "Good sentence length variety" : "Shows basic sentence construction"
           ],
           improvements: [
@@ -172,8 +171,8 @@ async function getNSWSelectiveFeedback(content, textType, assistanceLevel = "med
             analysis.averageSentenceLength < 8 ? "Try writing some longer, more detailed sentences" : "Vary your sentence beginnings"
           ],
           suggestions: [
-            "Instead of \"big\", try \"enormous\", \"massive\", or \"towering\"",
-            "Instead of \"said\", try \"whispered\", \"exclaimed\", or \"muttered\"",
+            "Instead of 'big', try 'enormous', 'massive', or 'towering'",
+            "Instead of 'said', try 'whispered', 'exclaimed', or 'muttered'",
             "Add similes (like/as comparisons) or metaphors to make your writing more vivid"
           ],
           nextSteps: [
@@ -194,12 +193,12 @@ async function getNSWSelectiveFeedback(content, textType, assistanceLevel = "med
           ],
           suggestions: [
             "Read your work aloud - your ear will catch mistakes your eyes miss",
-            "Pay special attention to apostrophes (it\"s vs its, you\"re vs your)",
+            "Pay special attention to apostrophes (it's vs its, you're vs your)",
             "Check that all sentences end with proper punctuation"
           ],
           nextSteps: [
             "Proofread your work sentence by sentence",
-            "Circle any words you\"re unsure about and double-check their spelling"
+            "Circle any words you're unsure about and double-check their spelling"
           ]
         }
       },
@@ -220,9 +219,9 @@ async function getNSWSelectiveFeedback(content, textType, assistanceLevel = "med
       ],
       revisionSuggestions: [
         `Expand your opening sentence: \"${analysis.firstSentence}\" - add details about what the character sees, hears, feels, smells, or tastes`,
-        "Add one piece of dialogue to show your character\"s personality",
+        "Add one piece of dialogue to show your character's personality",
         "Include one sentence that appeals to the senses (what does something look, sound, smell, feel, or taste like?)",
-        "Write a stronger ending that shows how your character has changed or what they\"ve learned"
+        "Write a stronger ending that shows how your character has changed or what they've learned"
       ]
     };
   }
@@ -230,14 +229,14 @@ async function getNSWSelectiveFeedback(content, textType, assistanceLevel = "med
 
 
 
-// NEW FUNCTION: Enhanced grammar checking for the writing editor (from user\'s original file)
+// NEW FUNCTION: Enhanced grammar checking for the writing editor (from user's original file)
 async function checkGrammarForEditor(text) {
   try {
     const completion = await openai.chat.completions.create({
       messages: [
         {
           role: "system",
-          content: `You are an expert writing assistant that analyzes text for grammar, spelling, punctuation, and style issues. For each error found, provide the exact character positions (start and end), error type, message, and contextual suggestions.\n\nReturn the analysis in this exact JSON format:\n{\n  \"errors\": [\n    {\n      \"start\": 15,\n      \"end\": 19,\n      \"message\": \"Spelling error: \'yung\' should be \'young\'\",\n      \"type\": \"spelling\",\n      \"suggestions\": [\"young\"],\n      \"context\": \"there was a yung adventurer\"\n    },\n    {\n      \"start\": 45,\n      \"end\": 51,\n      \"message\": \"Grammar error: Subject-verb disagreement\",\n      \"type\": \"grammar\", \n      \"suggestions\": [\"were\"], \n      \"context\": \"The trees was tall\"\n    }\n  ]\n}\n\nAnalyze the text carefully for:\n- Spelling errors (misspelled words)\n- Grammar errors (subject-verb agreement, tense consistency, etc.)\n- Punctuation errors (missing periods, comma splices, etc.)\n- Style issues (repetitive words, unclear phrasing)\n\nBe precise with character positions and provide helpful, contextual suggestions.`
+          content: `You are an expert writing assistant that analyzes text for grammar, spelling, punctuation, and style issues. For each error found, provide the exact character positions (start and end), error type, message, and contextual suggestions.\n\nReturn the analysis in this exact JSON format:\n{\n  "errors": [\n    {\n      "start": 15,\n      "end": 19,\n      "message": "Spelling error: 'yung' should be 'young'",\n      "type": "spelling",\n      "suggestions": ["young"],\n      "context": "there was a yung adventurer"\n    },\n    {\n      "start": 45,\n      "end": 51,\n      "message": "Grammar error: Subject-verb disagreement",\n      "type": "grammar", \n      "suggestions": ["were"], \n      "context": "The trees was tall"\n    }\n  ]\n}\n\nAnalyze the text carefully for:\n- Spelling errors (misspelled words)\n- Grammar errors (subject-verb agreement, tense consistency, etc.)\n- Punctuation errors (missing periods, comma splices, etc.)\n- Style issues (repetitive words, unclear phrasing)\n\nBe precise with character positions and provide helpful, contextual suggestions.`
         },
         {
           role: "user",
@@ -255,16 +254,16 @@ async function checkGrammarForEditor(text) {
     }
 
     const parsed = JSON.parse(responseContent);
-    
+
     if (!parsed.errors || !Array.isArray(parsed.errors)) {
       throw new Error("Invalid response format: errors not an array");
     }
 
     const validatedErrors = parsed.errors.filter(error => {
-      return typeof error.start === \'number\' &&
-             typeof error.end === \'number\' &&
-             typeof error.message === \'string\' &&
-             typeof error.type === \'string\' &&
+      return typeof error.start === 'number' &&
+             typeof error.end === 'number' &&
+             typeof error.message === 'string' &&
+             typeof error.type === 'string' &&
              Array.isArray(error.suggestions);
     });
 
@@ -275,7 +274,7 @@ async function checkGrammarForEditor(text) {
   }
 }
 
-// OpenAI function implementations (from user\'s original file)
+// OpenAI function implementations (from user's original file)
 async function generatePrompt(textType) {
   try {
     const completion = await openai.chat.completions.create({
@@ -293,7 +292,7 @@ async function generatePrompt(textType) {
     return { prompt: completion.choices[0].message.content || "Write about a memorable experience." };
   } catch (error) {
     console.error("OpenAI prompt generation error:", error);
-    return { 
+    return {
       prompt: "Write about a memorable experience that taught you something important.",
       fallback: true
     };
@@ -306,7 +305,7 @@ async function getWritingFeedback(content, textType, assistanceLevel, feedbackHi
       messages: [
         {
           role: "system",
-          content: `You are an expert writing teacher providing feedback for Year 5-6 students. Analyze this ${textType} writing piece and provide constructive feedback. Consider the student\'s ${assistanceLevel} assistance level and previous feedback history. Return feedback in this format:\n{\n  \"overallComment\": \"Brief, encouraging overall assessment\",\n  \"feedbackItems\": [\n    {\n      \"type\": \"praise/suggestion/question/challenge\",\n      \"area\": \"specific area of writing (e.g., vocabulary, structure)\",\n      \"text\": \"detailed feedback point\",\n      \"exampleFromText\": \"relevant example from student\'s writing (optional)\",\n      \"suggestionForImprovement\": \"specific suggestion (optional)\",\n    }\n  ],\n  \"focusForNextTime\": [\"2-3 specific points to focus on\"]\n}`
+          content: `You are an expert writing teacher providing feedback for Year 5-6 students. Analyze this ${textType} writing piece and provide constructive feedback. Consider the student's ${assistanceLevel} assistance level and previous feedback history. Return feedback in this format:\n{\n  "overallComment": "Brief, encouraging overall assessment",\n  "feedbackItems": [\n    {\n      "type": "praise/suggestion/question/challenge",\n      "area": "specific area of writing (e.g., vocabulary, structure)",\n      "text": "detailed feedback point",\n      "exampleFromText": "relevant example from student's writing (optional)",\n      "suggestionForImprovement": "specific suggestion (optional)"\n    }\n  ],\n  "focusForNextTime": ["2-3 specific points to focus on"]\n}`
         },
         {
           role: "user",
@@ -326,8 +325,7 @@ async function getWritingFeedback(content, textType, assistanceLevel, feedbackHi
     return JSON.parse(responseContent);
   } catch (error) {
     console.error("OpenAI writing feedback error:", error);
-    return {
-      overallComment: "It seems I\'m having a little trouble processing your request right now, but don\'t worry! I can still give you some general tips for narrative writing.",
+    return       overallComment: "It seems I'm having a little trouble processing your request right now, but don't worry! I can still give you some general tips for narrative writing.",
       feedbackItems: [
         {
           type: "suggestion",
@@ -348,7 +346,7 @@ async function getWritingFeedback(content, textType, assistanceLevel, feedbackHi
           suggestionForImprovement: "Think about what your character wants, what stands in their way, and how they change throughout the story."
         }
       ],
-      focusForNextTime: ["Practice different narrative hooks", "Map out your story\'s plot points", "Develop character backstories and motivations"]
+      focusForNextTime: ["Practice different narrative hooks", "Map out your story's plot points", "Develop character backstories and motivations"]
     };
   }
 }
@@ -359,7 +357,7 @@ async function identifyCommonMistakes(content, textType) {
       messages: [
         {
           role: "system",
-          content: `You are an expert writing teacher analyzing a Year 5-6 student\'s ${textType} writing piece. Identify common mistakes and provide constructive feedback. Return the analysis in this exact JSON format:\n{\n  \"overallAssessment\": \"Brief overall assessment of the writing\",\n  \"mistakesIdentified\": [\n    {\n      \"category\": \"content/structure/vocabulary/sentences/punctuation/spelling\",\n      \"issue\": \"Description of the mistake\",\n      \"example\": \"Example from the text showing the mistake\",\n      \"impact\": \"How this affects the writing\",\n      \"correction\": \"How to fix this mistake\",\n      \"preventionTip\": \"How to avoid this mistake in future\"\n    }\n  ],\n  \"patternAnalysis\": \"Analysis of any patterns in mistakes\",\n  \"priorityFixes\": [\"List\", \"of\", \"priority\", \"fixes\"],\n  \"positiveElements\": [\"List\", \"of\", \"things\", \"done\", \"well\"]\n}`
+          content: `You are an expert writing teacher analyzing a Year 5-6 student's ${textType} writing piece. Identify common mistakes and provide constructive feedback. Return the analysis in this exact JSON format:\n{\n  "overallAssessment": "Brief overall assessment of the writing",\n  "mistakesIdentified": [\n    {\n      "category": "content/structure/vocabulary/sentences/punctuation/spelling",\n      "issue": "Description of the mistake",\n      "example": "Example from the text showing the mistake",\n      "impact": "How this affects the writing",\n      "correction": "How to fix this mistake",\n      "preventionTip": "How to avoid this mistake in future"\n    }\n  ],\n  "patternAnalysis": "Analysis of any patterns in mistakes",\n  "priorityFixes": ["List", "of", "priority", "fixes"],\n  "positiveElements": ["List", "of", "things", "done", "well"]\n}`
         },
         {
           role: "user",
@@ -377,7 +375,7 @@ async function identifyCommonMistakes(content, textType) {
     }
 
     const parsed = JSON.parse(responseContent);
-    
+
     if (!parsed.overallAssessment || !Array.isArray(parsed.mistakesIdentified)) {
       throw new Error("Invalid response format: missing required fields");
     }
@@ -423,7 +421,7 @@ async function rephraseSentence(sentence) {
       messages: [
         {
           role: "system",
-          content: `Rephrase this sentence in a way that\'s suitable for Year 5-6 students while maintaining its meaning: "${sentence}"`
+          content: `Rephrase this sentence in a way that's suitable for Year 5-6 students while maintaining its meaning: "${sentence}"`
         }
       ],
       model: "gpt-4",
@@ -444,7 +442,8 @@ async function getTextTypeVocabulary(textType, contentSample) {
       messages: [
         {
           role: "system",
-          content: `You are an expert writing teacher providing vocabulary assistance for Year 5-6 students writing a ${textType} piece. Based on the content sample provided, suggest appropriate vocabulary. Return the suggestions in this exact JSON format:\n{\n  \"textType\": \"${textType}\",\n  \"categories\": [\n    {\n      \"name\": \"Descriptive Words\",\n      \"words\": [\"vivid\", \"stunning\", \"magnificent\", \"gleaming\", \"enormous\"],\n      \"examples\": [\"The vivid sunset painted the sky with stunning colors.\", \"The magnificent castle stood on the gleaming hill.\"]\n    },\n    {\n      \"name\": \"Action Verbs\",\n      \"words\": [\"darted\", \"soared\", \"plunged\", \"vanished\", \"erupted\"],\n      \"examples\": [\"The bird soared through the clouds.\", \"She darted across the busy street.\"]\n    }\n  ],\n  \"phrasesAndExpressions\": [\n    \"In the blink of an eye\",\n    \"As quick as lightning\",\n    \"Without a moment\'s hesitation\",\n    \"To my surprise\"\n  ],\n  \"transitionWords\": [\n    \"First\",\n    \"Next\",\n    \"Then\",\n    \"After that\",\n    \"Finally\",\n    \"However\",\n    \"Although\",\n    \"Because\",\n    \"Therefore\",\n    \"In conclusion\"\n  ]\n}`
+          content: `You are an expert writing teacher providing vocabulary assistance for Year 5-6 students writing a ${textType} piece. Based on the content sample provided, suggest appropriate vocabulary. Return the suggestions in this exact JSON format:\n{\n  "textType": "${textType}",\n  "categories": [\n    {\n      "name": "Descriptive Words",\n      "words": ["vivid", "stunning", "magnificent", "gleaming", "enormous"],\n      "examples": ["The vivid sunset painted the sky with stunning colors.", "The magnificent castle stood on the gleaming hill."]\n    },\n    {\n      "name": "Action Verbs",\n      "words": ["darted", "soared", "plunged", "vanished", "erupted"],\n      "examples": ["The bird soared through the clouds.", "She darted across the busy street."]\n    }\n  ],\n  "phrasesAndExpressions": [\n    "In the blink of an eye",\n    "As quick as lightning",\n    "Without a moment's hesitation",\n    "To my surprise"\n  ],
+  "transitionWords": [\n    "First",\n    "Next",\n    "Then",\n    "After that",\n    "Finally",\n    "However",\n    "Although",\n    "Because",\n    "Therefore",\n    "In conclusion"\n  ]\n}`
         },
         {
           role: "user",
@@ -462,9 +461,9 @@ async function getTextTypeVocabulary(textType, contentSample) {
     }
 
     const parsed = JSON.parse(responseContent);
-    
-    if (!parsed.textType || 
-        !Array.isArray(parsed.categories) || 
+
+    if (!parsed.textType ||
+        !Array.isArray(parsed.categories) ||
         !Array.isArray(parsed.phrasesAndExpressions) ||
         !Array.isArray(parsed.transitionWords)) {
       throw new Error("Invalid response format: missing required fields");
@@ -479,7 +478,7 @@ async function getTextTypeVocabulary(textType, contentSample) {
         {
           name: "General Words",
           words: ["interesting", "important", "different", "special", "amazing"],
-          examples: ["This is an interesting topic.", "It\'s important to remember."]
+          examples: ["This is an interesting topic.", "It's important to remember."]
         }
       ],
       phrasesAndExpressions: [
@@ -501,7 +500,7 @@ async function evaluateEssay(content, textType) {
       messages: [
         {
           role: "system",
-          content: `You are an expert writing teacher evaluating a Year 5-6 student\'s ${textType} essay. Provide comprehensive feedback and scoring. Return the evaluation in this exact JSON format:\n{\n  \"overallScore\": 7,\n  \"strengths\": [\n    \"Clear thesis statement\",\n    \"Good use of transition words\",\n    \"Varied sentence structure\"\n  ],\n  \"areasForImprovement\": [\n    \"Needs more supporting evidence\",\n    \"Some spelling errors\",\n    \"Conclusion could be stronger\"\n  ],\n  \"specificFeedback\": {\n    \"structure\": \"Detailed feedback on essay structure\",\n    \"language\": \"Feedback on language use and vocabulary\",\n    \"ideas\": \"Feedback on ideas and content development\",\n    \"mechanics\": \"Feedback on grammar, spelling, and punctuation\"\n  },\n  \"nextSteps\": [\n    \"Review and correct spelling errors\",\n    \"Add more supporting evidence to main points\",\n    \"Strengthen conclusion by restating main ideas\"\n  ]\n}`
+          content: `You are an expert writing teacher evaluating a Year 5-6 student's ${textType} essay. Provide comprehensive feedback and scoring. Return the evaluation in this exact JSON format:\n{\n  "overallScore": 7,\n  "strengths": [\n    "Clear thesis statement",\n    "Good use of transition words",\n    "Varied sentence structure"\n  ],\n  "areasForImprovement": [\n    "Needs more supporting evidence",\n    "Some spelling errors",\n    "Conclusion could be stronger"\n  ],\n  "specificFeedback": {\n    "structure": "Detailed feedback on essay structure",\n    "language": "Feedback on language use and vocabulary",\n    "ideas": "Feedback on ideas and content development",\n    "mechanics": "Feedback on grammar, spelling, and punctuation"\n  },\n  "nextSteps": [\n    "Review and correct spelling errors",\n    "Add more supporting evidence to main points",\n    "Strengthen conclusion by restating main ideas"\n  ]\n}`
         },
         {
           role: "user",
@@ -519,9 +518,9 @@ async function evaluateEssay(content, textType) {
     }
 
     const parsed = JSON.parse(responseContent);
-    
-    if (typeof parsed.overallScore !== "number" || 
-        !Array.isArray(parsed.strengths) || 
+
+    if (typeof parsed.overallScore !== "number" ||
+        !Array.isArray(parsed.strengths) ||
         !Array.isArray(parsed.areasForImprovement) ||
         !parsed.specificFeedback ||
         !Array.isArray(parsed.nextSteps)) {
@@ -564,7 +563,9 @@ async function getSpecializedTextTypeFeedback(content, textType) {
       messages: [
         {
           role: "system",
-          content: `You are an expert writing teacher providing specialized feedback for Year 5-6 students on ${textType} writing. Focus specifically on how well the student has understood and applied the conventions, structure, and features of this text type. Return feedback in this exact JSON format:\n{\n  \"overallComment\": \"Brief assessment of how well the student has handled this text type\",\n  \"textTypeSpecificFeedback\": {\n    \"structure\": \"Feedback on how well the student followed the expected structure for this text type\",\n    \"language\": \"Feedback on use of language features specific to this text type\",\n    \"purpose\": \"How well the student achieved the purpose of this text type\",\n    \"audience\": \"How well the student considered their audience\"\n  },\n  \"strengthsInTextType\": [\n    \"Specific strengths in handling this text type\",\n    \"What the student did well for this writing style\"\n  ],\n  \"improvementAreas\": [\n    \"Areas where the student can improve their understanding of this text type\",\n    \"Specific features they need to work on\"\n  ],\n  \"nextSteps\": [\n    \"Specific actions to improve in this text type\",\n    \"Resources or practice suggestions\"\n  ]\n}`
+          content: `You are an expert writing teacher providing specialized feedback for Year 5-6 students on ${textType} writing. Focus specifically on how well the student has understood and applied the conventions, structure, and features of this text type. Return feedback in this exact JSON format:\n{\n  "overallComment": "Brief assessment of how well the student has handled this text type",\n  "textTypeSpecificFeedback": {\n    "structure": "Feedback on how well the student followed the expected structure for this text type",\n    "language": "Feedback on use of language features specific to this text type",\n    "purpose": "How well the student achieved the purpose of this text type",\n    "audience": "How well the student considered their audience"\n  },\n  "strengthsInTextType": [\n    "Specific strengths in handling this text type",\n    "What the student did well for this writing style"\n  ],
+  "improvementAreas": [\n    "Areas where the student can improve their understanding of this text type",\n    "Specific features they need to work on"\n  ],
+  "nextSteps": [\n    "Specific actions to improve in this text type",\n    "Resources or practice suggestions"\n  ]\n}`
         },
         {
           role: "user",
@@ -582,8 +583,8 @@ async function getSpecializedTextTypeFeedback(content, textType) {
     }
 
     const parsed = JSON.parse(responseContent);
-    
-    if (!parsed.overallComment || 
+
+    if (!parsed.overallComment ||
         !parsed.textTypeSpecificFeedback ||
         !Array.isArray(parsed.strengthsInTextType) ||
         !Array.isArray(parsed.improvementAreas) ||
@@ -598,7 +599,7 @@ async function getSpecializedTextTypeFeedback(content, textType) {
       overallComment: "Unable to provide specialized feedback at this time. Your writing shows good understanding of the task.",
       textTypeSpecificFeedback: {
         structure: "Your writing has a clear structure appropriate for this text type.",
-        language: "You\'ve used suitable language for this writing style.",
+        language: "You've used suitable language for this writing style.",
         purpose: "Your writing addresses the main purpose effectively.",
         audience: "Consider your audience when refining your writing."
       },
@@ -627,7 +628,7 @@ async function getWritingStructure(textType) {
       messages: [
         {
           role: "system",
-          content: `You are an expert writing teacher creating a guide for Year 5-6 students on ${textType} writing. Create a structured guide with sections covering key aspects of this writing type. Return the guide in this exact JSON format:\n{\n  \"title\": \"Guide to ${textType} Writing\",\n  \"sections\": [\n    {\n      \"heading\": \"Structure\",\n      \"content\": \"Detailed explanation of the structure for this writing type\"\n    },\n    {\n      \"heading\": \"Language Features\",\n      \"content\": \"Explanation of key language features and techniques\"\n    },\n    {\n      \"heading\": \"Common Mistakes\",\n      \"content\": \"Common mistakes to avoid in this writing type\"\n    },\n    {\n      \"heading\": \"Planning Tips\",\n      \"content\": \"How to plan effectively for this writing type\"\n    }\n  ]\n}`
+          content: `You are an expert writing teacher creating a guide for Year 5-6 students on ${textType} writing. Create a structured guide with sections covering key aspects of this writing type. Return the guide in this exact JSON format:\n{\n  "title": "Guide to ${textType} Writing",\n  "sections": [\n    {\n      "heading": "Structure",\n      "content": "Detailed explanation of the structure for this writing type"\n    },\n    {\n      "heading": "Language Features",\n      "content": "Explanation of key language features and techniques"\n    },\n    {\n      "heading": "Common Mistakes",\n      "content": "Common mistakes to avoid in this writing type"\n    },\n    {\n      "heading": "Planning Tips",\n      "content": "How to plan effectively for this writing type"\n    }\n  ]\n}`
         },
         {
           role: "user",
@@ -677,7 +678,7 @@ async function checkGrammarAndSpelling(content) {
       messages: [
         {
           role: "system",
-          content: `You are an expert writing assistant. Analyze the provided text for grammar and spelling errors. For each error, identify its type (grammar/spelling), the exact text with the error, and a clear suggestion for correction. Return the corrections in this exact JSON format:\n{\n  \"corrections\": [\n    {\n      \"type\": \"grammar\",\n      \"text\": \"The quick brown fox jump over the lazy dog.\",\n      \"suggestion\": \"Change \'jump\' to \'jumps\'.\"\n    },\n    {\n      \"type\": \"spelling\",\n      \"text\": \"I have a red car.\",\n      \"suggestion\": \"Change \'car\' to \'cat\'.\"\n    }\n  ]\n}`
+          content: `You are an expert writing assistant. Analyze the provided text for grammar and spelling errors. For each error, identify its type (grammar/spelling), the exact text with the error, and a clear suggestion for correction. Return the corrections in this exact JSON format:\n{\n  "corrections": [\n    {\n      "type": "grammar",\n      "text": "The quick brown fox jump over the lazy dog.",\n      "suggestion": "Change 'jump' to 'jumps'."\n    },\n    {\n      "type": "spelling",\n      "text": "I have a red car.",\n      "suggestion": "Change 'car' to 'cat'."\n    }\n  ]\n}`
         },
         {
           role: "user",
@@ -716,7 +717,7 @@ async function analyzeSentenceStructure(content) {
       messages: [
         {
           role: "system",
-          content: `You are an expert writing assistant. Analyze the provided text for sentence structure and variety. Identify instances of repetitive sentence beginnings or opportunities to combine short, choppy sentences. For each identified issue, provide the problematic sentence(s) and a clear suggestion for improvement. Return the analysis in this exact JSON format:\n{\n  \"analysis\": [\n    {\n      \"type\": \"repetitive_beginning\",\n      \"sentence\": \"The boy ran. The boy jumped.\",\n      \"suggestion\": \"Vary sentence beginnings. Consider: \'The boy ran and jumped.\'\"\n    },\n    {\n      \"type\": \"choppy_sentences\",\n      \"sentence\": \"He walked. He saw a dog. It barked.\",\n      \"suggestion\": \"Combine short sentences. Consider: \'He walked and saw a barking dog.\'\"\n    }\n  ]\n}`
+          content: `You are an expert writing assistant. Analyze the provided text for sentence structure and variety. Identify instances of repetitive sentence beginnings or opportunities to combine short, choppy sentences. For each identified issue, provide the problematic sentence(s) and a clear suggestion for improvement. Return the analysis in this exact JSON format:\n{\n  "analysis": [\n    {\n      "type": "repetitive_beginning",\n      "sentence": "The boy ran. The boy jumped.",\n      "suggestion": "Vary sentence beginnings. Consider: 'The boy ran and jumped.'"\n    },\n    {\n      "type": "choppy_sentences",\n      "sentence": "He walked. He saw a dog. It barked.",\n      "suggestion": "Combine short sentences. Consider: 'He walked and saw a barking dog.'"\n    }\n  ]\n}`
         },
         {
           role: "user",
@@ -755,7 +756,7 @@ async function enhanceVocabulary(content) {
       messages: [
         {
           role: "system",
-          content: `You are an expert writing assistant. Analyze the provided text and suggest stronger synonyms or more precise word choices based on the context. Identify overused words or vague language and provide alternatives. Return the suggestions in this exact JSON format:\n{\n  \"suggestions\": [\n    {\n      \"word\": \"good\",\n      \"suggestion\": \"excellent, superb, commendable\"\n    },\n    {\n      \"word\": \"very\",\n      \"suggestion\": \"exceedingly, remarkably, intensely\"\n    }\n  ]\n}`
+          content: `You are an expert writing assistant. Analyze the provided text and suggest stronger synonyms or more precise word choices based on the context. Identify overused words or vague language and provide alternatives. Return the suggestions in this exact JSON format:\n{\n  "suggestions": [\n    {\n      "word": "good",\n      "suggestion": "excellent, superb, commendable"\n    },\n    {\n      "word": "very",\n      "suggestion": "exceedingly, remarkably, intensely"\n    }\n  ]\n}`
         },
         {
           role: "user",
