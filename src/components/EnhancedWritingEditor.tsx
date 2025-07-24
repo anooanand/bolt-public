@@ -225,7 +225,7 @@ export function EnhancedWritingEditorWithHighlighting({
           if (lowerWord === 'your' && (nextWord === 'going' || nextWord === 'coming' || context.includes('you are'))) {
             return { message: 'Consider "you\'re" for "you are"', suggestions: ["you're"] };
           }
-          if (lowerWord === 'you're' && (nextWord === 'house' || nextWord === 'car' || context.includes('belonging'))) {
+          if (lowerWord === "you're" && (nextWord === 'house' || nextWord === 'car' || context.includes('belonging'))) {
             return { message: 'Consider "your" for possession', suggestions: ["your"] };
           }
           return null;
