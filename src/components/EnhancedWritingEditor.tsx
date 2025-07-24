@@ -237,7 +237,7 @@ export function EnhancedWritingEditorWithHighlighting({
           if (lowerWord === 'its' && (nextWord === 'going' || context.includes('it is'))) {
             return { message: 'Consider "it\'s" for "it is"', suggestions: ["it's"] };
           }
-          if (lowerWord === 'it's' && (nextWord === 'color' || nextWord === 'size' || context.includes('belonging'))) {
+          if (lowerWord === 'it\'s' && (nextWord === 'color' || nextWord === 'size' || context.includes('belonging'))) {
             return { message: 'Consider "its" for possession', suggestions: ["its"] };
           }
           return null;
