@@ -142,15 +142,29 @@ function AppContent() {
     return () => document.removeEventListener('selectionchange', handleSelectionChange);
   }, []);
 
-  const handleAuthSuccess = () => {
-    setShowAuthModal(false);
-    if (pendingPaymentPlan) {
-      setActivePage('payment-success');
-      setShowPaymentSuccess(true);
-    } else {
+  // NAVIGATION FIX: Improved auth success handler
+  const handleAuthSuccess = useCallback(() => {
+    try {
+      setShowAuthModal(false);
+      
+      if (pendingPaymentPlan) {
+        setActivePage('payment-success');
+        setShowPaymentSuccess(true);
+      } else {
+        // Navigate to appropriate page based on user state
+        if (user && emailVerified && paymentCompleted) {
+          setActivePage('writing');
+        } else {
+          setActivePage('dashboard');
+        }
+      }
+    } catch (error) {
+      console.error('Auth success navigation error:', error);
+      // Fallback to dashboard
       setActivePage('dashboard');
+      setShowAuthModal(false);
     }
-  };
+  }, [pendingPaymentPlan, user, emailVerified, paymentCompleted]);
 
   const handleForceSignOut = async () => {
     try {
@@ -187,58 +201,91 @@ function AppContent() {
     }
   };
 
-  const handleNavigation = async (page: string) => {
-    // Special handling for dashboard - redirect based on verification and payment status
-    if (page === 'dashboard' && user) {
-      if (!emailVerified) {
-        setActivePage('dashboard'); // Show email verification reminder
-      } else if (paymentCompleted) {
-        setActivePage('writing'); // Full access
+  // NAVIGATION FIX: Improved navigation handler with proper state management
+  const handleNavigation = useCallback(async (page: string) => {
+    try {
+      // Prevent navigation during loading states
+      if (isLoading) return;
+      
+      // Special handling for dashboard - redirect based on verification and payment status
+      if (page === 'dashboard' && user) {
+        if (!emailVerified) {
+          setActivePage('dashboard'); // Show email verification reminder
+        } else if (paymentCompleted) {
+          setActivePage('writing'); // Full access
+        } else {
+          setActivePage('pricing'); // Need to complete payment
+        }
       } else {
-        setActivePage('pricing'); // Need to complete payment
+        // Smooth navigation with state cleanup
+        setActivePage(page);
       }
-    } else {
-      setActivePage(page);
+      
+      // Always close auth modal on navigation
+      setShowAuthModal(false);
+      
+      // Clear any temporary states that might interfere
+      setSelectedText('');
+      
+    } catch (error) {
+      console.error('Navigation error:', error);
+      // Fallback to home page on navigation errors
+      setActivePage('home');
     }
-    setShowAuthModal(false);
-  };
+  }, [user, emailVerified, paymentCompleted, isLoading]);
 
-  const handleGetStarted = async () => {
-    if (user) {
-      if (!emailVerified) {
-        setActivePage('dashboard'); // Show email verification reminder
-      } else if (paymentCompleted) {
-        setActivePage('writing'); // Full access
+  // NAVIGATION FIX: Improved get started handler with consistent flow
+  const handleGetStarted = useCallback(async () => {
+    try {
+      if (user) {
+        if (!emailVerified) {
+          setActivePage('dashboard'); // Show email verification reminder
+        } else if (paymentCompleted) {
+          setActivePage('writing'); // Full access
+        } else {
+          setActivePage('pricing'); // Need to complete payment
+        }
       } else {
-        setActivePage('pricing'); // Need to complete payment
+        setAuthModalMode('signup');
+        setShowAuthModal(true);
       }
-    } else {
+    } catch (error) {
+      console.error('Get started error:', error);
+      // Fallback to showing auth modal
       setAuthModalMode('signup');
       setShowAuthModal(true);
     }
-  };
+  }, [user, emailVerified, paymentCompleted]);
 
   const handleSubmit = () => {
     console.log('Writing submitted:', { content, textType });
   };
 
-  // Handle text type change from WritingArea popup
-  const handleTextTypeChange = (newTextType: string) => {
-    setTextType(newTextType);
-    console.log('Text type changed to:', newTextType);
-  };
+  // NAVIGATION FIX: Improved text type change handler
+  const handleTextTypeChange = useCallback((newTextType: string) => {
+    try {
+      setTextType(newTextType);
+      console.log('Text type changed to:', newTextType);
+    } catch (error) {
+      console.error('Text type change error:', error);
+    }
+  }, []);
 
-  // Handle popup flow completion
-  const handlePopupCompleted = () => {
-    setPopupFlowCompleted(true);
-  };
+  // NAVIGATION FIX: Improved popup completion handler
+  const handlePopupCompleted = useCallback(() => {
+    try {
+      setPopupFlowCompleted(true);
+    } catch (error) {
+      console.error('Popup completion error:', error);
+    }
+  }, []);
 
-  // Determine if footer should be shown
-  const shouldShowFooter = () => {
+  // NAVIGATION FIX: Improved footer visibility logic
+  const shouldShowFooter = useCallback(() => {
     // Don't show footer on writing page or other specific pages
     const noFooterPages = ['writing', 'exam', 'dashboard', 'settings'];
     return !noFooterPages.includes(activePage);
-  };
+  }, [activePage]);
 
   if (isLoading) {
     return (
