@@ -101,7 +101,7 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
       }
       
       // Only initialize the writing type selection flow if conditions are met
-      if (!textType && !savedWritingType && !popupFlowCompleted && isMounted) {
+      if (!textType && !savedWritingType && !popupFlowCompleted && isMounted && !prompt) {
         setShowWritingTypeModal(true);
       }
     };
