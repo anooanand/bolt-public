@@ -28,6 +28,9 @@ export const isOpenAIAvailable = (): boolean => {
 // Helper function to make API calls to the enhanced backend
 async function makeBackendCall(operation: string, data: any): Promise<any> {
   try {
+    // Check if we're in local development and backend functions aren't available
+    const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    
     const response = await fetch('/.netlify/functions/ai-operations', {
       method: 'POST',
       headers: {
@@ -40,12 +43,20 @@ async function makeBackendCall(operation: string, data: any): Promise<any> {
     });
 
     if (!response.ok) {
+      // If we get a 404 in local development, throw a specific error
+      if (response.status === 404 && isLocalDev) {
+        throw new Error('BACKEND_NOT_AVAILABLE');
+      }
       throw new Error(`Backend call failed: ${response.status}`);
     }
 
     return await response.json();
   } catch (error) {
     console.error('Backend call error:', error);
+    // If backend is not available, throw the specific error to trigger fallbacks
+    if (error instanceof Error && error.message === 'BACKEND_NOT_AVAILABLE') {
+      throw error;
+    }
     throw error;
   }
 }
@@ -259,6 +270,11 @@ export async function generatePrompt(textType: string): Promise<string> {
     return result.prompt || "Write about a memorable experience that taught you something important.";
   } catch (error) {
     console.error('Error generating prompt:', error);
+    
+    // If backend is not available (local development), use fallback prompts
+    if (error instanceof Error && error.message === 'BACKEND_NOT_AVAILABLE') {
+      console.log('Backend not available, using fallback prompts');
+    }
     
     // Fallback prompts if the API call fails
     const fallbackPrompts: { [key: string]: string } = {
