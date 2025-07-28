@@ -100,9 +100,23 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
         }
       }
       
-      // Only initialize the writing type selection flow if conditions are met
-      if (!textType && !savedWritingType && !popupFlowCompleted && isMounted && !prompt) {
+      // Check if user came from Dashboard flow to prevent duplicate modal
+      const navigationSource = localStorage.getItem('navigationSource');
+      const isDashboardFlow = navigationSource === 'dashboard';
+      
+      // Only initialize the writing type selection flow if conditions are met AND user didn't come from Dashboard
+      if (!textType && !savedWritingType && !popupFlowCompleted && isMounted && !prompt && !isDashboardFlow) {
         setShowWritingTypeModal(true);
+      }
+      
+      // If user came from Dashboard, mark popup flow as completed to prevent future modals
+      if (isDashboardFlow && savedWritingType && isMounted) {
+        setPopupFlowCompleted(true);
+        if (onPopupCompleted) {
+          onPopupCompleted();
+        }
+        // Clear the navigation source after handling it
+        localStorage.removeItem('navigationSource');
       }
     };
 
