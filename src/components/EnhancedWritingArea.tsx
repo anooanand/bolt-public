@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { AlertCircle, CheckCircle, Lightbulb, Loader2, Star, Target, Zap } from 'lucide-react';
 import { TextHighlighter, useTextHighlights } from './TextHighlighter';
 
@@ -66,6 +66,8 @@ export function EnhancedWritingEditorWithHighlighting({
   const [isGettingAIFeedback, setIsGettingAIFeedback] = useState(false);
   const [showAIHighlights, setShowAIHighlights] = useState(true);
   const [showGrammarHighlights, setShowGrammarHighlights] = useState(true);
+  const [apiError, setApiError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
   const checkTimeoutRef = useRef<NodeJS.Timeout>();
@@ -74,100 +76,172 @@ export function EnhancedWritingEditorWithHighlighting({
   // Generate highlights from AI feedback using the existing hook
   const aiHighlights = useTextHighlights(content, aiFeedback);
 
-  // AI-powered grammar and spelling checker (from latest EnhancedWritingEditor)
+  // Enhanced error handling for API calls
+  const handleApiError = useCallback((error: any, operation: string) => {
+    console.error(`${operation} error:`, error);
+    setApiError(`${operation} failed. Please try again.`);
+    
+    // Clear error after 5 seconds
+    setTimeout(() => setApiError(null), 5000);
+  }, []);
+
+  // AI-powered grammar and spelling checker with improved error handling
   const checkTextWithAI = async (text: string): Promise<GrammarError[]> => {
     if (!text.trim() || text.length < 10) return [];
     
     try {
       setIsChecking(true);
+      setApiError(null);
       
-      // Try to use OpenAI API for contextual grammar and spelling checking
-      const response = await fetch('/netlify/functions/ai-operations', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ 
-          action: 'check-grammar',
-          text: text
-        }),
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        return result.errors || [];
-      } else {
-        // Fallback to client-side checking if API fails
-        return await checkTextClientSide(text);
-      }
-    } catch (error) {
-      console.error('Grammar check API error:', error);
-      // Fallback to client-side checking
-      return await checkTextClientSide(text);
-    } finally {
-      setIsChecking(false);
-    }
-  };
-
-  // Get AI feedback for highlighting
-  const getAIFeedbackForHighlighting = async (text: string) => {
-    const words = text.trim().split(/\s+/).filter(w => w.length > 0);
-    if (words.length < 50) return;
-    
-    try {
-      setIsGettingAIFeedback(true);
+      // Add timeout to prevent hanging requests
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
       
-      if (onGetFeedback) {
-        const feedback = await onGetFeedback(text);
-        setAiFeedback(feedback);
-      } else {
-        // Fallback to direct API call
+      try {
         const response = await fetch('/netlify/functions/ai-operations', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({ 
-            action: 'getNSWSelectiveFeedback',
-            content: text,
-            textType: textType,
-            assistanceLevel: 'detailed',
-            feedbackHistory: []
+            action: 'check-grammar',
+            text: text
           }),
+          signal: controller.signal
         });
 
+        clearTimeout(timeoutId);
+
         if (response.ok) {
-          const feedback = await response.json();
-          setAiFeedback(feedback);
+          const result = await response.json();
+          setRetryCount(0); // Reset retry count on success
+          return result.errors || [];
+        } else {
+          throw new Error(`API responded with status: ${response.status}`);
         }
+      } catch (fetchError: any) {
+        clearTimeout(timeoutId);
+        
+        if (fetchError.name === 'AbortError') {
+          throw new Error('Request timed out');
+        }
+        throw fetchError;
       }
-    } catch (error) {
-      console.error('AI feedback error:', error);
+    } catch (error: any) {
+      handleApiError(error, 'Grammar check');
+      
+      // Fallback to client-side checking with retry logic
+      if (retryCount < 2) {
+        setRetryCount(prev => prev + 1);
+        // Retry after a short delay
+        setTimeout(() => {
+          if (content === text) { // Only retry if content hasn't changed
+            checkTextWithAI(text);
+          }
+        }, 2000);
+      }
+      
+      return await checkTextClientSide(text);
+    } finally {
+      setIsChecking(false);
+    }
+  };
+
+  // Get AI feedback for highlighting with improved error handling
+  const getAIFeedbackForHighlighting = async (text: string) => {
+    const words = text.trim().split(/\s+/).filter(w => w.length > 0);
+    if (words.length < 50) return;
+    
+    try {
+      setIsGettingAIFeedback(true);
+      setApiError(null);
+      
+      // Add timeout to prevent hanging requests
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout for AI feedback
+      
+      try {
+        if (onGetFeedback) {
+          const feedback = await onGetFeedback(text);
+          setAiFeedback(feedback);
+          setRetryCount(0); // Reset retry count on success
+        } else {
+          // Fallback to direct API call
+          const response = await fetch('/netlify/functions/ai-operations', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ 
+              action: 'getNSWSelectiveFeedback',
+              content: text,
+              textType: textType,
+              assistanceLevel: 'detailed',
+              feedbackHistory: []
+            }),
+            signal: controller.signal
+          });
+
+          clearTimeout(timeoutId);
+
+          if (response.ok) {
+            const feedback = await response.json();
+            setAiFeedback(feedback);
+            setRetryCount(0); // Reset retry count on success
+          } else {
+            throw new Error(`API responded with status: ${response.status}`);
+          }
+        }
+      } catch (fetchError: any) {
+        clearTimeout(timeoutId);
+        
+        if (fetchError.name === 'AbortError') {
+          throw new Error('AI feedback request timed out');
+        }
+        throw fetchError;
+      }
+    } catch (error: any) {
+      handleApiError(error, 'AI feedback');
+      
+      // Retry logic for AI feedback
+      if (retryCount < 1) { // Fewer retries for AI feedback
+        setRetryCount(prev => prev + 1);
+        setTimeout(() => {
+          if (content === text) { // Only retry if content hasn't changed
+            getAIFeedbackForHighlighting(text);
+          }
+        }, 3000);
+      }
     } finally {
       setIsGettingAIFeedback(false);
     }
   };
 
-  // Client-side fallback using browser APIs and contextual analysis (from latest EnhancedWritingEditor)
+  // Client-side fallback using browser APIs and contextual analysis
   const checkTextClientSide = async (text: string): Promise<GrammarError[]> => {
     const errors: GrammarError[] = [];
     
-    // Advanced contextual grammar checking
-    const grammarErrors = await checkGrammarPatterns(text);
-    errors.push(...grammarErrors);
+    try {
+      // Advanced contextual grammar checking
+      const grammarErrors = await checkGrammarPatterns(text);
+      errors.push(...grammarErrors);
 
-    // Punctuation and style checks
-    const punctuationErrors = checkPunctuation(text);
-    errors.push(...punctuationErrors);
+      // Punctuation and style checks
+      const punctuationErrors = checkPunctuation(text);
+      errors.push(...punctuationErrors);
 
-    // Contextual spelling checks
-    const spellingErrors = await checkSpellingInContext(text);
-    errors.push(...spellingErrors);
+      // Contextual spelling checks
+      const spellingErrors = await checkSpellingInContext(text);
+      errors.push(...spellingErrors);
+    } catch (error) {
+      console.error('Client-side checking error:', error);
+      // Return empty array if client-side checking fails
+    }
 
     return errors;
   };
 
-  // Advanced contextual spelling checker (from latest EnhancedWritingEditor)
+  // Advanced contextual spelling checker
   const checkSpellingInContext = async (text: string): Promise<GrammarError[]> => {
     const errors: GrammarError[] = [];
     const words = text.match(/\b\w+\b/g) || [];
@@ -198,7 +272,7 @@ export function EnhancedWritingEditorWithHighlighting({
     return errors;
   };
 
-  // Analyze word in context for spelling and usage (from latest EnhancedWritingEditor)
+  // Analyze word in context for spelling and usage
   const analyzeWordInContext = async (word: string, context: string, prevWord: string, nextWord: string): Promise<{message: string, suggestions: string[]} | null> => {
     const lowerWord = word.toLowerCase();
     
@@ -255,7 +329,7 @@ export function EnhancedWritingEditorWithHighlighting({
     return null;
   };
 
-  // Advanced grammar checking using contextual patterns (from latest EnhancedWritingEditor)
+  // Advanced grammar checking using contextual patterns
   const checkGrammarPatterns = async (text: string): Promise<GrammarError[]> => {
     const errors: GrammarError[] = [];
     const sentences = text.split(/[.!?]+/).filter(s => s.trim());
@@ -280,7 +354,7 @@ export function EnhancedWritingEditorWithHighlighting({
     return errors;
   };
 
-  // Check subject-verb agreement (from latest EnhancedWritingEditor)
+  // Check subject-verb agreement
   const checkSubjectVerbAgreement = (sentence: string, fullText: string): GrammarError[] => {
     const errors: GrammarError[] = [];
     
@@ -327,7 +401,7 @@ export function EnhancedWritingEditorWithHighlighting({
     return errors;
   };
 
-  // Check tense consistency (from latest EnhancedWritingEditor)
+  // Check tense consistency
   const checkTenseConsistency = (sentence: string, fullText: string): GrammarError[] => {
     const errors: GrammarError[] = [];
     
@@ -351,7 +425,7 @@ export function EnhancedWritingEditorWithHighlighting({
     return errors;
   };
 
-  // Check common grammar patterns (from latest EnhancedWritingEditor)
+  // Check common grammar patterns
   const checkCommonGrammarPatterns = (sentence: string, fullText: string): GrammarError[] => {
     const errors: GrammarError[] = [];
     
@@ -391,7 +465,7 @@ export function EnhancedWritingEditorWithHighlighting({
     return errors;
   };
 
-  // Check punctuation (from latest EnhancedWritingEditor)
+  // Check punctuation
   const checkPunctuation = (text: string): GrammarError[] => {
     const errors: GrammarError[] = [];
     
@@ -423,14 +497,14 @@ export function EnhancedWritingEditorWithHighlighting({
     return errors;
   };
 
-  // Get context around a word for better suggestions (from latest EnhancedWritingEditor)
+  // Get context around a word for better suggestions
   const getWordContext = (text: string, start: number, length: number): string => {
     const contextStart = Math.max(0, start - 20);
     const contextEnd = Math.min(text.length, start + length + 20);
     return text.substring(contextStart, contextEnd);
   };
 
-  // Update grammar errors when content changes (debounced)
+  // Update grammar errors when content changes (debounced) with improved stability
   useEffect(() => {
     if (checkTimeoutRef.current) {
       clearTimeout(checkTimeoutRef.current);
@@ -438,12 +512,19 @@ export function EnhancedWritingEditorWithHighlighting({
 
     checkTimeoutRef.current = setTimeout(async () => {
       if (content.trim() && showGrammarHighlights) {
-        const newErrors = await checkTextWithAI(content);
-        setErrors(newErrors);
+        try {
+          const newErrors = await checkTextWithAI(content);
+          // Only update if content hasn't changed during the async operation
+          if (textareaRef.current && textareaRef.current.value === content) {
+            setErrors(newErrors);
+          }
+        } catch (error) {
+          console.error('Error updating grammar errors:', error);
+        }
       } else {
         setErrors([]);
       }
-    }, 1000);
+    }, 1500); // Slightly longer debounce for stability
 
     return () => {
       if (checkTimeoutRef.current) {
@@ -452,7 +533,7 @@ export function EnhancedWritingEditorWithHighlighting({
     };
   }, [content, showGrammarHighlights]);
 
-  // Update AI feedback when content changes (debounced longer)
+  // Update AI feedback when content changes (debounced longer) with improved stability
   useEffect(() => {
     if (feedbackTimeoutRef.current) {
       clearTimeout(feedbackTimeoutRef.current);
@@ -460,11 +541,15 @@ export function EnhancedWritingEditorWithHighlighting({
 
     feedbackTimeoutRef.current = setTimeout(async () => {
       if (content.trim() && showAIHighlights) {
-        await getAIFeedbackForHighlighting(content);
+        try {
+          await getAIFeedbackForHighlighting(content);
+        } catch (error) {
+          console.error('Error updating AI feedback:', error);
+        }
       } else {
         setAiFeedback(null);
       }
-    }, 3000); // Longer debounce for AI feedback
+    }, 4000); // Longer debounce for AI feedback for stability
 
     return () => {
       if (feedbackTimeoutRef.current) {
@@ -473,24 +558,30 @@ export function EnhancedWritingEditorWithHighlighting({
     };
   }, [content, showAIHighlights, textType]);
 
-  const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    onChange(e.target.value);
-  };
+  const handleTextChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const newValue = e.target.value;
+    onChange(newValue);
+    
+    // Clear any existing API errors when user starts typing
+    if (apiError) {
+      setApiError(null);
+    }
+  }, [onChange, apiError]);
 
-  const handleHighlightClick = (highlight: any) => {
+  const handleHighlightClick = useCallback((highlight: any) => {
     console.log('AI Highlight clicked:', highlight);
-  };
+  }, []);
 
-  const applySuggestion = (error: GrammarError, suggestion: string) => {
+  const applySuggestion = useCallback((error: GrammarError, suggestion: string) => {
     const before = content.substring(0, error.start);
     const after = content.substring(error.end);
     const newContent = before + suggestion + after;
     onChange(newContent);
     setSelectedError(null);
     setShowSuggestions(false);
-  };
+  }, [content, onChange]);
 
-  const handleTextareaClick = (e: React.MouseEvent<HTMLTextAreaElement>) => {
+  const handleTextareaClick = useCallback((e: React.MouseEvent<HTMLTextAreaElement>) => {
     const textarea = e.currentTarget;
     const cursorPosition = textarea.selectionStart;
     
@@ -506,7 +597,7 @@ export function EnhancedWritingEditorWithHighlighting({
       setShowSuggestions(false);
       setSelectedError(null);
     }
-  };
+  }, [errors]);
 
   const getErrorTypeIcon = (type: string) => {
     switch (type) {
@@ -574,6 +665,14 @@ export function EnhancedWritingEditorWithHighlighting({
             )}
           </div>
         </div>
+        
+        {/* Error Display */}
+        {apiError && (
+          <div className="mb-3 p-2 bg-red-50 border border-red-200 rounded text-sm text-red-700">
+            <AlertCircle className="w-4 h-4 inline mr-2" />
+            {apiError}
+          </div>
+        )}
         
         <div className="flex items-center space-x-6">
           <label className="flex items-center">
