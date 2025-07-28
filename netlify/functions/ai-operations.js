@@ -5,238 +5,135 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
 });
 
-// Helper function to analyze content structure (NEWLY ADDED)
-function analyzeContentStructure(content) {
-  const sentences = content.split(/[.!?]+/).filter(s => s.trim().length > 0);
-  const words = content.trim().split(/\s+/).filter(w => w.length > 0);
-  const paragraphs = content.split(/\n\s*\n/).filter(p => p.trim().length > 0);
-
-  const potentialCharacters = words.filter((word, index) => {
-    const isCapitalized = /^[A-Z][a-z]+$/.test(word);
-    const isNotSentenceStart = index > 0 && !/[.!?]/.test(words[index - 1]);
-    return isCapitalized && isNotSentenceStart;
-  });
-
-  const dialogueMatches = content.match(/"[^"]*"/g) || [];
-
-  const descriptiveWords = words.filter(word =>
-    /ly$/.test(word) ||
-    /ing$/.test(word) ||
-    /ed$/.test(word)
-  );
-
-  return {
-    sentenceCount: sentences.length,
-    wordCount: words.length,
-    paragraphCount: paragraphs.length,
-    averageSentenceLength: words.length / sentences.length,
-    potentialCharacters: [...new Set(potentialCharacters)],
-    hasDialogue: dialogueMatches.length > 0,
-    dialogueCount: dialogueMatches.length,
-    descriptiveWords: [...new Set(descriptiveWords)],
-    firstSentence: sentences[0]?.trim() || "",
-    lastSentence: sentences[sentences.length - 1]?.trim() || ""
+exports.handler = async (event) => {
+  // CORS headers
+  const headers = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Content-Type": "application/json"
   };
-}
 
-// Enhanced NSW Selective Writing Exam Feedback Function (UPDATED)
-async function getNSWSelectiveFeedback(content, textType, assistanceLevel = "medium", feedbackHistory = []) {
-  try {
-    const analysis = analyzeContentStructure(content);
-
-    const prompt = `You are an expert NSW Selective School writing assessor. Analyze this ${textType} writing sample and provide detailed, specific feedback based on NSW Selective criteria.\n\nSTUDENT'S WRITING:\n"${content}"\n\nCONTENT ANALYSIS:\n- Word count: ${analysis.wordCount}\n- Sentence count: ${analysis.sentenceCount}\n- Paragraph count: ${analysis.paragraphCount}\n- Average sentence length: ${Math.round(analysis.averageSentenceLength)} words\n- Has dialogue: ${analysis.hasDialogue}\n- Potential characters: ${analysis.potentialCharacters.join(', ') || 'None identified'}\n- Descriptive words used: ${analysis.descriptiveWords.slice(0, 5).join(', ') || 'Limited'}\n\nNSW SELECTIVE CRITERIA TO ASSESS:\n\n1. IDEAS AND CONTENT (30%):\n   - Relevance to prompt and task requirements\n   - Originality and creativity of ideas\n   - Development and elaboration of ideas\n   - Depth of thinking and insight\n   - Engagement and audience awareness\n\n2. TEXT STRUCTURE AND ORGANIZATION (25%):\n   - Clear beginning, middle, and end\n   - Logical sequence and flow of ideas\n   - Effective paragraph structure\n   - Coherence and cohesion between sections\n   - Appropriate structure for ${textType}\n\n3. LANGUAGE FEATURES AND VOCABULARY (25%):\n   - Sophisticated and varied vocabulary\n   - Effective use of literary devices\n   - Sentence variety and structure\n   - Appropriate tone and style for purpose\n   - Precision and clarity of expression\n\n4. SPELLING, PUNCTUATION, AND GRAMMAR (20%):\n   - Accurate spelling, including difficult words\n   - Correct and varied punctuation\n   - Grammatical accuracy\n   - Consistent tense and point of view\n\nINSTRUCTIONS:\n1. Provide specific scores out of 10 for each criterion\n2. Give concrete examples from the student's text\n3. Offer specific, actionable suggestions for improvement\n4. Include questions that help the student think deeper about their writing\n5. Suggest specific revision tasks they can do right now\n6. Be encouraging but honest about areas needing work\n7. Reference specific words, phrases, or sentences from their writing\n\nFormat your response as a JSON object with this structure:\n{\n  "overallComment": "Brief encouraging overview",\n  "criteriaFeedback": {\n    "ideasAndContent": {\n      "score": number,\n      "maxScore": 10,\n      "strengths": ["specific strength with example from text"],\n      "improvements": ["specific area needing work"],\n      "suggestions": ["actionable suggestion with example"],\n      "nextSteps": ["specific task to improve this area"]\n    },\n    "textStructureAndOrganization": { ... same structure ... },\n    "languageFeaturesAndVocabulary": { ... same structure ... },\n    "spellingPunctuationGrammar": { ... same structure ... }\n  },\n  "priorityFocus": ["top 2 areas to focus on next"],\n  "examStrategies": ["specific exam tips based on this writing"],\n  "interactiveQuestions": ["questions to help student reflect on their writing"],\n  "revisionSuggestions": ["specific tasks they can do to improve this piece right now"]\n}`;
-
-    const response = await openai.chat.completions.create({
-      model: "gpt-4",
-      messages: [
-        {
-          role: "system",
-          content: "You are an expert NSW Selective School writing assessor who provides detailed, specific, and encouraging feedback to help students improve their writing skills for the selective school exam."
-        },
-        {
-          role: "user",
-          content: prompt
-        }
-      ],
-      temperature: 0.7,
-      max_tokens: 2000
-    });
-
-    const feedbackText = response.choices[0].message.content;
-
-    try {
-      const feedbackJson = JSON.parse(feedbackText);
-      return feedbackJson;
-    } catch (parseError) {
-      console.error("Failed to parse OpenAI feedback as JSON:", parseError);
-      return {
-       overallComment: "I'm having trouble analyzing your writing right now. Your work shows good effort - please try again in a moment. (Error: Invalid AI response format)",
-        criteriaFeedback: {
-          ideasAndContent: {
-            score: 5,
-            maxScore: 10,
-            strengths: ["The AI encountered an issue parsing the feedback. Please try again."],
-            improvements: ["The AI encountered an issue parsing the feedback. Please try again."],
-            suggestions: ["The AI encountered an issue parsing the feedback. Please try again."],
-            nextSteps: ["The AI encountered an issue parsing the feedback. Please try again."]
-          },
-          textStructureAndOrganization: {
-            score: 5,
-            maxScore: 10,
-            strengths: ["The AI encountered an issue parsing the feedback. Please try again."],
-            improvements: ["The AI encountered an issue parsing the feedback. Please try again."],
-            suggestions: ["The AI encountered an issue parsing the feedback. Please try again."],
-            nextSteps: ["The AI encountered an issue parsing the feedback. Please try again."]
-          },
-          languageFeaturesAndVocabulary: {
-            score: 5,
-            maxScore: 10,
-            strengths: ["The AI encountered an issue parsing the feedback. Please try again."],
-            improvements: ["The AI encountered an issue parsing the feedback. Please try again."],
-            suggestions: ["The AI encountered an issue parsing the feedback. Please try again."],
-            nextSteps: ["The AI encountered an issue parsing the feedback. Please try again."]
-          },
-          spellingPunctuationGrammar: {
-            score: 6,
-            maxScore: 10,
-            strengths: ["The AI encountered an issue parsing the feedback. Please try again."],
-            improvements: ["The AI encountered an issue parsing the feedback. Please try again."],
-            suggestions: ["The AI encountered an issue parsing the feedback. Please try again."],
-            nextSteps: ["The AI encountered an issue parsing the feedback. Please try again."]
-          }
-        },
-        priorityFocus: ["Please try again to get detailed feedback."],
-        examStrategies: ["Please try again to get detailed feedback."],
-        interactiveQuestions: ["Please try again to get detailed feedback."],
-        revisionSuggestions: ["Please try again to get detailed feedback."]
-      };
-    }
-
-  } catch (error) {
-    console.error("Error getting NSW Selective feedback:", error);
-
-    const analysis = analyzeContentStructure(content);
+  // Handle preflight requests
+  if (event.httpMethod === "OPTIONS") {
     return {
-      overallComment: `Your ${analysis.wordCount}-word ${textType} shows good effort! I can see you're developing your storytelling skills. Let's work on making it even stronger using NSW Selective exam criteria.`,
-      criteriaFeedback: {
-        ideasAndContent: {
-          score: Math.min(8, Math.max(4, Math.floor(analysis.wordCount / 25))),
-          maxScore: 10,
-          strengths: [
-            analysis.wordCount > 100 ? "Good length showing sustained effort" : "Shows understanding of the task",
-            analysis.potentialCharacters.length > 0 ? `Introduces character(s): ${analysis.potentialCharacters[0]}` : "Attempts to create a narrative"
-          ],
-          improvements: [
-            analysis.wordCount < 150 ? "Develop your ideas with more detail" : "Add more depth to your character development",
-            "Include more specific, vivid details"
-          ],
-          suggestions: [
-            `Your opening \"${analysis.firstSentence.substring(0, 30)}...\" could be expanded with more sensory details`,
-            "Show don't tell - instead of saying someone is sad, describe their actions or expressions"
-          ],
-          nextSteps: [
-            "Choose one moment in your story and expand it with what the character sees, hears, feels, smells, or tastes",
-            "Add one sentence that shows your character's personality through their actions"
-          ]
-        },
-        textStructureAndOrganization: {
-          score: Math.min(8, Math.max(4, analysis.paragraphCount * 2 + 2)),
-          maxScore: 10,
-          strengths: [
-            analysis.paragraphCount > 1 ? `Good use of ${analysis.paragraphCount} paragraphs` : "Has a clear beginning",
-            analysis.sentenceCount > 5 ? "Multiple sentences showing development" : "Attempts story structure"
-          ],
-          improvements: [
-            analysis.paragraphCount === 1 ? "Break your writing into clear paragraphs" : "Ensure smooth transitions between paragraphs",
-            "Make sure each paragraph has a clear focus"
-          ],
-          suggestions: [
-            analysis.paragraphCount === 1 ? "Start a new paragraph when the scene, time, or focus changes" : "Use connecting words like 'meanwhile', 'suddenly', 'later' to link ideas",
-            "Each paragraph should move your story forward in some way"
-          ],
-          nextSteps: [
-            "Identify the main events in your story and give each one its own paragraph",
-            "Add one transition word or phrase to connect your ideas better"
-          ]
-        },
-        languageFeaturesAndVocabulary: {
-          score: Math.min(8, Math.max(4, analysis.descriptiveWords.length + 3)),
-          maxScore: 10,
-          strengths: [
-            analysis.descriptiveWords.length > 2 ? `Uses descriptive words like: ${analysis.descriptiveWords.slice(0, 3).join(", ")}` : "Attempts to use descriptive language",
-            analysis.averageSentenceLength > 8 ? "Good sentence length variety" : "Shows basic sentence construction"
-          ],
-          improvements: [
-            analysis.descriptiveWords.length < 5 ? "Use more vivid, specific adjectives and adverbs" : "Continue building sophisticated vocabulary",
-            analysis.averageSentenceLength < 8 ? "Try writing some longer, more detailed sentences" : "Vary your sentence beginnings"
-          ],
-          suggestions: [
-            "Instead of 'big', try 'enormous', 'massive', or 'towering'",
-            "Instead of 'said', try 'whispered', 'exclaimed', or 'muttered'",
-            "Add similes (like/as comparisons) or metaphors to make your writing more vivid"
-          ],
-          nextSteps: [
-            "Find 2-3 basic words in your writing and replace them with more interesting alternatives",
-            "Add one simile or metaphor to describe a character, setting, or action"
-          ]
-        },
-        spellingPunctuationGrammar: {
-          score: 7,
-          maxScore: 10,
-          strengths: [
-            "Generally good control of basic spelling and grammar",
-            "Shows understanding of sentence structure"
-          ],
-          improvements: [
-            "Double-check for any spelling errors, especially in longer words",
-            "Ensure consistent use of past tense throughout your narrative"
-          ],
-          suggestions: [
-            "Read your work aloud - your ear will catch mistakes your eyes miss",
-            "Pay special attention to apostrophes (it's vs its, you're vs your)",
-            "Check that all sentences end with proper punctuation"
-          ],
-          nextSteps: [
-            "Proofread your work sentence by sentence",
-            "Circle any words you're unsure about and double-check their spelling"
-          ]
-        }
-      },
-      priorityFocus: [
-        analysis.wordCount < 150 ? "Develop ideas with more specific details and examples" : "Enhance vocabulary and sentence variety",
-        analysis.paragraphCount === 1 ? "Organize writing into clear paragraphs" : "Improve transitions and flow between ideas"
-      ],
-      examStrategies: [
-        "Spend 5-8 minutes planning your story structure before you start writing",
-        "Leave 3-4 minutes at the end to proofread and make small improvements",
-        "Use the full time allocation - aim for 200-300 words in the exam"
-      ],
-      interactiveQuestions: [
-        "What specific emotions does your main character feel at different points in the story?",
-        "If you were filming this story, what would the camera show us?",
-        "What makes your character unique or interesting?",
-        "How does your character change from the beginning to the end?"
-      ],
-      revisionSuggestions: [
-        `Expand your opening sentence: \"${analysis.firstSentence}\" - add details about what the character sees, hears, feels, smells, or tastes`,
-        "Add one piece of dialogue to show your character's personality",
-        "Include one sentence that appeals to the senses (what does something look, sound, smell, feel, or taste like?)",
-        "Write a stronger ending that shows how your character has changed or what they've learned"
-      ]
+      statusCode: 200,
+      headers,
+      body: JSON.stringify({ message: "CORS preflight successful" })
     };
   }
-}
 
+  try {
+    // Parse request body - UPDATED to include action and text
+    const body = JSON.parse(event.body);
+    const { operation, content, textType, assistanceLevel, feedbackHistory, action, text } = body;
 
+    let result;
 
-// NEW FUNCTION: Enhanced grammar checking for the writing editor (from user's original file)
+    // Route to appropriate function based on operation or action - UPDATED
+    switch (operation || action) {
+      case "generatePrompt":
+        result = await generatePrompt(textType);
+        break;
+      case "getWritingFeedback":
+        result = await getWritingFeedback(content, textType, assistanceLevel, feedbackHistory);
+        break;
+      case "getNSWSelectiveFeedback":
+        result = await getNSWSelectiveFeedback(content, textType, assistanceLevel, feedbackHistory);
+        break;
+      case "identifyCommonMistakes":
+        result = await identifyCommonMistakes(content, textType);
+        break;
+      case "getSynonyms":
+        result = await getSynonyms(content);
+        break;
+      case "rephraseSentence":
+        result = await rephraseSentence(content);
+        break;
+      case "getTextTypeVocabulary":
+        result = await getTextTypeVocabulary(textType, content);
+        break;
+      case "evaluateEssay":
+        result = await evaluateEssay(content, textType);
+        break;
+      case "getSpecializedTextTypeFeedback":
+        result = await getSpecializedTextTypeFeedback(content, textType);
+        break;
+      case "getWritingStructure":
+        result = await getWritingStructure(textType);
+        break;
+      case "checkGrammarAndSpelling":
+        result = await checkGrammarAndSpelling(content);
+        break;
+      case "check-grammar":  // NEW CASE FOR ENHANCED EDITOR
+        result = await checkGrammarForEditor(text || content);
+        break;
+      case "analyzeSentenceStructure":
+        result = await analyzeSentenceStructure(content);
+        break;
+      case "enhanceVocabulary":
+        result = await enhanceVocabulary(content);
+        break;
+      default:
+        throw new Error(`Unknown operation: ${operation || action}`);
+    }
+
+    return {
+      statusCode: 200,
+      headers,
+      body: JSON.stringify(result)
+    };
+  } catch (error) {
+    console.error("AI operations error:", error);
+    return {
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({ 
+        error: error.message || "An error occurred processing your request",
+        operation: JSON.parse(event.body).operation || "unknown"
+      })
+    };
+  }
+};
+
+// NEW FUNCTION: Enhanced grammar checking for the writing editor
 async function checkGrammarForEditor(text) {
   try {
     const completion = await openai.chat.completions.create({
       messages: [
         {
           role: "system",
-          content: `You are an expert writing assistant that analyzes text for grammar, spelling, punctuation, and style issues. For each error found, provide the exact character positions (start and end), error type, message, and contextual suggestions.\n\nReturn the analysis in this exact JSON format:\n{\n  "errors": [\n    {\n      "start": 15,\n      "end": 19,\n      "message": "Spelling error: 'yung' should be 'young'",\n      "type": "spelling",\n      "suggestions": ["young"],\n      "context": "there was a yung adventurer"\n    },\n    {\n      "start": 45,\n      "end": 51,\n      "message": "Grammar error: Subject-verb disagreement",\n      "type": "grammar", \n      "suggestions": ["were"], \n      "context": "The trees was tall"\n    }\n  ]\n}\n\nAnalyze the text carefully for:\n- Spelling errors (misspelled words)\n- Grammar errors (subject-verb agreement, tense consistency, etc.)\n- Punctuation errors (missing periods, comma splices, etc.)\n- Style issues (repetitive words, unclear phrasing)\n\nBe precise with character positions and provide helpful, contextual suggestions.`
+          content: `You are an expert writing assistant that analyzes text for grammar, spelling, punctuation, and style issues. For each error found, provide the exact character positions (start and end), error type, message, and contextual suggestions.
+
+Return the analysis in this exact JSON format:
+{
+  "errors": [
+    {
+      "start": 15,
+      "end": 19,
+      "message": "Spelling error: 'yung' should be 'young'",
+      "type": "spelling",
+      "suggestions": ["young"],
+      "context": "there was a yung adventurer"
+    },
+    {
+      "start": 45,
+      "end": 51,
+      "message": "Grammar error: Subject-verb disagreement",
+      "type": "grammar", 
+      "suggestions": ["were"],
+      "context": "The trees was tall"
+    }
+  ]
+}
+
+Analyze the text carefully for:
+- Spelling errors (misspelled words)
+- Grammar errors (subject-verb agreement, tense consistency, etc.)
+- Punctuation errors (missing periods, comma splices, etc.)
+- Style issues (repetitive words, unclear phrasing)
+
+Be precise with character positions and provide helpful, contextual suggestions.`
         },
         {
           role: "user",
@@ -254,11 +151,13 @@ async function checkGrammarForEditor(text) {
     }
 
     const parsed = JSON.parse(responseContent);
-
+    
+    // Validate the response format
     if (!parsed.errors || !Array.isArray(parsed.errors)) {
       throw new Error("Invalid response format: errors not an array");
     }
 
+    // Validate each error object
     const validatedErrors = parsed.errors.filter(error => {
       return typeof error.start === 'number' &&
              typeof error.end === 'number' &&
@@ -270,11 +169,117 @@ async function checkGrammarForEditor(text) {
     return { errors: validatedErrors };
   } catch (error) {
     console.error("OpenAI grammar check for editor error:", error);
+    // Return empty errors array as fallback
     return { errors: [] };
   }
 }
 
-// OpenAI function implementations (from user's original file)
+// Enhanced NSW Selective Writing Exam Feedback Function
+async function getNSWSelectiveFeedback(content, textType, assistanceLevel, feedbackHistory) {
+  try {
+    const completion = await openai.chat.completions.create({
+      messages: [
+        {
+          role: "system",
+          content: `You are an expert NSW Selective Schools Test writing examiner and teacher. Analyze this ${textType} writing piece according to NSW Selective Test criteria and provide detailed feedback for Year 5-6 students preparing for the selective schools entrance exam.
+
+NSW Selective Test Writing Assessment Criteria:
+1. Ideas and Content (25%) - Originality, depth, relevance to prompt
+2. Organization and Structure (25%) - Clear beginning/middle/end, logical flow
+3. Voice and Style (25%) - Engaging tone, appropriate for audience and purpose
+4. Language Conventions (25%) - Grammar, spelling, punctuation, sentence variety
+
+Provide feedback in this exact JSON format:
+{
+  "overallScore": 7,
+  "bandLevel": "Above Average",
+  "criteriaScores": {
+    "ideasAndContent": 7,
+    "organizationAndStructure": 6,
+    "voiceAndStyle": 8,
+    "languageConventions": 6
+  },
+  "strengths": [
+    "Strong opening that engages the reader",
+    "Creative use of descriptive language",
+    "Clear narrative structure"
+  ],
+  "areasForImprovement": [
+    "Develop the conclusion more fully",
+    "Check subject-verb agreement",
+    "Add more varied sentence beginnings"
+  ],
+  "selectiveTestSpecificFeedback": {
+    "promptResponse": "How well the writing addresses the given prompt",
+    "timeManagement": "Advice for 40-minute writing conditions",
+    "examStrategy": "Specific strategies for selective test success"
+  },
+  "nextSteps": [
+    "Practice writing conclusions that tie back to the opening",
+    "Review grammar rules for subject-verb agreement",
+    "Read examples of strong narrative writing"
+  ],
+  "estimatedSelectiveScore": "Band 6-7 (Above Average to High)"
+}`
+        },
+        {
+          role: "user",
+          content: `Text Type: ${textType}
+Assistance Level: ${assistanceLevel}
+Previous Feedback: ${JSON.stringify(feedbackHistory || [])}
+
+Student Writing:
+${content}`
+        }
+      ],
+      model: "gpt-4",
+      temperature: 0.7,
+      max_tokens: 1200
+    });
+
+    const responseContent = completion.choices[0].message.content;
+    if (!responseContent) {
+      throw new Error("Empty response from OpenAI");
+    }
+
+    return JSON.parse(responseContent);
+  } catch (error) {
+    console.error("OpenAI NSW Selective feedback error:", error);
+    return {
+      overallScore: 6,
+      bandLevel: "Average",
+      criteriaScores: {
+        ideasAndContent: 6,
+        organizationAndStructure: 6,
+        voiceAndStyle: 6,
+        languageConventions: 6
+      },
+      strengths: [
+        "Shows understanding of the writing task",
+        "Demonstrates effort and engagement",
+        "Basic structure is present"
+      ],
+      areasForImprovement: [
+        "Develop ideas more fully",
+        "Improve organization and flow",
+        "Work on language conventions"
+      ],
+      selectiveTestSpecificFeedback: {
+        promptResponse: "Continue working on fully addressing all parts of the prompt",
+        timeManagement: "Practice planning and writing within time limits",
+        examStrategy: "Focus on clear structure and strong examples"
+      },
+      nextSteps: [
+        "Practice with more writing prompts",
+        "Review examples of high-quality writing",
+        "Work on specific grammar and spelling skills"
+      ],
+      estimatedSelectiveScore: "Band 5-6 (Average)"
+    };
+  }
+}
+
+// OpenAI function implementations (keeping existing functions)
 async function generatePrompt(textType) {
   try {
     const completion = await openai.chat.completions.create({
@@ -292,7 +297,7 @@ async function generatePrompt(textType) {
     return { prompt: completion.choices[0].message.content || "Write about a memorable experience." };
   } catch (error) {
     console.error("OpenAI prompt generation error:", error);
-    return {
+    return { 
       prompt: "Write about a memorable experience that taught you something important.",
       fallback: true
     };
@@ -325,28 +330,17 @@ async function getWritingFeedback(content, textType, assistanceLevel, feedbackHi
     return JSON.parse(responseContent);
   } catch (error) {
     console.error("OpenAI writing feedback error:", error);
-    return       overallComment: "It seems I'm having a little trouble processing your request right now, but don't worry! I can still give you some general tips for narrative writing.",
+    return {
+      overallComment: "I'm having trouble analyzing your writing right now. Your work shows good effort - please try again in a moment.",
       feedbackItems: [
         {
-          type: "suggestion",
-          area: "Narrative Start",
-          text: "To start your narrative story, try hooking your reader immediately. You can begin with an exciting event, a vivid description of a character or setting, or a compelling piece of dialogue.",
-          suggestionForImprovement: "Consider opening with an action, a mystery, or a strong emotional moment to grab attention."
-        },
-        {
-          type: "suggestion",
-          area: "Story Structure",
-          text: "A good narrative usually follows a structure: exposition (introducing characters/setting), rising action (building conflict), climax (the peak of the story), falling action (resolving conflict), and resolution (the end).",
-          suggestionForImprovement: "Outline these key elements before you write to ensure a clear flow."
-        },
-        {
-          type: "suggestion",
-          area: "Character Development",
-          text: "To create interesting characters, give them unique traits, motivations, and flaws. Show their personality through their actions and dialogue, rather than just telling the reader.",
-          suggestionForImprovement: "Think about what your character wants, what stands in their way, and how they change throughout the story."
+          type: "praise",
+          area: "effort",
+          text: "You've made a good attempt at this writing task.",
+          suggestionForImprovement: "Keep practicing to improve your skills."
         }
       ],
-      focusForNextTime: ["Practice different narrative hooks", "Map out your story's plot points", "Develop character backstories and motivations"]
+      focusForNextTime: ["Try again in a few moments", "Continue practicing", "Focus on clear expression"]
     };
   }
 }
@@ -375,7 +369,7 @@ async function identifyCommonMistakes(content, textType) {
     }
 
     const parsed = JSON.parse(responseContent);
-
+    
     if (!parsed.overallAssessment || !Array.isArray(parsed.mistakesIdentified)) {
       throw new Error("Invalid response format: missing required fields");
     }
@@ -401,7 +395,7 @@ async function getSynonyms(word) {
           role: "system",
           content: `Provide 5 age-appropriate synonyms for the word "${word}" suitable for Year 5-6 students. Return only the synonyms as a comma-separated list.`
         }
-],
+      ],
       model: "gpt-4",
       temperature: 0.7,
       max_tokens: 50
@@ -442,8 +436,7 @@ async function getTextTypeVocabulary(textType, contentSample) {
       messages: [
         {
           role: "system",
-          content: `You are an expert writing teacher providing vocabulary assistance for Year 5-6 students writing a ${textType} piece. Based on the content sample provided, suggest appropriate vocabulary. Return the suggestions in this exact JSON format:\n{\n  "textType": "${textType}",\n  "categories": [\n    {\n      "name": "Descriptive Words",\n      "words": ["vivid", "stunning", "magnificent", "gleaming", "enormous"],\n      "examples": ["The vivid sunset painted the sky with stunning colors.", "The magnificent castle stood on the gleaming hill."]\n    },\n    {\n      "name": "Action Verbs",\n      "words": ["darted", "soared", "plunged", "vanished", "erupted"],\n      "examples": ["The bird soared through the clouds.", "She darted across the busy street."]\n    }\n  ],\n  "phrasesAndExpressions": [\n    "In the blink of an eye",\n    "As quick as lightning",\n    "Without a moment's hesitation",\n    "To my surprise"\n  ],
-  "transitionWords": [\n    "First",\n    "Next",\n    "Then",\n    "After that",\n    "Finally",\n    "However",\n    "Although",\n    "Because",\n    "Therefore",\n    "In conclusion"\n  ]\n}`
+          content: `You are an expert writing teacher providing vocabulary assistance for Year 5-6 students writing a ${textType} piece. Based on the content sample provided, suggest appropriate vocabulary. Return the suggestions in this exact JSON format:\n{\n  "textType": "${textType}",\n  "categories": [\n    {\n      "name": "Descriptive Words",\n      "words": ["vivid", "stunning", "magnificent", "gleaming", "enormous"],\n      "examples": ["The vivid sunset painted the sky with stunning colors.", "The magnificent castle stood on the gleaming hill."]\n    },\n    {\n      "name": "Action Verbs",\n      "words": ["darted", "soared", "plunged", "vanished", "erupted"],\n      "examples": ["The bird soared through the clouds.", "She darted across the busy street."]\n    }\n  ],\n  "phrasesAndExpressions": [\n    "In the blink of an eye",\n    "As quick as lightning",\n    "Without a moment's hesitation",\n    "To my surprise"\n  ],\n  "transitionWords": [\n    "First",\n    "Next",\n    "Then",\n    "After that",\n    "Finally",\n    "However",\n    "Although",\n    "Because",\n    "Therefore",\n    "In conclusion"\n  ]\n}`
         },
         {
           role: "user",
@@ -461,9 +454,9 @@ async function getTextTypeVocabulary(textType, contentSample) {
     }
 
     const parsed = JSON.parse(responseContent);
-
-    if (!parsed.textType ||
-        !Array.isArray(parsed.categories) ||
+    
+    if (!parsed.textType || 
+        !Array.isArray(parsed.categories) || 
         !Array.isArray(parsed.phrasesAndExpressions) ||
         !Array.isArray(parsed.transitionWords)) {
       throw new Error("Invalid response format: missing required fields");
@@ -518,9 +511,9 @@ async function evaluateEssay(content, textType) {
     }
 
     const parsed = JSON.parse(responseContent);
-
-    if (typeof parsed.overallScore !== "number" ||
-        !Array.isArray(parsed.strengths) ||
+    
+    if (typeof parsed.overallScore !== "number" || 
+        !Array.isArray(parsed.strengths) || 
         !Array.isArray(parsed.areasForImprovement) ||
         !parsed.specificFeedback ||
         !Array.isArray(parsed.nextSteps)) {
@@ -563,9 +556,7 @@ async function getSpecializedTextTypeFeedback(content, textType) {
       messages: [
         {
           role: "system",
-          content: `You are an expert writing teacher providing specialized feedback for Year 5-6 students on ${textType} writing. Focus specifically on how well the student has understood and applied the conventions, structure, and features of this text type. Return feedback in this exact JSON format:\n{\n  "overallComment": "Brief assessment of how well the student has handled this text type",\n  "textTypeSpecificFeedback": {\n    "structure": "Feedback on how well the student followed the expected structure for this text type",\n    "language": "Feedback on use of language features specific to this text type",\n    "purpose": "How well the student achieved the purpose of this text type",\n    "audience": "How well the student considered their audience"\n  },\n  "strengthsInTextType": [\n    "Specific strengths in handling this text type",\n    "What the student did well for this writing style"\n  ],
-  "improvementAreas": [\n    "Areas where the student can improve their understanding of this text type",\n    "Specific features they need to work on"\n  ],
-  "nextSteps": [\n    "Specific actions to improve in this text type",\n    "Resources or practice suggestions"\n  ]\n}`
+          content: `You are an expert writing teacher providing specialized feedback for Year 5-6 students on ${textType} writing. Focus specifically on how well the student has understood and applied the conventions, structure, and features of this text type. Return feedback in this exact JSON format:\n{\n  "overallComment": "Brief assessment of how well the student has handled this text type",\n  "textTypeSpecificFeedback": {\n    "structure": "Feedback on how well the student followed the expected structure for this text type",\n    "language": "Feedback on use of language features specific to this text type",\n    "purpose": "How well the student achieved the purpose of this text type",\n    "audience": "How well the student considered their audience"\n  },\n  "strengthsInTextType": [\n    "Specific strengths in handling this text type",\n    "What the student did well for this writing style"\n  ],\n  "improvementAreas": [\n    "Areas where the student can improve their understanding of this text type",\n    "Specific features they need to work on"\n  ],\n  "nextSteps": [\n    "Specific actions to improve in this text type",\n    "Resources or practice suggestions"\n  ]\n}`
         },
         {
           role: "user",
@@ -583,8 +574,8 @@ async function getSpecializedTextTypeFeedback(content, textType) {
     }
 
     const parsed = JSON.parse(responseContent);
-
-    if (!parsed.overallComment ||
+    
+    if (!parsed.overallComment || 
         !parsed.textTypeSpecificFeedback ||
         !Array.isArray(parsed.strengthsInTextType) ||
         !Array.isArray(parsed.improvementAreas) ||
@@ -788,92 +779,3 @@ async function enhanceVocabulary(content) {
     };
   }
 }
-
-exports.handler = async (event) => {
-  // CORS headers
-  const headers = {
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization",
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Content-Type": "application/json"
-  };
-
-  // Handle preflight requests
-  if (event.httpMethod === "OPTIONS" ) {
-    return {
-      statusCode: 200,
-      headers,
-      body: JSON.stringify({ message: "CORS preflight successful" })
-    };
-  }
-
-  try {
-    const body = JSON.parse(event.body);
-    const { operation, content, textType, assistanceLevel, feedbackHistory, action, text } = body;
-
-    let result;
-
-    switch (operation || action) {
-      case "generatePrompt":
-        result = await generatePrompt(textType);
-        break;
-      case "getWritingFeedback":
-        result = await getWritingFeedback(content, textType, assistanceLevel, feedbackHistory);
-        break;
-      case "getNSWSelectiveFeedback":
-        result = await getNSWSelectiveFeedback(content, textType, assistanceLevel, feedbackHistory);
-        break;
-      case "identifyCommonMistakes":
-        result = await identifyCommonMistakes(content, textType);
-        break;
-      case "getSynonyms":
-        result = await getSynonyms(content);
-        break;
-      case "rephraseSentence":
-        result = await rephraseSentence(content);
-        break;
-      case "getTextTypeVocabulary":
-        result = await getTextTypeVocabulary(textType, content);
-        break;
-      case "evaluateEssay":
-        result = await evaluateEssay(content, textType);
-        break;
-      case "getSpecializedTextTypeFeedback":
-        result = await getSpecializedTextTypeFeedback(content, textType);
-        break;
-      case "getWritingStructure":
-        result = await getWritingStructure(textType);
-        break;
-      case "checkGrammarAndSpelling":
-        result = await checkGrammarAndSpelling(content);
-        break;
-      case "check-grammar":
-        result = await checkGrammarForEditor(text || content);
-        break;
-      case "analyzeSentenceStructure":
-        result = await analyzeSentenceStructure(content);
-        break;
-      case "enhanceVocabulary":
-        result = await enhanceVocabulary(content);
-        break;
-      default:
-        throw new Error(`Unknown operation: ${operation || action}`);
-    }
-
-    return {
-      statusCode: 200,
-      headers,
-      body: JSON.stringify(result)
-    };
-  } catch (error) {
-    console.error("AI operations error:", error);
-    return {
-      statusCode: 500,
-      headers,
-      body: JSON.stringify({ 
-        error: error.message || "An error occurred processing your request",
-        operation: JSON.parse(event.body).operation || "unknown"
-      })
-    };
-  }
-};
