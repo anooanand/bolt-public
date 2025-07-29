@@ -67,59 +67,38 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const highlightLayerRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const checkTimeoutRef = useRef<NodeJS.Timeout>(); // STABILITY FIX: Add timeout ref
-  const clickTimeoutRef = useRef<NodeJS.Timeout>(); // RESPONSIVENESS FIX: Add click timeout ref
 
-  // Initialize popup flow when component mounts - STABILITY FIX
+  // Initialize popup flow when component mounts or when textType is empty
   useEffect(() => {
-    let isMounted = true; // Prevent state updates if component unmounts
-    
-    const initializeComponent = () => {
-      if (!isMounted) return;
-      
-      const savedContent = localStorage.getItem('writingContent');
-      const savedWritingType = localStorage.getItem('selectedWritingType');
+    const savedContent = localStorage.getItem('writingContent');
+    const savedWritingType = localStorage.getItem('selectedWritingType');
 
-      if (savedContent && isMounted) {
-        onChange(savedContent);
-      }
-      if (savedWritingType && isMounted) {
-        setSelectedWritingType(savedWritingType);
-        if (onTextTypeChange) {
-          onTextTypeChange(savedWritingType);
-        }
-        
-        // Check if there's already a saved prompt for this writing type
-        const savedPrompt = localStorage.getItem(`${savedWritingType}_prompt`);
-        if (savedPrompt && isMounted) {
-          setPrompt(savedPrompt);
-          setPopupFlowCompleted(true);
-          if (onPromptGenerated) {
-            onPromptGenerated(savedPrompt);
-          }
-        }
+    if (savedContent) {
+      onChange(savedContent);
+    }
+    if (savedWritingType) {
+      setSelectedWritingType(savedWritingType);
+      if (onTextTypeChange) {
+        onTextTypeChange(savedWritingType);
       }
       
-      // Only initialize the writing type selection flow if conditions are met
-      if (!textType && !savedWritingType && !popupFlowCompleted && isMounted) {
-        setShowWritingTypeModal(true);
+      // Check if there's already a saved prompt for this writing type
+      const savedPrompt = localStorage.getItem(`${savedWritingType}_prompt`);
+      if (savedPrompt) {
+        setPrompt(savedPrompt);
+        setPopupFlowCompleted(true); // Mark as completed if we have both type and prompt
+        if (onPromptGenerated) {
+          onPromptGenerated(savedPrompt);
+        }
       }
-    };
-
-    // Use requestAnimationFrame to ensure DOM is ready
-    requestAnimationFrame(initializeComponent);
+    }
     
-    return () => {
-      isMounted = false; // Cleanup flag
-      // RESPONSIVENESS FIX: Cleanup timeouts on unmount
-      if (checkTimeoutRef.current) {
-        clearTimeout(checkTimeoutRef.current);
-      }
-      if (clickTimeoutRef.current) {
-        clearTimeout(clickTimeoutRef.current);
-      }
-    };
-  }, []); // Stable dependencies
+    // Only initialize the writing type selection flow if no textType is set and no saved writing type
+    // AND we haven't already completed the popup flow
+    if (!textType && !savedWritingType && !popupFlowCompleted) {
+      setShowWritingTypeModal(true);
+    }
+  }, []); // Remove textType and selectedWritingType from dependencies to prevent loops
 
   useEffect(() => {
     if (prompt) {
@@ -158,18 +137,7 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
     localStorage.setItem('selectedWritingType', selectedWritingType);
   }, [selectedWritingType]);
 
-  // PERFORMANCE FIX: Optimized text analysis with early returns and limits
   const analyzeText = useCallback((text: string) => {
-    // Early return for short text to improve performance
-    if (text.length < 10) {
-      setIssues([]);
-      return;
-    }
-    
-    // Limit analysis to prevent performance issues with very long text
-    const maxAnalysisLength = 5000;
-    const analysisText = text.length > maxAnalysisLength ? text.substring(0, maxAnalysisLength) : text;
-    
     const newIssues: WritingIssue[] = [];
     
     // Common spelling mistakes (only incorrect spellings)
@@ -198,7 +166,7 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
       'i was': 'I was'
     };
 
-    // Vocabulary improvements with multiple suggestions (limited set for performance)
+    // Vocabulary improvements with multiple suggestions
     const vocabularyPatterns = {
       'good': 'excellent, outstanding, remarkable',
       'bad': 'poor, inadequate, unsatisfactory',
@@ -207,82 +175,75 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
       'big': 'enormous, massive, substantial',
       'small': 'tiny, minute, compact',
       'happy': 'joyful, delighted, cheerful',
-      'sad': 'unhappy, gloomy, melancholy'
+      'sad': 'unhappy, gloomy, melancholy',
+      'walk': 'stroll, amble, wander',
+      'run': 'dash, sprint, race',
+      'look': 'gaze, stare, observe',
+      'went': 'traveled, journeyed, ventured',
+      'saw': 'noticed, observed, spotted',
+      'got': 'received, obtained, acquired',
+      'make': 'create, produce, construct',
+      'think': 'believe, consider, ponder',
+      'started': 'began, commenced, initiated'
     };
 
-    // Batch process patterns for better performance
-    const processPatterns = (patterns: Record<string, string>, type: WritingIssue['type'], messageTemplate: string) => {
-      Object.entries(patterns).forEach(([incorrect, correct]) => {
-        const regex = new RegExp(`\\b${incorrect}\\b`, 'gi');
-        let match;
-        let matchCount = 0;
-        
-        // Limit matches per pattern to prevent performance issues
-        while ((match = regex.exec(analysisText)) !== null && matchCount < 10) {
-          newIssues.push({
-            start: match.index,
-            end: match.index + incorrect.length,
-            type,
-            message: messageTemplate.replace('{word}', incorrect).replace('{suggestion}', correct),
-            suggestion: correct
-          });
-          matchCount++;
-        }
-      });
-    };
+    // Check spelling
+    Object.entries(spellingPatterns).forEach(([incorrect, correct]) => {
+      const regex = new RegExp(`\\b${incorrect}\\b`, 'gi');
+      let match;
+      while ((match = regex.exec(text)) !== null) {
+        newIssues.push({
+          start: match.index,
+          end: match.index + incorrect.length,
+          type: 'spelling',
+          message: `This word is misspelled. The correct spelling is "${correct}".`,
+          suggestion: correct
+        });
+      }
+    });
 
-    // Process each type of pattern
-    processPatterns(spellingPatterns, 'spelling', 'This word is misspelled. The correct spelling is "{suggestion}".');
-    processPatterns(grammarPatterns, 'grammar', 'This needs proper capitalization.');
-    
-    // Process vocabulary with first suggestion only for performance
+    // Check grammar
+    Object.entries(grammarPatterns).forEach(([incorrect, correct]) => {
+      const regex = new RegExp(`\\b${incorrect}\\b`, 'gi');
+      let match;
+      while ((match = regex.exec(text)) !== null) {
+        newIssues.push({
+          start: match.index,
+          end: match.index + incorrect.length,
+          type: 'grammar',
+          message: `This needs proper capitalization.`,
+          suggestion: correct
+        });
+      }
+    });
+
+    // Check vocabulary
     Object.entries(vocabularyPatterns).forEach(([basic, improvements]) => {
       const regex = new RegExp(`\\b${basic}\\b`, 'gi');
       let match;
-      let matchCount = 0;
-      
-      while ((match = regex.exec(analysisText)) !== null && matchCount < 5) {
+      while ((match = regex.exec(text)) !== null) {
         newIssues.push({
           start: match.index,
           end: match.index + basic.length,
           type: 'vocabulary',
           message: `Consider using a more descriptive word instead of "${basic}".`,
-          suggestion: improvements.split(', ')[0]
+          suggestion: improvements.split(', ')[0] // Use first suggestion as primary
         });
-        matchCount++;
       }
     });
 
-    // Limit total issues to prevent UI performance problems
-    const maxIssues = 50;
-    setIssues(newIssues.slice(0, maxIssues));
+    setIssues(newIssues);
   }, []);
 
-  // PERFORMANCE FIX: Debounced text analysis to prevent interface freezing
   useEffect(() => {
     if (content) {
-      // Clear previous timeout
-      if (checkTimeoutRef.current) {
-        clearTimeout(checkTimeoutRef.current);
-      }
-      
-      // Debounce text analysis to prevent performance issues
-      checkTimeoutRef.current = setTimeout(() => {
-        // Only analyze if content is substantial enough
-        if (content.length > 10) {
-          analyzeText(content);
-        }
-      }, 1500); // Increased debounce time for better performance
-      
-      return () => {
-        if (checkTimeoutRef.current) {
-          clearTimeout(checkTimeoutRef.current);
-        }
-      };
+      const timeoutId = setTimeout(() => {
+        analyzeText(content);
+      }, 1000);
+      return () => clearTimeout(timeoutId);
     }
   }, [content, analyzeText]);
 
-  // STABILITY FIX: Improved save function with proper error handling
   const saveContent = useCallback(async () => {
     if (!content.trim() || isSaving) return;
     
@@ -298,78 +259,55 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
       setLastSaved(new Date());
     } catch (error) {
       console.error('Failed to save content:', error);
-      // Don't throw error to prevent component crashes
     } finally {
       setIsSaving(false);
     }
   }, [content, textType, selectedWritingType, prompt, isSaving]);
 
-  // STABILITY FIX: Improved auto-save with cleanup
   useEffect(() => {
     const interval = setInterval(saveContent, 30000);
-    return () => {
-      clearInterval(interval);
-      // Cancel any pending save operations
-      setIsSaving(false);
-    };
+    return () => clearInterval(interval);
   }, [saveContent]);
 
   const countWords = (text: string): number => {
     return text.trim().split(/\s+/).filter(word => word.length > 0).length;
   };
 
-  // RESPONSIVENESS FIX: Optimized text change handler
-  const handleTextareaChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const newValue = e.target.value;
+  const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    onChange(e.target.value);
+  };
+
+  const handleTextareaClick = (e: React.MouseEvent<HTMLTextAreaElement>) => {
+    const textarea = e.currentTarget;
+    const rect = textarea.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
     
-    // Use requestAnimationFrame for smooth updates
-    requestAnimationFrame(() => {
-      onChange(newValue);
+    const clickedIssue = issues.find(issue => {
+      const start = getTextPosition(textarea, issue.start);
+      const end = getTextPosition(textarea, issue.end);
+      return x >= start.x && x <= end.x && y >= start.y && y <= end.y;
     });
-  }, [onChange]);
-
-  // RESPONSIVENESS FIX: Optimized click handler with debouncing
-  const handleTextareaClick = useCallback((e: React.MouseEvent<HTMLTextAreaElement>) => {
-    // Debounce click handling to prevent excessive processing
-    if (clickTimeoutRef.current) {
-      clearTimeout(clickTimeoutRef.current);
-    }
     
-    clickTimeoutRef.current = setTimeout(() => {
-      const textarea = e.currentTarget;
-      const rect = textarea.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
-      
-      // Only process if we have issues to check
-      if (issues.length === 0) return;
-      
-      const clickedIssue = issues.find(issue => {
-        const start = getTextPosition(textarea, issue.start);
-        const end = getTextPosition(textarea, issue.end);
-        return x >= start.x && x <= end.x && y >= start.y && y <= end.y;
-      });
-      
-      if (clickedIssue) {
-        const containerRect = containerRef.current?.getBoundingClientRect();
-        if (containerRect) {
-          let popupX = x;
-          let popupY = y + 20;
+    if (clickedIssue) {
+      const containerRect = containerRef.current?.getBoundingClientRect();
+      if (containerRect) {
+        let popupX = x;
+        let popupY = y + 20;
 
-          const maxX = containerRect.width - 300;
-          if (popupX > maxX) popupX = maxX;
-          if (popupX < 0) popupX = 0;
+        const maxX = containerRect.width - 300;
+        if (popupX > maxX) popupX = maxX;
+        if (popupX < 0) popupX = 0;
 
-          const maxY = containerRect.height - 200;
-          if (popupY > maxY) popupY = y - 220;
+        const maxY = containerRect.height - 200;
+        if (popupY > maxY) popupY = y - 220;
 
-          setPopupPosition({ x: popupX, y: popupY });
-          setSelectedIssue(clickedIssue);
-          setSuggestions([]);
-        }
+        setPopupPosition({ x: popupX, y: popupY });
+        setSelectedIssue(clickedIssue);
+        setSuggestions([]);
       }
-    }, 100); // Small debounce to prevent excessive processing
-  }, [issues]);
+    }
+  };
 
   const getTextPosition = (textarea: HTMLTextAreaElement, index: number) => {
     const text = textarea.value;
