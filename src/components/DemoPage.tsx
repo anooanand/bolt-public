@@ -83,7 +83,7 @@ export function DemoPage({ onClose }: DemoPageProps) {
           <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-lg p-6 text-white">
             <h3 className="text-xl font-bold mb-2">Ready to unlock the full experience?</h3>
             <p className="mb-4">Get unlimited access to all features, personalized feedback, and progress tracking.</p>
-            <button className="bg-white text-indigo-600 px-6 py-2 rounded-md font-semibold hover:bg-gray-100 transition-colors">
+            <button className="btn btn-secondary btn-lg">
               Start Free Trial
             </button>
           </div>
@@ -346,7 +346,7 @@ function DemoTimedPractice() {
             <button
               onClick={startTimer}
               disabled={isActive}
-              className="mt-2 px-4 py-2 bg-white text-indigo-600 rounded-md text-sm font-medium hover:bg-gray-100 disabled:opacity-50"
+              className="btn btn-secondary btn-sm mt-2"
             >
               {isActive ? 'In Progress' : 'Start Timer'}
             </button>
