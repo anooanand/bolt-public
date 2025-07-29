@@ -388,6 +388,11 @@ function AppContent() {
           <Route path="/email-verification" element={<EmailVerificationHandler />} />
           <Route path="/demo-writing" element={<WritingDemo />} />
 
+          <Route path="/text-type-analysis" element={<TextTypeAnalysisComponent />} />
+          <Route path="/vocabulary-sophistication" element={<VocabularySophisticationComponent />} />
+          <Route path="/progress-tracking" element={<ProgressTrackingComponent />} />
+          <Route path="/coaching-tips" element={<CoachingTipsComponent />} />
+
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
 
@@ -414,3 +419,8 @@ function AppContent() {
 }
 
 export default AppContent;
+
+import { TextTypeAnalysisComponent } from './TextTypeAnalysisComponent';
+import { VocabularySophisticationComponent } from './VocabularySophisticationComponent';
+import { ProgressTrackingComponent } from './ProgressTrackingComponent';
+import { CoachingTipsComponent } from './CoachingTipsComponent';
