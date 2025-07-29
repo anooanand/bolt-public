@@ -150,7 +150,7 @@ export function EnhancedWritingEditorWithHighlighting({
   // Get AI feedback for highlighting with improved error handling
   const getAIFeedbackForHighlighting = async (text: string) => {
     const words = text.trim().split(/\s+/).filter(w => w.length > 0);
-    if (words.length < 50) return;
+    if (words.length < 25) return; // Lowered threshold from 50 to 25 words
     
     try {
       setIsGettingAIFeedback(true);
@@ -504,10 +504,60 @@ export function EnhancedWritingEditorWithHighlighting({
     return text.substring(contextStart, contextEnd);
   };
 
+  // Immediate basic error checking for instant feedback
+  const checkBasicErrors = (text: string): GrammarError[] => {
+    const errors: GrammarError[] = [];
+    
+    // Quick spelling checks for common mistakes
+    const commonMistakes = [
+      { wrong: /\bteh\b/gi, correct: 'the', message: 'Spelling: "teh" should be "the"' },
+      { wrong: /\brecieve\b/gi, correct: 'receive', message: 'Spelling: "recieve" should be "receive"' },
+      { wrong: /\boccured\b/gi, correct: 'occurred', message: 'Spelling: "occured" should be "occurred"' },
+      { wrong: /\bseperate\b/gi, correct: 'separate', message: 'Spelling: "seperate" should be "separate"' },
+      { wrong: /\bdefinately\b/gi, correct: 'definitely', message: 'Spelling: "definately" should be "definitely"' },
+      { wrong: /\bcould of\b/gi, correct: 'could have', message: 'Grammar: "could of" should be "could have"' },
+      { wrong: /\bshould of\b/gi, correct: 'should have', message: 'Grammar: "should of" should be "should have"' },
+      { wrong: /\bwould of\b/gi, correct: 'would have', message: 'Grammar: "would of" should be "would have"' }
+    ];
+
+    commonMistakes.forEach(({ wrong, correct, message }) => {
+      let match;
+      while ((match = wrong.exec(text)) !== null) {
+        errors.push({
+          start: match.index,
+          end: match.index + match[0].length,
+          message,
+          type: message.startsWith('Spelling') ? 'spelling' : 'grammar',
+          suggestions: [correct],
+          context: getWordContext(text, match.index, match[0].length)
+        });
+      }
+    });
+
+    // Quick punctuation checks
+    if (text.trim() && !text.trim().match(/[.!?]$/) && text.split(/\s+/).length > 5) {
+      errors.push({
+        start: text.length - 1,
+        end: text.length,
+        message: 'Consider adding punctuation at the end',
+        type: 'punctuation',
+        suggestions: ['.', '!', '?']
+      });
+    }
+
+    return errors;
+  };
+
   // Update grammar errors when content changes (debounced) with improved stability
   useEffect(() => {
     if (checkTimeoutRef.current) {
       clearTimeout(checkTimeoutRef.current);
+    }
+
+    // Immediate basic error checking for instant feedback
+    if (content.trim() && showGrammarHighlights) {
+      const immediateErrors = checkBasicErrors(content);
+      setErrors(immediateErrors);
     }
 
     checkTimeoutRef.current = setTimeout(async () => {
@@ -524,7 +574,7 @@ export function EnhancedWritingEditorWithHighlighting({
       } else {
         setErrors([]);
       }
-    }, 1500); // Slightly longer debounce for stability
+    }, 500); // Reduced debounce for more responsive real-time feedback
 
     return () => {
       if (checkTimeoutRef.current) {
@@ -549,7 +599,7 @@ export function EnhancedWritingEditorWithHighlighting({
       } else {
         setAiFeedback(null);
       }
-    }, 4000); // Longer debounce for AI feedback for stability
+    }, 1500); // Reduced debounce for more responsive AI feedback
 
     return () => {
       if (feedbackTimeoutRef.current) {
@@ -656,11 +706,17 @@ export function EnhancedWritingEditorWithHighlighting({
           <h3 className="text-sm font-medium text-gray-700">AI Writing Assistant</h3>
           <div className="flex items-center space-x-4">
             {(isChecking || isGettingAIFeedback) && (
-              <div className="flex items-center text-blue-600">
-                <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                <span className="text-sm">
-                  {isGettingAIFeedback ? 'Getting AI feedback...' : 'Checking grammar...'}
+              <div className="flex items-center bg-blue-100 px-3 py-1 rounded-full border border-blue-200">
+                <Loader2 className="w-4 h-4 animate-spin mr-2 text-blue-600" />
+                <span className="text-sm font-medium text-blue-700">
+                  {isGettingAIFeedback ? 'AI analyzing...' : 'Grammar checking...'}
                 </span>
+              </div>
+            )}
+            {!isChecking && !isGettingAIFeedback && content.trim() && (
+              <div className="flex items-center text-green-600">
+                <CheckCircle className="w-4 h-4 mr-2" />
+                <span className="text-sm font-medium">Ready</span>
               </div>
             )}
           </div>
@@ -831,4 +887,3 @@ export function EnhancedWritingEditorWithHighlighting({
     </div>
   );
 }
-
