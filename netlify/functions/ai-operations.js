@@ -5,98 +5,370 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
 });
 
-exports.handler = async (event) => {
-  // CORS headers
-  const headers = {
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization",
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Content-Type": "application/json"
+// Helper function to analyze content structure
+function analyzeContentStructure(content) {
+  const sentences = content.split(/[.!?]+/).filter(s => s.trim().length > 0);
+  const words = content.trim().split(/\s+/).filter(w => w.length > 0);
+  const paragraphs = content.split(/\n\s*\n/).filter(p => p.trim().length > 0);
+
+  const potentialCharacters = words.filter((word, index) => {
+    const isCapitalized = /^[A-Z][a-z]+$/.test(word);
+    const isNotSentenceStart = index > 0 && !/[.!?]/.test(words[index - 1]);
+    return isCapitalized && isNotSentenceStart;
+  });
+
+  const dialogueMatches = content.match(/"[^"]*"/g) || [];
+
+  const descriptiveWords = words.filter(word =>
+    /ly$/.test(word) ||
+    /ing$/.test(word) ||
+    /ed$/.test(word)
+  );
+
+  return {
+    sentenceCount: sentences.length,
+    wordCount: words.length,
+    paragraphCount: paragraphs.length,
+    averageSentenceLength: words.length / sentences.length,
+    potentialCharacters: [...new Set(potentialCharacters)],
+    hasDialogue: dialogueMatches.length > 0,
+    dialogueCount: dialogueMatches.length,
+    descriptiveWords: [...new Set(descriptiveWords)],
+    firstSentence: sentences[0]?.trim() || "",
+    lastSentence: sentences[sentences.length - 1]?.trim() || ""
   };
+}
 
-  // Handle preflight requests
-  if (event.httpMethod === "OPTIONS") {
-    return {
-      statusCode: 200,
-      headers,
-      body: JSON.stringify({ message: "CORS preflight successful" })
-    };
-  }
-
-  try {
-    // Parse request body - UPDATED to include action and text
-    const body = JSON.parse(event.body);
-    const { operation, content, textType, assistanceLevel, feedbackHistory, action, text } = body;
-
-    let result;
-
-    // Route to appropriate function based on operation or action - UPDATED
-    switch (operation || action) {
-      case "generatePrompt":
-        result = await generatePrompt(textType);
-        break;
-      case "getWritingFeedback":
-        result = await getWritingFeedback(content, textType, assistanceLevel, feedbackHistory);
-        break;
-      case "getNSWSelectiveFeedback":
-        result = await getNSWSelectiveFeedback(content, textType, assistanceLevel, feedbackHistory);
-        break;
-      case "identifyCommonMistakes":
-        result = await identifyCommonMistakes(content, textType);
-        break;
-      case "getSynonyms":
-        result = await getSynonyms(content);
-        break;
-      case "rephraseSentence":
-        result = await rephraseSentence(content);
-        break;
-      case "getTextTypeVocabulary":
-        result = await getTextTypeVocabulary(textType, content);
-        break;
-      case "evaluateEssay":
-        result = await evaluateEssay(content, textType);
-        break;
-      case "getSpecializedTextTypeFeedback":
-        result = await getSpecializedTextTypeFeedback(content, textType);
-        break;
-      case "getWritingStructure":
-        result = await getWritingStructure(textType);
-        break;
-      case "checkGrammarAndSpelling":
-        result = await checkGrammarAndSpelling(content);
-        break;
-      case "check-grammar":  // NEW CASE FOR ENHANCED EDITOR
-        result = await checkGrammarForEditor(text || content);
-        break;
-      case "analyzeSentenceStructure":
-        result = await analyzeSentenceStructure(content);
-        break;
-      case "enhanceVocabulary":
-        result = await enhanceVocabulary(content);
-        break;
-      default:
-        throw new Error(`Unknown operation: ${operation || action}`);
-    }
-
-    return {
-      statusCode: 200,
-      headers,
-      body: JSON.stringify(result)
-    };
-  } catch (error) {
-    console.error("AI operations error:", error);
-    return {
-      statusCode: 500,
-      headers,
-      body: JSON.stringify({ 
-        error: error.message || "An error occurred processing your request",
-        operation: JSON.parse(event.body).operation || "unknown"
-      })
-    };
+// NSW Selective Band Descriptors (NEW - CRITICAL FOR BAND SCORING)
+const bandDescriptors = {
+  6: { 
+    min: 27, 
+    max: 30, 
+    description: "Exceptional - Sophisticated ideas, flawless execution",
+    details: "Highly original and engaging ideas with sophisticated vocabulary and complex sentence structures. Flawless technical accuracy with perfect text type adherence."
+  },
+  5: { 
+    min: 22, 
+    max: 26, 
+    description: "Proficient - Well-developed ideas, strong execution",
+    details: "Original ideas with good development. Varied vocabulary and sentence structures with minor technical errors that don't impede meaning. Strong text type understanding."
+  },
+  4: { 
+    min: 17, 
+    max: 21, 
+    description: "Sound - Adequate ideas, competent execution",
+    details: "Adequate ideas with some development. Generally appropriate vocabulary with some technical errors present. Basic text type structure followed."
+  },
+  3: { 
+    min: 12, 
+    max: 16, 
+    description: "Developing - Simple ideas, basic execution",
+    details: "Simple ideas with limited development. Basic vocabulary usage with regular technical errors. Partial text type understanding."
+  },
+  2: { 
+    min: 7, 
+    max: 11, 
+    description: "Elementary - Limited ideas, weak execution",
+    details: "Very simple ideas with limited vocabulary range. Frequent technical errors with minimal text type awareness."
+  },
+  1: { 
+    min: 0, 
+    max: 6, 
+    description: "Emerging - Minimal development",
+    details: "Minimal idea development with very basic vocabulary. Extensive technical errors with little text type understanding."
   }
 };
 
-// NEW FUNCTION: Enhanced grammar checking for the writing editor
+// Calculate Band Level from Total Score (NEW - CRITICAL FOR BAND SCORING)
+function calculateBandLevel(totalScore) {
+  for (const [band, descriptor] of Object.entries(bandDescriptors)) {
+    if (totalScore >= descriptor.min && totalScore <= descriptor.max) {
+      return { band: parseInt(band), ...descriptor };
+    }
+  }
+  return { band: 1, ...bandDescriptors[1] };
+}
+
+// Calculate Individual Criterion Bands (NEW - CRITICAL FOR BAND SCORING)
+function calculateCriterionBand(score, maxScore) {
+  const percentage = (score / maxScore) * 100;
+  if (percentage >= 90) return 6;
+  if (percentage >= 75) return 5;
+  if (percentage >= 60) return 4;
+  if (percentage >= 45) return 3;
+  if (percentage >= 25) return 2;
+  return 1;
+}
+
+// Enhanced NSW Selective Writing Exam Feedback Function with Band Scoring (UPDATED)
+async function getNSWSelectiveFeedback(content, textType, assistanceLevel = "medium", feedbackHistory = []) {
+  try {
+    const analysis = analyzeContentStructure(content);
+
+    const prompt = `You are an expert NSW Selective School writing assessor. Analyze this ${textType} writing sample and provide detailed, specific feedback based on NSW Selective criteria.
+
+STUDENT'S WRITING:
+"${content}"
+
+CONTENT ANALYSIS:
+- Word count: ${analysis.wordCount}
+- Sentence count: ${analysis.sentenceCount}
+- Paragraph count: ${analysis.paragraphCount}
+- Average sentence length: ${Math.round(analysis.averageSentenceLength)} words
+- Has dialogue: ${analysis.hasDialogue}
+- Potential characters: ${analysis.potentialCharacters.join(', ') || 'None identified'}
+- Descriptive words used: ${analysis.descriptiveWords.slice(0, 5).join(', ') || 'Limited'}
+
+NSW SELECTIVE CRITERIA TO ASSESS:
+
+1. IDEAS AND CONTENT (30% - 9 points max):
+   - Relevance to prompt and task requirements
+   - Originality and creativity of ideas
+   - Development and elaboration of ideas
+   - Depth of thinking and insight
+   - Engagement and audience awareness
+
+2. TEXT STRUCTURE AND ORGANIZATION (25% - 7.5 points max):
+   - Clear beginning, middle, and end
+   - Logical sequence and flow of ideas
+   - Effective paragraph structure
+   - Coherence and cohesion between sections
+   - Appropriate structure for ${textType}
+
+3. LANGUAGE FEATURES AND VOCABULARY (25% - 7.5 points max):
+   - Sophisticated and varied vocabulary
+   - Effective use of literary devices
+   - Sentence variety and structure
+   - Appropriate tone and style for purpose
+   - Precision and clarity of expression
+
+4. SPELLING, PUNCTUATION, AND GRAMMAR (20% - 6 points max):
+   - Accurate spelling, including difficult words
+   - Correct and varied punctuation
+   - Grammatical accuracy
+   - Consistent tense and point of view
+
+INSTRUCTIONS:
+1. Provide specific scores for each criterion (Ideas: /9, Structure: /7.5, Language: /7.5, Grammar: /6)
+2. Calculate total score out of 30
+3. Give concrete examples from the student's text
+4. Offer specific, actionable suggestions for improvement
+5. Include questions that help the student think deeper about their writing
+6. Suggest specific revision tasks they can do right now
+7. Be encouraging but honest about areas needing work
+8. Reference specific words, phrases, or sentences from their writing
+
+Format your response as a JSON object with this structure:
+{
+  "overallComment": "Brief encouraging overview",
+  "totalScore": number (out of 30),
+  "criteriaFeedback": {
+    "ideasAndContent": {
+      "score": number (out of 9),
+      "maxScore": 9,
+      "strengths": ["specific strength with example from text"],
+      "improvements": ["specific area needing work"],
+      "suggestions": ["actionable suggestion with example"],
+      "nextSteps": ["specific task to improve this area"]
+    },
+    "textStructureAndOrganization": {
+      "score": number (out of 7.5),
+      "maxScore": 7.5,
+      "strengths": ["specific strength with example from text"],
+      "improvements": ["specific area needing work"],
+      "suggestions": ["actionable suggestion with example"],
+      "nextSteps": ["specific task to improve this area"]
+    },
+    "languageFeaturesAndVocabulary": {
+      "score": number (out of 7.5),
+      "maxScore": 7.5,
+      "strengths": ["specific strength with example from text"],
+      "improvements": ["specific area needing work"],
+      "suggestions": ["actionable suggestion with example"],
+      "nextSteps": ["specific task to improve this area"]
+    },
+    "spellingPunctuationGrammar": {
+      "score": number (out of 6),
+      "maxScore": 6,
+      "strengths": ["specific strength with example from text"],
+      "improvements": ["specific area needing work"],
+      "suggestions": ["actionable suggestion with example"],
+      "nextSteps": ["specific task to improve this area"]
+    }
+  },
+  "priorityFocus": ["top 2 areas to focus on next"],
+  "examStrategies": ["specific exam tips based on this writing"],
+  "interactiveQuestions": ["questions to help student reflect on their writing"],
+  "revisionSuggestions": ["specific tasks they can do to improve this piece right now"]
+}`;
+
+    const response = await openai.chat.completions.create({
+      model: "gpt-4",
+      messages: [
+        {
+          role: "system",
+          content: "You are an expert NSW Selective School writing assessor who provides detailed, specific, and encouraging feedback to help students improve their writing skills for the selective school exam. Always provide numerical scores that accurately reflect the quality of the writing."
+        },
+        {
+          role: "user",
+          content: prompt
+        }
+      ],
+      temperature: 0.3,
+      max_tokens: 2500
+    });
+
+    const feedbackText = response.choices[0].message.content;
+
+    try {
+      const feedbackJson = JSON.parse(feedbackText);
+      
+      // Calculate band levels for each criterion
+      const criteriaWithBands = {};
+      Object.entries(feedbackJson.criteriaFeedback).forEach(([key, criteria]) => {
+        criteriaWithBands[key] = {
+          ...criteria,
+          band: calculateCriterionBand(criteria.score, criteria.maxScore)
+        };
+      });
+
+      // Calculate overall band level
+      const totalScore = feedbackJson.totalScore || 
+        Object.values(feedbackJson.criteriaFeedback).reduce((sum, criteria) => sum + criteria.score, 0);
+      
+      const overallBand = calculateBandLevel(totalScore);
+
+      // Return enhanced feedback with band information
+      return {
+        ...feedbackJson,
+        totalScore,
+        overallBand: overallBand.band,
+        bandDescription: overallBand.description,
+        bandDetails: overallBand.details,
+        estimatedExamScore: `${totalScore}/30`,
+        criteriaFeedback: criteriaWithBands
+      };
+
+    } catch (parseError) {
+      console.error("Failed to parse OpenAI feedback as JSON:", parseError);
+      
+      // Fallback with basic band calculation
+      const fallbackScore = Math.max(1, Math.min(30, analysis.wordCount / 10));
+      const fallbackBand = calculateBandLevel(fallbackScore);
+      
+      return {
+        overallComment: "I'm having trouble analyzing your writing right now. Your work shows good effort - please try again in a moment.",
+        totalScore: fallbackScore,
+        overallBand: fallbackBand.band,
+        bandDescription: fallbackBand.description,
+        bandDetails: fallbackBand.details,
+        estimatedExamScore: `${fallbackScore}/30`,
+        criteriaFeedback: {
+          ideasAndContent: {
+            score: fallbackScore * 0.3,
+            maxScore: 9,
+            band: calculateCriterionBand(fallbackScore * 0.3, 9),
+            strengths: ["Please try again to get detailed feedback."],
+            improvements: ["Please try again to get detailed feedback."],
+            suggestions: ["Please try again to get detailed feedback."],
+            nextSteps: ["Please try again to get detailed feedback."]
+          },
+          textStructureAndOrganization: {
+            score: fallbackScore * 0.25,
+            maxScore: 7.5,
+            band: calculateCriterionBand(fallbackScore * 0.25, 7.5),
+            strengths: ["Please try again to get detailed feedback."],
+            improvements: ["Please try again to get detailed feedback."],
+            suggestions: ["Please try again to get detailed feedback."],
+            nextSteps: ["Please try again to get detailed feedback."]
+          },
+          languageFeaturesAndVocabulary: {
+            score: fallbackScore * 0.25,
+            maxScore: 7.5,
+            band: calculateCriterionBand(fallbackScore * 0.25, 7.5),
+            strengths: ["Please try again to get detailed feedback."],
+            improvements: ["Please try again to get detailed feedback."],
+            suggestions: ["Please try again to get detailed feedback."],
+            nextSteps: ["Please try again to get detailed feedback."]
+          },
+          spellingPunctuationGrammar: {
+            score: fallbackScore * 0.2,
+            maxScore: 6,
+            band: calculateCriterionBand(fallbackScore * 0.2, 6),
+            strengths: ["Please try again to get detailed feedback."],
+            improvements: ["Please try again to get detailed feedback."],
+            suggestions: ["Please try again to get detailed feedback."],
+            nextSteps: ["Please try again to get detailed feedback."]
+          }
+        },
+        priorityFocus: ["Please try again to get detailed feedback."],
+        examStrategies: ["Please try again to get detailed feedback."],
+        interactiveQuestions: ["Please try again to get detailed feedback."],
+        revisionSuggestions: ["Please try again to get detailed feedback."]
+      };
+    }
+
+  } catch (error) {
+    console.error("Error getting NSW Selective feedback:", error);
+
+    const analysis = analyzeContentStructure(content);
+    const fallbackScore = Math.max(1, Math.min(30, analysis.wordCount / 10));
+    const fallbackBand = calculateBandLevel(fallbackScore);
+    
+    return {
+      overallComment: `Your ${analysis.wordCount}-word ${textType} shows good effort! I can see you're developing your writing skills. Let's work on making it even stronger using NSW Selective exam criteria.`,
+      totalScore: fallbackScore,
+      overallBand: fallbackBand.band,
+      bandDescription: fallbackBand.description,
+      bandDetails: fallbackBand.details,
+      estimatedExamScore: `${fallbackScore}/30`,
+      criteriaFeedback: {
+        ideasAndContent: {
+          score: fallbackScore * 0.3,
+          maxScore: 9,
+          band: calculateCriterionBand(fallbackScore * 0.3, 9),
+          strengths: ["You've started writing, which is the first step!"],
+          improvements: ["Try to develop your ideas more fully"],
+          suggestions: ["Add more details and examples to support your main ideas"],
+          nextSteps: ["Expand each paragraph with more specific details"]
+        },
+        textStructureAndOrganization: {
+          score: fallbackScore * 0.25,
+          maxScore: 7.5,
+          band: calculateCriterionBand(fallbackScore * 0.25, 7.5),
+          strengths: ["You have a basic structure in place"],
+          improvements: ["Work on creating clearer connections between ideas"],
+          suggestions: ["Use transition words to link your paragraphs"],
+          nextSteps: ["Plan your writing with a clear beginning, middle, and end"]
+        },
+        languageFeaturesAndVocabulary: {
+          score: fallbackScore * 0.25,
+          maxScore: 7.5,
+          band: calculateCriterionBand(fallbackScore * 0.25, 7.5),
+          strengths: ["You're using appropriate vocabulary for your age"],
+          improvements: ["Try to include more varied and sophisticated words"],
+          suggestions: ["Replace simple words with more interesting alternatives"],
+          nextSteps: ["Keep a vocabulary journal of new words you learn"]
+        },
+        spellingPunctuationGrammar: {
+          score: fallbackScore * 0.2,
+          maxScore: 6,
+          band: calculateCriterionBand(fallbackScore * 0.2, 6),
+          strengths: ["Your basic sentence structure is developing well"],
+          improvements: ["Check your spelling and punctuation carefully"],
+          suggestions: ["Read your work aloud to catch errors"],
+          nextSteps: ["Proofread your writing before submitting"]
+        }
+      },
+      priorityFocus: ["Develop ideas more fully", "Improve text structure and organization"],
+      examStrategies: ["Plan your writing before you start", "Leave time to check your work"],
+      interactiveQuestions: ["What is the main message you want to share?", "How can you make your writing more interesting?"],
+      revisionSuggestions: ["Add more details to each paragraph", "Check for spelling and grammar errors"]
+    };
+  }
+}
+
+// Enhanced grammar checking for the writing editor
 async function checkGrammarForEditor(text) {
   try {
     const completion = await openai.chat.completions.create({
@@ -174,112 +446,7 @@ Be precise with character positions and provide helpful, contextual suggestions.
   }
 }
 
-// Enhanced NSW Selective Writing Exam Feedback Function
-async function getNSWSelectiveFeedback(content, textType, assistanceLevel, feedbackHistory) {
-  try {
-    const completion = await openai.chat.completions.create({
-      messages: [
-        {
-          role: "system",
-          content: `You are an expert NSW Selective Schools Test writing examiner and teacher. Analyze this ${textType} writing piece according to NSW Selective Test criteria and provide detailed feedback for Year 5-6 students preparing for the selective schools entrance exam.
-
-NSW Selective Test Writing Assessment Criteria:
-1. Ideas and Content (25%) - Originality, depth, relevance to prompt
-2. Organization and Structure (25%) - Clear beginning/middle/end, logical flow
-3. Voice and Style (25%) - Engaging tone, appropriate for audience and purpose
-4. Language Conventions (25%) - Grammar, spelling, punctuation, sentence variety
-
-Provide feedback in this exact JSON format:
-{
-  "overallScore": 7,
-  "bandLevel": "Above Average",
-  "criteriaScores": {
-    "ideasAndContent": 7,
-    "organizationAndStructure": 6,
-    "voiceAndStyle": 8,
-    "languageConventions": 6
-  },
-  "strengths": [
-    "Strong opening that engages the reader",
-    "Creative use of descriptive language",
-    "Clear narrative structure"
-  ],
-  "areasForImprovement": [
-    "Develop the conclusion more fully",
-    "Check subject-verb agreement",
-    "Add more varied sentence beginnings"
-  ],
-  "selectiveTestSpecificFeedback": {
-    "promptResponse": "How well the writing addresses the given prompt",
-    "timeManagement": "Advice for 40-minute writing conditions",
-    "examStrategy": "Specific strategies for selective test success"
-  },
-  "nextSteps": [
-    "Practice writing conclusions that tie back to the opening",
-    "Review grammar rules for subject-verb agreement",
-    "Read examples of strong narrative writing"
-  ],
-  "estimatedSelectiveScore": "Band 6-7 (Above Average to High)"
-}`
-        },
-        {
-          role: "user",
-          content: `Text Type: ${textType}
-Assistance Level: ${assistanceLevel}
-Previous Feedback: ${JSON.stringify(feedbackHistory || [])}
-
-Student Writing:
-${content}`
-        }
-      ],
-      model: "gpt-4",
-      temperature: 0.7,
-      max_tokens: 1200
-    });
-
-    const responseContent = completion.choices[0].message.content;
-    if (!responseContent) {
-      throw new Error("Empty response from OpenAI");
-    }
-
-    return JSON.parse(responseContent);
-  } catch (error) {
-    console.error("OpenAI NSW Selective feedback error:", error);
-    return {
-      overallScore: 6,
-      bandLevel: "Average",
-      criteriaScores: {
-        ideasAndContent: 6,
-        organizationAndStructure: 6,
-        voiceAndStyle: 6,
-        languageConventions: 6
-      },
-      strengths: [
-        "Shows understanding of the writing task",
-        "Demonstrates effort and engagement",
-        "Basic structure is present"
-      ],
-      areasForImprovement: [
-        "Develop ideas more fully",
-        "Improve organization and flow",
-        "Work on language conventions"
-      ],
-      selectiveTestSpecificFeedback: {
-        promptResponse: "Continue working on fully addressing all parts of the prompt",
-        timeManagement: "Practice planning and writing within time limits",
-        examStrategy: "Focus on clear structure and strong examples"
-      },
-      nextSteps: [
-        "Practice with more writing prompts",
-        "Review examples of high-quality writing",
-        "Work on specific grammar and spelling skills"
-      ],
-      estimatedSelectiveScore: "Band 5-6 (Average)"
-    };
-  }
-}
-
-// OpenAI function implementations (keeping existing functions)
+// All your existing functions (keeping them exactly as they are)
 async function generatePrompt(textType) {
   try {
     const completion = await openai.chat.completions.create({
@@ -779,3 +946,95 @@ async function enhanceVocabulary(content) {
     };
   }
 }
+
+// Main handler function
+exports.handler = async (event) => {
+  // CORS headers
+  const headers = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Content-Type": "application/json"
+  };
+
+  // Handle preflight requests
+  if (event.httpMethod === "OPTIONS" ) {
+    return {
+      statusCode: 200,
+      headers,
+      body: JSON.stringify({ message: "CORS preflight successful" })
+    };
+  }
+
+  try {
+    // Parse request body - UPDATED to include action and text
+    const body = JSON.parse(event.body);
+    const { operation, content, textType, assistanceLevel, feedbackHistory, action, text } = body;
+
+    let result;
+
+    // Route to appropriate function based on operation or action - UPDATED
+    switch (operation || action) {
+      case "generatePrompt":
+        result = await generatePrompt(textType);
+        break;
+      case "getWritingFeedback":
+        result = await getWritingFeedback(content, textType, assistanceLevel, feedbackHistory);
+        break;
+      case "getNSWSelectiveFeedback":
+        result = await getNSWSelectiveFeedback(content, textType, assistanceLevel, feedbackHistory);
+        break;
+      case "identifyCommonMistakes":
+        result = await identifyCommonMistakes(content, textType);
+        break;
+      case "getSynonyms":
+        result = await getSynonyms(content);
+        break;
+      case "rephraseSentence":
+        result = await rephraseSentence(content);
+        break;
+      case "getTextTypeVocabulary":
+        result = await getTextTypeVocabulary(textType, content);
+        break;
+      case "evaluateEssay":
+        result = await evaluateEssay(content, textType);
+        break;
+      case "getSpecializedTextTypeFeedback":
+        result = await getSpecializedTextTypeFeedback(content, textType);
+        break;
+      case "getWritingStructure":
+        result = await getWritingStructure(textType);
+        break;
+      case "checkGrammarAndSpelling":
+        result = await checkGrammarAndSpelling(content);
+        break;
+      case "check-grammar":  // NEW CASE FOR ENHANCED EDITOR
+        result = await checkGrammarForEditor(text || content);
+        break;
+      case "analyzeSentenceStructure":
+        result = await analyzeSentenceStructure(content);
+        break;
+      case "enhanceVocabulary":
+        result = await enhanceVocabulary(content);
+        break;
+      default:
+        throw new Error(`Unknown operation: ${operation || action}`);
+    }
+
+    return {
+      statusCode: 200,
+      headers,
+      body: JSON.stringify(result)
+    };
+  } catch (error) {
+    console.error("AI operations error:", error);
+    return {
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({ 
+        error: error.message || "An error occurred processing your request",
+        operation: JSON.parse(event.body).operation || "unknown"
+      })
+    };
+  }
+};
