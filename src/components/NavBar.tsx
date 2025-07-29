@@ -3,7 +3,7 @@ import { User } from '@supabase/supabase-js';
 import { useLearning } from '../contexts/LearningContext';
 import { useAuth } from '../contexts/AuthContext';
 import { Link } from 'react-router-dom';
-import { LogOut, Menu, X, ChevronDown } from 'lucide-react';
+import { LogOut, Menu, X, ChevronDown, Home, Sparkles, Users, HelpCircle, BookOpen, Star, Brain, Target } from 'lucide-react';
 
 interface NavBarProps {
   activePage: string;
@@ -31,16 +31,16 @@ export function NavBar({
   const isSigningOut = useRef(false);
 
   const navigationItems = [
-    { id: 'home', name: '🏠 Home', href: '/' },
-    { id: 'features', name: '✨ Fun Stuff', href: '/features' },
-    { id: 'about', name: '🙋‍♀️ About Us', href: '/about' },
-    { id: 'faq', name: '❓ Questions', href: '/faq' }
+    { id: 'home', name: 'Home', href: '/', icon: Home },
+    { id: 'features', name: 'Features', href: '/features', icon: Sparkles },
+    { id: 'about', name: 'About', href: '/about', icon: Users },
+    { id: 'faq', name: 'FAQ', href: '/faq', icon: HelpCircle }
   ];
 
   const learningItems = [
-    { id: 'learning', name: '📚 My Adventures', description: 'Your learning journey' },
-    { id: 'progress-dashboard', name: '🌟 My Progress', description: 'See how far you have come' },
-    { id: 'quiz-demo', name: '🧠 Brain Games', description: 'Test your smarts' }
+    { id: 'learning', name: 'Learning Journey', description: 'Your learning progress', icon: BookOpen },
+    { id: 'progress-dashboard', name: 'Progress Dashboard', description: 'Track your achievements', icon: Star },
+    { id: 'quiz-demo', name: 'Practice Quiz', description: 'Test your knowledge', icon: Brain }
   ];
 
   const handleSignOut = async (e: React.MouseEvent) => {
@@ -75,15 +75,26 @@ export function NavBar({
     }
   };
 
-  // Helper function to get navigation item classes with improved styling
+  // Helper function to get navigation item classes with consistent styling
   const getNavItemClasses = (itemId: string, isActive: boolean) => {
     const baseClasses = "px-4 py-2 rounded-lg font-medium transition-all duration-300 flex items-center space-x-2 text-sm";
     
     if (isActive) {
-      return `${baseClasses} bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg transform scale-105`;
+      return `${baseClasses} bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg transform scale-105`;
     }
     
-    return `${baseClasses} bg-white/80 hover:bg-white/95 text-gray-700 hover:text-gray-900 hover:shadow-md hover:transform hover:scale-102 border border-gray-200/50`;
+    return `${baseClasses} text-gray-700 hover:text-indigo-600 hover:bg-indigo-50 hover:shadow-md hover:transform hover:scale-102 border border-transparent hover:border-indigo-200`;
+  };
+
+  // Helper function to get button classes with consistent styling
+  const getButtonClasses = (variant: 'primary' | 'secondary' = 'primary') => {
+    const baseClasses = "px-4 py-2 rounded-lg font-medium transition-all duration-300 flex items-center space-x-2 text-sm";
+    
+    if (variant === 'primary') {
+      return `${baseClasses} bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg hover:shadow-xl hover:transform hover:scale-105`;
+    }
+    
+    return `${baseClasses} bg-white text-indigo-600 border border-indigo-200 hover:bg-indigo-50 hover:shadow-md hover:transform hover:scale-102`;
   };
 
   // Helper function for user avatar
@@ -103,10 +114,10 @@ export function NavBar({
           <div className="flex items-center">
             <Link 
               to="/" 
-              className="flex items-center space-x-2 text-xl font-bold text-gray-900 hover:text-blue-600 transition-colors duration-200"
+              className="flex items-center space-x-2 text-xl font-bold text-gray-900 hover:text-indigo-600 transition-colors duration-200"
               onClick={() => onNavigate('home')}
             >
-              <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center text-white font-bold text-sm">
+              <div className="w-8 h-8 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-lg flex items-center justify-center text-white font-bold text-sm">
                 AI
               </div>
               <span>InstaChat AI</span>
@@ -115,16 +126,20 @@ export function NavBar({
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-2">
-            {navigationItems.map((item) => (
-              <Link
-                key={item.id}
-                to={item.href}
-                className={getNavItemClasses(item.id, activePage === item.id)}
-                onClick={() => onNavigate(item.id)}
-              >
-                <span>{item.name}</span>
-              </Link>
-            ))}
+            {navigationItems.map((item) => {
+              const IconComponent = item.icon;
+              return (
+                <Link
+                  key={item.id}
+                  to={item.href}
+                  className={getNavItemClasses(item.id, activePage === item.id)}
+                  onClick={() => onNavigate(item.id)}
+                >
+                  <IconComponent className="w-4 h-4" />
+                  <span>{item.name}</span>
+                </Link>
+              );
+            })}
           </div>
 
           {/* Right Side - User Actions */}
@@ -137,25 +152,32 @@ export function NavBar({
                   onClick={() => setIsLearningMenuOpen(!isLearningMenuOpen)}
                   className={getNavItemClasses('learning', activePage === 'learning')}
                 >
-                  <span>🎯 My Learning</span>
+                  <Target className="w-4 h-4" />
+                  <span>Learning</span>
                   <ChevronDown className="w-4 h-4" />
                 </button>
                 
                 {isLearningMenuOpen && (
                   <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-lg border border-gray-200/50 py-2 z-50">
-                    {learningItems.map((item) => (
-                      <button
-                        key={item.id}
-                        onClick={() => {
-                          onNavigate(item.id);
-                          setIsLearningMenuOpen(false);
-                        }}
-                        className="w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors duration-200"
-                      >
-                        <div className="font-medium text-gray-900">{item.name}</div>
-                        <div className="text-sm text-gray-500">{item.description}</div>
-                      </button>
-                    ))}
+                    {learningItems.map((item) => {
+                      const IconComponent = item.icon;
+                      return (
+                        <button
+                          key={item.id}
+                          onClick={() => {
+                            onNavigate(item.id);
+                            setIsLearningMenuOpen(false);
+                          }}
+                          className="w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors duration-200 flex items-start space-x-3"
+                        >
+                          <IconComponent className="w-5 h-5 text-indigo-600 mt-0.5" />
+                          <div>
+                            <div className="font-medium text-gray-900">{item.name}</div>
+                            <div className="text-sm text-gray-500">{item.description}</div>
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -166,15 +188,16 @@ export function NavBar({
               <div className="flex items-center space-x-3">
                 <Link
                   to="/dashboard"
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  className={getButtonClasses('primary')}
                   onClick={() => onNavigate('dashboard')}
                 >
-                  🏠 My Space
+                  <Home className="w-4 h-4" />
+                  <span>Dashboard</span>
                 </Link>
                 <div className="relative">
                   <button
                     onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                    className="w-10 h-10 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-sm hover:shadow-lg transition-all duration-200 transform hover:scale-105"
+                    className="w-10 h-10 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-sm hover:shadow-lg transition-all duration-200 transform hover:scale-105"
                   >
                     {getUserInitial()}
                   </button>
@@ -187,13 +210,14 @@ export function NavBar({
                       </div>
                       <Link
                         to="/dashboard"
-                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-200"
+                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-200 flex items-center space-x-2"
                         onClick={() => {
                           onNavigate('dashboard');
                           setIsUserMenuOpen(false);
                         }}
                       >
-                        🏠 My Space
+                        <Home className="w-4 h-4" />
+                        <span>Dashboard</span>
                       </Link>
                       <button
                         onClick={handleSignOut}
@@ -207,119 +231,123 @@ export function NavBar({
                 </div>
               </div>
             ) : (
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-3">
                 <button
                   onClick={onSignInClick}
-                  className="px-4 py-2 text-gray-700 hover:text-gray-900 font-medium transition-colors duration-200"
+                  className={getButtonClasses('secondary')}
                 >
-                  🔑 Sign In
+                  Sign In
                 </button>
                 <button
                   onClick={onSignUpClick}
-                  className="px-6 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg font-medium hover:shadow-lg transition-all duration-200 transform hover:scale-105"
+                  className={getButtonClasses('primary')}
                 >
-                  🚀 Get Started
+                  Get Started
                 </button>
               </div>
             )}
 
             {/* Mobile Menu Button */}
-            <button
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="md:hidden p-2 rounded-lg text-gray-700 hover:text-gray-900 hover:bg-gray-100 transition-colors duration-200"
-            >
-              {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-            </button>
+            <div className="md:hidden">
+              <button
+                onClick={() => setIsMenuOpen(!isMenuOpen)}
+                className="p-2 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors duration-200"
+              >
+                {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+              </button>
+            </div>
           </div>
         </div>
 
         {/* Mobile Menu */}
         {isMenuOpen && (
-          <div className="md:hidden border-t border-gray-200/50 py-4">
+          <div className="md:hidden border-t border-gray-200 py-4">
             <div className="space-y-2">
-              {navigationItems.map((item) => (
-                <Link
-                  key={item.id}
-                  to={item.href}
-                  className={`block px-4 py-3 rounded-lg font-medium transition-all duration-200 ${
-                    activePage === item.id
-                      ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white'
-                      : 'text-gray-700 hover:bg-gray-50'
-                  }`}
-                  onClick={() => {
-                    onNavigate(item.id);
-                    setIsMenuOpen(false);
-                  }}
-                >
-                  {item.name}
-                </Link>
-              ))}
-              
-              {/* Mobile Learning Menu */}
-              {user && (
-                <div className="border-t border-gray-200/50 pt-4 mt-4">
-                  <div className="px-4 py-2 text-sm font-medium text-gray-500 uppercase tracking-wide">
-                    Learning
-                  </div>
-                  {learningItems.map((item) => (
-                    <button
-                      key={item.id}
-                      onClick={() => {
-                        onNavigate(item.id);
-                        setIsMenuOpen(false);
-                      }}
-                      className="w-full text-left px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors duration-200"
-                    >
-                      <div className="font-medium">{item.name}</div>
-                      <div className="text-sm text-gray-500">{item.description}</div>
-                    </button>
-                  ))}
-                </div>
-              )}
-              
-              {/* Mobile User Actions */}
-              {user ? (
-                <div className="border-t border-gray-200/50 pt-4 mt-4">
-                  <div className="px-4 py-2 text-sm text-gray-500">
-                    {user.email}
-                  </div>
+              {navigationItems.map((item) => {
+                const IconComponent = item.icon;
+                return (
                   <Link
-                    to="/dashboard"
-                    className="block w-full text-left px-4 py-3 bg-blue-600 text-white rounded-lg font-medium mb-2"
+                    key={item.id}
+                    to={item.href}
+                    className={`block px-4 py-2 rounded-lg text-gray-700 hover:text-indigo-600 hover:bg-indigo-50 transition-colors duration-200 flex items-center space-x-2 ${
+                      activePage === item.id ? 'bg-indigo-100 text-indigo-600' : ''
+                    }`}
                     onClick={() => {
-                      onNavigate('dashboard');
+                      onNavigate(item.id);
                       setIsMenuOpen(false);
                     }}
                   >
-                    🏠 My Space
+                    <IconComponent className="w-4 h-4" />
+                    <span>{item.name}</span>
                   </Link>
-                  <button
-                    onClick={handleSignOut}
-                    className="w-full text-left px-4 py-3 text-red-600 hover:bg-red-50 rounded-lg transition-colors duration-200 flex items-center space-x-2"
-                  >
-                    <LogOut className="w-4 h-4" />
-                    <span>Sign Out</span>
-                  </button>
-                </div>
-              ) : (
-                <div className="border-t border-gray-200/50 pt-4 mt-4 space-y-2">
+                );
+              })}
+              
+              {user && (
+                <>
+                  <div className="border-t border-gray-200 pt-2 mt-2">
+                    {learningItems.map((item) => {
+                      const IconComponent = item.icon;
+                      return (
+                        <button
+                          key={item.id}
+                          onClick={() => {
+                            onNavigate(item.id);
+                            setIsMenuOpen(false);
+                          }}
+                          className="w-full text-left px-4 py-2 text-gray-700 hover:text-indigo-600 hover:bg-indigo-50 transition-colors duration-200 flex items-center space-x-2"
+                        >
+                          <IconComponent className="w-4 h-4" />
+                          <span>{item.name}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div className="border-t border-gray-200 pt-2 mt-2">
+                    <Link
+                      to="/dashboard"
+                      className="block px-4 py-2 text-gray-700 hover:text-indigo-600 hover:bg-indigo-50 transition-colors duration-200 flex items-center space-x-2"
+                      onClick={() => {
+                        onNavigate('dashboard');
+                        setIsMenuOpen(false);
+                      }}
+                    >
+                      <Home className="w-4 h-4" />
+                      <span>Dashboard</span>
+                    </Link>
+                    <button
+                      onClick={(e) => {
+                        handleSignOut(e);
+                        setIsMenuOpen(false);
+                      }}
+                      className="w-full text-left px-4 py-2 text-red-600 hover:bg-red-50 transition-colors duration-200 flex items-center space-x-2"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      <span>Sign Out</span>
+                    </button>
+                  </div>
+                </>
+              )}
+              
+              {!user && (
+                <div className="border-t border-gray-200 pt-2 mt-2 space-y-2">
                   <button
                     onClick={() => {
                       onSignInClick();
                       setIsMenuOpen(false);
                     }}
-                    className="w-full text-left px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-lg transition-colors duration-200"
+                    className="w-full text-left px-4 py-2 text-gray-700 hover:text-indigo-600 hover:bg-indigo-50 transition-colors duration-200"
                   >
-                    🔑 Sign In
+                    Sign In
                   </button>
                   <button
                     onClick={() => {
                       onSignUpClick();
                       setIsMenuOpen(false);
                     }}
-                    className="w-full text-left px-4 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg font-medium"
+                    className="w-full text-left px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:shadow-lg transition-all duration-200"
                   >
-                    🚀 Get Started
+                    Get Started
                   </button>
                 </div>
               )}
@@ -330,3 +358,4 @@ export function NavBar({
     </nav>
   );
 }
+
