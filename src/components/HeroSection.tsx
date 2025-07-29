@@ -40,7 +40,7 @@ export function HeroSection({ onGetStarted }: HeroSectionProps) {
           <div className="flex flex-col sm:flex-row justify-center gap-6 sm:gap-8">
             <button 
               onClick={onGetStarted}
-              className="px-10 py-5 text-xl font-bold rounded-2xl bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 hover:from-blue-700 hover:via-purple-700 hover:to-pink-700 text-white transition-all duration-300 flex items-center justify-center shadow-lg hover:shadow-xl transform hover:scale-105 border-4 border-white cursor-pointer"
+              className="btn btn-primary btn-xl"
             >
               Start Your Adventure!
               <ArrowRight className="ml-3 w-6 h-6" />
@@ -48,7 +48,7 @@ export function HeroSection({ onGetStarted }: HeroSectionProps) {
             
             <button 
               onClick={handleTryDemo}
-              className="px-10 py-5 text-xl font-bold rounded-2xl bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700 text-white transition-all duration-300 flex items-center justify-center shadow-lg hover:shadow-xl transform hover:scale-105 border-4 border-white cursor-pointer"
+              className="btn btn-success btn-xl"
             >
               Try It For Free!
               <Zap className="ml-3 w-6 h-6" />
