@@ -19,7 +19,7 @@ import { getNSWSelectiveFeedback } from '../lib/openai';
 import { TextHighlighter } from './TextHighlighter';
 import { VocabularyBuilder } from './VocabularyBuilder';
 import { SentenceAnalyzer } from './SentenceAnalyzer';
-import { EnhancedWritingEditorWithHighlighting } from './EnhancedWritingAreaFixed';
+import { InteractiveTextEditor } from './InteractiveTextEditor'; // Updated import
 
 interface WritingStudioProps {
   onNavigate: (page: string) => void;
@@ -432,7 +432,7 @@ export const WritingStudio: React.FC<WritingStudioProps> = ({ onNavigate }) => {
                 </div>
 
                 {/* Enhanced Writing Area */}
-                <EnhancedWritingEditorWithHighlighting
+                <InteractiveTextEditor // Changed from EnhancedWritingEditorWithHighlighting
                   content={content}
                   onChange={handleContentChange}
                   textType={selectedWritingType}
@@ -478,110 +478,88 @@ export const WritingStudio: React.FC<WritingStudioProps> = ({ onNavigate }) => {
               </div>
             </div>
 
-            {/* AI Analysis Results */}
-            {showAnalysis ? (
+            {/* AI Analysis Summary */}
+            {showAnalysis && (
               <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
                   AI Analysis
                 </h3>
-                
-                {/* Score */}
-                <div className="mb-4">
-                  <div className="flex items-center justify-between mb-2">
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
                     <span className="text-gray-600 dark:text-gray-400">Overall Score</span>
-                    <span className="text-2xl font-bold text-green-600 dark:text-green-400">
-                      {aiAnalysis.score}%
+                    <span className="text-2xl font-bold text-blue-600">
+                      {aiAnalysis.score}
                     </span>
                   </div>
-                  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                    <div
-                      className="bg-green-600 h-2 rounded-full transition-all duration-300"
-                      style={{ width: `${aiAnalysis.score}%` }}
-                    ></div>
+                  <div>
+                    <h4 className="font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Strengths
+                    </h4>
+                    <ul className="list-disc list-inside text-sm text-gray-600 dark:text-gray-400">
+                      {aiAnalysis.strengths.map((s, i) => (
+                        <li key={i}>{s}</li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div>
+                    <h4 className="font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Areas for Improvement
+                    </h4>
+                    <ul className="list-disc list-inside text-sm text-gray-600 dark:text-gray-400">
+                      {aiAnalysis.improvements.map((i, idx) => (
+                        <li key={idx}>{i}</li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div>
+                    <h4 className="font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Suggestions
+                    </h4>
+                    <ul className="list-disc list-inside text-sm text-gray-600 dark:text-gray-400">
+                      {aiAnalysis.suggestions.map((s, i) => (
+                        <li key={i}>{s}</li>
+                      ))}
+                    </ul>
                   </div>
                 </div>
-
-                {/* Strengths */}
-                <div className="mb-4">
-                  <h4 className="font-medium text-gray-900 dark:text-white mb-2">
-                    Strengths
-                  </h4>
-                  <ul className="space-y-1">
-                    {aiAnalysis.strengths.map((strength, index) => (
-                      <li key={index} className="text-sm text-green-600 dark:text-green-400">
-                        • {strength}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-
-                {/* Improvements */}
-                <div className="mb-4">
-                  <h4 className="font-medium text-gray-900 dark:text-white mb-2">
-                    Areas for Improvement
-                  </h4>
-                  <ul className="space-y-1">
-                    {aiAnalysis.improvements.map((improvement, index) => (
-                      <li key={index} className="text-sm text-orange-600 dark:text-orange-400">
-                        • {improvement}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-
-                {/* Suggestions */}
-                <div>
-                  <h4 className="font-medium text-gray-900 dark:text-white mb-2">
-                    Suggestions
-                  </h4>
-                  <ul className="space-y-1">
-                    {aiAnalysis.suggestions.map((suggestion, index) => (
-                      <li key={index} className="text-sm text-blue-600 dark:text-blue-400">
-                        • {suggestion}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            ) : null}
-
-            {/* Upgrade Prompt for Free Users */}
-            {!isPaidUser && (
-              <div className="bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-900 dark:to-purple-900 rounded-lg p-6 border border-blue-200 dark:border-blue-700">
-                <h3 className="font-semibold text-blue-900 dark:text-blue-100 mb-2">
-                  Unlock Pro Features
-                </h3>
-                <p className="text-sm text-blue-700 dark:text-blue-300 mb-4">
-                  Get unlimited AI analysis, advanced writing tools, and more!
-                </p>
-                <button
-                  onClick={() => onNavigate('pricing')}
-                  className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  Upgrade Now
-                </button>
               </div>
             )}
+
+            {/* NSW Criteria Tracker */}
+            {nswFeedback && (
+              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
+                <EnhancedNSWCriteriaTracker feedback={nswFeedback} />
+              </div>
+            )}
+
+            {/* Vocabulary Builder */}
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
+              <VocabularyBuilder content={content} />
+            </div>
+
+            {/* Sentence Analyzer */}
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
+              <SentenceAnalyzer content={content} />
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Writing Type Selection Modal */}
-      <WritingTypeSelectionModal
-        isOpen={showWritingTypeModal}
-        onClose={() => setShowWritingTypeModal(false)}
-        onSelectType={handleWritingTypeSelect}
-      />
+      {/* Modals */}
+      {showWritingTypeModal && (
+        <WritingTypeSelectionModal
+          onSelect={handleWritingTypeSelect}
+          onClose={() => setShowWritingTypeModal(false)}
+        />
+      )}
 
-      {/* Prompt Options Modal */}
-      <PromptOptionsModal
-        isOpen={showPromptOptionsModal}
-        onClose={() => setShowPromptOptionsModal(false)}
-        onGeneratePrompt={handleGeneratePrompt}
-        onCustomPrompt={handleCustomPrompt}
-        textType={selectedWritingType}
-      />
+      {showPromptOptionsModal && (
+        <PromptOptionsModal
+          onGeneratePrompt={handleGeneratePrompt}
+          onCustomPrompt={handleCustomPrompt}
+          onClose={() => setShowPromptOptionsModal(false)}
+        />
+      )}
     </div>
   );
 };
-
