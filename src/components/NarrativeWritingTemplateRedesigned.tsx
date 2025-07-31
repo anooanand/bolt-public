@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Lightbulb, Type, Save, Settings, Sparkles, ChevronDown, ChevronUp, Users, Target, Star, CheckCircle } from 'lucide-react';
-import { EnhancedWritingEditorWithHighlighting } from './EnhancedWritingEditor';
+import { InteractiveTextEditor } from './InteractiveTextEditor'; // Updated import
 import { getNSWSelectiveFeedback } from '../lib/openai';
 
 interface NarrativeWritingTemplateRedesignedProps {
@@ -173,17 +173,14 @@ export function NarrativeWritingTemplateRedesigned({
         {/* Main Writing Area - Enhanced with AI Grammar Checking and Interactive Highlighting */}
         <div className="flex-1 p-6 bg-white">
           <div className="max-w-4xl mx-auto h-full">
-            <EnhancedWritingEditorWithHighlighting
+            <InteractiveTextEditor
               content={content}
               onChange={onChange}
               placeholder="Start writing your amazing story here! Let your creativity flow and bring your ideas to life... ✨"
               className="w-full h-full"
               textType="narrative"
               onGetFeedback={handleGetFeedback}
-              style={{ 
-                fontFamily: 'Georgia, serif',
-                minHeight: showPlanning ? '400px' : '500px'
-              }}
+              // Removed style prop as it's handled internally by InteractiveTextEditor
             />
           </div>
         </div>
