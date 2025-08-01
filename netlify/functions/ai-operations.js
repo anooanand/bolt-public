@@ -100,6 +100,114 @@ function calculateCriterionBand(score, maxScore) {
   return 1;
 }
 
+// Enhanced fallback feedback function
+function createEnhancedFallbackFeedback(content, textType, assistanceLevel) {
+  const analysis = analyzeContentStructure(content);
+  const wordCount = analysis.wordCount;
+  
+  console.log('[AI-OPS] Creating enhanced fallback feedback for', textType, 'with', wordCount, 'words');
+  
+  const feedbackItems = [];
+  
+  // Praise based on effort and progress
+  if (wordCount > 0) {
+    feedbackItems.push({
+      type: "praise",
+      area: "Writing Progress",
+      text: `Great work writing ${wordCount} words for your ${textType}! You're making excellent progress.`,
+      suggestionForImprovement: wordCount < 100 ? "Keep developing your ideas with more details." : "Your word count shows good development!"
+    });
+  }
+  
+  // Structure feedback
+  if (analysis.paragraphCount === 1 && wordCount > 50) {
+    feedbackItems.push({
+      type: "suggestion",
+      area: "Structure",
+      text: "Your writing is currently in one paragraph.",
+      suggestionForImprovement: `For ${textType} writing, try breaking your ideas into 3-4 paragraphs: introduction, body paragraphs, and conclusion.`
+    });
+  } else if (analysis.paragraphCount > 1) {
+    feedbackItems.push({
+      type: "praise",
+      area: "Structure", 
+      text: `Excellent paragraph organization with ${analysis.paragraphCount} paragraphs!`,
+      suggestionForImprovement: "Make sure each paragraph focuses on one main idea."
+    });
+  }
+  
+  // Content-specific feedback
+  if (textType === 'narrative') {
+    if (analysis.hasDialogue) {
+      feedbackItems.push({
+        type: "praise",
+        area: "Dialogue",
+        text: "Great use of dialogue in your narrative!",
+        suggestionForImprovement: "Dialogue brings characters to life and makes stories more engaging."
+      });
+    } else if (wordCount > 100) {
+      feedbackItems.push({
+        type: "suggestion",
+        area: "Character Development",
+        text: "Consider adding some dialogue to your narrative.",
+        suggestionForImprovement: "Dialogue helps readers connect with your characters. Try: 'I can't believe this!' she exclaimed."
+      });
+    }
+    
+    if (analysis.potentialCharacters.length > 0) {
+      feedbackItems.push({
+        type: "praise",
+        area: "Characters",
+        text: `I can see you've introduced characters: ${analysis.potentialCharacters.slice(0, 3).join(', ')}`,
+        suggestionForImprovement: "Develop your characters by showing their emotions and motivations."
+      });
+    }
+  }
+  
+  // Vocabulary feedback
+  if (analysis.descriptiveWords.length > 3) {
+    feedbackItems.push({
+      type: "praise",
+      area: "Vocabulary",
+      text: `Good use of descriptive language: ${analysis.descriptiveWords.slice(0, 3).join(', ')}`,
+      suggestionForImprovement: "Keep using varied and interesting vocabulary to make your writing more engaging."
+    });
+  } else if (wordCount > 50) {
+    feedbackItems.push({
+      type: "suggestion",
+      area: "Vocabulary",
+      text: "Try using more descriptive words to make your writing more vivid.",
+      suggestionForImprovement: "Instead of 'good', try 'excellent' or 'outstanding'. Instead of 'big', try 'enormous' or 'massive'."
+    });
+  }
+  
+  // Length-based feedback
+  const focusForNextTime = [];
+  if (wordCount < 150) {
+    focusForNextTime.push("Continue developing your ideas with more specific details and examples");
+  }
+  if (analysis.averageSentenceLength < 8) {
+    focusForNextTime.push("Try writing some longer, more complex sentences");
+  }
+  if (analysis.descriptiveWords.length < 3) {
+    focusForNextTime.push("Use more descriptive and sophisticated vocabulary");
+  }
+  
+  // Default focus items if none added
+  if (focusForNextTime.length === 0) {
+    focusForNextTime.push("Keep practicing your writing skills", "Focus on clear expression and good organization");
+  }
+  
+  return {
+    overallComment: `Your ${wordCount}-word ${textType} shows ${wordCount > 100 ? 'strong' : 'good'} development! You're building excellent writing skills for NSW Selective preparation.`,
+    feedbackItems,
+    focusForNextTime,
+    isEnhancedFallback: true,
+    wordCount: analysis.wordCount,
+    analysisData: analysis
+  };
+}
+
 // Enhanced NSW Selective Writing Exam Feedback Function with Band Scoring (UPDATED)
 async function getNSWSelectiveFeedback(content, textType, assistanceLevel = "medium", feedbackHistory = []) {
   try {
