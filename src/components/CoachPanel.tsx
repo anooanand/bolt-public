@@ -642,12 +642,16 @@ export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelPro
       {/* Quick Prompts */}
       {showPrompts && (
         <div className="border-t border-gray-200 dark:border-gray-700 p-4">
+          <div className="text-xs text-gray-500 dark:text-gray-400 mb-2 flex items-center">
+            <Star className="h-3 w-3 mr-1" />
+            NSW Selective Writing Questions
+          </div>
           <div className="grid grid-cols-1 gap-2 max-h-40 overflow-y-auto">
             {commonPrompts.slice(0, 6).map((prompt, index) => (
               <button
                 key={index}
                 onClick={() => handlePromptClick(prompt)}
-                className="text-left p-2 text-sm bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 rounded-lg transition-colors"
+                className="text-left p-2 text-sm bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/40 rounded-lg transition-colors border border-blue-200 dark:border-blue-800"
               >
                 {prompt}
               </button>
