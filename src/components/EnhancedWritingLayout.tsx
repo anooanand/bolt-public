@@ -135,7 +135,7 @@ export function EnhancedWritingLayout({
     if (onShowHelpCenter) {
       onShowHelpCenter();
     } else if (onNavigate) {
-      onNavigate('help-center');
+      onNavigate('help');
     }
   };
 
@@ -146,13 +146,13 @@ export function EnhancedWritingLayout({
         {/* Writing Prompt at Top - OPTIMIZED SPACING */}
         {(textType && (generatedPrompt || getWritingPrompt())) && (
           <div className="writing-prompt-container bg-gradient-to-r from-blue-50 to-purple-50 border-b border-blue-200 shadow-lg flex-shrink-0">
-            <div className="px-0">
-              <div className="flex items-center space-x-3 mb-2 px-4">
-          <div className="bg-blue-50 border-t border-blue-200 p-2">
+            <div className="px-4 py-3">
+              <div className="flex items-center space-x-3 mb-2">
+                <Sparkles className="w-5 h-5 text-blue-600" />
                 <h3 className="font-bold text-blue-800 text-base">Your Writing Prompt</h3>
               </div>
               {/* OPTIMIZED PROMPT STYLING */}
-              <div className="writing-prompt-content bg-white rounded-lg border-l-4 border-blue-600 shadow-md mx-4">
+              <div className="bg-white rounded-lg p-3 border border-blue-200">
                 <p className="text-gray-800 leading-relaxed text-base font-medium">
                   {getWritingPrompt()}
                 </p>
@@ -251,7 +251,7 @@ export function EnhancedWritingLayout({
       {showWritingBuddy && (
         <div className="writing-buddy-panel bg-white border-l border-gray-200 flex flex-col min-h-0" style={{ flex: '0 0 30%', minWidth: '300px' }}>
           {/* Writing Buddy Header - OPTIMIZED */}
-          <div className="writing-buddy-header bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30 border-b border-gray-200 flex-shrink-0">
+          <div className="writing-buddy-header bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30 border-b border-gray-200 flex-shrink-0 p-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
                 <Bot className="w-4 h-4 text-purple-600" />
@@ -279,8 +279,6 @@ export function EnhancedWritingLayout({
           </div>
         </div>
       )}
-    )
-    }
     </div>
   );
 }
