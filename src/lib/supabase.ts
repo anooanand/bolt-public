@@ -9,8 +9,30 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Supabase URL and Anon Key are required!');
 }
 
-// Create and export the Supabase client
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Check if we're in a WebContainer environment that needs proxy
+const isWebContainer = window.location.hostname.includes('webcontainer') || 
+                      window.location.hostname.includes('credentialless') ||
+                      window.location.hostname.includes('staticblitz');
+
+// Create and export the Supabase client with proxy configuration if needed
+export const supabase = createClient(
+  supabaseUrl, 
+  supabaseAnonKey,
+  isWebContainer ? {
+    global: {
+      fetch: async (url, options = {}) => {
+        // Check if this is a REST API call that needs proxying
+        if (url.toString().includes('/rest/v1/')) {
+          const proxyUrl = url.toString().replace(supabaseUrl, '/.netlify/functions/supabase-rest-proxy');
+          console.log(`Proxying Supabase REST call: ${url} -> ${proxyUrl}`);
+          return fetch(proxyUrl, options);
+        }
+        // For non-REST calls (auth, etc.), use normal fetch
+        return fetch(url, options);
+      }
+    }
+  } : undefined
+);
 
 // Helper function to check if email is verified
 export function isEmailVerified(user: any): boolean {
