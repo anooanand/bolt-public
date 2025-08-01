@@ -337,7 +337,7 @@ export const InteractiveTextEditor: React.FC<InteractiveTextEditorProps> = ({
             start: enhancement.position.start,
             end: enhancement.position.end,
             type: 'vocabulary',
-            message: `Consider using a stronger word: "${enhancement.suggestion}"`,
+            message: `Consider using a stronger word: "${enhancement.suggestion}"`, 
             suggestions: [enhancement.suggestion],
             category: 'Vocabulary Enhancement',
             severity: 'low'
@@ -351,7 +351,7 @@ export const InteractiveTextEditor: React.FC<InteractiveTextEditorProps> = ({
               start: startIndex,
               end: startIndex + enhancement.original.length,
               type: 'vocabulary',
-              message: `Consider using a stronger word: "${enhancement.suggestion}"`,
+              message: `Consider using a stronger word: "${enhancement.suggestion}"`, 
               suggestions: [enhancement.suggestion],
               category: 'Vocabulary Enhancement',
               severity: 'low'
@@ -366,7 +366,10 @@ export const InteractiveTextEditor: React.FC<InteractiveTextEditorProps> = ({
 
   // Get AI feedback with debouncing
   const getFeedbackWithDebounce = useCallback(async (text: string) => {
-    if (!text.trim() || text.split(/\s+/).length < 10) return;
+    if (!text.trim() || text.length < 1) return; // For grammar check (1 character)
+
+    const words = text.trim().split(/\s+/).filter(w => w.length > 0);
+    if (words.length < 5) return; // For AI feedback (5 words)
 
     setIsProcessing(true);
 
@@ -510,164 +513,99 @@ export const InteractiveTextEditor: React.FC<InteractiveTextEditorProps> = ({
     setActiveTooltip(null);
 
     // Remove the applied highlight
-    setHighlights(prev => prev.filter(h => h.id !== highlight.id));
+    setHighlights(prevHighlights => prevHighlights.filter(h => h.id !== highlight.id));
   }, [content, onChange]);
 
-  // Get highlight style
-  const getHighlightStyle = (type: HighlightRange['type']) => {
-    const baseStyle = 'cursor-pointer transition-all duration-200 hover:shadow-sm rounded-sm px-1';
+  // Calculate position for tooltip
+  const getTooltipPosition = useCallback(() => {
+    if (!activeTooltip || !textareaRef.current) return { x: 0, y: 0 };
 
-    switch (type) {
-      case 'strength':
-        return `${baseStyle} bg-green-200 hover:bg-green-300 text-green-900`;
-      case 'improvement':
-        return `${baseStyle} bg-red-200 hover:bg-red-300 text-red-900`;
-      case 'suggestion':
-        return `${baseStyle} bg-blue-200 hover:bg-blue-300 text-blue-900`;
-      case 'grammar':
-        return `${baseStyle} bg-red-300 hover:bg-red-400 text-red-900 underline decoration-wavy`;
-      case 'spelling':
-        return `${baseStyle} bg-red-300 hover:bg-red-400 text-red-900 underline decoration-wavy`;
-      case 'vocabulary':
-        return `${baseStyle} bg-blue-200 hover:bg-blue-300 text-blue-900`;
-      case 'style':
-        return `${baseStyle} bg-purple-200 hover:bg-purple-300 text-purple-900`;
-      default:
-        return `${baseStyle} bg-gray-200 hover:bg-gray-300 text-gray-900`;
-    }
-  };
+    const textareaRect = textareaRef.current.getBoundingClientRect();
+    const highlightStart = activeTooltip.highlight.start;
+    const highlightEnd = activeTooltip.highlight.end;
 
-  const segments = createHighlightedSegments();
+    // Create a temporary span to measure the position of the highlighted text
+    const tempSpan = document.createElement('span');
+    tempSpan.textContent = content.substring(highlightStart, highlightEnd);
+    tempSpan.style.position = 'absolute';
+    tempSpan.style.visibility = 'hidden';
+    tempSpan.style.left = `${textareaRect.left + textareaRef.current.scrollLeft}px`;
+    tempSpan.style.top = `${textareaRect.top + textareaRef.current.scrollTop}px`;
+    tempSpan.style.whiteSpace = 'pre-wrap';
+    tempSpan.style.font = window.getComputedStyle(textareaRef.current).font;
+    document.body.appendChild(tempSpan);
+
+    const spanRect = tempSpan.getBoundingClientRect();
+    document.body.removeChild(tempSpan);
+
+    return {
+      x: spanRect.left + spanRect.width / 2,
+      y: spanRect.top
+    };
+  }, [activeTooltip, content]);
+
+  const tooltipPosition = getTooltipPosition();
 
   return (
-    <div className={`relative ${className}`}>
-      {/* Controls */}
-      <div className="flex items-center justify-between mb-4 p-3 bg-gray-50 rounded-lg">
-        <div className="flex items-center space-x-4">
-          <button
-            onClick={() => setShowHighlights(!showHighlights)}
-            className="flex items-center space-x-2 px-3 py-1 bg-white rounded border hover:bg-gray-50 transition-colors"
+    <div className="relative w-full h-full">
+      <div
+        ref={overlayRef}
+        className="absolute inset-0 p-4 font-sans text-lg leading-relaxed resize-none overflow-hidden pointer-events-none whitespace-pre-wrap break-words"
+        style={{
+          // This ensures the overlay text aligns perfectly with the textarea text
+          font: textareaRef.current ? window.getComputedStyle(textareaRef.current).font : 'inherit',
+          padding: textareaRef.current ? window.getComputedStyle(textareaRef.current).padding : '1rem',
+          lineHeight: textareaRef.current ? window.getComputedStyle(textareaRef.current).lineHeight : 'inherit',
+          boxSizing: 'border-box',
+          zIndex: 1,
+        }}
+      >
+        {createHighlightedSegments().map((segment, index) => (
+          <span
+            key={index}
+            className={segment.isHighlighted ? `relative cursor-pointer ${segment.highlight?.type === 'strength' ? 'bg-green-200 opacity-70' : 'bg-red-200 opacity-70'}` : ''}
+            onClick={segment.isHighlighted ? (e) => handleHighlightClick(e, segment.highlight!) : undefined}
           >
-            {showHighlights ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-            <span className="text-sm">
-              {showHighlights ? 'Hide Highlights' : 'Show Highlights'}
-            </span>
-          </button>
-
-          {isProcessing && (
-            <div className="flex items-center space-x-2 text-blue-600">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              <span className="text-sm">Analyzing...</span>
-            </div>
-          )}
-        </div>
-
-        <div className="flex items-center space-x-2">
-          <span className="text-sm text-gray-600">Highlight Types:</span>
-          {Object.entries(highlightTypes).map(([type, enabled]) => (
-            <button
-              key={type}
-              onClick={() => setHighlightTypes(prev => ({ ...prev, [type]: !enabled }))}
-              className={`px-2 py-1 text-xs rounded transition-colors ${
-                enabled
-                  ? 'bg-blue-100 text-blue-800 border border-blue-200'
-                  : 'bg-gray-100 text-gray-600 border border-gray-200'
-              }`}
-            >
-              {type}
-            </button>
-          ))}
-        </div>
+            {segment.text}
+          </span>
+        ))}
       </div>
+      <textarea
+        ref={textareaRef}
+        className={`w-full h-full p-4 font-sans text-lg leading-relaxed bg-transparent z-10 relative resize-none focus:outline-none ${className}`}
+        placeholder={placeholder}
+        value={content}
+        onChange={handleTextChange}
+        style={style}
+        spellCheck="false" // Disable native spell check to rely on AI
+      />
 
-      {/* Text Editor Container */}
-      <div className="relative">
-        {/* Textarea */}
-        <textarea
-          ref={textareaRef}
-          value={content}
-          onChange={handleTextChange}
-          placeholder={placeholder}
-          className="w-full h-96 p-4 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-transparent relative z-10"
-          style={{
-            fontFamily: 'inherit',
-            fontSize: 'inherit',
-            lineHeight: '1.6',
-            color: showHighlights ? 'transparent' : 'inherit'
-          }}
-        />
-
-        {/* Highlight Overlay */}
-        {showHighlights && (
-          <div
-            ref={overlayRef}
-            className="absolute inset-0 p-4 pointer-events-none overflow-hidden"
-            style={{
-              fontFamily: 'inherit',
-              fontSize: 'inherit',
-              lineHeight: '1.6',
-              whiteSpace: 'pre-wrap',
-              wordWrap: 'break-word'
-            }}
-          >
-            <div className="pointer-events-auto">
-              {segments.map((segment, index) => (
-                <span key={index}>
-                  {segment.isHighlighted && segment.highlight ? (
-                    <span
-                      className={getHighlightStyle(segment.highlight.type)}
-                      onClick={(e) => handleHighlightClick(e, segment.highlight!)}
-                      title={segment.highlight.message}
-                    >
-                      {segment.text}
-                    </span>
-                  ) : (
-                    <span className="text-gray-900">{segment.text}</span>
-                  )}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Statistics */}
-      <div className="mt-4 flex items-center justify-between text-sm text-gray-600">
-        <div className="flex items-center space-x-4">
-          <span>Words: {content.trim().split(/\s+/).filter(w => w.length > 0).length}</span>
-          <span>Characters: {content.length}</span>
-          <span>Highlights: {filteredHighlights.length}</span>
-        </div>
-
-        {filteredHighlights.length > 0 && (
-          <div className="flex items-center space-x-2">
-            <span>Issues:</span>
-            <span className="text-red-600">
-              {filteredHighlights.filter(h => h.type === 'grammar' || h.type === 'spelling').length}
-            </span>
-            <span>Suggestions:</span>
-            <span className="text-blue-600">
-              {filteredHighlights.filter(h => h.type === 'suggestion' || h.type === 'vocabulary').length}
-            </span>
-            <span>Strengths:</span>
-            <span className="text-green-600">
-              {filteredHighlights.filter(h => h.type === 'strength').length}
-            </span>
-          </div>
-        )}
-      </div>
-
-      {/* Interactive Tooltip */}
       {activeTooltip && (
         <InteractiveTooltip
           highlight={activeTooltip.highlight}
-          position={activeTooltip.position}
+          position={tooltipPosition}
           onClose={() => setActiveTooltip(null)}
           onApplySuggestion={(suggestion) => applySuggestion(activeTooltip.highlight, suggestion)}
         />
       )}
+
+      {isProcessing && (
+        <div className="absolute bottom-4 left-4 flex items-center text-blue-500">
+          <Loader2 className="animate-spin mr-2" size={16} />
+          <span className="text-sm">Processing feedback...</span>
+        </div>
+      )}
+
+      <div className="absolute top-4 right-4 flex space-x-2">
+        <button
+          onClick={() => setShowHighlights(!showHighlights)}
+          className={`p-2 rounded-full shadow-md ${showHighlights ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700'}`}
+          title="Toggle Highlights"
+        >
+          {showHighlights ? <Eye size={20} /> : <EyeOff size={20} />}
+        </button>
+        {/* Add more controls for specific highlight types if needed */}
+      </div>
     </div>
   );
 };
-
-export default InteractiveTextEditor;
