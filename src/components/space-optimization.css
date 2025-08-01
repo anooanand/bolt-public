@@ -80,7 +80,7 @@
   background: linear-gradient(to right, #dbeafe, #e0e7ff);
   border-bottom: 1px solid #bfdbfe;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  padding: 8px 16px !important; /* Reduced padding */
+  padding: 4px 16px !important; /* Further reduced padding */
   margin: 0 !important;
 }
 
@@ -89,18 +89,18 @@
   border-left: 4px solid #2563eb;
   border-radius: 8px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  padding: 8px 12px !important; /* Reduced padding */
+  padding: 6px 12px !important; /* Further reduced padding */
   margin: 0 !important;
 }
 
 /* Optimize planning section */
 .planning-section {
-  max-height: 150px !important; /* Reduced from 200px */
+  max-height: 100px !important; /* Further reduced from 150px */
   overflow-y: auto;
   background: white;
   border-bottom: 1px solid #e5e7eb;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  padding: 8px !important; /* Reduced padding */
+  padding: 4px !important; /* Further reduced padding */
 }
 
 /* WRITING BUDDY PANEL OPTIMIZATION */
