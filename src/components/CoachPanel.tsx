@@ -42,6 +42,45 @@ interface QuestionAnalysis {
   keywords: string[];
 }
 
+const extractResponseText = (response: any): string => {
+  // Handle different response formats from the backend
+  if (typeof response === 'string') {
+    return response;
+  }
+  
+  if (response && typeof response === 'object') {
+    // Check for common response patterns
+    if (response.overallComment) {
+      return response.overallComment;
+    }
+    
+    if (response.suggestions && Array.isArray(response.suggestions)) {
+      return response.suggestions.slice(0, 3).join('\n\n');
+    }
+    
+    if (response.structure) {
+      return response.structure;
+    }
+    
+    if (response.corrections && Array.isArray(response.corrections)) {
+      return response.corrections.slice(0, 3).map((c: any) => `• ${c.suggestion || c.message || c}`).join('\n');
+    }
+    
+    if (response.feedbackItems && Array.isArray(response.feedbackItems) && response.feedbackItems.length > 0) {
+      return response.feedbackItems[0].text || 'Feedback available - please check the detailed feedback section.';
+    }
+    
+    if (response.textTypeSpecificFeedback && response.textTypeSpecificFeedback.structure) {
+      return response.textTypeSpecificFeedback.structure;
+    }
+    
+    // If it's an object but we can't extract meaningful text, provide a generic response
+    return 'I have some feedback for you! Please check the detailed feedback section below for more information.';
+  }
+  
+  return 'I\'m here to help with your writing! Please ask me specific questions about vocabulary, structure, grammar, or content.';
+};
+
 export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelProps) {
   const [structuredFeedback, setStructuredFeedback] = useState<StructuredFeedback | null>(null);
   const [feedbackHistory, setFeedbackHistory] = useState<FeedbackItem[]>([]);
@@ -366,19 +405,7 @@ export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelPro
         let botResponseText = '';
         
         // Process response based on operation type
-        if (questionAnalysis.operation === 'enhanceVocabulary' && response.suggestions) {
-          botResponseText = `Here are some vocabulary suggestions for your ${textType}:\n\n${response.suggestions.slice(0, 3).join('\n\n')}`;
-        } else if (questionAnalysis.operation === 'getWritingStructure' && response.structure) {
-          botResponseText = `For ${textType} writing, here's the recommended structure:\n\n${response.structure}`;
-        } else if (questionAnalysis.operation === 'checkGrammarAndSpelling' && response.corrections) {
-          botResponseText = `I found some areas to improve:\n\n${response.corrections.slice(0, 3).map(c => `• ${c.suggestion}`).join('\n')}`;
-        } else if (response && response.feedbackItems && response.feedbackItems.length > 0) {
-          botResponseText = response.feedbackItems[0].text;
-        } else if (response && response.overallComment) {
-          botResponseText = response.overallComment;
-        } else {
-          botResponseText = `Great question about ${textType} writing! Based on your question about ${questionAnalysis.keywords.join(', ')}, keep practicing and focus on the key elements like structure, vocabulary, and engaging your reader.`;
-        }
+        const botResponseText = extractResponseText(response);
 
         const botMessage: ChatMessage = {
           id: (Date.now() + 1).toString(),
