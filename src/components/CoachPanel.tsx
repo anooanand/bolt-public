@@ -156,7 +156,7 @@ const generateContextualResponse = (questionType: string, userQuestion: string):
   const typeResponses = responses[questionType as keyof typeof responses] || responses.general;
   const randomIndex = Math.floor(Math.random() * typeResponses.length);
   return typeResponses[randomIndex];
-};</action>
+};
 
 export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelProps) {
   const [structuredFeedback, setStructuredFeedback] = useState<StructuredFeedback | null>(null);
