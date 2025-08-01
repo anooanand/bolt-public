@@ -28,36 +28,42 @@ const isOpenAIAvailable = (): boolean => {
 // Helper function to make API calls to the enhanced backend
 async function makeBackendCall(operation: string, data: any): Promise<any> {
   try {
-    // Check if we're in local development and backend functions aren't available
-    const isLocalDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    // Check if we're in local development
+    const isLocalDev = window.location.hostname === 'localhost' || 
+                      window.location.hostname === '127.0.0.1' ||
+                      window.location.hostname.includes('webcontainer');
     
-    const response = await fetch('/.netlify/functions/ai-operations', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        operation,
-        ...data
-      })
-    });
-
-    if (!response.ok) {
-      // If we get a 404 in local development, throw a specific error
-      if (response.status === 404 && isLocalDev) {
-        throw new Error('BACKEND_NOT_AVAILABLE');
-      }
-      throw new Error(`Backend call failed: ${response.status}`);
+    // In local development, skip backend calls and use fallbacks
+    if (isLocalDev) {
+      console.log('[DEBUG] Local development detected - using fallback responses');
+      throw new Error('BACKEND_NOT_AVAILABLE');
     }
+    
+    // Only attempt backend calls in production
+    try {
+      const response = await fetch('/.netlify/functions/ai-operations', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          operation,
+          ...data
+        })
+      });
 
-    return await response.json();
+      if (!response.ok) {
+        throw new Error(`Backend call failed: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (fetchError) {
+      console.log('[DEBUG] Backend fetch failed, using fallbacks');
+      throw new Error('BACKEND_NOT_AVAILABLE');
+    }
   } catch (error) {
     console.error('Backend call error:', error);
-    // If backend is not available, throw the specific error to trigger fallbacks
-    if (error instanceof Error && error.message === 'BACKEND_NOT_AVAILABLE') {
-      throw error;
-    }
-    throw error;
+    throw new Error('BACKEND_NOT_AVAILABLE');
   }
 }
 
@@ -271,22 +277,21 @@ export async function generatePrompt(textType: string): Promise<string> {
   } catch (error) {
     console.error('Error generating prompt:', error);
     
-    // If backend is not available (local development), use fallback prompts
-    if (error instanceof Error && error.message === 'BACKEND_NOT_AVAILABLE') {
-      console.log('Backend not available, using fallback prompts');
-    }
+    console.log('[DEBUG] Using fallback prompts for local development');
     
-    // Fallback prompts if the API call fails
-    const fallbackPrompts: { [key: string]: string } = {
-      narrative: "Write a story about an unexpected adventure that changed someone's perspective on life.",
-      persuasive: "Write an essay arguing for or against allowing students to use smartphones in school.",
-      creative: "Write a creative piece about discovering a hidden talent you never knew you had.",
-      descriptive: "Describe a bustling marketplace using all five senses to bring the scene to life.",
-      informative: "Explain how climate change affects our daily lives and what we can do about it.",
-      default: "Write about a topic that interests you, focusing on clear expression of your ideas."
+    // Enhanced NSW Selective fallback prompts
+    const nswSelectiveFallbackPrompts: { [key: string]: string } = {
+      narrative: "Write a narrative about a time when you had to make a difficult decision. Show how this experience changed you as a person. Include dialogue, descriptive language, and a clear structure with beginning, middle, and end.",
+      persuasive: "Should students be allowed to use technology during class time? Write a persuasive essay arguing your position. Use specific examples, address counterarguments, and include a strong conclusion that calls your reader to action.",
+      creative: "Write a creative piece that begins with this line: 'The old photograph revealed a secret that changed everything.' Use sophisticated vocabulary, varied sentence structures, and engaging literary techniques.",
+      descriptive: "Describe your ideal learning environment using all five senses. Paint a vivid picture that helps the reader experience this space as if they were there. Use sophisticated adjectives and varied sentence beginnings.",
+      expository: "Explain how social media affects young people's friendships. Use specific examples, clear explanations, and organize your ideas logically. Include both positive and negative effects in your response.",
+      reflective: "Reflect on a challenge you overcame this year. Analyze what you learned about yourself and how this experience will help you in the future. Show deep thinking and personal insight.",
+      recount: "Recount a significant school event from this year. Include specific details about what happened, who was involved, and why this event was meaningful. Use chronological order and engaging language.",
+      default: "Write about a topic that interests you, demonstrating sophisticated vocabulary, clear structure, and well-developed ideas suitable for NSW Selective assessment."
     };
     
-    return fallbackPrompts[textType.toLowerCase()] || fallbackPrompts.default;
+    return nswSelectiveFallbackPrompts[textType.toLowerCase()] || nswSelectiveFallbackPrompts.default;
   }
 }
 
