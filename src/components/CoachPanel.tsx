@@ -402,7 +402,7 @@ export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelPro
         // Route to appropriate operation
         const response = await routeQuestionToOperation(currentInput, questionAnalysis);
         
-        let botResponseText = '';
+
         
         // Process response based on operation type
         const botResponseText = extractResponseText(response);
