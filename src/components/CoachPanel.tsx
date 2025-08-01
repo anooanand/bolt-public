@@ -161,6 +161,60 @@ const generateContextualResponse = (questionType: string, userQuestion: string):
   return typeResponses[randomIndex];
 };
 
+// Generate intelligent local responses based on content analysis
+const generateIntelligentLocalResponse = (question: string, analysis: QuestionAnalysis, content: string, textType: string): any => {
+  const wordCount = content.trim().split(/\s+/).filter(w => w.length > 0).length;
+  const lowerQuestion = question.toLowerCase();
+  
+  // Analyze the content to provide specific feedback
+  const hasDialogue = content.includes('"') || content.includes("'");
+  const hasGoodOpening = content.length > 50 && !content.toLowerCase().startsWith('once upon a time');
+  const paragraphCount = content.split('\n\n').filter(p => p.trim().length > 0).length;
+  
+  // Provide specific responses based on question type and content analysis
+  switch (analysis.type) {
+    case 'vocabulary':
+      if (lowerQuestion.includes('better word') || lowerQuestion.includes('synonym')) {
+        return {
+          suggestions: [
+            { word: 'good', suggestion: 'excellent, outstanding, remarkable' },
+            { word: 'said', suggestion: 'exclaimed, declared, whispered' },
+            { word: 'went', suggestion: 'traveled, journeyed, ventured' },
+            { word: 'big', suggestion: 'enormous, massive, gigantic' },
+            { word: 'nice', suggestion: 'delightful, pleasant, wonderful' }
+          ]
+        };
+      }
+      return `For your ${textType} writing, try using more sophisticated vocabulary! Instead of simple words like 'good', 'big', or 'nice', use words like 'excellent', 'enormous', or 'delightful'. This will make your writing more engaging for NSW Selective assessors.`;
+      
+    case 'structure':
+      if (paragraphCount === 1) {
+        return `I notice your ${textType} is currently in one paragraph. For NSW Selective success, break it into 3-4 paragraphs: 1) Engaging introduction, 2-3) Body paragraphs developing your story/argument, 4) Strong conclusion. This will make your writing much clearer!`;
+      }
+      return `Your ${textType} structure looks good with ${paragraphCount} paragraphs! For NSW Selective, make sure each paragraph has one main idea and flows smoothly to the next. Use transition words like 'furthermore', 'however', and 'in conclusion'.`;
+      
+    case 'grammar':
+      return `For NSW Selective grammar success: 1) Vary your sentence beginnings, 2) Mix short and long sentences, 3) Use correct punctuation, 4) Keep consistent tense throughout. Read your work aloud to catch any errors!`;
+      
+    case 'content':
+      if (wordCount < 100) {
+        return `Your ${textType} is off to a good start with ${wordCount} words! For NSW Selective, aim for 250-300 words. Add more specific details, examples, and descriptions to develop your ideas fully.`;
+      }
+      if (textType === 'narrative' && !hasDialogue) {
+        return `Great ${textType} development with ${wordCount} words! Consider adding some dialogue to bring your characters to life. For example: "I can't believe this is happening!" she exclaimed.`;
+      }
+      return `Excellent content development with ${wordCount} words! Your ${textType} shows good understanding. Keep developing your ideas with specific examples and vivid details.`;
+      
+    default:
+      if (wordCount === 0) {
+        return `Ready to start your ${textType}? Begin with an engaging opening that hooks your reader. For narratives, try starting in the middle of action. For persuasive writing, start with a thought-provoking question or statistic.`;
+      }
+      if (wordCount < 50) {
+        return `Good start on your ${textType}! You have ${wordCount} words so far. Keep developing your ideas - aim for at least 250 words for NSW Selective standards.`;
+      }
+      return `Your ${textType} is developing well with ${wordCount} words! ${hasGoodOpening ? 'Great opening!' : 'Consider strengthening your opening.'} ${hasDialogue && textType === 'narrative' ? 'Nice use of dialogue!' : ''} Keep building your ideas with specific details and examples.`;
+  }
+};
 export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelProps) {
   const [structuredFeedback, setStructuredFeedback] = useState<StructuredFeedback | null>(null);
   const [feedbackHistory, setFeedbackHistory] = useState<FeedbackItem[]>([]);
