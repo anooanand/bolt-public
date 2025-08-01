@@ -148,7 +148,7 @@ export function EnhancedWritingLayout({
           <div className="writing-prompt-container bg-gradient-to-r from-blue-50 to-purple-50 border-b border-blue-200 shadow-lg flex-shrink-0">
             <div className="px-0">
               <div className="flex items-center space-x-3 mb-2 px-4">
-                <Sparkles className="w-5 h-5 text-blue-600" />
+          <div className="bg-blue-50 border-t border-blue-200 p-2">
                 <h3 className="font-bold text-blue-800 text-base">Your Writing Prompt</h3>
               </div>
               {/* OPTIMIZED PROMPT STYLING */}
@@ -279,6 +279,8 @@ export function EnhancedWritingLayout({
           </div>
         </div>
       )}
+    )
+    }
     </div>
   );
 }
