@@ -29,8 +29,7 @@ const isOpenAIAvailable = (): boolean => {
 async function makeBackendCall(operation: string, data: any): Promise<any> {
   try {
     // Check if we're in local development
-    const isLocalDev = window.location.hostname === 'localhost' || 
-                      window.location.hostname === '127.0.0.1' ||
+    const isLocalDev = window.location.hostname === '127.0.0.1' ||
                       window.location.hostname.includes('webcontainer');
     
     // In local development, skip backend calls and use fallbacks
