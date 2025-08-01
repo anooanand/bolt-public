@@ -497,6 +497,8 @@ export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelPro
         
         // Process response based on operation type
         const botResponseText = extractResponseText(response, questionAnalysis.type, currentInput);
+        
+        console.log(`[COACH] Bot response text: ${botResponseText.substring(0, 100)}...`);
 
         const botMessage: ChatMessage = {
           id: (Date.now() + 1).toString(),
@@ -504,7 +506,9 @@ export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelPro
           isUser: false,
           timestamp: new Date(),
           questionType: questionAnalysis.type,
-          operation: questionAnalysis.operation
+          operation: questionAnalysis.operation,
+          responseQuality: response && response.overallComment ? 'high' : 'fallback',
+          nswSpecific: true
         };
 
         setChatMessages(prev => [...prev, botMessage]);

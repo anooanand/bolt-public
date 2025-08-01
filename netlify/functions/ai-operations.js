@@ -228,7 +228,14 @@ function createEnhancedFallbackFeedback(content, textType, assistanceLevel) {
 
 // Enhanced NSW Selective Writing Exam Feedback Function with Band Scoring (UPDATED)
 async function getNSWSelectiveFeedback(content, textType, assistanceLevel = "medium", feedbackHistory = []) {
+  if (!isOpenAIAvailable()) {
+    console.log('[AI-OPS] OpenAI not available, using enhanced fallback');
+    return createEnhancedFallbackFeedback(content, textType, assistanceLevel);
+  }
+
   try {
+    console.log(`[AI-OPS] Getting NSW Selective feedback for ${textType} (${content.length} chars)`);
+    
     const analysis = analyzeContentStructure(content);
 
     const prompt = `You are an expert NSW Selective School writing assessor. Analyze this ${textType} writing sample and provide detailed, specific feedback based on NSW Selective criteria.
@@ -598,14 +605,7 @@ async function generatePrompt(textType) {
 }
 
 async function getWritingFeedback(content, textType, assistanceLevel, feedbackHistory) {
-  if (!isOpenAIAvailable()) {
-    console.log('[AI-OPS] OpenAI not available, using enhanced fallback for writing feedback');
-    return createEnhancedFallbackFeedback(content, textType, assistanceLevel);
-  }
-
   try {
-    console.log(`[AI-OPS] Getting writing feedback for ${textType} (${content.length} chars)`);
-    
     const completion = await openai.chat.completions.create({
       messages: [
         {
@@ -1116,8 +1116,13 @@ exports.handler = async (event) => {
   try {
     // Parse request body - UPDATED to include action and text
     const body = JSON.parse(event.body);
+    console.log(`[AI-OPS] Received request for operation: ${body.operation || body.action}`);
+    
     const { operation, content, textType, assistanceLevel, feedbackHistory, action, text } = body;
 
+    // Check if OpenAI is available and log status
+    console.log(`[AI-OPS] OpenAI available: ${isOpenAIAvailable()}`);
+    
     let result;
 
     // Route to appropriate function based on operation or action - UPDATED
