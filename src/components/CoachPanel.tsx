@@ -482,7 +482,7 @@ export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelPro
 
         
         // Process response based on operation type
-        const botResponseText = extractResponseText(response);
+        const botResponseText = extractResponseText(response, questionAnalysis.type, currentInput);
 
         const botMessage: ChatMessage = {
           id: (Date.now() + 1).toString(),
@@ -517,7 +517,7 @@ export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelPro
         const aiError = AIErrorHandler.handleError(error, 'chat processing');
         const errorMessage: ChatMessage = {
           id: (Date.now() + 1).toString(),
-          text: `I'm having trouble right now, but keep writing! Focus on making your ${textType} clear and engaging.`,
+          text: `I'm having trouble right now, but keep writing! For NSW Selective ${textType} writing, focus on:\n\n• Using sophisticated vocabulary\n• Clear structure with engaging opening\n• Specific examples and details\n• Varied sentence structures\n\nThese elements help achieve Band 5-6 levels in NSW Selective assessments.`,
           isUser: false,
           timestamp: new Date()
         };

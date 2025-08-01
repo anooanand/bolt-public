@@ -786,7 +786,15 @@ async function getWritingStructure(textType) {
       messages: [
         {
           role: "system",
-          content: `You are an expert writing teacher creating a guide for Year 5-6 students on ${textType} writing. Create a structured guide with sections covering key aspects of this writing type. Return the guide in this exact JSON format:\n{\n  "title": "Guide to ${textType} Writing",\n  "sections": [\n    {\n      "heading": "Structure",\n      "content": "Detailed explanation of the structure for this writing type"\n    },\n    {\n      "heading": "Language Features",\n      "content": "Explanation of key language features and techniques"\n    },\n    {\n      "heading": "Common Mistakes",\n      "content": "Common mistakes to avoid in this writing type"\n    },\n    {\n      "heading": "Planning Tips",\n      "content": "How to plan effectively for this writing type"\n    }\n  ]\n}`
+          content: `You are an expert NSW Selective School writing teacher creating a comprehensive guide for Year 5-6 students on ${textType} writing for selective school entrance exams.
+
+Include NSW-specific requirements:
+- Band descriptors and what each band requires
+- NSW Selective exam expectations
+- Age-appropriate but sophisticated techniques
+- Specific strategies for achieving Band 5-6 levels
+
+Return the guide in this exact JSON format:\n{\n  "title": "NSW Selective ${textType} Writing Guide",\n  "nswContext": "Brief explanation of NSW Selective requirements for this text type",\n  "bandRequirements": {\n    "band6": "What Band 6 ${textType} writing looks like",\n    "band5": "What Band 5 ${textType} writing looks like",\n    "band4": "What Band 4 ${textType} writing looks like"\n  },\n  "sections": [\n    {\n      "heading": "NSW Selective Structure Requirements",\n      "content": "Detailed explanation of structure requirements for NSW Selective ${textType}"\n    },\n    {\n      "heading": "Language Features for Band 5-6",\n      "content": "NSW-specific language features and sophisticated techniques"\n    },\n    {\n      "heading": "Common NSW Selective Mistakes",\n      "content": "Mistakes that prevent students from achieving higher bands"\n    },\n    {\n      "heading": "NSW Exam Strategies",\n      "content": "Specific strategies for NSW Selective exam success"\n    }\n  ]\n}`
         },
         {
           role: "user",
@@ -807,23 +815,29 @@ async function getWritingStructure(textType) {
   } catch (error) {
     console.error("OpenAI writing structure generation error:", error);
     return JSON.stringify({
-      title: `Guide to ${textType} Writing`,
+      title: `NSW Selective ${textType} Writing Guide`,
+      nswContext: `This guide focuses on ${textType} writing requirements for NSW Selective School entrance exams, targeting Band 5-6 achievement levels.`,
+      bandRequirements: {
+        band6: `Band 6 ${textType} writing demonstrates exceptional sophistication with highly original ideas, flawless execution, and sophisticated language features.`,
+        band5: `Band 5 ${textType} writing shows proficient skills with well-developed ideas, strong structure, and varied vocabulary appropriate for selective school entry.`,
+        band4: `Band 4 ${textType} writing displays sound understanding with adequate ideas and competent execution of basic requirements.`
+      },
       sections: [
         {
-          heading: "Structure",
-          content: "Every piece of writing should have a clear beginning, middle, and end. The beginning introduces your main idea, the middle develops it with details, and the end summarizes your key points."
+          heading: "NSW Selective Structure Requirements",
+          content: `For NSW Selective ${textType} writing: Clear introduction that engages the reader → Well-developed body with sophisticated ideas → Strong conclusion that leaves lasting impact. Each paragraph should have one main idea with supporting details.`
         },
         {
-          heading: "Language Features",
-          content: "Use descriptive language, varied sentence structures, and appropriate vocabulary for your topic."
+          heading: "Language Features for Band 5-6",
+          content: "Use sophisticated vocabulary appropriate for Year 5-6 level, vary sentence structures (simple, compound, complex), incorporate literary devices, and demonstrate precise word choice that enhances meaning."
         },
         {
-          heading: "Common Mistakes",
-          content: "Avoid rushing your writing, forgetting to proofread, and using repetitive words or phrases."
+          heading: "Common NSW Selective Mistakes",
+          content: "Avoid: repetitive vocabulary, simple sentence structures only, lack of text type features, insufficient development of ideas, and poor time management in exam conditions."
         },
         {
-          heading: "Planning Tips",
-          content: "Before you start writing, take time to brainstorm ideas, create a simple outline, and think about your audience."
+          heading: "NSW Exam Strategies",
+          content: "Plan for 5 minutes, write for 20 minutes, review for 5 minutes. Use sophisticated vocabulary, vary sentence beginnings, include text type features, and demonstrate original thinking appropriate for selective school entry."
         }
       ]
     });
