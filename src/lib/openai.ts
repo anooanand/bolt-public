@@ -36,7 +36,7 @@ async function makeBackendCall(operation: string, data: any): Promise<any> {
     // In local development, skip backend calls and use fallbacks
     if (isLocalDev) {
       console.log('[DEBUG] Local development detected - using fallback responses');
-      throw new Error('BACKEND_NOT_AVAILABLE');
+      return { error: 'BACKEND_NOT_AVAILABLE' };
     }
     
     // Only attempt backend calls in production
@@ -59,11 +59,11 @@ async function makeBackendCall(operation: string, data: any): Promise<any> {
       return await response.json();
     } catch (fetchError) {
       console.log('[DEBUG] Backend fetch failed, using fallbacks');
-      throw new Error('BACKEND_NOT_AVAILABLE');
+      return { error: 'BACKEND_NOT_AVAILABLE' };
     }
   } catch (error) {
     console.error('Backend call error:', error);
-    throw new Error('BACKEND_NOT_AVAILABLE');
+    return { error: 'BACKEND_NOT_AVAILABLE' };
   }
 }
 
@@ -309,29 +309,27 @@ export async function identifyCommonMistakes(content: string, textType: string) 
 export async function generatePrompt(textType: string): Promise<string> {
   try {
     const result = await makeBackendCall('generatePrompt', { textType });
+    if (result.error === 'BACKEND_NOT_AVAILABLE') {
+      console.log('[DEBUG] Using fallback prompts for local development');
+      
+      // Enhanced NSW Selective fallback prompts
+      const nswSelectiveFallbackPrompts: { [key: string]: string } = {
+        narrative: "Write a narrative about a time when you had to make a difficult decision. Show how this experience changed you as a person. Include dialogue, descriptive language, and a clear structure with beginning, middle, and end.",
+        persuasive: "Should students be allowed to use technology during class time? Write a persuasive essay arguing your position. Use specific examples, address counterarguments, and include a strong conclusion that calls your reader to action.",
+        creative: "Write a creative piece that begins with this line: 'The old photograph revealed a secret that changed everything.' Use sophisticated vocabulary, varied sentence structures, and engaging literary techniques.",
+        descriptive: "Describe your ideal learning environment using all five senses. Paint a vivid picture that helps the reader experience this space as if they were there. Use sophisticated adjectives and varied sentence beginnings.",
+        expository: "Explain how social media affects young people's friendships. Use specific examples, clear explanations, and organize your ideas logically. Include both positive and negative effects in your response.",
+        reflective: "Reflect on a challenge you overcame this year. Analyze what you learned about yourself and how this experience will help you in the future. Show deep thinking and personal insight.",
+        recount: "Recount a significant school event from this year. Include specific details about what happened, who was involved, and why this event was meaningful. Use chronological order and engaging language.",
+        default: "Write about a topic that interests you, demonstrating sophisticated vocabulary, clear structure, and well-developed ideas suitable for NSW Selective assessment."
+      };
+      
+      return nswSelectiveFallbackPrompts[textType.toLowerCase()] || nswSelectiveFallbackPrompts.default;
+    }
     return result.prompt || "Write about a memorable experience that taught you something important.";
   } catch (error) {
-    if (error instanceof Error && error.message === 'BACKEND_NOT_AVAILABLE') {
-      console.warn('Backend not available in development - using fallback prompt');
-    } else {
-      console.error('Error generating prompt:', error);
-    }
-    
-    console.log('[DEBUG] Using fallback prompts for local development');
-    
-    // Enhanced NSW Selective fallback prompts
-    const nswSelectiveFallbackPrompts: { [key: string]: string } = {
-      narrative: "Write a narrative about a time when you had to make a difficult decision. Show how this experience changed you as a person. Include dialogue, descriptive language, and a clear structure with beginning, middle, and end.",
-      persuasive: "Should students be allowed to use technology during class time? Write a persuasive essay arguing your position. Use specific examples, address counterarguments, and include a strong conclusion that calls your reader to action.",
-      creative: "Write a creative piece that begins with this line: 'The old photograph revealed a secret that changed everything.' Use sophisticated vocabulary, varied sentence structures, and engaging literary techniques.",
-      descriptive: "Describe your ideal learning environment using all five senses. Paint a vivid picture that helps the reader experience this space as if they were there. Use sophisticated adjectives and varied sentence beginnings.",
-      expository: "Explain how social media affects young people's friendships. Use specific examples, clear explanations, and organize your ideas logically. Include both positive and negative effects in your response.",
-      reflective: "Reflect on a challenge you overcame this year. Analyze what you learned about yourself and how this experience will help you in the future. Show deep thinking and personal insight.",
-      recount: "Recount a significant school event from this year. Include specific details about what happened, who was involved, and why this event was meaningful. Use chronological order and engaging language.",
-      default: "Write about a topic that interests you, demonstrating sophisticated vocabulary, clear structure, and well-developed ideas suitable for NSW Selective assessment."
-    };
-    
-    return nswSelectiveFallbackPrompts[textType.toLowerCase()] || nswSelectiveFallbackPrompts.default;
+    console.error('Error generating prompt:', error);
+    return "Write about a memorable experience that taught you something important.";
   }
 }
 
