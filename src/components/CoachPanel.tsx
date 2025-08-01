@@ -42,44 +42,121 @@ interface QuestionAnalysis {
   keywords: string[];
 }
 
-const extractResponseText = (response: any): string => {
+const extractResponseText = (response: any, questionType: string, userQuestion: string): string => {
   // Handle different response formats from the backend
   if (typeof response === 'string') {
     return response;
   }
   
   if (response && typeof response === 'object') {
-    // Check for common response patterns
-    if (response.overallComment) {
-      return response.overallComment;
+    // Handle NSW Selective feedback format
+    if (response.overallComment && response.criteriaFeedback) {
+      let nswResponse = response.overallComment + '\n\n';
+      
+      // Add specific NSW criteria feedback based on question type
+      if (questionType === 'structure' && response.criteriaFeedback.textStructureAndOrganization) {
+        const structureFeedback = response.criteriaFeedback.textStructureAndOrganization;
+        nswResponse += `**Structure Guidance (NSW Band ${structureFeedback.band || 'Assessment'}):**\n`;
+        if (structureFeedback.suggestions && structureFeedback.suggestions.length > 0) {
+          nswResponse += structureFeedback.suggestions.slice(0, 2).join('\n') + '\n\n';
+        }
+      }
+      
+      if (questionType === 'vocabulary' && response.criteriaFeedback.languageFeaturesAndVocabulary) {
+        const vocabFeedback = response.criteriaFeedback.languageFeaturesAndVocabulary;
+        nswResponse += `**Vocabulary Enhancement (NSW Band ${vocabFeedback.band || 'Assessment'}):**\n`;
+        if (vocabFeedback.suggestions && vocabFeedback.suggestions.length > 0) {
+          nswResponse += vocabFeedback.suggestions.slice(0, 2).join('\n') + '\n\n';
+        }
+      }
+      
+      if (questionType === 'content' && response.criteriaFeedback.ideasAndContent) {
+        const contentFeedback = response.criteriaFeedback.ideasAndContent;
+        nswResponse += `**Content Development (NSW Band ${contentFeedback.band || 'Assessment'}):**\n`;
+        if (contentFeedback.suggestions && contentFeedback.suggestions.length > 0) {
+          nswResponse += contentFeedback.suggestions.slice(0, 2).join('\n') + '\n\n';
+        }
+      }
+      
+      // Add NSW-specific exam strategies if available
+      if (response.examStrategies && response.examStrategies.length > 0) {
+        nswResponse += `**NSW Selective Exam Tips:**\n`;
+        nswResponse += response.examStrategies.slice(0, 2).join('\n');
+      }
+      
+      return nswResponse;
     }
     
-    if (response.suggestions && Array.isArray(response.suggestions)) {
-      return response.suggestions.slice(0, 3).join('\n\n');
+    // Handle specific question types with contextual responses
+    if (questionType === 'vocabulary' && response.suggestions) {
+      if (Array.isArray(response.suggestions)) {
+        return `Here are some vocabulary suggestions for your ${textType} writing:\n\n` + 
+               response.suggestions.slice(0, 3).map((s: any) => {
+                 if (typeof s === 'object' && s.word && s.suggestion) {
+                   return `• Instead of "${s.word}", try: ${s.suggestion}`;
+                 }
+                 return `• ${s}`;
+               }).join('\n');
+      }
     }
     
-    if (response.structure) {
-      return response.structure;
+    if (questionType === 'structure' && response.structure) {
+      return `For ${textType} writing structure:\n\n${response.structure}`;
     }
     
-    if (response.corrections && Array.isArray(response.corrections)) {
-      return response.corrections.slice(0, 3).map((c: any) => `• ${c.suggestion || c.message || c}`).join('\n');
+    if (questionType === 'grammar' && response.corrections) {
+      if (Array.isArray(response.corrections) && response.corrections.length > 0) {
+        return `Here are some grammar suggestions:\n\n` + 
+               response.corrections.slice(0, 3).map((c: any) => `• ${c.suggestion || c.message || c}`).join('\n');
+      }
     }
     
+    // Fallback for general feedback
     if (response.feedbackItems && Array.isArray(response.feedbackItems) && response.feedbackItems.length > 0) {
-      return response.feedbackItems[0].text || 'Feedback available - please check the detailed feedback section.';
+      return response.feedbackItems[0].text || 'I have some specific feedback for your writing!';
     }
     
-    if (response.textTypeSpecificFeedback && response.textTypeSpecificFeedback.structure) {
-      return response.textTypeSpecificFeedback.structure;
-    }
-    
-    // If it's an object but we can't extract meaningful text, provide a generic response
-    return 'I have some feedback for you! Please check the detailed feedback section below for more information.';
+    // If it's an object but we can't extract meaningful text, provide a contextual response
+    return generateContextualResponse(questionType, userQuestion);
   }
   
-  return 'I\'m here to help with your writing! Please ask me specific questions about vocabulary, structure, grammar, or content.';
+  return generateContextualResponse(questionType, userQuestion);
 };
+
+// Generate contextual responses based on question type and content
+const generateContextualResponse = (questionType: string, userQuestion: string): string => {
+  const responses = {
+    vocabulary: [
+      "Great question about vocabulary! For stronger word choices, try replacing simple words like 'good' with 'excellent' or 'outstanding'. What specific words would you like help improving?",
+      "Vocabulary is key for NSW Selective success! Consider using more sophisticated words - instead of 'big', try 'enormous' or 'substantial'. Which part of your writing needs stronger vocabulary?",
+      "Excellent vocabulary question! For narrative writing, use vivid action verbs and descriptive adjectives. For persuasive writing, use powerful words that convince your reader."
+    ],
+    structure: [
+      "Structure is crucial for NSW Selective writing! For narratives, use: engaging opening → rising action → climax → resolution. For persuasive essays: introduction with thesis → 3 body paragraphs with evidence → strong conclusion.",
+      "Great structure question! Make sure each paragraph has one main idea, and use connecting words like 'furthermore', 'however', and 'in conclusion' to link your ideas smoothly.",
+      "NSW Selective examiners love clear structure! Start with a hook, develop your ideas logically, and end with impact. What type of writing are you working on?"
+    ],
+    grammar: [
+      "Grammar accuracy is important for NSW Selective! Check your sentence variety - mix short and long sentences. Make sure you're using correct punctuation, especially commas and apostrophes.",
+      "Good grammar question! For NSW Selective, focus on: subject-verb agreement, consistent tense, and varied sentence beginnings. Read your work aloud to catch errors.",
+      "Grammar tip for NSW success: Use complex sentences with subordinate clauses, but make sure they're clear. Avoid run-on sentences and sentence fragments."
+    ],
+    content: [
+      "Content development is key for NSW Selective! Add specific details, examples, and evidence to support your main ideas. Show, don't just tell - use sensory details and dialogue.",
+      "Excellent content question! For narratives, develop your characters' emotions and motivations. For persuasive writing, include facts, statistics, or expert opinions to strengthen your arguments.",
+      "NSW Selective values original thinking! Develop your ideas deeply rather than just listing them. Ask yourself 'why' and 'how' to add depth to your content."
+    ],
+    general: [
+      "I'm here to help with your NSW Selective writing preparation! Ask me about specific aspects like vocabulary, structure, grammar, or content development.",
+      "Great to see you working on your writing! For NSW Selective success, focus on clear structure, sophisticated vocabulary, and well-developed ideas. What specific area would you like help with?",
+      "NSW Selective writing requires strong skills across all areas. I can help you with planning, drafting, vocabulary choices, grammar, and exam strategies. What's your main concern right now?"
+    ]
+  };
+  
+  const typeResponses = responses[questionType as keyof typeof responses] || responses.general;
+  const randomIndex = Math.floor(Math.random() * typeResponses.length);
+  return typeResponses[randomIndex];
+};</action>
 
 export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelProps) {
   const [structuredFeedback, setStructuredFeedback] = useState<StructuredFeedback | null>(null);
