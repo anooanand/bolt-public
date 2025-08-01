@@ -14,10 +14,29 @@ export const WritingAccessCheck: React.FC<WritingAccessCheckProps> = ({
   const { 
     user, 
     emailVerified, 
-    paymentCompleted, 
+    paymentCompleted: authPaymentCompleted, 
     loading,
-    verificationStatus 
   } = useAuth();
+
+  // Use the paymentCompleted from AuthContext, but also check localStorage for temporary access
+  const hasTemporaryAccess = () => {
+    try {
+      const tempAccess = localStorage.getItem('temp_access_granted');
+      const tempUntil = localStorage.getItem('temp_access_until');
+      
+      if (tempAccess === 'true' && tempUntil) {
+        const tempDate = new Date(tempUntil);
+        if (tempDate > new Date()) {
+          return true;
+        }
+      }
+      return false;
+    } catch (error) {
+      return false;
+    }
+  };
+
+  const paymentCompleted = authPaymentCompleted || hasTemporaryAccess();
 
   // Show loading state
   if (loading) {
@@ -54,29 +73,8 @@ export const WritingAccessCheck: React.FC<WritingAccessCheckProps> = ({
     );
   }
 
-  // Enhanced temporary payment access check (24-hour grace period)
-  const hasTemporaryAccess = () => {
-    try {
-      const paymentDate = localStorage.getItem('payment_date');
-      const paymentPlan = localStorage.getItem('payment_plan');
-      
-      if (paymentDate && paymentPlan) {
-        const paymentTime = new Date(paymentDate).getTime();
-        const now = Date.now();
-        const hoursSincePayment = (now - paymentTime) / (1000 * 60 * 60);
-        
-        // 24-hour temporary access
-        return hoursSincePayment < 24;
-      }
-      return false;
-    } catch (error) {
-      console.error('Error checking temporary access:', error);
-      return false;
-    }
-  };
-
-  // Comprehensive access check - compatible with both database designs
-  const hasWritingAccess = emailVerified && (paymentCompleted || hasTemporaryAccess());
+  // Comprehensive access check
+  const hasWritingAccess = emailVerified && paymentCompleted;
 
   // Check email verification
   if (!emailVerified) {
@@ -172,7 +170,7 @@ export const WritingAccessCheck: React.FC<WritingAccessCheckProps> = ({
   return (
     <div className="relative">
       {/* Enhanced success indicator for temporary access */}
-      {hasTemporaryAccess() && !paymentCompleted && (
+      {hasTemporaryAccess() && !authPaymentCompleted && (
         <div className="bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-yellow-400 p-4">
           <div className="flex">
             <div className="flex-shrink-0">
