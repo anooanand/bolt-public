@@ -89,7 +89,7 @@ export async function createCheckoutSession(priceId: string, userId?: string) {
  * Gets the current user's subscription status
  * @returns The subscription status
  */
-export async function getSubscriptionStatus() {
+async function getSubscriptionStatus() {
   try {
     const { data, error } = await supabase
       .from('stripe_user_subscriptions')
@@ -111,7 +111,7 @@ export async function getSubscriptionStatus() {
  * Gets the current user's order history
  * @returns The order history
  */
-export async function getOrderHistory() {
+async function getOrderHistory() {
   try {
     const { data, error } = await supabase
       .from('stripe_user_orders')
@@ -129,9 +129,4 @@ export async function getOrderHistory() {
   }
 }
 
-export default {
-  createCheckoutSession,
-  getSubscriptionStatus,
-  getOrderHistory,
-};
 

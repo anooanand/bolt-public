@@ -1,7 +1,7 @@
 // Configuration file for AI Coach prompts and system messages
 // This allows for easier updates and fine-tuning without code changes
 
-export interface PromptConfig {
+interface PromptConfig {
   systemPrompts: {
     [key: string]: string;
   };
@@ -105,7 +105,7 @@ TONE AND LANGUAGE:
 };
 
 // Text type specific requirements for prompt generation
-export const textTypeRequirements = {
+const textTypeRequirements = {
   advertisement: "Include product/service, target audience, persuasive techniques",
   'advice sheet': "Include specific situation, clear guidance format",
   'diary entry': "Include personal reflection, specific event or experience",
@@ -136,5 +136,4 @@ export const vocabularyEnhancements = {
   think: ['believe', 'consider', 'ponder', 'reflect', 'contemplate']
 };
 
-export default promptConfig;
 

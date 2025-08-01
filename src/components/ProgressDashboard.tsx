@@ -372,7 +372,7 @@ export function ProgressDashboard({ progressData }: { progressData: ProgressData
 }
 
 // Sample data generator for testing
-export const generateSampleProgressData = (): ProgressData => ({
+const generateSampleProgressData = (): ProgressData => ({
   completedLessons: [1, 2, 3, 4, 5, 6, 7, 8, 12, 13],
   totalPoints: 450,
   earnedBadges: ['first-step', 'foundation-master'],

@@ -311,4 +311,3 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
   );
 }
 
-export default SettingsPage;

@@ -2,14 +2,14 @@
 
 import { promptConfig } from '../config/prompts';
 
-export interface AIError {
+interface AIError {
   type: 'api_unavailable' | 'network_error' | 'rate_limit' | 'parsing_error' | 'general_error';
   message: string;
   userFriendlyMessage: string;
   retryable: boolean;
 }
 
-export class AIErrorHandler {
+class AIErrorHandler {
   static handleError(error: any, context: string): AIError {
     console.error(`[AI Coach Error - ${context}]:`, error);
 

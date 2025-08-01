@@ -21,7 +21,7 @@ try {
 }
 
 // Safe function to check if OpenAI is available
-export const isOpenAIAvailable = (): boolean => {
+const isOpenAIAvailable = (): boolean => {
   return openai !== null;
 };
 
@@ -201,7 +201,7 @@ export async function getWritingFeedback(content: string, textType: string, assi
 }
 
 // Enhanced function for specialized text type feedback with contextual analysis
-export async function getSpecializedTextTypeFeedback(content: string, textType: string): Promise<any> {
+async function getSpecializedTextTypeFeedback(content: string, textType: string): Promise<any> {
   try {
     return await makeBackendCall('getSpecializedTextTypeFeedback', {
       content,
@@ -386,7 +386,7 @@ export async function evaluateEssay(content: string, textType: string): Promise<
   }
 }
 
-export async function getWritingStructure(textType: string): Promise<string> {
+async function getWritingStructure(textType: string): Promise<string> {
   try {
     const result = await makeBackendCall('getWritingStructure', { textType });
     return result;
@@ -417,7 +417,7 @@ export async function getWritingStructure(textType: string): Promise<string> {
 }
 
 // New function for grammar and spelling check
-export async function checkGrammarAndSpelling(content: string): Promise<any> {
+async function checkGrammarAndSpelling(content: string): Promise<any> {
   try {
     return await makeBackendCall('checkGrammarAndSpelling', { content });
   } catch (error) {
@@ -429,7 +429,7 @@ export async function checkGrammarAndSpelling(content: string): Promise<any> {
 }
 
 // New function for sentence structure analysis
-export async function analyzeSentenceStructure(content: string): Promise<any> {
+async function analyzeSentenceStructure(content: string): Promise<any> {
   try {
     return await makeBackendCall('analyzeSentenceStructure', { content });
   } catch (error) {
@@ -441,7 +441,7 @@ export async function analyzeSentenceStructure(content: string): Promise<any> {
 }
 
 // New function for vocabulary enhancement
-export async function enhanceVocabulary(content: string): Promise<any> {
+async function enhanceVocabulary(content: string): Promise<any> {
   try {
     return await makeBackendCall('enhanceVocabulary', { content });
   } catch (error) {

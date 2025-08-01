@@ -7,7 +7,7 @@ interface ThemeContextType {
   toggleTheme: () => void;
 }
 
-export const ThemeContext = React.createContext<ThemeContextType>({
+const ThemeContext = React.createContext<ThemeContextType>({
   theme: 'light',
   toggleTheme: () => {},
 });

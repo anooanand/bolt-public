@@ -50,17 +50,12 @@ export const products = [
 ];
 
 // Helper function to get product by price ID
-export function getProductByPriceId(priceId: string) {
+function getProductByPriceId(priceId: string) {
   return products.find(product => product.priceId === priceId);
 }
 
 // Helper function to get product by ID
-export function getProductById(id: string) {
+function getProductById(id: string) {
   return products.find(product => product.id === id);
 }
 
-export default {
-  products,
-  getProductByPriceId,
-  getProductById
-};

@@ -77,5 +77,4 @@ export async function getUserAccessStatus(userId: string) {
 }
 
 // Export default for compatibility
-export default supabase;
 

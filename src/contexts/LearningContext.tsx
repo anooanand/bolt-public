@@ -185,21 +185,21 @@ export function useLearning() {
 }
 
 // Utility functions for progress calculations
-export const calculateCompletionRate = (completedLessons: number[]): number => {
+const calculateCompletionRate = (completedLessons: number[]): number => {
   return Math.round((completedLessons.length / 30) * 100);
 };
 
-export const calculateAverageScore = (lessonScores: { [key: number]: number }): number => {
+const calculateAverageScore = (lessonScores: { [key: number]: number }): number => {
   const scores = Object.values(lessonScores);
   if (scores.length === 0) return 0;
   return Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length);
 };
 
-export const getTotalTimeSpent = (timeSpent: { [key: number]: number }): number => {
+const getTotalTimeSpent = (timeSpent: { [key: number]: number }): number => {
   return Object.values(timeSpent).reduce((sum, time) => sum + time, 0);
 };
 
-export const formatTimeSpent = (seconds: number): string => {
+const formatTimeSpent = (seconds: number): string => {
   const hours = Math.floor(seconds / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);
   

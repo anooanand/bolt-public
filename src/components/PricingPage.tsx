@@ -257,6 +257,6 @@ export function PricingPage() {
 }
 
 // Also export as PricingPageWithFixedVerification for backward compatibility
-export const PricingPageWithFixedVerification = PricingPage;
+const PricingPageWithFixedVerification = PricingPage;
 
 

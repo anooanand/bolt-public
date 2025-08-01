@@ -2,7 +2,7 @@ import { supabase } from './supabase';
 import { Writing, Feedback, UserProgress } from '../contexts/AppContext';
 
 // Database operations for writings
-export const writingOperations = {
+const writingOperations = {
   // Create a new writing
   async createWriting(writing: Omit<Writing, 'id' | 'created_at' | 'updated_at'>) {
     try {
@@ -81,7 +81,7 @@ export const writingOperations = {
 };
 
 // Database operations for feedback
-export const feedbackOperations = {
+const feedbackOperations = {
   // Create feedback for a writing
   async createFeedback(feedback: Omit<Feedback, 'id' | 'created_at'>) {
     try {
@@ -139,7 +139,7 @@ export const feedbackOperations = {
 };
 
 // Database operations for user progress
-export const progressOperations = {
+const progressOperations = {
   // Get user progress
   async getUserProgress() {
     try {
@@ -209,7 +209,7 @@ export const progressOperations = {
 };
 
 // Database operations for user profiles
-export const profileOperations = {
+const profileOperations = {
   // Get user profile
   async getUserProfile() {
     try {
