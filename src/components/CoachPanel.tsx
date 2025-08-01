@@ -284,24 +284,40 @@ export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelPro
 
   // Enhanced API call routing function
   const routeQuestionToOperation = useCallback(async (question: string, analysis: QuestionAnalysis) => {
-    const apiUrl = '/.netlify/functions/ai-operations';
-    
-    // Prepare the request based on question type
-    const baseRequest = {
-      content,
-      textType,
-      assistanceLevel: localAssistanceLevel,
-      feedbackHistory: conversationContext.slice(-5), // Include recent conversation context
-      userQuestion: question
-    };
-    
     try {
-      let response;
+      console.log(`[DEBUG] Routing question: "${question}" (type: ${analysis.type})`);
       
-      // For now, skip API calls and provide intelligent local responses
+      // Try to get real AI response first
+      const response = await fetch('/.netlify/functions/ai-operations', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          operation: 'getWritingFeedback',
+          content,
+          textType,
+          assistanceLevel: localAssistanceLevel,
+          feedbackHistory: conversationContext.slice(-5),
+          userQuestion: question,
+          questionType: analysis.type
+        })
+      });
+
+      if (response.ok) {
+        const aiResponse = await response.json();
+        console.log('[DEBUG] AI response received:', aiResponse);
+        
+        // If we get a valid AI response, use it
+        if (aiResponse && !aiResponse.error) {
+          return aiResponse;
+        }
+      }
+      
+      console.log('[DEBUG] AI call failed, using intelligent local response');
       return generateIntelligentLocalResponse(question, analysis, content, textType);
     } catch (error) {
-      console.error('Error in API routing:', error);
+      console.error('[DEBUG] Error in API routing:', error);
       return generateIntelligentLocalResponse(question, analysis, content, textType);
     }
   }, [content, textType, localAssistanceLevel, conversationContext]);

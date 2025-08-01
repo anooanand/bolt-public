@@ -4,16 +4,25 @@ import OpenAI from 'openai';
 let openai: OpenAI | null = null;
 
 try {
-  const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
+  // Try multiple possible API key environment variables
+  const apiKey = import.meta.env.VITE_OPENAI_API_KEY || 
+                 import.meta.env.OPENAI_API_KEY ||
+                 process.env.OPENAI_API_KEY;
   
-  if (apiKey && apiKey !== 'your_openai_api_key_here' && apiKey !== 'your-openai-api-key-here' && apiKey.trim() !== '') {
+  if (apiKey && 
+      apiKey !== 'your_openai_api_key_here' && 
+      apiKey !== 'your-openai-api-key-here' && 
+      apiKey !== 'sk-placeholder' &&
+      apiKey.trim() !== '' &&
+      apiKey.startsWith('sk-')) {
     openai = new OpenAI({
       apiKey: apiKey,
       dangerouslyAllowBrowser: true
     });
     console.log('[DEBUG] OpenAI client initialized successfully with GPT-4');
   } else {
-    console.log('[DEBUG] OpenAI API key not configured - AI features will be limited');
+    console.warn('[DEBUG] OpenAI API key not configured or invalid - AI features will be limited');
+    console.warn('[DEBUG] Expected format: sk-... but got:', apiKey ? `${apiKey.substring(0, 10)}...` : 'undefined');
   }
 } catch (error) {
   console.error('[DEBUG] Failed to initialize OpenAI client:', error);
@@ -28,18 +37,9 @@ const isOpenAIAvailable = (): boolean => {
 // Helper function to make API calls to the enhanced backend
 async function makeBackendCall(operation: string, data: any): Promise<any> {
   try {
-    // Check if we're in local development
-    const isLocalDev = window.location.hostname === '127.0.0.1' ||
-                      window.location.hostname === 'localhost' ||
-                      window.location.hostname.includes('webcontainer');
+    console.log(`[DEBUG] Making backend call for operation: ${operation}`);
     
-    // In local development, skip backend calls and use fallbacks
-    if (isLocalDev) {
-      console.log('[DEBUG] Local development detected - using fallback responses');
-      return { error: 'BACKEND_NOT_AVAILABLE' };
-    }
-    
-    // Only attempt backend calls in production
+    // Always try backend calls first, regardless of environment
     try {
       const response = await fetch('/.netlify/functions/ai-operations', {
         method: 'POST',
@@ -53,12 +53,16 @@ async function makeBackendCall(operation: string, data: any): Promise<any> {
       });
 
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`[DEBUG] Backend call failed: ${response.status} - ${errorText}`);
         throw new Error(`Backend call failed: ${response.status}`);
       }
 
-      return await response.json();
+      const result = await response.json();
+      console.log(`[DEBUG] Backend call successful for ${operation}`);
+      return result;
     } catch (fetchError) {
-      console.log('[DEBUG] Backend fetch failed, using fallbacks');
+      console.error(`[DEBUG] Backend fetch failed for ${operation}:`, fetchError);
       return { error: 'BACKEND_NOT_AVAILABLE' };
     }
   } catch (error) {
