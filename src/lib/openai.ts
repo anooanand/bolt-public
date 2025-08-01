@@ -310,7 +310,11 @@ export async function generatePrompt(textType: string): Promise<string> {
     const result = await makeBackendCall('generatePrompt', { textType });
     return result.prompt || "Write about a memorable experience that taught you something important.";
   } catch (error) {
-    console.error('Error generating prompt:', error);
+    if (error instanceof Error && error.message === 'BACKEND_NOT_AVAILABLE') {
+      console.warn('Backend not available in development - using fallback prompt');
+    } else {
+      console.error('Error generating prompt:', error);
+    }
     
     console.log('[DEBUG] Using fallback prompts for local development');
     
