@@ -517,7 +517,7 @@ export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelPro
         const aiError = AIErrorHandler.handleError(error, 'chat processing');
         const errorMessage: ChatMessage = {
           id: (Date.now() + 1).toString(),
-          text: `I'm having trouble right now, but keep writing! For NSW Selective ${textType} writing, focus on:\n\n• Using sophisticated vocabulary\n• Clear structure with engaging opening\n• Specific examples and details\n• Varied sentence structures\n\nThese elements help achieve Band 5-6 levels in NSW Selective assessments.`,
+          text: `I'm having trouble right now, but keep writing! Focus on making your ${textType} clear and engaging.`,
           isUser: false,
           timestamp: new Date()
         };
@@ -667,7 +667,7 @@ export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelPro
             type="text"
             value={chatInput}
             onChange={(e) => setChatInput(e.target.value)}
-            placeholder="Ask about vocabulary, structure, grammar, or content..."
+            placeholder="Ask about NSW Selective writing: vocabulary, structure, grammar, content, or exam strategies..."
             className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
             disabled={isChatLoading}
           />
