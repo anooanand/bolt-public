@@ -1,9 +1,27 @@
 const OpenAI = require("openai");
 
-// Initialize OpenAI with server-side API key
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-});
+// Initialize OpenAI with server-side API key - Enhanced error handling
+let openai = null;
+
+try {
+  const apiKey = process.env.OPENAI_API_KEY || process.env.VITE_OPENAI_API_KEY;
+  
+  if (apiKey && apiKey.startsWith('sk-')) {
+    openai = new OpenAI({
+      apiKey: apiKey
+    });
+    console.log('[AI-OPS] OpenAI client initialized successfully');
+  } else {
+    console.error('[AI-OPS] OpenAI API key not found or invalid format');
+  }
+} catch (error) {
+  console.error('[AI-OPS] Failed to initialize OpenAI:', error);
+}
+
+// Check if OpenAI is available
+function isOpenAIAvailable() {
+  return openai !== null;
+}
 
 // Helper function to analyze content structure
 function analyzeContentStructure(content) {
@@ -580,7 +598,14 @@ async function generatePrompt(textType) {
 }
 
 async function getWritingFeedback(content, textType, assistanceLevel, feedbackHistory) {
+  if (!isOpenAIAvailable()) {
+    console.log('[AI-OPS] OpenAI not available, using enhanced fallback for writing feedback');
+    return createEnhancedFallbackFeedback(content, textType, assistanceLevel);
+  }
+
   try {
+    console.log(`[AI-OPS] Getting writing feedback for ${textType} (${content.length} chars)`);
+    
     const completion = await openai.chat.completions.create({
       messages: [
         {
