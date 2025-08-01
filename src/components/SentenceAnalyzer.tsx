@@ -38,7 +38,7 @@ export const SentenceAnalyzer: React.FC<SentenceAnalyzerProps> = ({
 
   // Analyze sentence structure
   const analyzeSentenceStructure = useCallback(async () => {
-    if (content.trim().length < 50) return;
+    if (content.trim().length < 5) return;
 
     setIsAnalyzing(true);
     try {
@@ -331,10 +331,10 @@ export const SentenceAnalyzer: React.FC<SentenceAnalyzerProps> = ({
               </div>
             ))}
           </div>
-        ) : content.trim().length < 50 ? (
+        ) : content.trim().length < 5 ? (
           <div className="text-center py-8">
             <BarChart3 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-600 dark:text-gray-400">Write at least 50 words to analyze sentence structure</p>
+            <p className="text-gray-600 dark:text-gray-400">Write at least 5 words to analyze sentence structure</p>
           </div>
         ) : (
           <div className="text-center py-8">
