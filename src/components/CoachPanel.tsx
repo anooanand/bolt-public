@@ -244,70 +244,11 @@ export function CoachPanel({ content, textType, assistanceLevel }: CoachPanelPro
     try {
       let response;
       
-      switch (analysis.operation) {
-        case 'enhanceVocabulary':
-          response = await fetch(apiUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              operation: 'enhanceVocabulary',
-              ...baseRequest
-            })
-          });
-          break;
-          
-        case 'getWritingStructure':
-          response = await fetch(apiUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              operation: 'getWritingStructure',
-              ...baseRequest
-            })
-          });
-          break;
-          
-        case 'checkGrammarAndSpelling':
-          response = await fetch(apiUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              operation: 'checkGrammarAndSpelling',
-              ...baseRequest
-            })
-          });
-          break;
-          
-        case 'getSpecializedTextTypeFeedback':
-          response = await fetch(apiUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              operation: 'getSpecializedTextTypeFeedback',
-              ...baseRequest
-            })
-          });
-          break;
-          
-        default:
-          response = await fetch(apiUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              operation: 'getWritingFeedback',
-              ...baseRequest
-            })
-          });
-      }
-      
-      if (!response.ok) {
-        throw new Error(`API request failed: ${response.status}`);
-      }
-      
-      return await response.json();
+      // For now, skip API calls and provide intelligent local responses
+      return generateIntelligentLocalResponse(question, analysis, content, textType);
     } catch (error) {
       console.error('Error in API routing:', error);
-      throw error;
+      return generateIntelligentLocalResponse(question, analysis, content, textType);
     }
   }, [content, textType, localAssistanceLevel, conversationContext]);
 
