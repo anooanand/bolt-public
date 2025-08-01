@@ -6,7 +6,17 @@ export default defineConfig({
   plugins: [react( )],
   server: {
     host: '0.0.0.0',
-    // Remove proxy configuration for WebContainer environment
-    // Netlify Functions are not available in local development
+    proxy: {
+      '/auth/v1': {
+        target: 'https://rvlotczavccreigdzczo.supabase.co',
+        changeOrigin: true,
+        secure: true
+      },
+      '/rest/v1': {
+        target: 'https://rvlotczavccreigdzczo.supabase.co',
+        changeOrigin: true,
+        secure: true
+      }
+    }
   }
 });
