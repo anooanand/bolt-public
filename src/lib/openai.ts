@@ -84,47 +84,72 @@ export async function getNSWSelectiveFeedback(
   } catch (error) {
     console.error('Error getting NSW Selective feedback:', error);
     
-    // Fallback response with NSW criteria structure
+    console.log('[DEBUG] Using enhanced NSW Selective fallback feedback');
+    
+    // Enhanced fallback response with detailed NSW criteria analysis
+    const analysis = analyzeContentStructure(content);
+    const estimatedScore = Math.min(30, Math.max(8, Math.round(analysis.wordCount / 15) + analysis.paragraphCount * 2));
+    const bandLevel = estimatedScore >= 27 ? 6 : estimatedScore >= 22 ? 5 : estimatedScore >= 17 ? 4 : estimatedScore >= 12 ? 3 : estimatedScore >= 7 ? 2 : 1;
+    
     return {
-      overallComment: "Your writing shows good effort and understanding of the narrative form. Let's work on developing it further using NSW Selective exam criteria.",
+      overallComment: `Your ${analysis.wordCount}-word ${textType} demonstrates ${bandLevel >= 4 ? 'solid' : 'developing'} understanding of NSW Selective requirements. You're currently showing Band ${bandLevel} characteristics. Let's work on reaching Band 5-6 level.`,
+      totalScore: estimatedScore,
+      overallBand: bandLevel,
+      bandDescription: bandLevel >= 5 ? "Proficient - Well-developed ideas" : bandLevel >= 4 ? "Sound - Adequate ideas" : "Developing - Simple ideas",
+      estimatedExamScore: `${estimatedScore}/30`,
       criteriaFeedback: {
         ideasAndContent: {
-          score: 6,
-          maxScore: 10,
-          strengths: ["You have attempted to create a narrative with a clear storyline"],
-          improvements: ["Develop your ideas with more specific details and depth"],
-          suggestions: ["Add more descriptive details about characters, setting, and emotions"],
-          nextSteps: ["Focus on expanding one key moment in your story with rich detail"]
+          score: Math.round(estimatedScore * 0.3),
+          maxScore: 9,
+          band: Math.min(6, Math.max(1, Math.round(estimatedScore * 0.3 / 1.5))),
+          strengths: analysis.wordCount > 100 ? [`You've developed a substantial ${textType} with ${analysis.wordCount} words`] : ["You've made a good start on your writing"],
+          improvements: analysis.wordCount < 150 ? ["Develop your ideas with more specific details and examples"] : ["Deepen your analysis and add more sophisticated insights"],
+          suggestions: [`Add more specific examples and evidence to support your ${textType} ideas`, "Show deeper thinking by explaining the 'why' behind your points"],
+          nextSteps: [`Expand your ${textType} with at least 2 more specific examples or details`]
         },
         textStructureAndOrganization: {
-          score: 6,
-          maxScore: 10,
-          strengths: ["Your writing has a clear beginning"],
-          improvements: ["Ensure smooth transitions between ideas"],
-          suggestions: ["Use connecting words like 'meanwhile', 'suddenly', 'after that' to link your ideas"],
-          nextSteps: ["Plan your story structure before writing - beginning, middle, end"]
+          score: Math.round(estimatedScore * 0.25),
+          maxScore: 7.5,
+          band: Math.min(6, Math.max(1, Math.round(estimatedScore * 0.25 / 1.25))),
+          strengths: analysis.paragraphCount > 1 ? [`Good paragraph organization with ${analysis.paragraphCount} paragraphs`] : ["You have a clear structure"],
+          improvements: analysis.paragraphCount === 1 ? ["Break your writing into multiple paragraphs for better organization"] : ["Strengthen transitions between paragraphs"],
+          suggestions: [`Use NSW Selective-appropriate structure for ${textType}: clear introduction, well-developed body, strong conclusion`, "Add transition words to connect your ideas smoothly"],
+          nextSteps: [`Review NSW Selective ${textType} structure requirements and apply them to your writing`]
         },
         languageFeaturesAndVocabulary: {
-          score: 6,
-          maxScore: 10,
-          strengths: ["You've used some descriptive words"],
-          improvements: ["Vary your sentence structure and use more sophisticated vocabulary"],
-          suggestions: ["Try starting sentences in different ways and use more specific adjectives"],
-          nextSteps: ["Practice using literary devices like similes or metaphors"]
+          score: Math.round(estimatedScore * 0.25),
+          maxScore: 7.5,
+          band: Math.min(6, Math.max(1, Math.round(estimatedScore * 0.25 / 1.25))),
+          strengths: analysis.descriptiveWords.length > 3 ? [`Good use of descriptive language: ${analysis.descriptiveWords.slice(0, 3).join(', ')}`] : ["You're developing your vocabulary"],
+          improvements: ["Use more sophisticated vocabulary appropriate for NSW Selective Band 5-6 level", "Vary your sentence structures for more engaging writing"],
+          suggestions: ["Replace simple words with more sophisticated alternatives (e.g., 'good' → 'exceptional')", "Use complex sentences with subordinate clauses"],
+          nextSteps: ["Practice using 5 new sophisticated vocabulary words in your next draft"]
         },
         spellingPunctuationGrammar: {
-          score: 7,
-          maxScore: 10,
-          strengths: ["Generally good control of basic grammar and spelling"],
-          improvements: ["Check for any minor errors and ensure consistent tense"],
-          suggestions: ["Proofread your work carefully, reading it aloud to catch errors"],
-          nextSteps: ["Focus on maintaining past tense throughout your narrative"]
+          score: Math.round(estimatedScore * 0.2),
+          maxScore: 6,
+          band: Math.min(6, Math.max(1, Math.round(estimatedScore * 0.2 / 1))),
+          strengths: ["Your basic grammar and spelling show good control"],
+          improvements: ["Check for any minor errors and ensure consistent tense throughout"],
+          suggestions: ["Proofread your work carefully, reading it aloud to catch errors", "Use varied punctuation to create more sophisticated sentences"],
+          nextSteps: [`Maintain consistent ${textType === 'narrative' ? 'past' : 'present'} tense throughout your writing`]
         }
       },
-      priorityFocus: ["Develop ideas with more specific details", "Improve sentence variety and vocabulary"],
-      examStrategies: ["Plan your story structure before writing", "Use the full time allocation for planning, writing, and checking"],
-      interactiveQuestions: ["What specific emotions does your main character feel?", "How can you make your setting more vivid for the reader?"],
-      revisionSuggestions: ["Choose one paragraph to expand with more sensory details", "Rewrite two sentences to start them differently"]
+      priorityFocus: [
+        estimatedScore < 20 ? "Develop ideas with more specific details and examples" : "Add sophisticated insights and analysis",
+        estimatedScore < 15 ? "Improve basic structure and organization" : "Enhance vocabulary and sentence variety"
+      ],
+      examStrategies: [
+        `Plan your ${textType} structure before writing (5 minutes planning time)`,
+        "Use sophisticated vocabulary appropriate for selective school entry",
+        "Leave time to check and improve your work (5 minutes checking time)"
+      ],
+      interactiveQuestions: getTextTypeQuestions(textType),
+      revisionSuggestions: [
+        `Add 2-3 more specific examples to strengthen your ${textType}`,
+        "Replace 3 simple words with more sophisticated alternatives",
+        "Check that each paragraph has one clear main idea"
+      ]
     };
   }
 }
@@ -178,29 +203,40 @@ export async function getWritingFeedback(content: string, textType: string, assi
   } catch (error) {
     console.error('Error getting writing feedback:', error);
     
-    // Provide contextual fallback based on content analysis
+    console.log('[DEBUG] Using enhanced fallback feedback for local development');
+    
+    // Enhanced contextual fallback based on content analysis
     const analysis = analyzeContentStructure(content);
+    const qualityScore = Math.min(10, Math.max(3, Math.round(analysis.wordCount / 20) + (analysis.paragraphCount > 1 ? 2 : 0)));
+    
     return {
-      overallComment: `Your ${analysis.wordCount}-word ${textType} piece shows good effort! I can see you're developing your ideas.`,
+      overallComment: `Your ${analysis.wordCount}-word ${textType} shows ${qualityScore >= 7 ? 'strong' : qualityScore >= 5 ? 'good' : 'developing'} effort for NSW Selective preparation! You're building important writing skills.`,
       feedbackItems: [
         {
           type: "praise",
-          area: "Effort",
-          text: `Great job writing ${analysis.wordCount} words and organizing them into ${analysis.sentenceCount} sentences!`,
+          area: "NSW Selective Preparation",
+          text: `Excellent effort writing ${analysis.wordCount} words! This shows dedication to your NSW Selective preparation.`,
           exampleFromText: analysis.firstSentence,
-          suggestionForImprovement: "Keep building on this foundation by adding more descriptive details."
+          suggestionForImprovement: "For NSW Selective success, continue building sophisticated vocabulary and varied sentence structures."
         },
         {
           type: "suggestion",
-          area: "Structure",
-          text: analysis.paragraphCount === 1 ? "Your writing is all in one paragraph." : `You've organized your writing into ${analysis.paragraphCount} paragraphs.`,
-          suggestionForImprovement: analysis.paragraphCount === 1 ? "Try breaking your writing into 2-3 paragraphs for better organization." : "Good paragraph organization! Keep this up."
+          area: "NSW Text Structure",
+          text: analysis.paragraphCount === 1 ? `Your ${textType} is currently in one paragraph.` : `You've organized your ${textType} into ${analysis.paragraphCount} paragraphs - good structure!`,
+          suggestionForImprovement: analysis.paragraphCount === 1 ? `For NSW Selective ${textType}, break your writing into 3-4 well-developed paragraphs.` : "Excellent paragraph organization for NSW Selective standards!"
+        },
+        {
+          type: "challenge",
+          area: "Vocabulary Enhancement",
+          text: `Your vocabulary shows ${analysis.descriptiveWords.length > 5 ? 'good variety' : 'room for growth'}.`,
+          suggestionForImprovement: "For Band 5-6 NSW Selective writing, use more sophisticated vocabulary that demonstrates language maturity."
         }
       ],
       focusForNextTime: [
-        analysis.averageSentenceLength < 8 ? "Try writing some longer, more detailed sentences" : "Good sentence variety!",
-        analysis.descriptiveWords.length < 3 ? "Add more describing words (adjectives)" : "Nice use of descriptive language",
-        "Read your work aloud to check if it flows well"
+        analysis.averageSentenceLength < 10 ? "Write longer, more complex sentences for NSW Selective standards" : "Excellent sentence complexity!",
+        analysis.descriptiveWords.length < 5 ? "Add more sophisticated vocabulary and descriptive language" : "Great use of descriptive language!",
+        `Ensure your ${textType} follows NSW Selective text type conventions`,
+        "Practice using literary devices appropriate for your age level"
       ]
     };
   }
