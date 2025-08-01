@@ -20,6 +20,11 @@ import { NewsReportWritingTemplate } from './NewsReportWritingTemplate';
 import { LetterWritingTemplate } from './LetterWritingTemplate';
 import { DiaryWritingTemplate } from './DiaryWritingTemplate';
 import { SpeechWritingTemplate } from './SpeechWritingTemplate';
+// NEW IMPORTS: NSW Analysis Components
+import { TextTypeAnalysisComponent } from './TextTypeAnalysisComponent';
+import { VocabularySophisticationComponent } from './VocabularySophisticationComponent';
+import { ProgressTrackingComponent } from './ProgressTrackingComponent';
+import { CoachingTipsComponent } from './CoachingTipsComponent';
 import './responsive.css';
 import './layout-fix.css';
 import './full-width-fix.css';
@@ -63,6 +68,9 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
   const [selectedWritingType, setSelectedWritingType] = useState('');
   const [showEvaluationModal, setShowEvaluationModal] = useState(false);
   const [popupFlowCompleted, setPopupFlowCompleted] = useState(false);
+  
+  // NEW STATE VARIABLE: NSW Analysis Tab Management
+  const [activeTab, setActiveTab] = useState('textType');
   
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const highlightLayerRef = useRef<HTMLDivElement>(null);
@@ -540,6 +548,77 @@ export function WritingArea({ content, onChange, textType, onTimerStart, onSubmi
       {currentTextType && (
         <div className="writing-template-section flex-1 overflow-y-auto min-h-0">
           {renderWritingTemplate()}
+        </div>
+      )}
+
+      {/* NSW Analysis Tools Section - Add this before the status section */}
+      {(textType || selectedWritingType) && content && content.trim().length > 50 && (
+        <div className="nsw-analysis-tools">
+          <h3>NSW Selective Writing Analysis</h3>
+          
+          {/* Tab Navigation */}
+          <div className="tab-buttons">
+            <button 
+              onClick={() => setActiveTab('textType')}
+              className={activeTab === 'textType' ? 'active' : ''}
+            >
+              Text Type Analysis
+            </button>
+            <button 
+              onClick={() => setActiveTab('vocabulary')}
+              className={activeTab === 'vocabulary' ? 'active' : ''}
+            >
+              Vocabulary Analysis
+            </button>
+            <button 
+              onClick={() => setActiveTab('progress')}
+              className={activeTab === 'progress' ? 'active' : ''}
+            >
+              Progress Tracking
+            </button>
+            <button 
+              onClick={() => setActiveTab('coaching')}
+              className={activeTab === 'coaching' ? 'active' : ''}
+            >
+              Coaching Tips
+            </button>
+          </div>
+          
+          {/* Tab Content */}
+          <div className="tab-content">
+            {activeTab === 'textType' && (
+              <TextTypeAnalysisComponent 
+                content={content} 
+                textType={textType || selectedWritingType} 
+              />
+            )}
+            
+            {activeTab === 'vocabulary' && (
+              <VocabularySophisticationComponent 
+                content={content} 
+              />
+            )}
+            
+            {activeTab === 'progress' && state.user && (
+              <ProgressTrackingComponent 
+                userId={state.user.id} 
+                assessmentData={{
+                  totalScore: 0, // Replace with actual assessment score
+                  overallBand: 1, // Replace with actual band level
+                  criteriaFeedback: {} // Replace with actual criteria feedback
+                }} 
+              />
+            )}
+            
+            {activeTab === 'coaching' && (
+              <CoachingTipsComponent 
+                content={content}
+                textType={textType || selectedWritingType}
+                currentScore={0} // Replace with actual current score
+                focusArea="vocabulary" // Can be dynamic: "vocabulary", "structure", "grammar", etc.
+              />
+            )}
+          </div>
         </div>
       )}
 
