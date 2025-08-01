@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { MessageSquare, Sparkles, ChevronDown, ChevronUp, ThumbsUp, Lightbulb, HelpCircle, Target, AlertCircle, Star, Zap, Gift, Heart, X, Send, Bot } from 'lucide-react';
+import { MessageSquare, Sparkles, ChevronDown, ChevronUp, ThumbsUp, Lightbulb, HelpCircle, Target, AlertCircle, Star, Zap, Gift, Heart, X, Send, Bot, RefreshCw } from 'lucide-react';
 import { getWritingFeedback } from '../lib/openai';
 import AIErrorHandler from '../utils/errorHandling';
 import { promptConfig } from '../config/prompts';
@@ -32,6 +32,9 @@ interface ChatMessage {
   timestamp: Date;
   questionType?: string;
   operation?: string;
+  responseQuality?: 'high' | 'medium' | 'low' | 'fallback';
+  nswSpecific?: boolean;
+  conversationContext?: string;
 }
 
 // Enhanced question analysis and routing
